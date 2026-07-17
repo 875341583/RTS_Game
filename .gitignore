@@ -1,0 +1,25 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Imported translations (automatically generated from CSV files)
+*.translation
+
+# Mono/C# specific ignores
+.mono/
+.data_*/
+mono_crash.*.json
+bin/
+obj/
+
+# Build artifacts
+*.dll
+*.pdb
+
+# Temp/agent working files
+.temp/
+
+# System/tool-specific ignores
+.directory
+.DS_Store
+Thumbs.db

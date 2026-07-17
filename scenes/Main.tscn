@@ -1,0 +1,59 @@
+[gd_scene load_steps=4 format=3 uid="uid://b_main_scene_002"]
+
+[ext_resource type="Script" path="res://scripts/Main.cs" id="1_main"]
+[ext_resource type="Script" path="res://scripts/RTSCamera.cs" id="2_cam"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Background" type="Polygon2D" parent="."]
+color = Color(0.15, 0.3, 0.12, 1)
+polygon = PackedVector2Array(0, 0, 2000, 0, 2000, 2000, 0, 2000)
+
+[node name="GridLines" type="Line2D" parent="."]
+width = 1.0
+default_color = Color(0.2, 0.35, 0.17, 0.5)
+points = PackedVector2Array(
+	0, 0, 2000, 0,
+	2000, 0, 2000, 2000,
+	2000, 2000, 0, 2000,
+	0, 2000, 0, 0,
+	500, 0, 500, 2000,
+	1000, 0, 1000, 2000,
+	1500, 0, 1500, 2000,
+	0, 500, 2000, 500,
+	0, 1000, 2000, 1000,
+	0, 1500, 2000, 1500
+)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(640, 360)
+zoom = Vector2(1, 1)
+script = ExtResource("2_cam")
+
+[node name="Resources" type="Node2D" parent="."]
+
+[node name="Buildings" type="Node2D" parent="."]
+
+[node name="Units" type="Node2D" parent="."]
+
+[node name="DragBox" type="Line2D" parent="."]
+width = 2.0
+default_color = Color(0.5, 0.8, 1, 0.8)
+closed = false
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Label" type="Label" parent="UI"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 520.0
+offset_bottom = 120.0
+text = "Loading..."
+
+[node name="HintLabel" type="Label" parent="UI"]
+offset_left = 10.0
+offset_top = 640.0
+offset_right = 800.0
+offset_bottom = 710.0
+text = ""

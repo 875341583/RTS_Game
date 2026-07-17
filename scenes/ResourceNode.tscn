@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3 uid="uid://b_ore_scene_001"]
+
+[ext_resource type="Script" path="res://scripts/ResourceNode.cs" id="1_ore"]
+
+[sub_resource type="CircleShape2D" id="circle_shape"]
+radius = 30.0
+
+[node name="ResourceNode" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1_ore")
+
+[node name="Ore" type="Sprite2D" parent="."]
+centered = true
+
+[node name="AmountLabel" type="Label" parent="."]
+offset_left = -25.0
+offset_top = -45.0
+offset_right = 25.0
+offset_bottom = -30.0
+horizontal_alignment = 1
+text = "500"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("circle_shape")

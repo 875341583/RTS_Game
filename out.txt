@@ -1,0 +1,134 @@
+Godot Engine v4.7.1.stable.mono.official.a13da4feb - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (ANGLE 2.1.1 git hash: aaebda1c5a40) - Compatibility - Using Device: Google Inc. (Microsoft) - ANGLE (Microsoft, Microsoft Basic Render Driver (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11-10.0.14393.2608)
+
+[Difficulty] Normal | AI间隔 10s | 蓝方$2700 红方$1800 | 科技等级Lv2 | 上限16 | 战略点收入True
+[StrategicPoint] Created at (1000, 1000)
+[StrategicPoint] Created at (700, 700)
+[StrategicPoint] Created at (1300, 1300)
+[UI] 侧边栏建造面板已加载
+========================================
+★ 游戏目标：摧毁敌方所有建筑和单位即获胜！
+★ 建造建议：电站→兵营→车厂→科技中心
+★ 选中单位右键点敌方建筑/单位攻击
+★ 选中建筑右键设集结点 | R维修 | V出售
+========================================
+[放置] 选择 PowerPlant 放置位置，左键放置 / 右键取消
+蓝方建造PowerPlant，扣 $300，剩余 $2400，位置 (375, 168)
+[放置] 选择 Barracks 放置位置，左键放置 / 右键取消
+蓝方建造Barracks，扣 $400，剩余 $2120，位置 (473, 173)
+[放置] 选择 WarFactory 放置位置，左键放置 / 右键取消
+轻坦克 (Team 1) destroyed!
+[放置] 位置被占用
+[AI] Team 1 built PowerPlant, $1500 left
+[Status] Blue: $2180 | 6 units / 3 buildings | Red: $1500 | 4 units / 2 buildings
+[放置] 位置被占用
+[放置] 位置被占用
+[放置] 位置被占用
+蓝方建造WarFactory，扣 $600，剩余 $1580，位置 (633, 173)
+[Status] Blue: $1580 | 6 units / 4 buildings | Red: $1680 | 4 units / 2 buildings
+[放置] 选择 PowerPlant 放置位置，左键放置 / 右键取消
+[放置] 位置被占用
+[放置] 位置被占用
+轻坦克 (Team 0) destroyed!
+蓝方建造PowerPlant，扣 $300，剩余 $1460，位置 (468, 307)
+[AI] Team 1 built Barracks, $1400 left
+[AI] Red queued LightTank, $1200 left, 兵营队列1
+[Status] Blue: $1460 | 5 units / 5 buildings | Red: $1200 | 4 units / 3 buildings
+重坦克 (Team 1) destroyed!
+[生产完成] 兵营 (Team 1) 生产 LightTank
+蓝方排产矿车，扣 $500，剩余 $960，队列 1/5
+[Status] Blue: $960 | 5 units / 5 buildings | Red: $1260 | 4 units / 3 buildings
+[生产完成] 建造厂 (Team 0) 生产矿车
+[AI] Team 1 built PowerPlant (low power), $1140 left
+[AI] Red queued LightTank, $940 left, 兵营队列1
+[Status] Blue: $1140 | 6 units / 5 buildings | Red: $940 | 4 units / 4 buildings
+[生产完成] 兵营 (Team 1) 生产 LightTank
+轻坦克 (Team 1) destroyed!
+[Status] Blue: $1140 | 6 units / 5 buildings | Red: $940 | 4 units / 4 buildings
+[AI] Team 1 built WarFactory, $520 left
+[Status] Blue: $1140 | 6 units / 5 buildings | Red: $520 | 4 units / 5 buildings
+Ore depleted at (1550, 1400)
+轻坦克 (Team 1) destroyed!
+[Status] Blue: $1380 | 6 units / 5 buildings | Red: $520 | 3 units / 5 buildings
+Ore depleted at (400, 450)
+[Status] Blue: $1400 | 6 units / 5 buildings | Red: $540 | 3 units / 5 buildings
+[Status] Blue: $1400 | 6 units / 5 buildings | Red: $660 | 3 units / 5 buildings
+[Status] Blue: $1580 | 6 units / 5 buildings | Red: $720 | 3 units / 5 buildings
+[Status] Blue: $1640 | 6 units / 5 buildings | Red: $840 | 3 units / 5 buildings
+[AI] Team 1 built TechCenter, $100 left
+[Status] Blue: $1820 | 6 units / 5 buildings | Red: $100 | 3 units / 6 buildings
+[Status] Blue: $1880 | 6 units / 5 buildings | Red: $220 | 3 units / 6 buildings
+[Status] Blue: $2060 | 6 units / 5 buildings | Red: $280 | 3 units / 6 buildings
+Ore depleted at (550, 650)
+[Status] Blue: $2120 | 6 units / 5 buildings | Red: $400 | 3 units / 6 buildings
+[AI] Team 1 built PowerPlant (low power), $100 left
+[Status] Blue: $2140 | 6 units / 5 buildings | Red: $100 | 3 units / 7 buildings
+Ore depleted at (1450, 1350)
+[Status] Blue: $2260 | 6 units / 5 buildings | Red: $280 | 3 units / 7 buildings
+[Status] Blue: $2320 | 6 units / 5 buildings | Red: $300 | 3 units / 7 buildings
+[Status] Blue: $2380 | 6 units / 5 buildings | Red: $300 | 3 units / 7 buildings
+[Status] Blue: $2560 | 6 units / 5 buildings | Red: $420 | 3 units / 7 buildings
+[Status] Blue: $2620 | 6 units / 5 buildings | Red: $480 | 3 units / 7 buildings
+[AI] Red queued RocketLauncher, $0 left, 科技中心队列1
+[Status] Blue: $2740 | 6 units / 5 buildings | Red: $0 | 3 units / 7 buildings
+[Status] Blue: $2800 | 6 units / 5 buildings | Red: $60 | 3 units / 7 buildings
+[生产完成] 科技中心 (Team 1) 生产 RocketLauncher
+[Status] Blue: $2860 | 6 units / 5 buildings | Red: $60 | 4 units / 7 buildings
+[Status] Blue: $3040 | 6 units / 5 buildings | Red: $180 | 4 units / 7 buildings
+[Status] Blue: $3100 | 6 units / 5 buildings | Red: $240 | 4 units / 7 buildings
+[Status] Blue: $3220 | 6 units / 5 buildings | Red: $240 | 4 units / 7 buildings
+Ore depleted at (900, 400)
+[Status] Blue: $3280 | 6 units / 5 buildings | Red: $420 | 4 units / 7 buildings
+矿车 (Team 0) destroyed!
+矿车 (Team 0) destroyed!
+[Status] Blue: $3370 | 4 units / 5 buildings | Red: $420 | 4 units / 7 buildings
+[Status] Blue: $3370 | 4 units / 5 buildings | Red: $540 | 4 units / 7 buildings
+矿车 (Team 0) destroyed!
+矿车 (Team 0) destroyed!
+[Status] Blue: $3370 | 2 units / 5 buildings | Red: $600 | 4 units / 7 buildings
+[AI] Red queued RocketLauncher, $0 left, 科技中心队列1
+[Status] Blue: $3370 | 2 units / 5 buildings | Red: $0 | 4 units / 7 buildings
+重坦克 (Team 0) destroyed!
+轻坦克 (Team 0) destroyed!
+[Status] Blue: $3370 | 0 units / 5 buildings | Red: $120 | 4 units / 7 buildings
+[生产完成] 科技中心 (Team 1) 生产 RocketLauncher
+Ore depleted at (1100, 1600)
+[Status] Blue: $3370 | 0 units / 5 buildings | Red: $180 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 5 buildings | Red: $300 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 5 buildings | Red: $300 | 5 units / 7 buildings
+电站 (Team 0) destroyed!
+[Status] Blue: $3370 | 0 units / 4 buildings | Red: $360 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 4 buildings | Red: $360 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 4 buildings | Red: $480 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 4 buildings | Red: $480 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 4 buildings | Red: $540 | 5 units / 7 buildings
+兵营 (Team 0) destroyed!
+[AI] Red queued RocketLauncher, $60 left, 科技中心队列1
+[Status] Blue: $3370 | 0 units / 3 buildings | Red: $60 | 5 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 3 buildings | Red: $60 | 5 units / 7 buildings
+[生产完成] 科技中心 (Team 1) 生产 RocketLauncher
+战车工厂 (Team 0) destroyed!
+[Status] Blue: $3370 | 0 units / 2 buildings | Red: $120 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 2 buildings | Red: $240 | 6 units / 7 buildings
+电站 (Team 0) destroyed!
+[Status] Blue: $3370 | 0 units / 1 buildings | Red: $240 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 1 buildings | Red: $300 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 1 buildings | Red: $300 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 1 buildings | Red: $420 | 6 units / 7 buildings
+建造厂 (Team 0) destroyed!
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $420 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $480 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $600 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $600 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $660 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $780 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $780 | 6 units / 7 buildings
+Ore depleted at (1300, 900)
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $840 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $960 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $960 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $960 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $1020 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $1140 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $1140 | 6 units / 7 buildings
+[Status] Blue: $3370 | 0 units / 0 buildings | Red: $1200 | 6 units / 7 buildings
