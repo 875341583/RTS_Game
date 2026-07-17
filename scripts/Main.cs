@@ -21,6 +21,13 @@ public partial class Main : Node2D
     private Node2D _strategicPointsNode = null!;
     private Sprite2D _groundSprite = null!;
 
+    // Q6：事件通知系统
+    private VBoxContainer _toastContainer = null!;
+    private readonly List<ToastEntry> _activeToasts = new();
+    private class ToastEntry { public Label Label = null!; public float Lifetime; public float Age; }
+    private Label _startOverlay = null!;
+    private float _startOverlayAge;
+
     private Line2D _dragBox = null!;
     private Label _uiLabel = null!;
     private Label _hintLabel = null!;
@@ -201,7 +208,32 @@ public partial class Main : Node2D
         _hintLabel.OffsetLeft = 200f;
         GD.Print("[UI] 小地图已加载");
 
-        // 开局目标提示
+        // Q6：开局目标提示（画面内覆盖）
+        _startOverlayAge = 0f;
+        _startOverlay = new Label
+        {
+            Text = "★ 游戏目标：摧毁敌方所有建筑和单位即获胜！\n" +
+                   "★ 建造建议：电站→兵营→车厂→科技中心\n" +
+                   "★ 选中单位右键点敌方建筑/单位攻击\n" +
+                   "★ 选中建筑右键设集结点 | R维修 | V出售",
+        };
+        _startOverlay.HorizontalAlignment = HorizontalAlignment.Center;
+        _startOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _startOverlay.AddThemeColorOverride("font_color", new Color(1f, 0.92f, 0.4f));
+        _startOverlay.AddThemeFontSizeOverride("font_size", 22);
+        _startOverlay.AddThemeConstantOverride("shadow_offset_x", 2);
+        _startOverlay.AddThemeConstantOverride("shadow_offset_y", 2);
+        _startOverlay.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        GetNode<CanvasLayer>("UI").AddChild(_startOverlay);
+
+        // Q6：事件通知容器
+        _toastContainer = new VBoxContainer();
+        _toastContainer.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+        _toastContainer.OffsetLeft = -200f;
+        _toastContainer.OffsetRight = 200f;
+        GetNode<CanvasLayer>("UI").AddChild(_toastContainer);
+
+        // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
@@ -490,6 +522,34 @@ public partial class Main : Node2D
             {
                 _buildingAlertCooldown[k] -= dt;
                 if (_buildingAlertCooldown[k] <= 0f) _buildingAlertCooldown.Remove(k);
+            }
+        }
+
+        // Q6：开局提示淡出
+        if (_startOverlay != null && IsInstanceValid(_startOverlay))
+        {
+            _startOverlayAge += dt;
+            if (_startOverlayAge > 4f)
+            {
+                float fade = 1f - (_startOverlayAge - 4f) / 1.5f;
+                _startOverlay.Modulate = new Color(1, 1, 1, Mathf.Max(0, fade));
+                if (fade <= 0f) { _startOverlay.QueueFree(); _startOverlay = null!; }
+            }
+        }
+
+        // Q6：Toast 通知淡出
+        for (int i = _activeToasts.Count - 1; i >= 0; i--)
+        {
+            var t = _activeToasts[i];
+            t.Age += dt;
+            if (t.Age < 0.2f)
+                t.Label.Modulate = new Color(1, 1, 1, t.Age / 0.2f); // 淡入
+            else if (t.Age > t.Lifetime - 0.5f)
+                t.Label.Modulate = new Color(1, 1, 1, (t.Lifetime - t.Age) / 0.5f); // 淡出
+            if (t.Age >= t.Lifetime)
+            {
+                t.Label.QueueFree();
+                _activeToasts.RemoveAt(i);
             }
         }
 
@@ -1627,6 +1687,27 @@ public partial class Main : Node2D
         }
     }
 
+    // ---------- Q6 事件通知系统 ----------
+
+    /// <summary>在画面顶部显示一条 Toast 通知，自动淡出。</summary>
+    public void ShowToast(string message, Color? color = null)
+    {
+        if (_toastContainer == null) return;
+        var label = new Label
+        {
+            Text = message,
+        };
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.AddThemeColorOverride("font_color", color ?? new Color(1f, 0.9f, 0.3f));
+        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeConstantOverride("shadow_offset_x", 1);
+        label.AddThemeConstantOverride("shadow_offset_y", 1);
+        label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.7f));
+        label.Modulate = new Color(1, 1, 1, 0); // 初始透明，淡入
+        _toastContainer.AddChild(label);
+        _activeToasts.Add(new ToastEntry { Label = label, Lifetime = 3f, Age = 0f });
+    }
+
     // ---------- G5 游戏结束 UI ----------
     private void ShowGameOverUI()
     {
@@ -1710,6 +1791,10 @@ public partial class Main : Node2D
 
         int teamId = b.TeamId;
         Vector2 bPos = b.GlobalPosition;
+
+        // Q6：建筑受袭事件通知
+        if (teamId == 0)
+            ShowToast($"⚠ {b.BuildingName}正在遭受攻击！", new Color(1f, 0.5f, 0.3f));
         foreach (var child in _unitsNode.GetChildren())
         {
             if (child is Unit u && u.TeamId == teamId && IsInstanceValid(u)
