@@ -45,6 +45,9 @@ public partial class Unit : CharacterBody2D
     private Building? _attackBuildingTarget;
     private float _attackTimer;
     protected bool _isDead;
+    private float _hitFlashTimer;
+    private Color _bodyTint = Colors.White;
+    private Color _turretTint = Colors.White;
     private float _aiThinkTimer;
     private Vector2 _attackMoveTarget;
     private bool _hasAttackMoveTarget;
@@ -405,6 +408,7 @@ public partial class Unit : CharacterBody2D
                 ? new Color(0.3f, 0.6f, 1.0f)
                 : new Color(1.0f, 0.3f, 0.3f);
             _turret.Modulate = teamColor;
+            _turretTint = teamColor;
         }
         else
         {
@@ -412,6 +416,7 @@ public partial class Unit : CharacterBody2D
             _body.Modulate = TeamId == 0
                 ? new Color(0.9f, 0.8f, 0.2f)
                 : new Color(0.9f, 0.5f, 0.2f);
+            _bodyTint = _body.Modulate;
         }
     }
 
@@ -419,6 +424,19 @@ public partial class Unit : CharacterBody2D
     {
         if (_isDead) return;
         var dt = (float)delta;
+
+        // Q5：受击闪白效果
+        if (_hitFlashTimer > 0)
+        {
+            _hitFlashTimer -= dt;
+            _body.Modulate = new Color(3f, 3f, 3f); // 过亮闪白
+            if (_turret != null) _turret.Modulate = Colors.White;
+        }
+        else
+        {
+            _body.Modulate = _bodyTint;
+            if (_turret != null) _turret.Modulate = _turretTint;
+        }
 
         // 调度子类自定义 AI（默认是玩家命令 + 攻击逻辑）
         ProcessAI(dt);
@@ -587,6 +605,8 @@ public partial class Unit : CharacterBody2D
                     if (_attackTimer <= 0)
                     {
                         _attackUnitTarget.TakeDamage(AttackDamage);
+                        // Q5：开火视觉特效
+                        SpawnFireEffects(_attackUnitTarget.GlobalPosition);
                         // 溅射伤害：对目标周围敌方单位造成 50% 伤害
                         if (SplashRadius > 0f && GetParent() is Node2D parent)
                         {
@@ -635,6 +655,8 @@ public partial class Unit : CharacterBody2D
                     if (_attackTimer <= 0)
                     {
                         _attackBuildingTarget.TakeDamage(AttackDamage);
+                        // Q5：开火视觉特效
+                        SpawnFireEffects(_attackBuildingTarget.GlobalPosition);
                         _attackTimer = AttackCooldown;
                     }
                 }
@@ -803,6 +825,7 @@ public partial class Unit : CharacterBody2D
     public void TakeDamage(float damage)
     {
         Health -= damage;
+        _hitFlashTimer = 0.08f; // Q5：受击闪白
         if (_healthBar != null)
             _healthBar.Value = Mathf.Max(0, Health);
         UpdateHealthBarVisibility();
@@ -822,6 +845,24 @@ public partial class Unit : CharacterBody2D
     {
         _isDead = true;
         GD.Print($"{UnitName} (Team {TeamId}) destroyed!");
+        // Q5：死亡爆炸特效
+        var main = GetParent()?.GetParent() as Node2D;
+        if (main != null)
+        {
+            bool isBig = Type == UnitType.HeavyTank;
+            main.AddChild(isBig ? BattleEffect.BigExplosion(GlobalPosition) : BattleEffect.Explosion(GlobalPosition));
+        }
         QueueFree();
+    }
+
+    /// <summary>Q5：开火时生成炮口闪光 + 炮弹飞行 + 命中爆炸特效。</summary>
+    private void SpawnFireEffects(Vector2 targetPos)
+    {
+        var main = GetParent()?.GetParent() as Node2D;
+        if (main == null) return;
+        var dir = (targetPos - GlobalPosition).Normalized();
+        main.AddChild(BattleEffect.MuzzleFlash(GlobalPosition + dir * 16f));
+        main.AddChild(BattleEffect.Shell(GlobalPosition, targetPos));
+        main.AddChild(BattleEffect.Explosion(targetPos));
     }
 }

@@ -47,6 +47,7 @@ public partial class Building : Area2D
     private Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
     private ProgressBar _healthBar = null!;
+    private float _hitFlashTimer;
 
     private static ImageTexture? _baseTex;
     private static ImageTexture? _powerTex;
@@ -372,6 +373,7 @@ public partial class Building : Area2D
     public void TakeDamage(float damage)
     {
         Health -= damage;
+        _hitFlashTimer = 0.1f; // Q5：受击闪白
         if (_healthBar != null)
         {
             _healthBar.Value = Mathf.Max(0, Health);
@@ -383,6 +385,9 @@ public partial class Building : Area2D
         if (Health <= 0)
         {
             GD.Print($"{BuildingName} (Team {TeamId}) destroyed!");
+            // Q5：建筑被摧毁爆炸
+            if (GetParent()?.GetParent() is Node2D parentNode)
+                parentNode.AddChild(BattleEffect.BigExplosion(GlobalPosition));
             QueueFree();
         }
     }
@@ -453,8 +458,20 @@ public partial class Building : Area2D
 
     public override void _Process(double delta)
     {
-        if (!_currentProduction.HasValue) return;
-        _productionTimer -= (float)delta;
+        float dt = (float)delta;
+        // Q5：受击闪白效果
+        if (_hitFlashTimer > 0)
+        {
+            _hitFlashTimer -= dt;
+            _body.Modulate = new Color(3f, 3f, 3f); // 过亮闪白
+        }
+        else
+        {
+            _body.Modulate = Colors.White; // 建筑保持原色
+        }
+
+        if (!_currentProduction.HasValue) { QueueRedraw(); return; }
+        _productionTimer -= dt;
         if (_productionTimer <= 0f)
         {
             var type = _currentProduction.Value;
