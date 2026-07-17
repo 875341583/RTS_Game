@@ -121,91 +121,236 @@ public partial class Building : Area2D
     {
         if (_baseTex != null) return;
 
-        // 建造厂：大方块带四角
-        var img = Image.CreateEmpty(96, 96, false, Image.Format.Rgba8);
-        FillImage(img, 8, 88, 8, 88, Colors.White);
-        FillImage(img, 14, 81, 14, 81, new Color(0.6f, 0.6f, 0.65f, 1f));
-        FillImage(img, 32, 64, 32, 64, new Color(0.5f, 0.5f, 0.55f, 1f));
-        foreach (var (cx, cy) in new[] { (16, 16), (72, 16), (16, 72), (72, 72) })
-            FillImage(img, cx, cx + 8, cy, cy + 8, new Color(0.3f, 0.3f, 0.35f, 1f));
-        _baseTex = ImageTexture.CreateFromImage(img);
-
-        // 电站：圆形带闪电符号
-        var pwr = Image.CreateEmpty(80, 80, false, Image.Format.Rgba8);
-        for (int x = 0; x < 80; x++)
-            for (int y = 0; y < 80; y++)
-            {
-                float dx = x - 40, dy = y - 40;
-                float dist = Mathf.Sqrt(dx * dx + dy * dy);
-                if (dist < 32) pwr.SetPixel(x, y, Colors.White);
-                else if (dist < 35) pwr.SetPixel(x, y, new Color(0.3f, 0.3f, 0.35f, 1f));
-            }
-        // 闪电符号
-        for (int y = 20; y < 60; y++)
-        {
-            int x = 35 + (int)(8 * Mathf.Sin((y - 20) * 0.15f));
-            if (x >= 0 && x < 80) pwr.SetPixel(x, y, new Color(1f, 0.9f, 0.2f, 1f));
-            if (x + 1 < 80) pwr.SetPixel(x + 1, y, new Color(1f, 0.9f, 0.2f, 1f));
-        }
-        _powerTex = ImageTexture.CreateFromImage(pwr);
-
-        // 兵营：小方块带十字
-        var bar = Image.CreateEmpty(72, 72, false, Image.Format.Rgba8);
-        FillImage(bar, 8, 64, 8, 64, Colors.White);
-        FillImage(bar, 12, 60, 12, 60, new Color(0.55f, 0.55f, 0.6f, 1f));
-        FillImage(bar, 33, 39, 10, 62, new Color(0.4f, 0.4f, 0.45f, 1f));
-        FillImage(bar, 10, 62, 33, 39, new Color(0.4f, 0.4f, 0.45f, 1f));
-        _barracksTex = ImageTexture.CreateFromImage(bar);
-
-        // 战车工厂：宽矩形带传送带
-        var war = Image.CreateEmpty(96, 72, false, Image.Format.Rgba8);
-        FillImage(war, 4, 92, 4, 68, Colors.White);
-        FillImage(war, 8, 88, 8, 64, new Color(0.5f, 0.5f, 0.55f, 1f));
-        // 传送带条纹
-        for (int x = 12; x < 84; x += 12)
-            FillImage(war, x, x + 8, 20, 52, new Color(0.35f, 0.35f, 0.4f, 1f));
-        _warTex = ImageTexture.CreateFromImage(war);
-
-        // 科技中心：六边形带卫星天线
-        var tech = Image.CreateEmpty(96, 96, false, Image.Format.Rgba8);
-        for (int x = 0; x < 96; x++)
-            for (int y = 0; y < 96; y++)
-            {
-                float dx = Mathf.Abs(x - 48), dy = Mathf.Abs(y - 48);
-                if (dx / 40f + dy / 46f < 1.0f)
-                    tech.SetPixel(x, y, Colors.White);
-            }
-        for (int x = 0; x < 96; x++)
-            for (int y = 0; y < 96; y++)
-            {
-                float dx = Mathf.Abs(x - 48), dy = Mathf.Abs(y - 48);
-                if (dx / 34f + dy / 40f < 1.0f)
-                    tech.SetPixel(x, y, new Color(0.3f, 0.6f, 0.5f, 1f));
-                else if (dx / 37f + dy / 43f < 1.0f)
-                    tech.SetPixel(x, y, new Color(0.45f, 0.7f, 0.6f, 1f));
-            }
-        FillImage(tech, 46, 50, 10, 18, new Color(0.2f, 0.2f, 0.25f, 1f));
-        FillImage(tech, 43, 53, 18, 22, new Color(0.2f, 0.2f, 0.25f, 1f));
-        for (int x = 42; x < 54; x++)
-            for (int y = 42; y < 54; y++)
-            {
-                float dx = x - 48, dy = y - 48;
-                if (dx * dx + dy * dy < 36)
-                    tech.SetPixel(x, y, new Color(0.2f, 1f, 0.8f, 1f));
-            }
-        _techTex = ImageTexture.CreateFromImage(tech);
+        // Q4：升级建筑纹理——屋顶/墙壁/门窗/结构细节
+        _baseTex = CreateBaseTexture();
+        _powerTex = CreatePowerPlantTexture();
+        _barracksTex = CreateBarracksTexture();
+        _warTex = CreateWarFactoryTexture();
+        _techTex = CreateTechCenterTexture();
 
         // 通用选择环
         var ring = Image.CreateEmpty(128, 128, false, Image.Format.Rgba8);
+        ring.Fill(Colors.Transparent);
         for (float a = 0; a < Mathf.Tau; a += 0.02f)
         {
             int cx = (int)(64 + 60 * Mathf.Cos(a));
             int cy = (int)(64 + 60 * Mathf.Sin(a));
             if (cx >= 0 && cx < 128 && cy >= 0 && cy < 128)
+            {
                 ring.SetPixel(cx, cy, Colors.Lime);
-            if (cx + 1 < 128 && cy >= 0 && cy < 128) ring.SetPixel(cx + 1, cy, Colors.Lime);
+                if (cx + 1 < 128 && cy >= 0 && cy < 128) ring.SetPixel(cx + 1, cy, Colors.Lime);
+            }
         }
         _buildingRingTex = ImageTexture.CreateFromImage(ring);
+    }
+
+    /// <summary>建造厂：大型工业建筑+车间门+起重机+窗户+四角支柱。</summary>
+    private static ImageTexture CreateBaseTexture()
+    {
+        var img = Image.CreateEmpty(96, 96, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        // 外框/地基
+        FillImage(img, 8, 88, 8, 88, new Color(0.6f, 0.6f, 0.65f));
+        // 主体建筑
+        FillImage(img, 12, 84, 12, 84, new Color(0.45f, 0.45f, 0.48f));
+        // 屋顶区域
+        FillImage(img, 12, 84, 12, 24, new Color(0.35f, 0.35f, 0.4f));
+
+        // 车间大门（暗色开口）
+        FillImage(img, 36, 64, 58, 84, new Color(0.12f, 0.12f, 0.15f));
+        // 门框
+        FillImage(img, 34, 66, 56, 86, new Color(0.3f, 0.3f, 0.33f));
+        FillImage(img, 36, 64, 58, 84, new Color(0.12f, 0.12f, 0.15f));
+
+        // 窗户排（4扇）
+        for (int i = 0; i < 4; i++)
+        {
+            int wx = 18 + i * 15;
+            FillImage(img, wx, wx + 8, 18, 30, new Color(0.5f, 0.7f, 0.9f)); // 窗户高光（带队伍色）
+        }
+
+        // 起重机（右侧）
+        FillImage(img, 78, 88, 8, 14, new Color(0.28f, 0.28f, 0.32f)); // 底座
+        FillImage(img, 84, 88, 8, 40, new Color(0.28f, 0.28f, 0.32f)); // 立柱
+        FillImage(img, 56, 88, 36, 40, new Color(0.28f, 0.28f, 0.32f)); // 吊臂
+        FillImage(img, 56, 60, 38, 42, new Color(0.22f, 0.22f, 0.25f)); // 吊钩区
+
+        // 四角支柱
+        foreach (var (cx, cy) in new[] { (10, 10), (82, 10), (10, 82), (82, 82) })
+            FillImage(img, cx, cx + 6, cy, cy + 6, new Color(0.32f, 0.32f, 0.36f));
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>电站：矩形建筑+冷却塔+烟囱+能量发光。</summary>
+    private static ImageTexture CreatePowerPlantTexture()
+    {
+        var img = Image.CreateEmpty(80, 80, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        // 主建筑
+        FillImage(img, 8, 72, 8, 72, new Color(0.5f, 0.5f, 0.55f));
+        FillImage(img, 12, 68, 12, 68, new Color(0.42f, 0.42f, 0.46f));
+
+        // 冷却塔（右半）
+        for (int x = 0; x < 80; x++)
+            for (int y = 0; y < 80; y++)
+            {
+                float dx = x - 56, dy = y - 38;
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                if (dist < 18) img.SetPixel(x, y, new Color(0.55f, 0.55f, 0.6f));
+                else if (dist < 21) img.SetPixel(x, y, new Color(0.3f, 0.3f, 0.35f));
+            }
+        // 冷却塔发光
+        for (int x = 0; x < 80; x++)
+            for (int y = 0; y < 80; y++)
+            {
+                float dx = x - 56, dy = y - 38;
+                if (dx * dx + dy * dy < 144)
+                    img.SetPixel(x, y, new Color(0.8f, 0.9f, 1f)); // 明亮区（团队色透出）
+            }
+
+        // 烟囱
+        FillImage(img, 18, 26, 10, 16, new Color(0.3f, 0.3f, 0.35f));
+        FillImage(img, 20, 24, 12, 68, new Color(0.25f, 0.25f, 0.3f));
+        // 烟囱口
+        FillImage(img, 19, 27, 8, 12, new Color(0.2f, 0.2f, 0.25f));
+
+        // 输电管道
+        FillImage(img, 28, 40, 28, 34, new Color(0.35f, 0.35f, 0.4f));
+
+        // 窗户
+        FillImage(img, 34, 52, 16, 24, new Color(0.5f, 0.7f, 0.9f));
+        FillImage(img, 34, 52, 28, 36, new Color(0.5f, 0.7f, 0.9f));
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>兵营：军事建筑+窗户排+入口门+旗帜。</summary>
+    private static ImageTexture CreateBarracksTexture()
+    {
+        var img = Image.CreateEmpty(80, 72, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        // 主建筑
+        FillImage(img, 6, 74, 6, 66, new Color(0.55f, 0.55f, 0.6f));
+        FillImage(img, 10, 70, 10, 62, new Color(0.45f, 0.45f, 0.5f));
+
+        // 屋顶线条
+        FillImage(img, 10, 70, 10, 16, new Color(0.38f, 0.38f, 0.42f));
+
+        // 窗户排（5扇）
+        for (int i = 0; i < 5; i++)
+        {
+            int wx = 14 + i * 11;
+            FillImage(img, wx, wx + 7, 20, 32, new Color(0.5f, 0.7f, 0.9f)); // 高光窗
+        }
+
+        // 入口门
+        FillImage(img, 32, 46, 48, 62, new Color(0.12f, 0.12f, 0.15f));
+        // 门框
+        FillImage(img, 30, 48, 46, 64, new Color(0.3f, 0.3f, 0.35f));
+        FillImage(img, 32, 46, 48, 62, new Color(0.12f, 0.12f, 0.15f));
+
+        // 旗杆
+        FillImage(img, 62, 64, 6, 30, new Color(0.25f, 0.25f, 0.3f));
+        // 旗帜（团队色高光）
+        FillImage(img, 64, 74, 6, 12, new Color(0.8f, 0.85f, 0.9f));
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>战车工厂：大型厂房+双车间门+传送带条纹+吊车轨道。</summary>
+    private static ImageTexture CreateWarFactoryTexture()
+    {
+        var img = Image.CreateEmpty(96, 80, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        // 主建筑
+        FillImage(img, 4, 92, 4, 76, new Color(0.5f, 0.5f, 0.55f));
+        FillImage(img, 8, 88, 8, 72, new Color(0.42f, 0.42f, 0.47f));
+
+        // 屋顶+吊车轨道
+        FillImage(img, 8, 88, 8, 18, new Color(0.35f, 0.35f, 0.4f));
+        FillImage(img, 20, 76, 12, 14, new Color(0.28f, 0.28f, 0.32f)); // 轨道
+
+        // 双车间门
+        FillImage(img, 12, 36, 48, 72, new Color(0.12f, 0.12f, 0.15f)); // 左门
+        FillImage(img, 10, 38, 46, 74, new Color(0.3f, 0.3f, 0.35f)); // 左门框
+        FillImage(img, 12, 36, 48, 72, new Color(0.12f, 0.12f, 0.15f));
+        FillImage(img, 54, 80, 48, 72, new Color(0.12f, 0.12f, 0.15f)); // 右门
+        FillImage(img, 52, 82, 46, 74, new Color(0.3f, 0.3f, 0.35f)); // 右门框
+        FillImage(img, 54, 80, 48, 72, new Color(0.12f, 0.12f, 0.15f));
+
+        // 传送带条纹（门内）
+        for (int x = 14; x < 34; x += 5)
+            FillImage(img, x, x + 3, 56, 68, new Color(0.2f, 0.2f, 0.25f));
+        for (int x = 56; x < 78; x += 5)
+            FillImage(img, x, x + 3, 56, 68, new Color(0.2f, 0.2f, 0.25f));
+
+        // 烟囱
+        FillImage(img, 84, 90, 14, 20, new Color(0.3f, 0.3f, 0.35f));
+        FillImage(img, 86, 88, 12, 40, new Color(0.25f, 0.25f, 0.3f));
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>科技中心：六边形建筑+卫星天线+发光核心+天线阵列。</summary>
+    private static ImageTexture CreateTechCenterTexture()
+    {
+        var img = Image.CreateEmpty(96, 96, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        // 外部轮廓（六边形）
+        for (int x = 0; x < 96; x++)
+            for (int y = 0; y < 96; y++)
+            {
+                float dx = Mathf.Abs(x - 48), dy = Mathf.Abs(y - 48);
+                if (dx / 38f + dy / 44f < 1.0f)
+                    img.SetPixel(x, y, new Color(0.55f, 0.55f, 0.6f));
+            }
+        // 内部结构
+        for (int x = 0; x < 96; x++)
+            for (int y = 0; y < 96; y++)
+            {
+                float dx = Mathf.Abs(x - 48), dy = Mathf.Abs(y - 48);
+                if (dx / 32f + dy / 38f < 1.0f)
+                    img.SetPixel(x, y, new Color(0.4f, 0.4f, 0.45f));
+            }
+
+        // 发光核心
+        for (int x = 0; x < 96; x++)
+            for (int y = 0; y < 96; y++)
+            {
+                float dx = x - 48, dy = y - 48;
+                if (dx * dx + dy * dy < 196) // 半径14
+                    img.SetPixel(x, y, new Color(0.7f, 0.9f, 1f)); // 明亮核心（团队色高光）
+                else if (dx * dx + dy * dy < 400) // 半径20
+                    img.SetPixel(x, y, new Color(0.35f, 0.65f, 0.55f)); // 科技光环
+            }
+
+        // 卫星天线底座
+        FillImage(img, 44, 52, 10, 18, new Color(0.25f, 0.25f, 0.3f));
+        // 天线杆
+        FillImage(img, 47, 49, 4, 14, new Color(0.25f, 0.25f, 0.3f));
+        // 天线碟
+        for (int x = 38; x < 58; x++)
+            for (int y = 6; y < 14; y++)
+            {
+                float dx = x - 48, dy = y - 10;
+                if (dx * dx / 100f + dy * dy / 16f < 1f)
+                    img.SetPixel(x, y, new Color(0.3f, 0.5f, 0.45f));
+            }
+
+        // 侧翼天线
+        FillImage(img, 18, 22, 30, 60, new Color(0.25f, 0.25f, 0.3f));
+        FillImage(img, 74, 78, 30, 60, new Color(0.25f, 0.25f, 0.3f));
+        // 天线尖端
+        FillImage(img, 16, 24, 28, 32, new Color(0.7f, 0.85f, 0.95f));
+        FillImage(img, 72, 80, 28, 32, new Color(0.7f, 0.85f, 0.95f));
+
+        return ImageTexture.CreateFromImage(img);
     }
 
     private static void FillImage(Image img, int x0, int x1, int y0, int y1, Color c)
