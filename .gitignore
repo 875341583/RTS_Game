@@ -23,3 +23,12 @@ obj/
 .directory
 .DS_Store
 Thumbs.db
+
+# Logs/output
+import_stderr.txt
+import_stdout.txt
+out.txt
+*.log
+
+# Learnings
+.learnings/
