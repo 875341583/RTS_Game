@@ -19,6 +19,7 @@ public partial class Main : Node2D
 
     private Node2D _obstaclesNode = null!;
     private Node2D _strategicPointsNode = null!;
+    private Sprite2D _groundSprite = null!;
 
     private Line2D _dragBox = null!;
     private Label _uiLabel = null!;
@@ -126,6 +127,9 @@ public partial class Main : Node2D
         AddChild(_obstaclesNode);
         _strategicPointsNode = new Node2D { Name = "StrategicPoints" };
         AddChild(_strategicPointsNode);
+
+        // Q4：地面纹理（草地+道路+泥地）
+        CreateGround();
 
         // ---- 初始化地图 ----
         // 蓝方基地 + 初始单位（3 辆坦克防御）
@@ -1281,6 +1285,186 @@ public partial class Main : Node2D
 
     private static ImageTexture? _rockTex;
     private static ImageTexture? _wallTex;
+    private static ImageTexture? _groundTex;
+
+    // ========== Q4 地面纹理系统 ==========
+
+    private void CreateGround()
+    {
+        EnsureGroundTexture();
+        _groundSprite = new Sprite2D { Name = "Ground" };
+        _groundSprite.Texture = _groundTex!;
+        _groundSprite.Centered = false;
+        _groundSprite.Position = Vector2.Zero;
+        _groundSprite.Scale = new Vector2(4f, 4f); // 500x500 → 2000x2000
+        AddChild(_groundSprite);
+        MoveChild(_groundSprite, 0); // 渲染在最底层
+    }
+
+    private static void EnsureGroundTexture()
+    {
+        if (_groundTex != null) return;
+        const int S = 500; // 纹理尺寸（4倍缩放到2000x2000地图）
+
+        var img = Image.CreateEmpty(S, S, false, Image.Format.Rgba8);
+
+        // ---- 1. 草地基底 + 噪声变化 ----
+        img.Fill(new Color(0.22f, 0.42f, 0.18f));
+        var rng = new Random(42);
+        for (int y = 0; y < S; y++)
+            for (int x = 0; x < S; x++)
+            {
+                float n = (float)(rng.NextDouble() * 0.06 - 0.03);
+                float wave = Mathf.Sin(x * 0.05f) * Mathf.Cos(y * 0.04f) * 0.015f;
+                float r = 0.22f + n + wave;
+                float g = 0.42f + n * 1.5f + wave;
+                float b = 0.18f + n * 0.5f + wave;
+                img.SetPixel(x, y, new Color(r, g, b));
+            }
+
+        // ---- 2. 道路系统（十字交叉 + 对角线） ----
+        var roadCol = new Color(0.52f, 0.44f, 0.3f);
+        var roadEdge = new Color(0.38f, 0.31f, 0.2f);
+        var roadMark = new Color(0.58f, 0.5f, 0.35f);
+        int rw = 12; // 道路宽度(纹理像素) = 48px地图像素
+        int rh = rw / 2;
+
+        // 水平主干道 y=250 (= 地图y=1000)
+        for (int dy = -rh; dy < rh; dy++)
+            for (int x = 25; x < 475; x++)
+            {
+                int py = 250 + dy;
+                if (py < 0 || py >= S) continue;
+                if (dy == -rh || dy == rh - 1) img.SetPixel(x, py, roadEdge);
+                else if (dy == 0) img.SetPixel(x, py, roadMark);
+                else img.SetPixel(x, py, roadCol);
+            }
+
+        // 垂直主干道 x=250 (= 地图x=1000)
+        for (int dx = -rh; dx < rh; dx++)
+            for (int y = 25; y < 475; y++)
+            {
+                int px = 250 + dx;
+                if (px < 0 || px >= S) continue;
+                if (dx == -rh || dx == rh - 1) img.SetPixel(px, y, roadEdge);
+                else if (dx == 0) img.SetPixel(px, y, roadMark);
+                else img.SetPixel(px, y, roadCol);
+            }
+
+        // 对角线道路：蓝方基地(50,50)→中央(250,250)
+        for (int t = 0; t <= 200; t += 2)
+        {
+            int cx = 50 + t, cy = 50 + t;
+            for (int dy = -rh; dy < rh; dy++)
+                for (int dx = -rh; dx < rh; dx++)
+                {
+                    int px = cx + dx, py = cy + dy;
+                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
+                    if (Math.Abs(dx) == rh || Math.Abs(dy) == rh)
+                        img.SetPixel(px, py, roadEdge);
+                    else if (Math.Abs(dx + dy) < 2)
+                        img.SetPixel(px, py, roadMark);
+                    else
+                        img.SetPixel(px, py, roadCol);
+                }
+        }
+
+        // 对角线道路：中央(250,250)→红方基地(450,450)
+        for (int t = 0; t <= 200; t += 2)
+        {
+            int cx = 250 + t, cy = 250 + t;
+            for (int dy = -rh; dy < rh; dy++)
+                for (int dx = -rh; dx < rh; dx++)
+                {
+                    int px = cx + dx, py = cy + dy;
+                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
+                    if (Math.Abs(dx) == rh || Math.Abs(dy) == rh)
+                        img.SetPixel(px, py, roadEdge);
+                    else if (Math.Abs(dx + dy) < 2)
+                        img.SetPixel(px, py, roadMark);
+                    else
+                        img.SetPixel(px, py, roadCol);
+                }
+        }
+
+        // ---- 3. 泥土地块 ----
+        var dirtCol = new Color(0.46f, 0.37f, 0.24f);
+        void PaintDirtCircle(int cx, int cy, int radius, float intensity = 0.7f)
+        {
+            for (int dy = -radius; dy <= radius; dy++)
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    if (dx * dx + dy * dy > radius * radius) continue;
+                    int px = cx + dx, py = cy + dy;
+                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
+                    float edge = (float)Math.Sqrt(dx * dx + dy * dy) / radius;
+                    float blend = intensity * (1f - edge * edge);
+                    Color ex = img.GetPixel(px, py);
+                    img.SetPixel(px, py, new Color(
+                        ex.R * (1 - blend) + dirtCol.R * blend,
+                        ex.G * (1 - blend) + dirtCol.G * blend,
+                        ex.B * (1 - blend) + dirtCol.B * blend));
+                }
+        }
+
+        // 泥土：基地周围
+        PaintDirtCircle(50, 50, 22, 0.8f);    // 蓝方基地
+        PaintDirtCircle(450, 450, 22, 0.8f);   // 红方基地
+
+        // 泥土：战略要地周围
+        PaintDirtCircle(175, 175, 18);    // (700,700)
+        PaintDirtCircle(250, 250, 14);    // (1000,1000) 中央
+        PaintDirtCircle(325, 325, 18);     // (1300,1300)
+
+        // 泥土：矿点周围（蓝方近矿）
+        PaintDirtCircle(100, 113, 14);   // (400,450)
+        PaintDirtCircle(138, 163, 12);   // (550,650)
+        // 泥土：矿点周围（红方近矿）
+        PaintDirtCircle(388, 350, 14);   // (1550,1400)
+        PaintDirtCircle(363, 338, 12);   // (1450,1350)
+        // 泥土：矿点周围（中场）
+        PaintDirtCircle(175, 275, 12);   // (700,1100)
+        PaintDirtCircle(325, 225, 12);   // (1300,900)
+        PaintDirtCircle(225, 100, 10);   // (900,400)
+        PaintDirtCircle(275, 400, 10);   // (1100,1600)
+        // 泥土：中央矿点
+        PaintDirtCircle(250, 250, 10);   // (1000,1000) 已有
+        PaintDirtCircle(213, 288, 10);   // (850,1150)
+        PaintDirtCircle(288, 213, 10);   // (1150,850)
+
+        // 泥土：障碍物周围
+        PaintDirtCircle(150, 175, 10);   // (600,800) 岩石
+        PaintDirtCircle(350, 300, 10);   // (1400,1200) 岩石
+        PaintDirtCircle(200, 325, 8);    // (800,1300) 岩石
+        PaintDirtCircle(300, 175, 8);    // (1200,700) 岩石
+        PaintDirtCircle(125, 300, 8);    // (500,1200) 岩石
+        PaintDirtCircle(375, 200, 8);    // (1500,800) 岩石
+
+        // ---- 4. 草地细节色块（深浅变化） ----
+        var darkGrass = new Color(0.17f, 0.34f, 0.13f);
+        var lightGrass = new Color(0.28f, 0.52f, 0.22f);
+        for (int i = 0; i < 100; i++)
+        {
+            int cx = rng.Next(S), cy = rng.Next(S);
+            int r = rng.Next(4, 14);
+            Color pc = rng.Next(2) == 0 ? darkGrass : lightGrass;
+            float blend = 0.3f;
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    if (dx * dx + dy * dy > r * r) continue;
+                    int px = cx + dx, py = cy + dy;
+                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
+                    Color ex = img.GetPixel(px, py);
+                    img.SetPixel(px, py, new Color(
+                        ex.R * (1 - blend) + pc.R * blend,
+                        ex.G * (1 - blend) + pc.G * blend,
+                        ex.B * (1 - blend) + pc.B * blend));
+                }
+        }
+
+        _groundTex = ImageTexture.CreateFromImage(img);
+    }
 
     private void SpawnObstacle(Vector2 pos, Vector2 size)
     {
