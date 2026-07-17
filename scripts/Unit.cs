@@ -56,22 +56,34 @@ public partial class Unit : CharacterBody2D
     private Sprite2D _selectionRing = null!;
     private ProgressBar _healthBar = null!;
 
-    private static ImageTexture? _bodyTex;
     private static ImageTexture? _ringTex;
+    // Q3: 按兵种类型的底盘纹理
+    private static ImageTexture? _lightHull, _heavyHull, _artyHull, _rocketHull, _missileHull, _harvesterHull;
+    // Q3: 按兵种类型的炮塔纹理
+    private static ImageTexture? _lightTurret, _heavyTurret, _artyTurret, _rocketTurret, _missileTurret;
+    // Q3: 炮塔精灵（战斗单位专用，矿车不需要）
+    protected Sprite2D _turret = null!;
 
     private static void EnsureTextures()
     {
-        if (_bodyTex != null) return;
+        if (_lightHull != null) return;
 
-        var img = Image.CreateEmpty(40, 32, false, Image.Format.Rgba8);
-        img.Fill(new Color(0, 0, 0, 0));
-        FillRect(img, 4, 10, 24, 22, Colors.White);
-        FillRect(img, 10, 12, 18, 18, new Color(0.75f, 0.75f, 0.75f, 1f));
-        FillRect(img, 22, 14, 16, 18, new Color(0.5f, 0.5f, 0.5f, 1f));
-        FillRect(img, 2, 10, 6, 32, new Color(0.2f, 0.2f, 0.2f, 1f));
-        FillRect(img, 24, 10, 4, 32, new Color(0.2f, 0.2f, 0.2f, 1f));
-        _bodyTex = ImageTexture.CreateFromImage(img);
+        // ---- 底盘纹理（俯视图：履带+车身+发动机） ----
+        _lightHull = CreateHull(56, 44, 8);
+        _heavyHull = CreateHull(68, 52, 10, hasSkirt: true);
+        _artyHull = CreateHull(60, 44, 7);
+        _rocketHull = CreateHull(64, 48, 8);
+        _missileHull = CreateHull(64, 50, 8);
+        _harvesterHull = CreateHarvesterHull();
 
+        // ---- 炮塔纹理（朝右绘制，旋转朝向目标） ----
+        _lightTurret = CreateTankTurret(44, 28, 7, 4, 18);
+        _heavyTurret = CreateTankTurret(52, 32, 9, 5, 22);
+        _artyTurret = CreateArtyTurret();
+        _rocketTurret = CreateRocketTurret();
+        _missileTurret = CreateMissileTurret();
+
+        // ---- 选中环 ----
         var ring = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
         ring.Fill(new Color(0, 0, 0, 0));
         for (float a = 0; a < Mathf.Tau; a += 0.03f)
@@ -85,11 +97,200 @@ public partial class Unit : CharacterBody2D
         _ringTex = ImageTexture.CreateFromImage(ring);
     }
 
+    // ---- Q3 纹理生成辅助 ----
+
+    /// <summary>创建底盘纹理：双履带 + 车身 + 发动机舱。</summary>
+    private static ImageTexture CreateHull(int w, int h, int trackW, bool hasSkirt = false)
+    {
+        var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        var track = new Color(0.15f, 0.15f, 0.18f);
+        var trackHi = new Color(0.22f, 0.22f, 0.25f);
+        var hull = new Color(0.4f, 0.4f, 0.43f);
+        var hullHi = new Color(0.5f, 0.5f, 0.53f);
+        var engine = new Color(0.28f, 0.28f, 0.32f);
+        var skirt = new Color(0.3f, 0.3f, 0.33f);
+
+        // 左履带
+        FillRect(img, 0, 2, trackW, h - 2, track);
+        for (int y = 2; y < h - 2; y += 4)
+            FillRect(img, 1, y, trackW - 1, y + 1, trackHi);
+
+        // 右履带
+        FillRect(img, w - trackW, 2, w, h - 2, track);
+        for (int y = 2; y < h - 2; y += 4)
+            FillRect(img, w - trackW + 1, y, w - 1, y + 1, trackHi);
+
+        // 侧裙板（重型单位）
+        if (hasSkirt)
+        {
+            FillRect(img, trackW, 2, trackW + 3, h - 2, skirt);
+            FillRect(img, w - trackW - 3, 2, w - trackW, h - 2, skirt);
+        }
+
+        // 车身
+        int iL = trackW + (hasSkirt ? 3 : 0);
+        int iR = w - trackW - (hasSkirt ? 3 : 0);
+        FillRect(img, iL, 4, iR, h - 4, hull);
+
+        // 前部高光
+        FillRect(img, iL + 2, 4, iR - 2, 9, hullHi);
+
+        // 发动机舱（后部）
+        FillRect(img, iL + 4, h - 8, iR - 4, h - 3, engine);
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>创建矿车底盘：履带+车身+矿石斗+铲臂。</summary>
+    private static ImageTexture CreateHarvesterHull()
+    {
+        var img = Image.CreateEmpty(54, 44, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        var track = new Color(0.15f, 0.15f, 0.18f);
+        var trackHi = new Color(0.22f, 0.22f, 0.25f);
+        var body = new Color(0.4f, 0.4f, 0.43f);
+        var bin = new Color(0.35f, 0.32f, 0.28f);
+        var arm = new Color(0.3f, 0.3f, 0.33f);
+
+        // 履带
+        FillRect(img, 0, 2, 7, 42, track);
+        for (int y = 2; y < 42; y += 4) FillRect(img, 1, y, 6, y + 1, trackHi);
+        FillRect(img, 47, 2, 54, 42, track);
+        for (int y = 2; y < 42; y += 4) FillRect(img, 48, y, 53, y + 1, trackHi);
+
+        // 驾驶舱（前部）
+        FillRect(img, 7, 6, 30, 20, body);
+
+        // 矿石斗（后部加宽）
+        FillRect(img, 5, 18, 49, 40, bin);
+        FillRect(img, 3, 22, 6, 38, bin);  // 左侧加宽
+        FillRect(img, 48, 22, 51, 38, bin); // 右侧加宽
+
+        // 铲臂（前部）
+        FillRect(img, 18, 3, 36, 9, arm);
+        FillRect(img, 24, 1, 30, 5, arm);  // 铲头
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>创建坦克炮塔：圆形炮塔+炮管。</summary>
+    private static ImageTexture CreateTankTurret(int w, int h, int turretR, int barrelW, int barrelLen)
+    {
+        var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        var turret = new Color(0.7f, 0.7f, 0.75f);
+        var barrel = new Color(0.25f, 0.25f, 0.28f);
+        var muzzle = new Color(0.2f, 0.2f, 0.23f);
+
+        int cx = w / 2, cy = h / 2;
+
+        // 炮塔圆盘
+        FillCircle(img, cx, cy, turretR, turret);
+
+        // 炮管（从圆心向右延伸）
+        FillRect(img, cx, cy - barrelW / 2, cx + barrelLen, cy + barrelW / 2 + 1, barrel);
+
+        // 炮口制退器
+        int mzL = cx + barrelLen - 2;
+        FillRect(img, mzL, cy - barrelW / 2 - 1, mzL + 5, cy + barrelW / 2 + 2, muzzle);
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>创建炮兵炮塔：护盾+超长细炮管。</summary>
+    private static ImageTexture CreateArtyTurret()
+    {
+        var img = Image.CreateEmpty(56, 22, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        var shield = new Color(0.55f, 0.55f, 0.58f);
+        var barrel = new Color(0.25f, 0.25f, 0.28f);
+        var muzzle = new Color(0.2f, 0.2f, 0.23f);
+
+        int cx = 28, cy = 11;
+
+        // 炮盾（小型护板）
+        FillRect(img, cx - 4, cy - 6, cx + 2, cy + 6, shield);
+
+        // 超长细炮管
+        FillRect(img, cx - 2, cy - 1, cx + 26, cy + 2, barrel);
+
+        // 炮口
+        FillRect(img, cx + 24, cy - 2, cx + 28, cy + 3, muzzle);
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>创建火箭炮炮塔：发射架+多管火箭。</summary>
+    private static ImageTexture CreateRocketTurret()
+    {
+        var img = Image.CreateEmpty(44, 28, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        var rack = new Color(0.5f, 0.5f, 0.53f);
+        var tube = new Color(0.25f, 0.25f, 0.28f);
+        var tubeOpen = new Color(0.15f, 0.12f, 0.1f);
+
+        int cx = 22, cy = 14;
+
+        // 发射架底座
+        FillRect(img, cx - 6, cy - 9, cx + 1, cy + 9, rack);
+
+        // 火箭管（4管，朝右）
+        for (int i = 0; i < 4; i++)
+        {
+            int ty = cy - 7 + i * 4;
+            FillRect(img, cx, ty, cx + 14, ty + 3, tube);
+            FillRect(img, cx + 12, ty, cx + 14, ty + 3, tubeOpen);
+        }
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>创建导弹车炮塔：双联装导弹发射筒。</summary>
+    private static ImageTexture CreateMissileTurret()
+    {
+        var img = Image.CreateEmpty(48, 30, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+
+        var canister = new Color(0.45f, 0.45f, 0.48f);
+        var guide = new Color(0.55f, 0.55f, 0.58f);
+        var nose = new Color(0.3f, 0.3f, 0.33f);
+
+        int cx = 24, cy = 15;
+
+        // 上发射筒
+        FillRect(img, cx - 6, cy - 12, cx + 12, cy - 2, canister);
+        // 下发射筒
+        FillRect(img, cx - 6, cy + 2, cx + 12, cy + 12, canister);
+
+        // 导弹头部
+        FillRect(img, cx + 10, cy - 12, cx + 14, cy - 2, nose);
+        FillRect(img, cx + 10, cy + 2, cx + 14, cy + 12, nose);
+
+        // 制导设备（中间）
+        FillRect(img, cx - 4, cy - 3, cx + 4, cy + 3, guide);
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
     private static void FillRect(Image img, int x0, int y0, int x1, int y1, Color c)
     {
         for (int y = y0; y < y1 && y < img.GetHeight(); y++)
             for (int x = x0; x < x1 && x < img.GetWidth(); x++)
                 img.SetPixel(x, y, c);
+    }
+
+    private static void FillCircle(Image img, int cx, int cy, int radius, Color c)
+    {
+        for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+                if (dx * dx + dy * dy <= radius * radius)
+                    PlotPixel(img, cx + dx, cy + dy, c);
     }
 
     private static void PlotPixel(Image img, int x, int y, Color c)
@@ -167,7 +368,18 @@ public partial class Unit : CharacterBody2D
         _healthBar = GetNode<ProgressBar>("HealthBar");
 
         EnsureTextures();
-        _body.Texture = _bodyTex;
+
+        // Q3：按兵种设置底盘纹理
+        _body.Texture = Type switch
+        {
+            UnitType.LightTank => _lightHull,
+            UnitType.HeavyTank => _heavyHull,
+            UnitType.Artillery => _artyHull,
+            UnitType.RocketLauncher => _rocketHull,
+            UnitType.MissileTank => _missileHull,
+            _ => _harvesterHull  // Harvester (Default)
+        };
+        _body.Modulate = Colors.White; // 底盘保持灰调原色
         _selectionRing.Texture = _ringTex;
 
         _selectionRing.Visible = false;
@@ -175,38 +387,31 @@ public partial class Unit : CharacterBody2D
         _healthBar.Value = Health;
         UpdateHealthBarVisibility();
 
-        var teamColor = TeamId == 0
-            ? new Color(0.3f, 0.6f, 1.0f)
-            : new Color(1.0f, 0.3f, 0.3f);
-        _body.Modulate = teamColor;
-
-        // 兵种视觉区分：用缩放区分大小
-        switch (Type)
+        // Q3：炮塔精灵（战斗单位专用，矿车不需要）
+        if (this is not Harvester)
         {
-            case UnitType.LightTank:
-                _body.Scale = new Vector2(0.8f, 0.8f);
-                break;
-            case UnitType.HeavyTank:
-                _body.Scale = new Vector2(1.3f, 1.3f);
-                break;
-            case UnitType.Artillery:
-                _body.Scale = new Vector2(1.1f, 1.1f);
-                _body.Modulate = TeamId == 0
-                    ? new Color(0.9f, 0.6f, 0.2f)
-                    : new Color(0.9f, 0.3f, 0.1f);
-                break;
-            case UnitType.RocketLauncher:
-                _body.Scale = new Vector2(1.2f, 1.2f);
-                _body.Modulate = TeamId == 0
-                    ? new Color(0.5f, 0.9f, 0.3f)
-                    : new Color(0.3f, 0.8f, 0.2f);
-                break;
-            case UnitType.MissileTank:
-                _body.Scale = new Vector2(1.15f, 1.15f);
-                _body.Modulate = TeamId == 0
-                    ? new Color(0.6f, 0.3f, 0.9f)
-                    : new Color(0.4f, 0.15f, 0.8f);
-                break;
+            _turret = new Sprite2D { Name = "Turret", ZIndex = 1 };
+            AddChild(_turret);
+            _turret.Texture = Type switch
+            {
+                UnitType.LightTank => _lightTurret,
+                UnitType.HeavyTank => _heavyTurret,
+                UnitType.Artillery => _artyTurret,
+                UnitType.RocketLauncher => _rocketTurret,
+                UnitType.MissileTank => _missileTurret,
+                _ => null
+            };
+            var teamColor = TeamId == 0
+                ? new Color(0.3f, 0.6f, 1.0f)
+                : new Color(1.0f, 0.3f, 0.3f);
+            _turret.Modulate = teamColor;
+        }
+        else
+        {
+            // 矿车用黄/橙色调
+            _body.Modulate = TeamId == 0
+                ? new Color(0.9f, 0.8f, 0.2f)
+                : new Color(0.9f, 0.5f, 0.2f);
         }
     }
 
@@ -223,6 +428,42 @@ public partial class Unit : CharacterBody2D
 
         // 通用移动
         ProcessMovement(dt);
+
+        // Q3：炮塔朝向目标平滑旋转
+        UpdateTurretRotation(dt);
+    }
+
+    /// <summary>Q3：炮塔朝向攻击目标平滑旋转，无目标时跟随车体方向。</summary>
+    private void UpdateTurretRotation(float dt)
+    {
+        if (_turret == null) return;
+
+        float targetAngle = _body.Rotation; // 默认跟随车体
+        bool hasTarget = false;
+
+        if (_attackUnitTarget != null && IsInstanceValid(_attackUnitTarget))
+        {
+            targetAngle = (_attackUnitTarget.GlobalPosition - GlobalPosition).Angle();
+            hasTarget = true;
+        }
+        else if (_attackBuildingTarget != null && IsInstanceValid(_attackBuildingTarget))
+        {
+            targetAngle = (_attackBuildingTarget.GlobalPosition - GlobalPosition).Angle();
+            hasTarget = true;
+        }
+        else if (_hasMoveTarget)
+        {
+            var dir = _moveTarget - GlobalPosition;
+            if (dir.Length() > 5f)
+            {
+                targetAngle = dir.Angle();
+                hasTarget = true;
+            }
+        }
+
+        float diff = Mathf.AngleDifference(_turret.Rotation, targetAngle);
+        float speed = hasTarget ? 8f : 5f;
+        _turret.Rotation += diff * Mathf.Min(1f, dt * speed);
     }
 
     /// <summary>子类钩子：实现单位 AI（如矿车状态机或自动战斗）。默认实现玩家命令模式。</summary>
