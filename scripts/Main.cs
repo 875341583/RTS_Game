@@ -77,6 +77,7 @@ public partial class Main : Node2D
     private int _blueBuildIndex = 0;
     private int _redBuildIndex = 0;
     private BuildPanel _buildPanel = null!;
+    private Minimap _minimap = null!;
     private BuildingType? _placementMode;
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
@@ -188,6 +189,14 @@ public partial class Main : Node2D
         _buildPanel.BuildHarvesterRequested += () => TrySpawnHarvester();
         GD.Print("[UI] 侧边栏建造面板已加载");
 
+        // Q2：小地图
+        _minimap = new Minimap();
+        _minimap.Setup(this, _camera);
+        GetNode<CanvasLayer>("UI").AddChild(_minimap);
+        // 调整提示标签位置，避免与小地图重叠
+        _hintLabel.OffsetLeft = 200f;
+        GD.Print("[UI] 小地图已加载");
+
         // 开局目标提示
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
@@ -235,6 +244,8 @@ public partial class Main : Node2D
 
         var vpSize = GetViewportRect().Size;
         bool mouseOverPanel = GetViewport().GetMousePosition().X > vpSize.X - 232f;
+        bool mouseOverMinimap = _minimap != null && _minimap.ContainsScreenPos(GetViewport().GetMousePosition());
+        if (mouseOverMinimap && @event is InputEventMouse) return;
 
         if (@event is InputEventMouseButton mb && mb.Pressed)
         {
