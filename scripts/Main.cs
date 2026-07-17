@@ -59,6 +59,7 @@ public partial class Main : Node2D
     private int _blueCaptureCounter;
     private float _debugTimer = 10f;
     private bool _gameOver;
+    private float _gameOverDelay = -1f; // >0 = 等待显示结束UI
 
     // ---- P5 难度分级 ----
     public enum Difficulty { Easy, Normal, Hard, Brutal }
@@ -84,7 +85,8 @@ public partial class Main : Node2D
     public override void _Ready()
     {
         // P5：解析难度参数（--difficulty=easy/normal/hard/brutal）
-        _difficulty = Difficulty.Normal;
+        // 优先命令行参数（headless 测试用），否则用菜单选择（GameSession）
+        _difficulty = GameSession.SelectedDifficulty;
         var args = OS.GetCmdlineArgs();
         for (int i = 0; i < args.Length; i++)
         {
@@ -485,6 +487,18 @@ public partial class Main : Node2D
         }
 
         CheckWinCondition();
+
+        // G5：游戏结束延迟后显示重开 UI
+        if (_gameOver && _gameOverDelay > 0f)
+        {
+            _gameOverDelay -= dt;
+            if (_gameOverDelay <= 0f)
+            {
+                _gameOverDelay = -1f;
+                ShowGameOverUI();
+            }
+        }
+
         UpdateUI();
 
         // Q1 刷新侧边栏建造面板
@@ -1408,12 +1422,77 @@ public partial class Main : Node2D
         {
             _gameOver = true;
             _gameResult = "失败！你的基地被摧毁了。";
+            _gameOverDelay = 2f;
         }
         else if (redBuildings == 0 && redUnits == 0)
         {
             _gameOver = true;
             _gameResult = "胜利！敌方已被全部消灭。";
+            _gameOverDelay = 2f;
         }
+    }
+
+    // ---------- G5 游戏结束 UI ----------
+    private void ShowGameOverUI()
+    {
+        var layer = new CanvasLayer { Name = "GameOverUI" };
+        AddChild(layer);
+
+        var bg = new ColorRect();
+        bg.Color = new Color(0, 0, 0, 0.75f);
+        bg.AnchorLeft = 0; bg.AnchorTop = 0; bg.AnchorRight = 1; bg.AnchorBottom = 1;
+        layer.AddChild(bg);
+
+        var center = new CenterContainer();
+        center.AnchorLeft = 0; center.AnchorTop = 0; center.AnchorRight = 1; center.AnchorBottom = 1;
+        layer.AddChild(center);
+
+        var vbox = new VBoxContainer();
+        vbox.CustomMinimumSize = new Vector2(400, 0);
+        vbox.AddThemeConstantOverride("separation", 20);
+        center.AddChild(vbox);
+
+        bool win = _gameResult.StartsWith("胜利");
+        var title = new Label();
+        title.Text = _gameResult;
+        title.AddThemeFontSizeOverride("font_size", 32);
+        title.AddThemeColorOverride("font_color", win ? new Color(0.4f, 1f, 0.4f) : new Color(1f, 0.4f, 0.4f));
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(title);
+
+        var diffLabel = new Label();
+        diffLabel.Text = $"难度：{_difficulty}";
+        diffLabel.AddThemeFontSizeOverride("font_size", 18);
+        diffLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
+        diffLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(diffLabel);
+
+        var spacer = new Control { CustomMinimumSize = new Vector2(0, 12) };
+        vbox.AddChild(spacer);
+
+        var restartBtn = new Button();
+        restartBtn.Text = "重新开始（同难度）";
+        restartBtn.CustomMinimumSize = new Vector2(0, 44);
+        restartBtn.Pressed += () => CallDeferred(nameof(RestartGame));
+        vbox.AddChild(restartBtn);
+
+        var menuBtn = new Button();
+        menuBtn.Text = "返回主菜单";
+        menuBtn.CustomMinimumSize = new Vector2(0, 44);
+        menuBtn.Pressed += () => CallDeferred(nameof(ReturnToMenu));
+        vbox.AddChild(menuBtn);
+
+        GD.Print($"[GameOver] {_gameResult} (难度 {_difficulty})");
+    }
+
+    private void RestartGame()
+    {
+        GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+    }
+
+    private void ReturnToMenu()
+    {
+        GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
     }
 
     // ---------- 外部 API ----------
