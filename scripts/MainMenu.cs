@@ -10,8 +10,7 @@ public partial class MainMenu : Control
 {
     public override void _Ready()
     {
-        // headless 模式下若有 --difficulty 参数，直接进入游戏（自动化测试用）
-        if (DisplayServer.GetName() == "headless")
+        // 有 --difficulty 参数时直接进入游戏（headless 自动化测试 + 可视化验收通用）
         {
             var args = OS.GetCmdlineArgs();
             for (int i = 0; i < args.Length; i++)
@@ -28,7 +27,7 @@ public partial class MainMenu : Control
                         "brutal" or "3" => Main.Difficulty.Brutal,
                         _ => Main.Difficulty.Normal
                     };
-                    GD.Print($"[MainMenu] headless 自动进入游戏 (难度 {GameSession.SelectedDifficulty})");
+                    GD.Print($"[MainMenu] 自动进入游戏 (难度 {GameSession.SelectedDifficulty}, mode={DisplayServer.GetName()})");
                     CallDeferred(nameof(ChangeToGameScene));
                     return;
                 }
