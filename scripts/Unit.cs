@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Infantry, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -63,6 +63,8 @@ public partial class Unit : CharacterBody2D
     // 灰底底盘纹理（按兵种，一套支持任意阵营色染色）
     private static Texture2D? _hullLight, _hullHeavy, _hullArty, _hullRocket, _hullMissile;
     private static Texture2D? _harvesterHull;
+    // 灰底步兵纹理（32x32俯视）
+    private static Texture2D? _infantryHull;
     // 灰底炮塔纹理（按兵种）
     private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile;
     // 炮塔精灵
@@ -98,6 +100,9 @@ public partial class Unit : CharacterBody2D
         _hullArty    = LoadUnitTexture("res://assets/sprites/units/hull_arty.png");
         _hullRocket  = LoadUnitTexture("res://assets/sprites/units/hull_rocket.png");
         _hullMissile = LoadUnitTexture("res://assets/sprites/units/hull_missile.png");
+
+        // 步兵（32x32灰底俯视）
+        _infantryHull = LoadUnitTexture("res://assets/sprites/units/infantry.png");
 
         // 矿车（灰底，染色）
         _harvesterHull = LoadUnitTexture("res://assets/sprites/units/harvester.png");
@@ -147,6 +152,7 @@ public partial class Unit : CharacterBody2D
         UnitType.Artillery => _hullArty!,
         UnitType.RocketLauncher => _hullRocket!,
         UnitType.MissileTank => _hullMissile!,
+        UnitType.Infantry => _infantryHull!,
         _ => _harvesterHull!
     };
 
@@ -158,6 +164,8 @@ public partial class Unit : CharacterBody2D
         UnitType.Artillery => _turretArty!,
         UnitType.RocketLauncher => _turretRocket!,
         UnitType.MissileTank => _turretMissile!,
+        // 步兵无炮塔（身体朝向代替炮塔朝向）
+        UnitType.Infantry => null!,
         _ => null!
     };
 
@@ -216,6 +224,15 @@ public partial class Unit : CharacterBody2D
                 MinAttackRange = 150f;
                 AggroRange = 440f;
                 break;
+            case UnitType.Infantry:
+                UnitName = "步兵";
+                MaxHealth = 35f;
+                MoveSpeed = 90f;
+                AttackDamage = 6f;
+                AttackRange = 100f;
+                AttackCooldown = 0.6f;
+                AggroRange = 200f;
+                break;
         }
     }
 
@@ -238,16 +255,16 @@ public partial class Unit : CharacterBody2D
         _body.Texture = GetHullTexture(Type, TeamId);
         _body.Modulate = teamColor;
         _bodyTint = teamColor;
-        _body.Scale = Vector2.One; // 新素材64×64，1:1显示
+        // 步兵32×32素材按 0.85 缩放，更贴近红警2步兵体里坦克的视觉比例
+        _body.Scale = (Type == UnitType.Infantry) ? new Vector2(0.9f, 0.9f) : Vector2.One;
         _selectionRing.Texture = _ringTex;
-
         _selectionRing.Visible = false;
         _healthBar.MaxValue = MaxHealth;
         _healthBar.Value = Health;
         UpdateHealthBarVisibility();
 
-        // 炮塔精灵（战斗单位专用，矿车不需要）
-        if (this is not Harvester)
+        // 炮塔精灵（战斗单位专用，矿车和步兵不需要）
+        if (this is not Harvester && Type != UnitType.Infantry)
         {
             _turret = new Sprite2D { Name = "Turret", ZIndex = 1 };
             AddChild(_turret);
@@ -689,12 +706,17 @@ public partial class Unit : CharacterBody2D
     {
         _isDead = true;
         GD.Print($"{UnitName} (Team {TeamId}) destroyed!");
-        // Q5：死亡爆炸特效
+        // Q5：死亡爆炸特效，步兵用小爆炸，重坦用大爆炸，其他默认
         var main = GetParent()?.GetParent() as Node2D;
         if (main != null)
         {
-            bool isBig = Type == UnitType.HeavyTank;
-            main.AddChild(isBig ? BattleEffect.BigExplosion(GlobalPosition) : BattleEffect.Explosion(GlobalPosition));
+            var effect = Type switch
+            {
+                UnitType.HeavyTank => BattleEffect.BigExplosion(GlobalPosition),
+                UnitType.Infantry => BattleEffect.Explosion(GlobalPosition),  // 步兵用小爆炸
+                _ => BattleEffect.Explosion(GlobalPosition)
+            };
+            main.AddChild(effect);
         }
         QueueFree();
     }

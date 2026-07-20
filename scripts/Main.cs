@@ -52,6 +52,7 @@ public partial class Main : Node2D
     private const int HeavyTankCost = 500;
     private const int ArtilleryCost = 400;
     private const int HarvesterCost = 500;
+    private const int InfantryCost = 100;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -518,11 +519,11 @@ public partial class Main : Node2D
 
         // ===== 截图功能（Godot 内部 API，用于验收渲染效果）=====
         // 在 ANGLE 软件渲染环境下 CopyFromScreen 抓不到 UI，必须用引擎内部截图
-        // 1. 自动截图：游戏开始12秒后自动截一张（验收用）
+        // 1. 自动截图：游戏开始22秒后自动截一张（验收用，留足建筑+步兵生产时间）
         if (_autoshotTimer >= 0f)
         {
             _autoshotTimer += dt;
-            if (_autoshotTimer >= 12f)
+            if (_autoshotTimer >= 22f)
             {
                 _autoshotTimer = -1f;
                 TakeViewportScreenshot("autoshot");
@@ -738,6 +739,7 @@ public partial class Main : Node2D
         return unitType switch
         {
             UnitType.LightTank => HasBuilding(teamId, BuildingType.Barracks),
+            UnitType.Infantry => HasBuilding(teamId, BuildingType.Barracks),
             UnitType.HeavyTank => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.Artillery => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
@@ -775,6 +777,7 @@ public partial class Main : Node2D
         return type switch
         {
             UnitType.LightTank => LightTankCost,
+            UnitType.Infantry => InfantryCost,
             UnitType.HeavyTank => HeavyTankCost,
             UnitType.Artillery => ArtilleryCost,
             UnitType.RocketLauncher => RocketLauncherCost,
@@ -1021,7 +1024,11 @@ public partial class Main : Node2D
             if (!(hasTech && _money[teamId] < RocketLauncherCost && teamUnits >= 3))
             {
                 var types = new List<UnitType>();
-                if (HasBuilding(teamId, BuildingType.Barracks)) types.Add(UnitType.LightTank);
+                if (HasBuilding(teamId, BuildingType.Barracks))
+                {
+                    types.Add(UnitType.LightTank);
+                    types.Add(UnitType.Infantry);
+                }
                 if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
                     types.Add(UnitType.HeavyTank);
@@ -1035,6 +1042,12 @@ public partial class Main : Node2D
                 if (types.Count > 0)
                 {
                     types.Sort((a, b) => GetUnitCost(b).CompareTo(GetUnitCost(a)));
+                    // 步兵作为廉价填线兵：35%概率优先生产，保证其稳定出场
+                    if (types.Contains(UnitType.Infantry) && GD.Randf() < 0.35f)
+                    {
+                        types.Remove(UnitType.Infantry);
+                        types.Insert(0, UnitType.Infantry);
+                    }
                     foreach (var t in types)
                     {
                         int c = GetUnitCost(t);
@@ -1140,7 +1153,11 @@ public partial class Main : Node2D
         if (hasTech && _money[0] < RocketLauncherCost && blueUnits >= 3) return;
 
         var types = new List<UnitType>();
-        if (HasBuilding(0, BuildingType.Barracks)) types.Add(UnitType.LightTank);
+        if (HasBuilding(0, BuildingType.Barracks))
+        {
+            types.Add(UnitType.LightTank);
+            types.Add(UnitType.Infantry);
+        }
         if (HasBuilding(0, BuildingType.WarFactory))
         {
             types.Add(UnitType.HeavyTank);
@@ -1154,6 +1171,12 @@ public partial class Main : Node2D
         if (types.Count == 0) return;
 
         types.Sort((a, b) => GetUnitCost(b).CompareTo(GetUnitCost(a)));
+        // 步兵作为廉价填线兵：35%概率优先生产，保证其稳定出场
+        if (types.Contains(UnitType.Infantry) && GD.Randf() < 0.35f)
+        {
+            types.Remove(UnitType.Infantry);
+            types.Insert(0, UnitType.Infantry);
+        }
         foreach (var t in types)
         {
             int c = GetUnitCost(t);
@@ -1395,6 +1418,7 @@ public partial class Main : Node2D
     private static BuildingType GetProducerForUnit(UnitType unitType) => unitType switch
     {
         UnitType.LightTank => BuildingType.Barracks,
+        UnitType.Infantry => BuildingType.Barracks,
         UnitType.HeavyTank => BuildingType.WarFactory,
         UnitType.Artillery => BuildingType.WarFactory,
         UnitType.RocketLauncher => BuildingType.TechCenter,
@@ -1442,6 +1466,7 @@ public partial class Main : Node2D
     private static ProductionType UnitTypeToProductionType(UnitType type) => type switch
     {
         UnitType.LightTank => ProductionType.LightTank,
+        UnitType.Infantry => ProductionType.Infantry,
         UnitType.HeavyTank => ProductionType.HeavyTank,
         UnitType.Artillery => ProductionType.Artillery,
         UnitType.RocketLauncher => ProductionType.RocketLauncher,
@@ -1452,6 +1477,7 @@ public partial class Main : Node2D
     private static UnitType ProductionTypeToUnitType(ProductionType type) => type switch
     {
         ProductionType.LightTank => UnitType.LightTank,
+        ProductionType.Infantry => UnitType.Infantry,
         ProductionType.HeavyTank => UnitType.HeavyTank,
         ProductionType.Artillery => UnitType.Artillery,
         ProductionType.RocketLauncher => UnitType.RocketLauncher,

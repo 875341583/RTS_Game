@@ -60,6 +60,7 @@ public partial class BuildPanel : Control
     // 图标（直接使用游戏 PNG 素材）
     private static Texture2D? _iPower, _iBarracks, _iWar, _iTech;
     private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv;
+    private static Texture2D? _iInfantry;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -141,6 +142,7 @@ public partial class BuildPanel : Control
         AddItem("车厂", 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false);
         AddItem("科技", 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false);
         // 单位
+        AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false);
         AddItem("轻坦", 200, _iLight, false, BuildingType.Base, UnitType.LightTank, false);
         AddItem("重坦", 500, _iHeavy, false, BuildingType.Base, UnitType.HeavyTank, false);
         AddItem("炮兵", 400, _iArt, false, BuildingType.Base, UnitType.Artillery, false);
@@ -310,6 +312,7 @@ public partial class BuildPanel : Control
         switch (it.UType)
         {
             case UnitType.LightTank:
+            case UnitType.Infantry:
                 if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
                 break;
             case UnitType.HeavyTank:
@@ -399,7 +402,7 @@ public partial class BuildPanel : Control
             return it.BType switch
             {
                 BuildingType.PowerPlant => "提供+100电力",
-                BuildingType.Barracks => "解锁轻坦生产",
+                BuildingType.Barracks => "解锁步兵/轻坦生产",
                 BuildingType.WarFactory => "解锁重坦/炮兵",
                 BuildingType.TechCenter => "解锁火箭炮/导弹车",
                 _ => ""
@@ -408,6 +411,7 @@ public partial class BuildPanel : Control
         if (it.IsHarvester) return "自动采矿赚钱";
         return it.UType switch
         {
+            UnitType.Infantry => "便宜、脆、人多势众",
             UnitType.LightTank => "快、脆、便宜",
             UnitType.HeavyTank => "慢、硬、主力",
             UnitType.Artillery => "远程高伤，不能近战",
@@ -429,6 +433,7 @@ public partial class BuildPanel : Control
         _iTech     = LoadPng("res://assets/sprites/buildings/techcenter.png");
 
         // 灰底单位PNG，AddItem 时会染色为玩家阵营色
+        _iInfantry = LoadPng("res://assets/sprites/units/infantry.png");
         _iLight  = LoadPng("res://assets/sprites/units/hull_light.png");
         _iHeavy  = LoadPng("res://assets/sprites/units/hull_heavy.png");
         _iArt    = LoadPng("res://assets/sprites/units/hull_arty.png");

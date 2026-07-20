@@ -11,7 +11,7 @@ public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter }
 /// <summary>
 /// 生产项类型：可由建筑排产的战斗单位或矿车。
 /// </summary>
-public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester }
+public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry }
 
 /// <summary>
 /// 建筑/基地：可被选中、可被攻击。不同类型解锁不同单位生产。
@@ -252,6 +252,7 @@ public partial class Building : Area2D
         ProductionType.RocketLauncher => 8f,
         ProductionType.MissileTank => 10f,
         ProductionType.Harvester => 5f,
+        ProductionType.Infantry => 2f,
         _ => 3f
     };
 
