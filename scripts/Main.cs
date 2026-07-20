@@ -815,9 +815,41 @@ public partial class Main : Node2D
         var pos = _camera.GetGlobalMousePosition();
         pos = new Vector2(Mathf.Clamp(pos.X, 80f, 1920f), Mathf.Clamp(pos.Y, 80f, 1920f));
         bool ok = CanPlaceBuilding(pos) && _money[0] >= GetBuildingCost(_placementMode.Value);
-        var col = ok ? new Color(0.3f, 1f, 0.3f, 0.7f) : new Color(1f, 0.3f, 0.3f, 0.7f);
-        DrawRect(new Rect2(pos - new Vector2(45, 45), 90, 90), col, false, 2.5f);
-        DrawRect(new Rect2(pos - new Vector2(45, 45), 90, 90), new Color(col.R, col.G, col.B, 0.18f), true);
+
+        // ---- 红警2风格网格建造预览 ----
+        // 建筑占位：以 pos 为中心的 2x2 方格（每格45px）
+        const float CellSize = 45f;
+        var buildingColor = ok ? new Color(0.2f, 0.9f, 0.2f, 0.35f) : new Color(0.9f, 0.2f, 0.2f, 0.35f);
+        var buildingBorder = ok ? new Color(0.3f, 1f, 0.3f, 0.8f) : new Color(1f, 0.3f, 0.3f, 0.8f);
+
+        // 建筑占位填充 + 边框
+        DrawRect(new Rect2(pos - new Vector2(CellSize, CellSize), CellSize * 2, CellSize * 2), buildingColor, true);
+        DrawRect(new Rect2(pos - new Vector2(CellSize, CellSize), CellSize * 2, CellSize * 2), buildingBorder, false, 2.0f);
+
+        // 中心十字准线
+        var crossCol = ok ? new Color(0.3f, 1f, 0.3f, 0.5f) : new Color(1f, 0.3f, 0.3f, 0.5f);
+        DrawLine(pos - new Vector2(CellSize, 0), pos + new Vector2(CellSize, 0), crossCol, 1.0f);
+        DrawLine(pos - new Vector2(0, CellSize), pos + new Vector2(0, CellSize), crossCol, 1.0f);
+
+        // 周围可达范围网格线（5x5 区域）
+        const int GridRadius = 2; // ±2 格
+        var gridLine = ok ? new Color(0.3f, 1f, 0.3f, 0.25f) : new Color(1f, 0.3f, 0.3f, 0.25f);
+        for (int i = -GridRadius; i <= GridRadius; i++)
+        {
+            // 垂直网格线
+            float x = pos.X + i * CellSize;
+            DrawLine(new Vector2(x, pos.Y - GridRadius * CellSize),
+                     new Vector2(x, pos.Y + GridRadius * CellSize), gridLine, 1.0f);
+            // 水平网格线
+            float y = pos.Y + i * CellSize;
+            DrawLine(new Vector2(pos.X - GridRadius * CellSize, y),
+                     new Vector2(pos.X + GridRadius * CellSize, y), gridLine, 1.0f);
+        }
+
+        // 2x2 建筑格交叉线加重
+        var heavyLine = ok ? new Color(0.3f, 1f, 0.3f, 0.6f) : new Color(1f, 0.3f, 0.3f, 0.6f);
+        DrawLine(new Vector2(pos.X, pos.Y - CellSize), new Vector2(pos.X, pos.Y + CellSize), heavyLine, 1.5f);
+        DrawLine(new Vector2(pos.X - CellSize, pos.Y), new Vector2(pos.X + CellSize, pos.Y), heavyLine, 1.5f);
     }
 
     private void AIBuildLogic(int teamId)
@@ -1356,7 +1388,7 @@ public partial class Main : Node2D
         _groundSprite.Texture = _groundTex!;
         _groundSprite.Centered = false;
         _groundSprite.Position = Vector2.Zero;
-        _groundSprite.Scale = new Vector2(4f, 4f); // 500x500 → 2000x2000
+        // 瓦片拼接已生成 2048x2048 纹理，覆盖 2000x2000 地图
         AddChild(_groundSprite);
         MoveChild(_groundSprite, 0); // 渲染在最底层
     }
@@ -1364,166 +1396,117 @@ public partial class Main : Node2D
     private static void EnsureGroundTexture()
     {
         if (_groundTex != null) return;
-        const int S = 500; // 纹理尺寸（4倍缩放到2000x2000地图）
 
-        var img = Image.CreateEmpty(S, S, false, Image.Format.Rgba8);
+        // Kenney 瓦片拼接：64x64 PNG → 32x32 网格 = 2048x2048 纹理
+        const int TileSize = 64;
+        const int GridSize = 32; // 32*64=2048
+        var img = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
 
-        // ---- 1. 草地基底 + 噪声变化 ----
-        img.Fill(new Color(0.22f, 0.42f, 0.18f));
+        // 预加载瓦片纹理
+        var grass1 = LoadGroundTile("res://assets/sprites/terrain/tileGrass1.png");
+        var grass2 = LoadGroundTile("res://assets/sprites/terrain/tileGrass2.png");
+        var sand1  = LoadGroundTile("res://assets/sprites/terrain/tileSand1.png");
+        var sand2  = LoadGroundTile("res://assets/sprites/terrain/tileSand2.png");
+        var roadE  = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadEast.png");
+        var roadN  = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadNorth.png");
+        var roadCross = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCrossing.png");
+        var roadCornerUL = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerUL.png");
+        var roadCornerUR = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerUR.png");
+        var roadCornerLL = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerLL.png");
+        var roadCornerLR = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerLR.png");
+        var transN = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionN.png");
+        var transS = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionS.png");
+        var transE = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionE.png");
+        var transW = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionW.png");
+
         var rng = new Random(42);
-        for (int y = 0; y < S; y++)
-            for (int x = 0; x < S; x++)
-            {
-                float n = (float)(rng.NextDouble() * 0.06 - 0.03);
-                float wave = Mathf.Sin(x * 0.05f) * Mathf.Cos(y * 0.04f) * 0.015f;
-                float r = 0.22f + n + wave;
-                float g = 0.42f + n * 1.5f + wave;
-                float b = 0.18f + n * 0.5f + wave;
-                img.SetPixel(x, y, new Color(r, g, b));
-            }
 
-        // ---- 2. 道路系统（十字交叉 + 对角线） ----
-        var roadCol = new Color(0.52f, 0.44f, 0.3f);
-        var roadEdge = new Color(0.38f, 0.31f, 0.2f);
-        var roadMark = new Color(0.58f, 0.5f, 0.35f);
-        int rw = 12; // 道路宽度(纹理像素) = 48px地图像素
-        int rh = rw / 2;
+        // 瓦片类型网格：0=grass, 1=sand, 2=roadH, 3=roadV, 4=roadCross, 5-8=corners
+        int[,] tileGrid = new int[GridSize, GridSize];
 
-        // 水平主干道 y=250 (= 地图y=1000)
-        for (int dy = -rh; dy < rh; dy++)
-            for (int x = 25; x < 475; x++)
-            {
-                int py = 250 + dy;
-                if (py < 0 || py >= S) continue;
-                if (dy == -rh || dy == rh - 1) img.SetPixel(x, py, roadEdge);
-                else if (dy == 0) img.SetPixel(x, py, roadMark);
-                else img.SetPixel(x, py, roadCol);
-            }
+        // ---- 标记沙地区域（基地周围、矿点周围）----
+        // 蓝方基地约(200,200) 地图像素 → 瓦片(3,3)-(4,4)
+        for (int ty = 2; ty <= 5; ty++)
+            for (int tx = 2; tx <= 5; tx++)
+                tileGrid[tx, ty] = 1;
+        // 红方基地约(1800,1800) → 瓦片(27,27)-(30,30)
+        for (int ty = 27; ty <= 30; ty++)
+            for (int tx = 27; tx <= 30; tx++)
+                tileGrid[tx, ty] = 1;
+        // 中央战略要地(1000,1000) → 瓦片(15,15)-(16,16)
+        for (int ty = 15; ty <= 16; ty++)
+            for (int tx = 15; tx <= 16; tx++)
+                tileGrid[tx, ty] = 1;
+        // 其余泥地用 sand 瓦片（分散矿点等）
+        // (700,700) → (10,10)-(12,12)
+        for (int ty = 10; ty <= 12; ty++)
+            for (int tx = 10; tx <= 12; tx++)
+                tileGrid[tx, ty] = 1;
+        // (1300,1300) → (20,20)-(21,21)
+        for (int ty = 20; ty <= 21; ty++)
+            for (int tx = 20; tx <= 21; tx++)
+                tileGrid[tx, ty] = 1;
 
-        // 垂直主干道 x=250 (= 地图x=1000)
-        for (int dx = -rh; dx < rh; dx++)
-            for (int y = 25; y < 475; y++)
-            {
-                int px = 250 + dx;
-                if (px < 0 || px >= S) continue;
-                if (dx == -rh || dx == rh - 1) img.SetPixel(px, y, roadEdge);
-                else if (dx == 0) img.SetPixel(px, y, roadMark);
-                else img.SetPixel(px, y, roadCol);
-            }
-
-        // 对角线道路：蓝方基地(50,50)→中央(250,250)
-        for (int t = 0; t <= 200; t += 2)
+        // ---- 标记道路（十字交叉 + 对角线）----
+        // 水平主干道：地图像素 y=1000 → 瓦片行 y=15-16
+        for (int tx = 0; tx < GridSize; tx++)
         {
-            int cx = 50 + t, cy = 50 + t;
-            for (int dy = -rh; dy < rh; dy++)
-                for (int dx = -rh; dx < rh; dx++)
-                {
-                    int px = cx + dx, py = cy + dy;
-                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
-                    if (Math.Abs(dx) == rh || Math.Abs(dy) == rh)
-                        img.SetPixel(px, py, roadEdge);
-                    else if (Math.Abs(dx + dy) < 2)
-                        img.SetPixel(px, py, roadMark);
-                    else
-                        img.SetPixel(px, py, roadCol);
-                }
+            if (tileGrid[tx, 15] == 0) tileGrid[tx, 15] = 2; // roadH
+            if (tileGrid[tx, 16] == 0) tileGrid[tx, 16] = 2; // roadH
+        }
+        // 垂直主干道：地图像素 x=1000 → 瓦片列 x=15-16
+        for (int ty = 0; ty < GridSize; ty++)
+        {
+            if (tileGrid[15, ty] == 0) tileGrid[15, ty] = 3; // roadV
+            if (tileGrid[16, ty] == 0) tileGrid[16, ty] = 3; // roadV
+        }
+        // 十字交叉点
+        tileGrid[15, 15] = 4; tileGrid[15, 16] = 4;
+        tileGrid[16, 15] = 4; tileGrid[16, 16] = 4;
+        // 对角线道路：蓝方(200,200)→中央(1000,1000)
+        for (int i = 3; i <= 15; i++)
+        {
+            if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; // 近似水平路
+        }
+        // 对角线道路：中央(1000,1000)→红方(1800,1800)
+        for (int i = 16; i <= 28; i++)
+        {
+            if (tileGrid[i, i] == 0) tileGrid[i, i] = 2;
         }
 
-        // 对角线道路：中央(250,250)→红方基地(450,450)
-        for (int t = 0; t <= 200; t += 2)
+        // ---- 拼接瓦片到大图 ----
+        for (int ty = 0; ty < GridSize; ty++)
         {
-            int cx = 250 + t, cy = 250 + t;
-            for (int dy = -rh; dy < rh; dy++)
-                for (int dx = -rh; dx < rh; dx++)
+            for (int tx = 0; tx < GridSize; tx++)
+            {
+                Image tile = tileGrid[tx, ty] switch
                 {
-                    int px = cx + dx, py = cy + dy;
-                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
-                    if (Math.Abs(dx) == rh || Math.Abs(dy) == rh)
-                        img.SetPixel(px, py, roadEdge);
-                    else if (Math.Abs(dx + dy) < 2)
-                        img.SetPixel(px, py, roadMark);
-                    else
-                        img.SetPixel(px, py, roadCol);
-                }
-        }
-
-        // ---- 3. 泥土地块 ----
-        var dirtCol = new Color(0.46f, 0.37f, 0.24f);
-        void PaintDirtCircle(int cx, int cy, int radius, float intensity = 0.7f)
-        {
-            for (int dy = -radius; dy <= radius; dy++)
-                for (int dx = -radius; dx <= radius; dx++)
-                {
-                    if (dx * dx + dy * dy > radius * radius) continue;
-                    int px = cx + dx, py = cy + dy;
-                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
-                    float edge = (float)Math.Sqrt(dx * dx + dy * dy) / radius;
-                    float blend = intensity * (1f - edge * edge);
-                    Color ex = img.GetPixel(px, py);
-                    img.SetPixel(px, py, new Color(
-                        ex.R * (1 - blend) + dirtCol.R * blend,
-                        ex.G * (1 - blend) + dirtCol.G * blend,
-                        ex.B * (1 - blend) + dirtCol.B * blend));
-                }
-        }
-
-        // 泥土：基地周围
-        PaintDirtCircle(50, 50, 22, 0.8f);    // 蓝方基地
-        PaintDirtCircle(450, 450, 22, 0.8f);   // 红方基地
-
-        // 泥土：战略要地周围
-        PaintDirtCircle(175, 175, 18);    // (700,700)
-        PaintDirtCircle(250, 250, 14);    // (1000,1000) 中央
-        PaintDirtCircle(325, 325, 18);     // (1300,1300)
-
-        // 泥土：矿点周围（蓝方近矿）
-        PaintDirtCircle(100, 113, 14);   // (400,450)
-        PaintDirtCircle(138, 163, 12);   // (550,650)
-        // 泥土：矿点周围（红方近矿）
-        PaintDirtCircle(388, 350, 14);   // (1550,1400)
-        PaintDirtCircle(363, 338, 12);   // (1450,1350)
-        // 泥土：矿点周围（中场）
-        PaintDirtCircle(175, 275, 12);   // (700,1100)
-        PaintDirtCircle(325, 225, 12);   // (1300,900)
-        PaintDirtCircle(225, 100, 10);   // (900,400)
-        PaintDirtCircle(275, 400, 10);   // (1100,1600)
-        // 泥土：中央矿点
-        PaintDirtCircle(250, 250, 10);   // (1000,1000) 已有
-        PaintDirtCircle(213, 288, 10);   // (850,1150)
-        PaintDirtCircle(288, 213, 10);   // (1150,850)
-
-        // 泥土：障碍物周围
-        PaintDirtCircle(150, 175, 10);   // (600,800) 岩石
-        PaintDirtCircle(350, 300, 10);   // (1400,1200) 岩石
-        PaintDirtCircle(200, 325, 8);    // (800,1300) 岩石
-        PaintDirtCircle(300, 175, 8);    // (1200,700) 岩石
-        PaintDirtCircle(125, 300, 8);    // (500,1200) 岩石
-        PaintDirtCircle(375, 200, 8);    // (1500,800) 岩石
-
-        // ---- 4. 草地细节色块（深浅变化） ----
-        var darkGrass = new Color(0.17f, 0.34f, 0.13f);
-        var lightGrass = new Color(0.28f, 0.52f, 0.22f);
-        for (int i = 0; i < 100; i++)
-        {
-            int cx = rng.Next(S), cy = rng.Next(S);
-            int r = rng.Next(4, 14);
-            Color pc = rng.Next(2) == 0 ? darkGrass : lightGrass;
-            float blend = 0.3f;
-            for (int dy = -r; dy <= r; dy++)
-                for (int dx = -r; dx <= r; dx++)
-                {
-                    if (dx * dx + dy * dy > r * r) continue;
-                    int px = cx + dx, py = cy + dy;
-                    if (px < 0 || px >= S || py < 0 || py >= S) continue;
-                    Color ex = img.GetPixel(px, py);
-                    img.SetPixel(px, py, new Color(
-                        ex.R * (1 - blend) + pc.R * blend,
-                        ex.G * (1 - blend) + pc.G * blend,
-                        ex.B * (1 - blend) + pc.B * blend));
-                }
+                    1 => (rng.Next(2) == 0 ? sand1 : sand2),
+                    2 => roadE,  // 水平道路
+                    3 => roadN,  // 垂直道路
+                    4 => roadCross,
+                    _ => (rng.Next(3) == 0 ? grass2 : grass1)  // 草地随机变化
+                };
+                img.BlitRect(tile, new Rect2I(0, 0, TileSize, TileSize),
+                    new Vector2I(tx * TileSize, ty * TileSize));
+            }
         }
 
         _groundTex = ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>加载地面瓦片 PNG（Kenney Sci-fi RTS, CC0）。</summary>
+    private static Image LoadGroundTile(string path)
+    {
+        var tex = GD.Load<Texture2D>(path);
+        if (tex == null)
+        {
+            GD.PrintErr($"[Ground] Failed to load tile: {path}");
+            var img = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
+            img.Fill(Colors.Magenta);
+            return img;
+        }
+        return tex.GetImage();
     }
 
     private void SpawnObstacle(Vector2 pos, Vector2 size)
@@ -1554,41 +1537,24 @@ public partial class Main : Node2D
     {
         if (_rockTex != null) return;
 
-        // Rock texture: irregular gray blob
-        var rock = Image.CreateEmpty(80, 80, false, Image.Format.Rgba8);
-        rock.Fill(new Color(0, 0, 0, 0));
-        for (int x = 0; x < 80; x++)
-            for (int y = 0; y < 80; y++)
-            {
-                float dx = x - 40, dy = y - 40;
-                float dist = Mathf.Sqrt(dx * dx + dy * dy);
-                float noise = Mathf.Sin(x * 0.3f) * 3f + Mathf.Cos(y * 0.25f) * 3f;
-                if (dist + noise < 32)
-                {
-                    float shade = 0.4f + (dist / 32f) * 0.2f;
-                    rock.SetPixel(x, y, new Color(shade, shade, shade + 0.05f, 1f));
-                }
-                else if (dist + noise < 35)
-                    rock.SetPixel(x, y, new Color(0.25f, 0.25f, 0.3f, 0.8f));
-            }
-        _rockTex = ImageTexture.CreateFromImage(rock);
+        // Kenney 环境素材（CC0）
+        _rockTex = (ImageTexture)GD.Load<Texture2D>("res://assets/sprites/environment/crateMetal.png");
+        if (_rockTex == null)
+        {
+            GD.PrintErr("[Obstacle] Failed to load crateMetal.png");
+            var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            img.SetPixel(0, 0, Colors.Magenta);
+            _rockTex = ImageTexture.CreateFromImage(img);
+        }
 
-        // Wall texture: solid dark rectangle with edge highlights
-        var wall = Image.CreateEmpty(80, 80, false, Image.Format.Rgba8);
-        wall.Fill(new Color(0, 0, 0, 0));
-        for (int x = 0; x < 80; x++)
-            for (int y = 0; y < 80; y++)
-            {
-                if (x < 3 || x > 76 || y < 3 || y > 76)
-                    wall.SetPixel(x, y, new Color(0.15f, 0.15f, 0.2f, 0.9f));
-                else
-                {
-                    float brickLine = (y % 20 < 2) ? 0.1f : 1f;
-                    float shade = 0.35f * brickLine;
-                    wall.SetPixel(x, y, new Color(shade, shade, shade + 0.03f, 1f));
-                }
-            }
-        _wallTex = ImageTexture.CreateFromImage(wall);
+        _wallTex = (ImageTexture)GD.Load<Texture2D>("res://assets/sprites/environment/sandbagBrown.png");
+        if (_wallTex == null)
+        {
+            GD.PrintErr("[Obstacle] Failed to load sandbagBrown.png");
+            var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            img.SetPixel(0, 0, Colors.Magenta);
+            _wallTex = ImageTexture.CreateFromImage(img);
+        }
     }
 
     private void SpawnStrategicPoint(Vector2 pos)

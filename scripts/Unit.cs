@@ -60,31 +60,53 @@ public partial class Unit : CharacterBody2D
     private ProgressBar _healthBar = null!;
 
     private static ImageTexture? _ringTex;
-    // Q3: 按兵种类型的底盘纹理
-    private static ImageTexture? _lightHull, _heavyHull, _artyHull, _rocketHull, _missileHull, _harvesterHull;
-    // Q3: 按兵种类型的炮塔纹理
-    private static ImageTexture? _lightTurret, _heavyTurret, _artyTurret, _rocketTurret, _missileTurret;
-    // Q3: 炮塔精灵（战斗单位专用，矿车不需要）
+    // 按队伍+兵种的底盘纹理
+    private static ImageTexture? _blueLightHull, _blueHeavyHull, _blueArtyHull, _blueRocketHull, _blueMissileHull;
+    private static ImageTexture? _redLightHull, _redHeavyHull, _redArtyHull, _redRocketHull, _redMissileHull;
+    private static ImageTexture? _harvesterHull;
+    // 按队伍+兵种的炮塔纹理
+    private static ImageTexture? _blueLightTurret, _blueHeavyTurret, _blueArtyTurret, _blueRocketTurret, _blueMissileTurret;
+    private static ImageTexture? _redLightTurret, _redHeavyTurret, _redArtyTurret, _redRocketTurret, _redMissileTurret;
+    // 炮塔精灵
     protected Sprite2D _turret = null!;
+    // Kenney 精灵朝向：朝下(DOWN)，游戏约定朝右(RIGHT)为0°
+    private const float SpriteRotationOffset = -Mathf.Pi / 2f;
 
+    /// <summary>加载单位 PNG 纹理（Kenney Top-down Tanks Redux, CC0）。</summary>
     private static void EnsureTextures()
     {
-        if (_lightHull != null) return;
+        if (_blueLightHull != null) return;
 
-        // ---- 底盘纹理（俯视图：履带+车身+发动机） ----
-        _lightHull = CreateHull(56, 44, 8);
-        _heavyHull = CreateHull(68, 52, 10, hasSkirt: true);
-        _artyHull = CreateHull(60, 44, 7);
-        _rocketHull = CreateHull(64, 48, 8);
-        _missileHull = CreateHull(64, 50, 8);
-        _harvesterHull = CreateHarvesterHull();
+        // ---- 蓝方（Team 0）底盘 ----
+        _blueLightHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_blue.png");
+        _blueHeavyHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_dark.png");
+        _blueArtyHull   = LoadUnitTexture("res://assets/sprites/units/tankBody_sand.png");
+        _blueRocketHull = LoadUnitTexture("res://assets/sprites/units/tankBody_green.png");
+        _blueMissileHull= LoadUnitTexture("res://assets/sprites/units/tankBody_huge.png");
 
-        // ---- 炮塔纹理（朝右绘制，旋转朝向目标） ----
-        _lightTurret = CreateTankTurret(44, 28, 7, 4, 18);
-        _heavyTurret = CreateTankTurret(52, 32, 9, 5, 22);
-        _artyTurret = CreateArtyTurret();
-        _rocketTurret = CreateRocketTurret();
-        _missileTurret = CreateMissileTurret();
+        // ---- 红方（Team 1）底盘 ----
+        _redLightHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_red.png");
+        _redHeavyHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_bigRed.png");
+        _redArtyHull   = LoadUnitTexture("res://assets/sprites/units/tankBody_red.png");      // 复用红色
+        _redRocketHull = LoadUnitTexture("res://assets/sprites/units/tankBody_bigRed.png");   // 复用大红
+        _redMissileHull= LoadUnitTexture("res://assets/sprites/units/tankBody_bigRed.png");   // 复用大红
+
+        // ---- 矿车（两方共用，用 Modulate 着色） ----
+        _harvesterHull = LoadUnitTexture("res://assets/sprites/units/harvester.png");
+
+        // ---- 蓝方炮塔 ----
+        _blueLightTurret  = LoadUnitTexture("res://assets/sprites/units/tankBlue_barrel1.png");
+        _blueHeavyTurret  = LoadUnitTexture("res://assets/sprites/units/tankDark_barrel2.png");
+        _blueArtyTurret   = LoadUnitTexture("res://assets/sprites/units/tankSand_barrel3.png");
+        _blueRocketTurret = LoadUnitTexture("res://assets/sprites/units/tankGreen_barrel2.png");
+        _blueMissileTurret= LoadUnitTexture("res://assets/sprites/units/tankGreen_barrel3.png");
+
+        // ---- 红方炮塔 ----
+        _redLightTurret  = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel1.png");
+        _redHeavyTurret  = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel2.png");
+        _redArtyTurret   = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel3.png");
+        _redRocketTurret = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel2.png");
+        _redMissileTurret= LoadUnitTexture("res://assets/sprites/units/tankRed_barrel3.png");
 
         // ---- 选中环 ----
         var ring = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
@@ -93,214 +115,60 @@ public partial class Unit : CharacterBody2D
         {
             int cx = (int)(32 + 28 * Mathf.Cos(a));
             int cy = (int)(32 + 28 * Mathf.Sin(a));
-            PlotPixel(ring, cx, cy, Colors.Lime);
-            PlotPixel(ring, cx + 1, cy, Colors.Lime);
-            PlotPixel(ring, cx, cy + 1, Colors.Lime);
+            if (cx >= 0 && cx < 64 && cy >= 0 && cy < 64)
+            {
+                ring.SetPixel(cx, cy, Colors.Lime);
+                if (cx + 1 < 64) ring.SetPixel(cx + 1, cy, Colors.Lime);
+                if (cy + 1 < 64) ring.SetPixel(cx, cy + 1, Colors.Lime);
+            }
         }
         _ringTex = ImageTexture.CreateFromImage(ring);
     }
 
-    // ---- Q3 纹理生成辅助 ----
-
-    /// <summary>创建底盘纹理：双履带 + 车身 + 发动机舱。</summary>
-    private static ImageTexture CreateHull(int w, int h, int trackW, bool hasSkirt = false)
+    private static ImageTexture LoadUnitTexture(string path)
     {
-        var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
-
-        var track = new Color(0.15f, 0.15f, 0.18f);
-        var trackHi = new Color(0.22f, 0.22f, 0.25f);
-        var hull = new Color(0.4f, 0.4f, 0.43f);
-        var hullHi = new Color(0.5f, 0.5f, 0.53f);
-        var engine = new Color(0.28f, 0.28f, 0.32f);
-        var skirt = new Color(0.3f, 0.3f, 0.33f);
-
-        // 左履带
-        FillRect(img, 0, 2, trackW, h - 2, track);
-        for (int y = 2; y < h - 2; y += 4)
-            FillRect(img, 1, y, trackW - 1, y + 1, trackHi);
-
-        // 右履带
-        FillRect(img, w - trackW, 2, w, h - 2, track);
-        for (int y = 2; y < h - 2; y += 4)
-            FillRect(img, w - trackW + 1, y, w - 1, y + 1, trackHi);
-
-        // 侧裙板（重型单位）
-        if (hasSkirt)
+        var tex = GD.Load<Texture2D>(path);
+        if (tex == null)
         {
-            FillRect(img, trackW, 2, trackW + 3, h - 2, skirt);
-            FillRect(img, w - trackW - 3, 2, w - trackW, h - 2, skirt);
+            GD.PrintErr($"[Unit] Failed to load texture: {path}");
+            var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            img.SetPixel(0, 0, Colors.Magenta);
+            return ImageTexture.CreateFromImage(img);
         }
-
-        // 车身
-        int iL = trackW + (hasSkirt ? 3 : 0);
-        int iR = w - trackW - (hasSkirt ? 3 : 0);
-        FillRect(img, iL, 4, iR, h - 4, hull);
-
-        // 前部高光
-        FillRect(img, iL + 2, 4, iR - 2, 9, hullHi);
-
-        // 发动机舱（后部）
-        FillRect(img, iL + 4, h - 8, iR - 4, h - 3, engine);
-
-        return ImageTexture.CreateFromImage(img);
+        return (ImageTexture)tex;
     }
 
-    /// <summary>创建矿车底盘：履带+车身+矿石斗+铲臂。</summary>
-    private static ImageTexture CreateHarvesterHull()
+    /// <summary>根据兵种和队伍获取底盘纹理。</summary>
+    private ImageTexture GetHullTexture(UnitType type, int teamId) => (type, teamId) switch
     {
-        var img = Image.CreateEmpty(54, 44, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
+        (UnitType.LightTank, 0) => _blueLightHull!,
+        (UnitType.HeavyTank, 0) => _blueHeavyHull!,
+        (UnitType.Artillery, 0) => _blueArtyHull!,
+        (UnitType.RocketLauncher, 0) => _blueRocketHull!,
+        (UnitType.MissileTank, 0) => _blueMissileHull!,
+        (UnitType.LightTank, 1) => _redLightHull!,
+        (UnitType.HeavyTank, 1) => _redHeavyHull!,
+        (UnitType.Artillery, 1) => _redArtyHull!,
+        (UnitType.RocketLauncher, 1) => _redRocketHull!,
+        (UnitType.MissileTank, 1) => _redMissileHull!,
+        _ => _harvesterHull!
+    };
 
-        var track = new Color(0.15f, 0.15f, 0.18f);
-        var trackHi = new Color(0.22f, 0.22f, 0.25f);
-        var body = new Color(0.4f, 0.4f, 0.43f);
-        var bin = new Color(0.35f, 0.32f, 0.28f);
-        var arm = new Color(0.3f, 0.3f, 0.33f);
-
-        // 履带
-        FillRect(img, 0, 2, 7, 42, track);
-        for (int y = 2; y < 42; y += 4) FillRect(img, 1, y, 6, y + 1, trackHi);
-        FillRect(img, 47, 2, 54, 42, track);
-        for (int y = 2; y < 42; y += 4) FillRect(img, 48, y, 53, y + 1, trackHi);
-
-        // 驾驶舱（前部）
-        FillRect(img, 7, 6, 30, 20, body);
-
-        // 矿石斗（后部加宽）
-        FillRect(img, 5, 18, 49, 40, bin);
-        FillRect(img, 3, 22, 6, 38, bin);  // 左侧加宽
-        FillRect(img, 48, 22, 51, 38, bin); // 右侧加宽
-
-        // 铲臂（前部）
-        FillRect(img, 18, 3, 36, 9, arm);
-        FillRect(img, 24, 1, 30, 5, arm);  // 铲头
-
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    /// <summary>创建坦克炮塔：圆形炮塔+炮管。</summary>
-    private static ImageTexture CreateTankTurret(int w, int h, int turretR, int barrelW, int barrelLen)
+    /// <summary>根据兵种和队伍获取炮塔纹理。</summary>
+    private ImageTexture GetTurretTexture(UnitType type, int teamId) => (type, teamId) switch
     {
-        var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
-
-        var turret = new Color(0.7f, 0.7f, 0.75f);
-        var barrel = new Color(0.25f, 0.25f, 0.28f);
-        var muzzle = new Color(0.2f, 0.2f, 0.23f);
-
-        int cx = w / 2, cy = h / 2;
-
-        // 炮塔圆盘
-        FillCircle(img, cx, cy, turretR, turret);
-
-        // 炮管（从圆心向右延伸）
-        FillRect(img, cx, cy - barrelW / 2, cx + barrelLen, cy + barrelW / 2 + 1, barrel);
-
-        // 炮口制退器
-        int mzL = cx + barrelLen - 2;
-        FillRect(img, mzL, cy - barrelW / 2 - 1, mzL + 5, cy + barrelW / 2 + 2, muzzle);
-
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    /// <summary>创建炮兵炮塔：护盾+超长细炮管。</summary>
-    private static ImageTexture CreateArtyTurret()
-    {
-        var img = Image.CreateEmpty(56, 22, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
-
-        var shield = new Color(0.55f, 0.55f, 0.58f);
-        var barrel = new Color(0.25f, 0.25f, 0.28f);
-        var muzzle = new Color(0.2f, 0.2f, 0.23f);
-
-        int cx = 28, cy = 11;
-
-        // 炮盾（小型护板）
-        FillRect(img, cx - 4, cy - 6, cx + 2, cy + 6, shield);
-
-        // 超长细炮管
-        FillRect(img, cx - 2, cy - 1, cx + 26, cy + 2, barrel);
-
-        // 炮口
-        FillRect(img, cx + 24, cy - 2, cx + 28, cy + 3, muzzle);
-
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    /// <summary>创建火箭炮炮塔：发射架+多管火箭。</summary>
-    private static ImageTexture CreateRocketTurret()
-    {
-        var img = Image.CreateEmpty(44, 28, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
-
-        var rack = new Color(0.5f, 0.5f, 0.53f);
-        var tube = new Color(0.25f, 0.25f, 0.28f);
-        var tubeOpen = new Color(0.15f, 0.12f, 0.1f);
-
-        int cx = 22, cy = 14;
-
-        // 发射架底座
-        FillRect(img, cx - 6, cy - 9, cx + 1, cy + 9, rack);
-
-        // 火箭管（4管，朝右）
-        for (int i = 0; i < 4; i++)
-        {
-            int ty = cy - 7 + i * 4;
-            FillRect(img, cx, ty, cx + 14, ty + 3, tube);
-            FillRect(img, cx + 12, ty, cx + 14, ty + 3, tubeOpen);
-        }
-
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    /// <summary>创建导弹车炮塔：双联装导弹发射筒。</summary>
-    private static ImageTexture CreateMissileTurret()
-    {
-        var img = Image.CreateEmpty(48, 30, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
-
-        var canister = new Color(0.45f, 0.45f, 0.48f);
-        var guide = new Color(0.55f, 0.55f, 0.58f);
-        var nose = new Color(0.3f, 0.3f, 0.33f);
-
-        int cx = 24, cy = 15;
-
-        // 上发射筒
-        FillRect(img, cx - 6, cy - 12, cx + 12, cy - 2, canister);
-        // 下发射筒
-        FillRect(img, cx - 6, cy + 2, cx + 12, cy + 12, canister);
-
-        // 导弹头部
-        FillRect(img, cx + 10, cy - 12, cx + 14, cy - 2, nose);
-        FillRect(img, cx + 10, cy + 2, cx + 14, cy + 12, nose);
-
-        // 制导设备（中间）
-        FillRect(img, cx - 4, cy - 3, cx + 4, cy + 3, guide);
-
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    private static void FillRect(Image img, int x0, int y0, int x1, int y1, Color c)
-    {
-        for (int y = y0; y < y1 && y < img.GetHeight(); y++)
-            for (int x = x0; x < x1 && x < img.GetWidth(); x++)
-                img.SetPixel(x, y, c);
-    }
-
-    private static void FillCircle(Image img, int cx, int cy, int radius, Color c)
-    {
-        for (int dy = -radius; dy <= radius; dy++)
-            for (int dx = -radius; dx <= radius; dx++)
-                if (dx * dx + dy * dy <= radius * radius)
-                    PlotPixel(img, cx + dx, cy + dy, c);
-    }
-
-    private static void PlotPixel(Image img, int x, int y, Color c)
-    {
-        if (x >= 0 && x < img.GetWidth() && y >= 0 && y < img.GetHeight())
-            img.SetPixel(x, y, c);
-    }
+        (UnitType.LightTank, 0) => _blueLightTurret!,
+        (UnitType.HeavyTank, 0) => _blueHeavyTurret!,
+        (UnitType.Artillery, 0) => _blueArtyTurret!,
+        (UnitType.RocketLauncher, 0) => _blueRocketTurret!,
+        (UnitType.MissileTank, 0) => _blueMissileTurret!,
+        (UnitType.LightTank, 1) => _redLightTurret!,
+        (UnitType.HeavyTank, 1) => _redHeavyTurret!,
+        (UnitType.Artillery, 1) => _redArtyTurret!,
+        (UnitType.RocketLauncher, 1) => _redRocketTurret!,
+        (UnitType.MissileTank, 1) => _redMissileTurret!,
+        _ => null!
+    };
 
     /// <summary>按兵种类型初始化属性。必须在 _Ready 之前调用。</summary>
     public void InitAsType(UnitType type)
@@ -372,17 +240,10 @@ public partial class Unit : CharacterBody2D
 
         EnsureTextures();
 
-        // Q3：按兵种设置底盘纹理
-        _body.Texture = Type switch
-        {
-            UnitType.LightTank => _lightHull,
-            UnitType.HeavyTank => _heavyHull,
-            UnitType.Artillery => _artyHull,
-            UnitType.RocketLauncher => _rocketHull,
-            UnitType.MissileTank => _missileHull,
-            _ => _harvesterHull  // Harvester (Default)
-        };
-        _body.Modulate = Colors.White; // 底盘保持灰调原色
+        // 按兵种+队伍加载底盘纹理（Kenney 素材自带配色）
+        _body.Texture = GetHullTexture(Type, TeamId);
+        _body.Modulate = Colors.White; // PNG 自带队伍色，不需 Modulate
+        _body.Scale = new Vector2(1.2f, 1.2f); // 略放大以匹配游戏比例
         _selectionRing.Texture = _ringTex;
 
         _selectionRing.Visible = false;
@@ -390,29 +251,25 @@ public partial class Unit : CharacterBody2D
         _healthBar.Value = Health;
         UpdateHealthBarVisibility();
 
-        // Q3：炮塔精灵（战斗单位专用，矿车不需要）
+        // 炮塔精灵（战斗单位专用，矿车不需要）
         if (this is not Harvester)
         {
             _turret = new Sprite2D { Name = "Turret", ZIndex = 1 };
             AddChild(_turret);
-            _turret.Texture = Type switch
+            _turret.Texture = GetTurretTexture(Type, TeamId);
+            // Kenney 炮塔精灵：旋转中心在炮塔圆盘中心（约图片1/4高度处）
+            if (_turret.Texture != null)
             {
-                UnitType.LightTank => _lightTurret,
-                UnitType.HeavyTank => _heavyTurret,
-                UnitType.Artillery => _artyTurret,
-                UnitType.RocketLauncher => _rocketTurret,
-                UnitType.MissileTank => _missileTurret,
-                _ => null
-            };
-            var teamColor = TeamId == 0
-                ? new Color(0.3f, 0.6f, 1.0f)
-                : new Color(1.0f, 0.3f, 0.3f);
-            _turret.Modulate = teamColor;
-            _turretTint = teamColor;
+                var tSize = _turret.Texture.GetSize();
+                _turret.Offset = new Vector2(-tSize.X / 2f, -tSize.Y / 4f);
+                _turret.Scale = new Vector2(1.2f, 1.2f);
+            }
+            _turret.Modulate = Colors.White; // PNG 自带队伍色
+            _turretTint = Colors.White;
         }
         else
         {
-            // 矿车用黄/橙色调
+            // 矿车用 Modulate 着色（PNG 为灰色调）
             _body.Modulate = TeamId == 0
                 ? new Color(0.9f, 0.8f, 0.2f)
                 : new Color(0.9f, 0.5f, 0.2f);
@@ -456,17 +313,17 @@ public partial class Unit : CharacterBody2D
     {
         if (_turret == null) return;
 
-        float targetAngle = _body.Rotation; // 默认跟随车体
+        float targetAngle = _body.Rotation; // 默认跟随车体（已含 SpriteRotationOffset）
         bool hasTarget = false;
 
         if (_attackUnitTarget != null && IsInstanceValid(_attackUnitTarget))
         {
-            targetAngle = (_attackUnitTarget.GlobalPosition - GlobalPosition).Angle();
+            targetAngle = (_attackUnitTarget.GlobalPosition - GlobalPosition).Angle() + SpriteRotationOffset;
             hasTarget = true;
         }
         else if (_attackBuildingTarget != null && IsInstanceValid(_attackBuildingTarget))
         {
-            targetAngle = (_attackBuildingTarget.GlobalPosition - GlobalPosition).Angle();
+            targetAngle = (_attackBuildingTarget.GlobalPosition - GlobalPosition).Angle() + SpriteRotationOffset;
             hasTarget = true;
         }
         else if (_hasMoveTarget)
@@ -474,7 +331,7 @@ public partial class Unit : CharacterBody2D
             var dir = _moveTarget - GlobalPosition;
             if (dir.Length() > 5f)
             {
-                targetAngle = dir.Angle();
+                targetAngle = dir.Angle() + SpriteRotationOffset;
                 hasTarget = true;
             }
         }
@@ -681,7 +538,7 @@ public partial class Unit : CharacterBody2D
                 Velocity = direction * MoveSpeed;
                 MoveAndSlide();
                 if (direction != Vector2.Zero)
-                    _body.Rotation = direction.Angle();
+                    _body.Rotation = direction.Angle() + SpriteRotationOffset;
             }
             else
             {

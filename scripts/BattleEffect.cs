@@ -4,6 +4,7 @@ namespace RTSGame;
 
 /// <summary>
 /// Q5: 一次性战斗视觉特效（炮口闪光、炮弹飞行轨迹、爆炸）。
+/// 爆炸使用 Kenney Top-down Tanks Redux PNG（CC0）多帧动画。
 /// 自动播完 QueueFree()。
 /// </summary>
 public partial class BattleEffect : Node2D
@@ -17,10 +18,13 @@ public partial class BattleEffect : Node2D
     private Vector2 _endPos;
     private Sprite2D _sprite = null!;
 
+    // 炮口闪光和炮弹：程序化小纹理（不需要PNG）
     private static ImageTexture? _flashTex;
     private static ImageTexture? _shellTex;
-    private static ImageTexture? _explosionTex;
-    private static ImageTexture? _bigExplosionTex;
+
+    // 爆炸：Kenney 5帧动画
+    private static ImageTexture?[] _explosionFrames = null!;
+    private static ImageTexture?[] _bigExplosionFrames = null!;
 
     public override void _Ready()
     {
@@ -40,13 +44,13 @@ public partial class BattleEffect : Node2D
                 AddChild(_sprite);
                 break;
             case FxType.Explosion:
-                _lifetime = 0.45f;
-                _sprite = new Sprite2D { Texture = _explosionTex! };
+                _lifetime = 0.5f;
+                _sprite = new Sprite2D { Texture = _explosionFrames[0]! };
                 AddChild(_sprite);
                 break;
             case FxType.BigExplosion:
-                _lifetime = 0.65f;
-                _sprite = new Sprite2D { Texture = _bigExplosionTex! };
+                _lifetime = 0.7f;
+                _sprite = new Sprite2D { Texture = _bigExplosionFrames[0]! };
                 AddChild(_sprite);
                 break;
         }
@@ -70,17 +74,27 @@ public partial class BattleEffect : Node2D
                 _sprite.Modulate = new Color(1f, 0.85f, 0.4f, 1f - t * 0.4f);
                 break;
             case FxType.Explosion:
-                float s = 0.5f + t * 1.5f;
+            {
+                // 5帧爆炸动画顺序播放
+                int frame = Mathf.Min((int)(t * 5f), 4);
+                _sprite.Texture = _explosionFrames[frame]!;
+                // 缩放从小到大再缩小
+                float s = t < 0.6f ? 0.8f + t * 1.2f : 1.5f - (t - 0.6f) * 0.8f;
                 _sprite.Scale = Vector2.One * s;
-                float a = t < 0.25f ? 1f : 1f - (t - 0.25f) / 0.75f;
-                _sprite.Modulate = new Color(1f, 0.6f + (1 - t) * 0.3f, 0.2f, a);
+                float a = t < 0.2f ? 1f : 1f - (t - 0.2f) / 0.8f;
+                _sprite.Modulate = new Color(1f, 1f, 1f, a);
                 break;
+            }
             case FxType.BigExplosion:
-                float bs = 0.4f + t * 2.5f;
+            {
+                int frame = Mathf.Min((int)(t * 5f), 4);
+                _sprite.Texture = _bigExplosionFrames[frame]!;
+                float bs = t < 0.5f ? 0.6f + t * 2.0f : 1.6f - (t - 0.5f) * 0.6f;
                 _sprite.Scale = Vector2.One * bs;
                 float ba = t < 0.15f ? 1f : 1f - (t - 0.15f) / 0.85f;
-                _sprite.Modulate = new Color(1f, 0.5f + (1 - t) * 0.4f, 0.15f, ba);
+                _sprite.Modulate = new Color(1f, 1f, 1f, ba);
                 break;
+            }
         }
     }
 
@@ -98,13 +112,13 @@ public partial class BattleEffect : Node2D
     public static BattleEffect BigExplosion(Vector2 pos)
         => new() { _type = FxType.BigExplosion, GlobalPosition = pos };
 
-    // ---- 程序化纹理生成 ----
+    // ---- 纹理加载 ----
 
     private static void EnsureTextures()
     {
         if (_flashTex != null) return;
 
-        // 炮口闪光：亮橙黄圆形发光
+        // 炮口闪光：亮橙黄圆形发光（程序化小纹理无需PNG）
         var flash = Image.CreateEmpty(32, 32, false, Image.Format.Rgba8);
         flash.Fill(Colors.Transparent);
         for (int x = 0; x < 32; x++)
@@ -119,7 +133,7 @@ public partial class BattleEffect : Node2D
             }
         _flashTex = ImageTexture.CreateFromImage(flash);
 
-        // 炮弹：小亮点
+        // 炮弹：小亮点（程序化）
         var shell = Image.CreateEmpty(8, 8, false, Image.Format.Rgba8);
         shell.Fill(Colors.Transparent);
         for (int x = 0; x < 8; x++)
@@ -134,46 +148,27 @@ public partial class BattleEffect : Node2D
             }
         _shellTex = ImageTexture.CreateFromImage(shell);
 
-        // 爆炸：橙红扩展圆（含噪声细节）
-        var exp = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
-        exp.Fill(Colors.Transparent);
-        for (int x = 0; x < 64; x++)
-            for (int y = 0; y < 64; y++)
-            {
-                float d = Mathf.Sqrt((x - 32) * (x - 32) + (y - 32) * (y - 32));
-                if (d < 28)
-                {
-                    float b = 1f - d / 28f;
-                    float n = Mathf.Sin(x * 0.5f) * Mathf.Cos(y * 0.4f) * 0.08f;
-                    exp.SetPixel(x, y, new Color(1f + n, 0.5f + b * 0.4f, 0.1f + b * 0.15f, b * 0.9f));
-                }
-                else if (d < 31)
-                {
-                    float a = (31 - d) / 3f * 0.25f;
-                    exp.SetPixel(x, y, new Color(0.8f, 0.3f, 0.08f, a));
-                }
-            }
-        _explosionTex = ImageTexture.CreateFromImage(exp);
+        // 普通爆炸：Kenney explosion1-5 5帧
+        _explosionFrames = new ImageTexture[5];
+        for (int i = 0; i < 5; i++)
+            _explosionFrames[i] = LoadFxTexture($"res://assets/sprites/effects/explosion{i + 1}.png");
 
-        // 大爆炸（建筑/重坦死亡）：更大更亮
-        var big = Image.CreateEmpty(96, 96, false, Image.Format.Rgba8);
-        big.Fill(Colors.Transparent);
-        for (int x = 0; x < 96; x++)
-            for (int y = 0; y < 96; y++)
-            {
-                float d = Mathf.Sqrt((x - 48) * (x - 48) + (y - 48) * (y - 48));
-                if (d < 44)
-                {
-                    float b = 1f - d / 44f;
-                    float n = Mathf.Sin(x * 0.3f) * Mathf.Cos(y * 0.25f) * 0.1f;
-                    big.SetPixel(x, y, new Color(1f + n, 0.4f + b * 0.5f, 0.05f + b * 0.15f, b * 0.85f));
-                }
-                else if (d < 48)
-                {
-                    float a = (48 - d) / 4f * 0.2f;
-                    big.SetPixel(x, y, new Color(0.7f, 0.2f, 0.05f, a));
-                }
-            }
-        _bigExplosionTex = ImageTexture.CreateFromImage(big);
+        // 大爆炸：Kenney explosionSmoke1-5 5帧
+        _bigExplosionFrames = new ImageTexture[5];
+        for (int i = 0; i < 5; i++)
+            _bigExplosionFrames[i] = LoadFxTexture($"res://assets/sprites/effects/explosionSmoke{i + 1}.png");
+    }
+
+    private static ImageTexture LoadFxTexture(string path)
+    {
+        var tex = GD.Load<Texture2D>(path);
+        if (tex == null)
+        {
+            GD.PrintErr($"[BattleEffect] Failed to load: {path}");
+            var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            img.SetPixel(0, 0, Colors.Magenta);
+            return ImageTexture.CreateFromImage(img);
+        }
+        return (ImageTexture)tex;
     }
 }
