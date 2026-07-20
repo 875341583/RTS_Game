@@ -60,55 +60,56 @@ public partial class Unit : CharacterBody2D
     private ProgressBar _healthBar = null!;
 
     private static Texture2D? _ringTex;
-    // 按队伍+兵种的底盘纹理
-    private static Texture2D? _blueLightHull, _blueHeavyHull, _blueArtyHull, _blueRocketHull, _blueMissileHull;
-    private static Texture2D? _redLightHull, _redHeavyHull, _redArtyHull, _redRocketHull, _redMissileHull;
+    // 灰底底盘纹理（按兵种，一套支持任意阵营色染色）
+    private static Texture2D? _hullLight, _hullHeavy, _hullArty, _hullRocket, _hullMissile;
     private static Texture2D? _harvesterHull;
-    // 按队伍+兵种的炮塔纹理
-    private static Texture2D? _blueLightTurret, _blueHeavyTurret, _blueArtyTurret, _blueRocketTurret, _blueMissileTurret;
-    private static Texture2D? _redLightTurret, _redHeavyTurret, _redArtyTurret, _redRocketTurret, _redMissileTurret;
+    // 灰底炮塔纹理（按兵种）
+    private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile;
     // 炮塔精灵
     protected Sprite2D _turret = null!;
     // 新素材朝右（RIGHT=0°），无需额外旋转偏移
     private const float SpriteRotationOffset = 0f;
 
-    /// <summary>加载单位 PNG 纹理（Kenney Top-down Tanks Redux, CC0）。</summary>
+    // ---- 8阵营色调色板（灰底素材用 Modulate 染色）----
+    /// <summary>8阵营色（红警2原版多人配色）。索引=TeamId。超出范围取模。</summary>
+    private static readonly Color[] TeamPalette =
+    {
+        new(0.784f, 0.196f, 0.196f), // 0 Red
+        new(0.196f, 0.314f, 0.784f), // 1 Blue
+        new(0.196f, 0.706f, 0.314f), // 2 Green
+        new(0.863f, 0.784f, 0.196f), // 3 Yellow
+        new(0.863f, 0.392f, 0.706f), // 4 Pink
+        new(0.549f, 0.235f, 0.784f), // 5 Purple
+        new(0.863f, 0.471f, 0.157f), // 6 Orange
+        new(0.157f, 0.706f, 0.784f), // 7 Cyan
+    };
+
+    /// <summary>获取 TeamId 对应的阵营色。</summary>
+    public static Color GetTeamColor(int teamId) => TeamPalette[teamId % TeamPalette.Length];
+
+    /// <summary>加载灰底单位 PNG 纹理（一套支持任意阵营色染色）。</summary>
     private static void EnsureTextures()
     {
-        if (_blueLightHull != null) return;
+        if (_hullLight != null) return;
 
-        // ---- 蓝方（Team 0）底盘 ----
-        _blueLightHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_blue.png");
-        _blueHeavyHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_dark.png");
-        _blueArtyHull   = LoadUnitTexture("res://assets/sprites/units/tankBody_sand.png");
-        _blueRocketHull = LoadUnitTexture("res://assets/sprites/units/tankBody_green.png");
-        _blueMissileHull= LoadUnitTexture("res://assets/sprites/units/tankBody_huge.png");
+        // 灰底底盘（按兵种）
+        _hullLight   = LoadUnitTexture("res://assets/sprites/units/hull_light.png");
+        _hullHeavy   = LoadUnitTexture("res://assets/sprites/units/hull_heavy.png");
+        _hullArty    = LoadUnitTexture("res://assets/sprites/units/hull_arty.png");
+        _hullRocket  = LoadUnitTexture("res://assets/sprites/units/hull_rocket.png");
+        _hullMissile = LoadUnitTexture("res://assets/sprites/units/hull_missile.png");
 
-        // ---- 红方（Team 1）底盘 ----
-        _redLightHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_red.png");
-        _redHeavyHull  = LoadUnitTexture("res://assets/sprites/units/tankBody_bigRed.png");
-        _redArtyHull   = LoadUnitTexture("res://assets/sprites/units/tankBody_red.png");      // 复用红色
-        _redRocketHull = LoadUnitTexture("res://assets/sprites/units/tankBody_bigRed.png");   // 复用大红
-        _redMissileHull= LoadUnitTexture("res://assets/sprites/units/tankBody_bigRed.png");   // 复用大红
-
-        // ---- 矿车（两方共用，用 Modulate 着色） ----
+        // 矿车（灰底，染色）
         _harvesterHull = LoadUnitTexture("res://assets/sprites/units/harvester.png");
 
-        // ---- 蓝方炮塔 ----
-        _blueLightTurret  = LoadUnitTexture("res://assets/sprites/units/tankBlue_barrel1.png");
-        _blueHeavyTurret  = LoadUnitTexture("res://assets/sprites/units/tankDark_barrel2.png");
-        _blueArtyTurret   = LoadUnitTexture("res://assets/sprites/units/tankSand_barrel3.png");
-        _blueRocketTurret = LoadUnitTexture("res://assets/sprites/units/tankGreen_barrel2.png");
-        _blueMissileTurret= LoadUnitTexture("res://assets/sprites/units/tankGreen_barrel3.png");
+        // 灰底炮塔（按兵种）
+        _turretLight   = LoadUnitTexture("res://assets/sprites/units/turret_light.png");
+        _turretHeavy   = LoadUnitTexture("res://assets/sprites/units/turret_heavy.png");
+        _turretArty    = LoadUnitTexture("res://assets/sprites/units/turret_arty.png");
+        _turretRocket  = LoadUnitTexture("res://assets/sprites/units/turret_rocket.png");
+        _turretMissile = LoadUnitTexture("res://assets/sprites/units/turret_missile.png");
 
-        // ---- 红方炮塔 ----
-        _redLightTurret  = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel1.png");
-        _redHeavyTurret  = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel2.png");
-        _redArtyTurret   = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel3.png");
-        _redRocketTurret = LoadUnitTexture("res://assets/sprites/units/tankRed_barrel2.png");
-        _redMissileTurret= LoadUnitTexture("res://assets/sprites/units/tankRed_barrel3.png");
-
-        // ---- 选中环 ----
+        // ---- 选中环（保留）----
         var ring = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
         ring.Fill(new Color(0, 0, 0, 0));
         for (float a = 0; a < Mathf.Tau; a += 0.03f)
@@ -138,35 +139,25 @@ public partial class Unit : CharacterBody2D
         return tex; // Godot 导入 PNG 返回 CompressedTexture2D，不是 ImageTexture
     }
 
-    /// <summary>根据兵种和队伍获取底盘纹理。</summary>
-    private Texture2D GetHullTexture(UnitType type, int teamId) => (type, teamId) switch
+    /// <summary>根据兵种获取灰底底盘纹理（不区分阵营，染色由 Modulate 完成）。</summary>
+    private Texture2D GetHullTexture(UnitType type, int teamId) => type switch
     {
-        (UnitType.LightTank, 0) => _blueLightHull!,
-        (UnitType.HeavyTank, 0) => _blueHeavyHull!,
-        (UnitType.Artillery, 0) => _blueArtyHull!,
-        (UnitType.RocketLauncher, 0) => _blueRocketHull!,
-        (UnitType.MissileTank, 0) => _blueMissileHull!,
-        (UnitType.LightTank, 1) => _redLightHull!,
-        (UnitType.HeavyTank, 1) => _redHeavyHull!,
-        (UnitType.Artillery, 1) => _redArtyHull!,
-        (UnitType.RocketLauncher, 1) => _redRocketHull!,
-        (UnitType.MissileTank, 1) => _redMissileHull!,
+        UnitType.LightTank => _hullLight!,
+        UnitType.HeavyTank => _hullHeavy!,
+        UnitType.Artillery => _hullArty!,
+        UnitType.RocketLauncher => _hullRocket!,
+        UnitType.MissileTank => _hullMissile!,
         _ => _harvesterHull!
     };
 
-    /// <summary>根据兵种和队伍获取炮塔纹理。</summary>
-    private Texture2D GetTurretTexture(UnitType type, int teamId) => (type, teamId) switch
+    /// <summary>根据兵种获取灰底炮塔纹理。</summary>
+    private Texture2D GetTurretTexture(UnitType type, int teamId) => type switch
     {
-        (UnitType.LightTank, 0) => _blueLightTurret!,
-        (UnitType.HeavyTank, 0) => _blueHeavyTurret!,
-        (UnitType.Artillery, 0) => _blueArtyTurret!,
-        (UnitType.RocketLauncher, 0) => _blueRocketTurret!,
-        (UnitType.MissileTank, 0) => _blueMissileTurret!,
-        (UnitType.LightTank, 1) => _redLightTurret!,
-        (UnitType.HeavyTank, 1) => _redHeavyTurret!,
-        (UnitType.Artillery, 1) => _redArtyTurret!,
-        (UnitType.RocketLauncher, 1) => _redRocketTurret!,
-        (UnitType.MissileTank, 1) => _redMissileTurret!,
+        UnitType.LightTank => _turretLight!,
+        UnitType.HeavyTank => _turretHeavy!,
+        UnitType.Artillery => _turretArty!,
+        UnitType.RocketLauncher => _turretRocket!,
+        UnitType.MissileTank => _turretMissile!,
         _ => null!
     };
 
@@ -240,9 +231,13 @@ public partial class Unit : CharacterBody2D
 
         EnsureTextures();
 
-        // 按兵种+队伍加载底盘纹理（Kenney 素材自带配色）
+        // 8阵营色：灰底素材 + Modulate 染色
+        var teamColor = GetTeamColor(TeamId);
+
+        // 按兵种加载灰底底盘纹理，运行时按 TeamId 染色
         _body.Texture = GetHullTexture(Type, TeamId);
-        _body.Modulate = Colors.White; // PNG 自带队伍色，不需 Modulate
+        _body.Modulate = teamColor;
+        _bodyTint = teamColor;
         _body.Scale = Vector2.One; // 新素材64×64，1:1显示
         _selectionRing.Texture = _ringTex;
 
@@ -257,24 +252,16 @@ public partial class Unit : CharacterBody2D
             _turret = new Sprite2D { Name = "Turret", ZIndex = 1 };
             AddChild(_turret);
             _turret.Texture = GetTurretTexture(Type, TeamId);
-            // Kenney 炮塔精灵：旋转中心在炮塔圆盘中心（约图片1/4高度处）
+            // 新素材：炮塔圆盘在图片正中心(32,32)，centered=true 自动对齐旋转中心
             if (_turret.Texture != null)
             {
-                // 新素材：炮塔圆盘在图片正中心(32,32)，centered=true 自动对齐旋转中心
                 _turret.Offset = Vector2.Zero;
                 _turret.Scale = Vector2.One;
             }
-            _turret.Modulate = Colors.White; // PNG 自带队伍色
-            _turretTint = Colors.White;
+            _turret.Modulate = teamColor; // 灰底炮塔染色
+            _turretTint = teamColor;
         }
-        else
-        {
-            // 矿车用 Modulate 着色（PNG 为灰色调）
-            _body.Modulate = TeamId == 0
-                ? new Color(0.9f, 0.8f, 0.2f)
-                : new Color(0.9f, 0.5f, 0.2f);
-            _bodyTint = _body.Modulate;
-        }
+        // 矿车：底盘染色统一走 teamColor，无需分支
     }
 
     public sealed override void _Process(double delta)

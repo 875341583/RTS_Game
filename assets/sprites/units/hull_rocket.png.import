@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cy4rxtmkpjaew"
-path="res://.godot/imported/tankGreen_barrel2.png-c5199a01be25a753e4841439cac58d99.ctex"
+uid="uid://cwm8b8bwrbs21"
+path="res://.godot/imported/hull_rocket.png-70f0c8587c18a442ece58b1b712c6abe.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/units/tankGreen_barrel2.png"
-dest_files=["res://.godot/imported/tankGreen_barrel2.png-c5199a01be25a753e4841439cac58d99.ctex"]
+source_file="res://assets/sprites/units/hull_rocket.png"
+dest_files=["res://.godot/imported/hull_rocket.png-70f0c8587c18a442ece58b1b712c6abe.ctex"]
 
 [params]
 

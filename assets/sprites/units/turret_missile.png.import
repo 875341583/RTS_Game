@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bwn50tbov58o2"
-path="res://.godot/imported/tankBlue_barrel1.png-bf01e1df3c5d971c738f218ee6a61e13.ctex"
+uid="uid://s4qjmqwrqatg"
+path="res://.godot/imported/turret_missile.png-777728b4e1724babfb2db6ff359d81d6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/units/tankBlue_barrel1.png"
-dest_files=["res://.godot/imported/tankBlue_barrel1.png-bf01e1df3c5d971c738f218ee6a61e13.ctex"]
+source_file="res://assets/sprites/units/turret_missile.png"
+dest_files=["res://.godot/imported/turret_missile.png-777728b4e1724babfb2db6ff359d81d6.ctex"]
 
 [params]
 

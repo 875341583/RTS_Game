@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cjw5oers6v8ug"
-path="res://.godot/imported/tankBody_dark.png-fef2b6808b83142c94f31128a7e03718.ctex"
+uid="uid://c8oywy281l4s8"
+path="res://.godot/imported/hull_missile.png-a27595eeb4d41cdbcb401ba809f60f9d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/units/tankBody_dark.png"
-dest_files=["res://.godot/imported/tankBody_dark.png-fef2b6808b83142c94f31128a7e03718.ctex"]
+source_file="res://assets/sprites/units/hull_missile.png"
+dest_files=["res://.godot/imported/hull_missile.png-a27595eeb4d41cdbcb401ba809f60f9d.ctex"]
 
 [params]
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace RTSGame;
@@ -38,7 +39,15 @@ public partial class Main : Node2D
     private Vector2 _dragStart;
 
     // 资金
-    private readonly int[] _money = { 2500, 2000 };
+    /// <summary>玩家阵营固定为 0；阵营 1..(AiTeamCount) 为 AI 阵营。总阵营数 = AiTeamCount + 1。</summary>
+    private const int AiTeamCount = 7;
+    /// <summary>总阵营数（8）。与 Unit.TeamPalette 长度对应。</summary>
+    private const int TotalTeamCount = 8;
+    /// <summary>玩家阵营 ID 固定为 0。</summary>
+    private const int PlayerTeamId = 0;
+
+    // 资金：玩家 2500，每个 AI 2000
+    private readonly int[] _money = new int[TotalTeamCount] { 2500, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };
     private const int LightTankCost = 200;
     private const int HeavyTankCost = 500;
     private const int ArtilleryCost = 400;
@@ -57,14 +66,19 @@ public partial class Main : Node2D
     private PackedScene _buildingScene = null!;
     private PackedScene _oreScene = null!;
 
-    // 基地引用
-    private Building _blueBase = null!;
-    private Building _redBase = null!;
+    // 基地引用（8 阵营）
+    private readonly Dictionary<int, Building> _bases = new();
+    /// <summary>获取玩家基地（兼容旧引用）。</summary>
+    private Building? PlayerBase => _bases.GetValueOrDefault(PlayerTeamId);
+    /// <summary>获取所有 AI 阵营 ID。</summary>
+    private static IEnumerable<int> AiTeamIds => Enumerable.Range(1, AiTeamCount);
 
     // 红方 AI 节奏
     private float _enemyThinkTimer = 8f;
     private float _blueAITimer = 6f;
     private int _blueCaptureCounter;
+    // 8 阵营 AI 占领战略点计时器（key=teamId，value=计数）
+    private readonly Dictionary<int, int> _aiCaptureCounters = new();
     private float _debugTimer = 10f;
     private bool _gameOver;
     private float _gameOverDelay = -1f; // >0 = 等待显示结束UI
@@ -82,8 +96,8 @@ public partial class Main : Node2D
     private int _playerTechLevel = 3;
     public bool StrategicPointIncomeEnabled { get; private set; } = true;
     private string _gameResult = "";
-    private int _blueBuildIndex = 0;
-    private int _redBuildIndex = 0;
+    // 每个阵营的建筑索引（生成环形布局用）
+    private readonly Dictionary<int, int> _buildIndices = new();
     private BuildPanel _buildPanel = null!;
     private Minimap _minimap = null!;
     private BuildingType? _placementMode;
@@ -138,30 +152,52 @@ public partial class Main : Node2D
         // Q4：地面纹理（草地+道路+泥地）
         CreateGround();
 
-        // ---- 初始化地图 ----
-        // 蓝方基地 + 初始单位（3 辆坦克防御）
-        _blueBase = SpawnBuilding(BuildingType.Base, new Vector2(200, 200), teamId: 0);
-        SpawnHarvester(new Vector2(160, 270), teamId: 0, home: _blueBase);
-        SpawnHarvester(new Vector2(250, 270), teamId: 0, home: _blueBase);
-        SpawnHarvester(new Vector2(195, 310), teamId: 0, home: _blueBase);
-        SpawnUnit(UnitType.LightTank, new Vector2(300, 180), teamId: 0, autoAI: false);
-        SpawnUnit(UnitType.HeavyTank, new Vector2(330, 220), teamId: 0, autoAI: false);
-        SpawnUnit(UnitType.LightTank, new Vector2(280, 260), teamId: 0, autoAI: false);
+        // ---- 初始化 8 阵营 ----
+        // 阵营起始位置：玩家=Team0 在地图左上角；7 个 AI 围绕地图边缘均匀分布
+        // 地图 2000×2000，各基地放在距边缘 200 的位置
+        var teamStartPositions = new Vector2[TotalTeamCount]
+        {
+            new(200, 200),     // 0 玩家（左上角）
+            new(1800, 1800),   // 1 AI（右下角，原红方位）
+            new(1800, 200),    // 2 AI（右上角）
+            new(200, 1800),    // 3 AI（左下角）
+            new(1000, 200),    // 4 AI（顶部中央）
+            new(1000, 1800),   // 5 AI（底部中央）
+            new(200, 1000),    // 6 AI（左侧中央）
+            new(1800, 1000),   // 7 AI（右侧中央）
+        };
 
-        // 红方基地 + 初始单位（混合兵种，全部 AutoAI）
-        _redBase = SpawnBuilding(BuildingType.Base, new Vector2(1800, 1800), teamId: 1);
-        for (int i = 0; i < _aiStartHarvesters; i++)
-            SpawnHarvester(_redBase.GlobalPosition + new Vector2(-40 + i * 40, 70), teamId: 1, home: _redBase);
-        SpawnUnit(UnitType.HeavyTank, new Vector2(1700, 1780), teamId: 1, autoAI: true);
-        SpawnUnit(UnitType.LightTank, new Vector2(1730, 1820), teamId: 1, autoAI: true);
+        for (int teamId = 0; teamId < TotalTeamCount; teamId++)
+        {
+            var basePos = teamStartPositions[teamId];
+            var baseBuilding = SpawnBuilding(BuildingType.Base, basePos, teamId);
+            _bases[teamId] = baseBuilding;
 
-        // 散布矿点（分三层：近矿800/中场1200/中央高价值2000）
-        // 蓝方近矿（安全区起步）
-        SpawnOre(new Vector2(400, 450), 800);
-        SpawnOre(new Vector2(550, 650), 800);
-        // 红方近矿
-        SpawnOre(new Vector2(1550, 1400), 800);
-        SpawnOre(new Vector2(1450, 1350), 800);
+            if (teamId == PlayerTeamId)
+            {
+                // 玩家方：3 矿车起步，2 坦克 1 重坦 1 轻坦（玩家手动操控）
+                SpawnHarvester(basePos + new Vector2(-40, 70), teamId, baseBuilding);
+                SpawnHarvester(basePos + new Vector2(50, 70), teamId, baseBuilding);
+                SpawnHarvester(basePos + new Vector2(0, 110), teamId, baseBuilding);
+                SpawnUnit(UnitType.LightTank, basePos + new Vector2(100, -20), teamId, autoAI: false);
+                SpawnUnit(UnitType.HeavyTank, basePos + new Vector2(130, 20), teamId, autoAI: false);
+                SpawnUnit(UnitType.LightTank, basePos + new Vector2(80, 60), teamId, autoAI: false);
+            }
+            else
+            {
+                // AI 方：N 矿车起步 + 1 重坦 1 轻坦（开放 AutoAI 互相战斗）
+                for (int i = 0; i < _aiStartHarvesters; i++)
+                    SpawnHarvester(basePos + new Vector2(-40 + i * 40, 70), teamId, baseBuilding);
+                SpawnUnit(UnitType.HeavyTank, basePos + new Vector2(-100, -20), teamId, autoAI: true);
+                SpawnUnit(UnitType.LightTank, basePos + new Vector2(-130, 20), teamId, autoAI: true);
+            }
+
+            // 每个阵营基地附近自动生成 2 个近矿（800 资源）保证起步经济
+            SpawnOre(basePos + new Vector2(200, 150), 800);
+            SpawnOre(basePos + new Vector2(250, 350), 800);
+        }
+
+        // 散布中场争夺矿 + 中央高价值矿（保留原地图设计）
         // 中场争夺矿
         SpawnOre(new Vector2(700, 1100), 1200);
         SpawnOre(new Vector2(1300, 900), 1200);
@@ -270,8 +306,9 @@ public partial class Main : Node2D
         }
         _enemyThinkTimer = _aiThinkInterval;
         _money[0] = _blueStartMoney;
-        _money[1] = _aiStartMoney;
-        GD.Print($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 蓝方${_blueStartMoney} 红方${_aiStartMoney} | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled}");
+        for (int t = 1; t <= AiTeamCount; t++)
+            _money[t] = _aiStartMoney;
+        GD.Print($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney}(x7) | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled}");
     }
 
     public override void _Input(InputEvent @event)
@@ -489,13 +526,14 @@ public partial class Main : Node2D
         if (Input.IsActionJustPressed("spawn_rocket")) TrySpawnUnit(UnitType.RocketLauncher, RocketLauncherCost);
         if (Input.IsActionJustPressed("spawn_missile")) TrySpawnUnit(UnitType.MissileTank, MissileTankCost);
 
-        // 红方自动 AI 节奏
+        // AI 阵营节奏：每个 AI 阵营（1..7）独立 Tick
         if (!_gameOver)
         {
             _enemyThinkTimer -= dt;
             if (_enemyThinkTimer <= 0f)
             {
-                EnemyAITick();
+                for (int t = 1; t <= AiTeamCount; t++)
+                    AITickForTeam(t);
                 _enemyThinkTimer = _aiThinkInterval;
             }
         }
@@ -558,7 +596,14 @@ public partial class Main : Node2D
         if (_debugTimer <= 0f)
         {
             _debugTimer = 5f;
-            GD.Print($"[Status] Blue: ${_money[0]} | {CountUnitsOfTeam(0)} units / {CountBuildingsOfTeam(0)} buildings | Red: ${_money[1]} | {CountUnitsOfTeam(1)} units / {CountBuildingsOfTeam(1)} buildings");
+            // 8阵营状态汇总输出（玩家方 + AI 合计）
+            int aiUnits = 0, aiBld = 0;
+            for (int t = 1; t <= AiTeamCount; t++)
+            {
+                aiUnits += CountUnitsOfTeam(t);
+                aiBld += CountBuildingsOfTeam(t);
+            }
+            GD.Print($"[Status] Player: ${_money[0]} | {CountUnitsOfTeam(0)} units / {CountBuildingsOfTeam(0)} buildings | AI(1-7) total: units={aiUnits} / buildings={aiBld}");
         }
 
         CheckWinCondition();
@@ -704,11 +749,13 @@ public partial class Main : Node2D
 
     private Vector2 GetBuildPosition(int teamId)
     {
-        var baseBuilding = teamId == 0 ? _blueBase : _redBase;
-        if (baseBuilding == null || !IsInstanceValid(baseBuilding))
+        if (!_bases.TryGetValue(teamId, out var baseBuilding) || baseBuilding == null || !IsInstanceValid(baseBuilding))
             return new Vector2(500, 500);
 
-        int idx = teamId == 0 ? _blueBuildIndex++ : _redBuildIndex++;
+        // 每个 teamId 独立计数环形位置
+        if (!_buildIndices.TryGetValue(teamId, out int idx)) idx = 0;
+        _buildIndices[teamId] = idx + 1;
+
         int ring = idx / 4;
         int side = idx % 4;
         float radius = 120 + ring * 90;
@@ -719,7 +766,8 @@ public partial class Main : Node2D
             2 => new Vector2(-radius, 0),
             _ => new Vector2(0, -radius)
         };
-        if (teamId == 1)
+        // AI 阵营反向环形布局（朝地图内侧生长，避免偏出地图）
+        if (teamId != PlayerTeamId)
             offset = new Vector2(-offset.X, -offset.Y);
         return baseBuilding.GlobalPosition + offset;
     }
@@ -854,8 +902,7 @@ public partial class Main : Node2D
 
     private void AIBuildLogic(int teamId)
     {
-        var baseB = teamId == 0 ? _blueBase : _redBase;
-        if (baseB == null || !IsInstanceValid(baseB)) return;
+        if (!_bases.TryGetValue(teamId, out var baseB) || baseB == null || !IsInstanceValid(baseB)) return;
 
         int power = GetTeamPower(teamId);
         bool hasPower = HasBuilding(teamId, BuildingType.PowerPlant);
@@ -917,25 +964,29 @@ public partial class Main : Node2D
         }
     }
 
-    private void EnemyAITick()
+    /// <summary>AI 阵营 Tick：在每个 _aiThinkInterval 周期内为每个 AI 阵营独立调用。</summary>
+    private void AITickForTeam(int teamId)
     {
-        // 0. 建筑建造优先
-        AIBuildLogic(1);
+        // 0. 该阵营基地已灭则跳过
+        if (!_bases.TryGetValue(teamId, out var teamBase) || !IsInstanceValid(teamBase)) return;
 
-        bool savingForTech = HasBuilding(1, BuildingType.WarFactory) && !HasBuilding(1, BuildingType.TechCenter);
+        // 0. 建筑建造优先
+        AIBuildLogic(teamId);
+
+        bool savingForTech = HasBuilding(teamId, BuildingType.WarFactory) && !HasBuilding(teamId, BuildingType.TechCenter);
 
         // 1. 自动造兵（检查建筑前置 + 电力，不超过上限）
-        var enemyUnits = CountUnitsOfTeam(1);
-        int enemyQueued = CountQueuedUnitsOfTeam(1);
-        if (!savingForTech && enemyUnits + enemyQueued < _unitCap && GetTeamPower(1) >= 0)
+        var teamUnits = CountUnitsOfTeam(teamId);
+        int teamQueued = CountQueuedUnitsOfTeam(teamId);
+        if (!savingForTech && teamUnits + teamQueued < _unitCap && GetTeamPower(teamId) >= 0)
         {
             // 有科技中心时攒钱优先造高级兵种
-            bool hasTech = HasBuilding(1, BuildingType.TechCenter);
-            if (!(hasTech && _money[1] < RocketLauncherCost && enemyUnits >= 3))
+            bool hasTech = HasBuilding(teamId, BuildingType.TechCenter);
+            if (!(hasTech && _money[teamId] < RocketLauncherCost && teamUnits >= 3))
             {
                 var types = new List<UnitType>();
-                if (HasBuilding(1, BuildingType.Barracks)) types.Add(UnitType.LightTank);
-                if (HasBuilding(1, BuildingType.WarFactory))
+                if (HasBuilding(teamId, BuildingType.Barracks)) types.Add(UnitType.LightTank);
+                if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
                     types.Add(UnitType.HeavyTank);
                     types.Add(UnitType.Artillery);
@@ -951,14 +1002,14 @@ public partial class Main : Node2D
                     foreach (var t in types)
                     {
                         int c = GetUnitCost(t);
-                        if (_money[1] >= c)
+                        if (_money[teamId] >= c)
                         {
-                            var producer = FindProducerForUnit(t, 1);
+                            var producer = FindProducerForUnit(t, teamId);
                             if (producer != null)
                             {
-                                _money[1] -= c;
+                                _money[teamId] -= c;
                                 producer.EnqueueProduction(UnitTypeToProductionType(t));
-                                GD.Print($"[AI] Red queued {t}, ${_money[1]} left, {producer.BuildingName}队列{producer.QueueCount}");
+                                GD.Print($"[AI] Team {teamId} queued {t}, ${_money[teamId]} left, {producer.BuildingName}队列{producer.QueueCount}");
                                 break;
                             }
                         }
@@ -968,14 +1019,27 @@ public partial class Main : Node2D
         }
 
         // 2. 矿车耗损自动补充（最多 3 辆）
-        var enemyHarvesters = CountHarvestersOfTeam(1);
-        if (_money[1] >= HarvesterCost && enemyHarvesters < 3)
+        var teamHarvesters = CountHarvestersOfTeam(teamId);
+        if (_money[teamId] >= HarvesterCost && teamHarvesters < 3)
         {
-            var harvProducer = FindProducerBuilding(BuildingType.Base, 1);
+            var harvProducer = FindProducerBuilding(BuildingType.Base, teamId);
             if (harvProducer != null)
             {
-                _money[1] -= HarvesterCost;
+                _money[teamId] -= HarvesterCost;
                 harvProducer.EnqueueProduction(ProductionType.Harvester);
+            }
+        }
+
+        // 3. 占领战略点
+        if (_aiCapturesPoints)
+        {
+            if (!_aiCaptureCounters.TryGetValue(teamId, out int cap))
+                _aiCaptureCounters[teamId] = 0;
+            _aiCaptureCounters[teamId]++;
+            if (_aiCaptureCounters[teamId] >= 3)
+            {
+                _aiCaptureCounters[teamId] = 0;
+                AITryCaptureStrategicPoint(teamId);
             }
         }
     }
@@ -1254,7 +1318,11 @@ public partial class Main : Node2D
         if (!IsInstanceValid(producer)) return;
         int teamId = producer.TeamId;
         Vector2 spawnPos = producer.GlobalPosition;
-        Vector2 offset = teamId == 0 ? new Vector2(0, 80) : new Vector2(0, -80);
+        // 出兵方向：朝地图中心（任意非玩家阵营也按统一规则，避免 AI 反向偏出地图）
+        Vector2 mapCenter = new(1000, 1000);
+        Vector2 dir = (mapCenter - spawnPos).Normalized();
+        if (dir == Vector2.Zero) dir = new Vector2(0, 1);
+        Vector2 offset = dir * 90f;
 
         if (type == ProductionType.Harvester)
         {
@@ -1266,7 +1334,8 @@ public partial class Main : Node2D
         else
         {
             var unitType = ProductionTypeToUnitType(type);
-            bool autoAI = teamId == 1;
+            // 玩家(0)保留手动操控；任何 AI 阵营(1..7)都开放 AutoAI
+            bool autoAI = teamId != PlayerTeamId;
             var unit = SpawnUnit(unitType, spawnPos + offset, teamId, autoAI);
             // G2：集结点 —— 新单位自动移动过去
             if (producer.RallyPoint.HasValue)
@@ -1576,22 +1645,32 @@ public partial class Main : Node2D
     private void CheckWinCondition()
     {
         if (_gameOver) return;
-        int blueUnits = CountUnitsOfTeam(0);
-        int blueBuildings = CountBuildingsOfTeam(0);
-        int redUnits = CountUnitsOfTeam(1);
-        int redBuildings = CountBuildingsOfTeam(1);
+        int playerUnits = CountUnitsOfTeam(PlayerTeamId);
+        int playerBuildings = CountBuildingsOfTeam(PlayerTeamId);
 
-        // 简单胜利条件：所有建筑被摧毁且没有单位
-        if (blueBuildings == 0 && blueUnits == 0)
+        // 玩家方全灭 = 失败
+        if (playerBuildings == 0 && playerUnits == 0)
         {
             _gameOver = true;
             _gameResult = "失败！你的基地被摧毁了。";
             _gameOverDelay = 2f;
+            return;
         }
-        else if (redBuildings == 0 && redUnits == 0)
+
+        // 所有 AI 阵营全灭 = 胜利
+        bool anyAiAlive = false;
+        for (int t = 1; t <= AiTeamCount; t++)
+        {
+            if (CountUnitsOfTeam(t) > 0 || CountBuildingsOfTeam(t) > 0)
+            {
+                anyAiAlive = true;
+                break;
+            }
+        }
+        if (!anyAiAlive)
         {
             _gameOver = true;
-            _gameResult = "胜利！敌方已被全部消灭。";
+            _gameResult = "胜利！所有敌方阵营已被全部消灭。";
             _gameOverDelay = 2f;
         }
     }
@@ -1728,23 +1807,29 @@ public partial class Main : Node2D
     // ---------- UI ----------
     private void UpdateUI()
     {
-        int blueUnits = CountUnitsOfTeam(0);
-        int redUnits = CountUnitsOfTeam(1);
-        int bluePower = GetTeamPower(0);
-        int redPower = GetTeamPower(1);
+        int playerUnits = CountUnitsOfTeam(PlayerTeamId);
+        int playerPower = GetTeamPower(PlayerTeamId);
         int oreCount = 0;
         foreach (var c in _resourcesNode.GetChildren())
             if (c is ResourceNode && IsInstanceValid((Node)c)) oreCount++;
 
-        string blueBuildings = GetBuildingList(0);
-        string redBuildings = GetBuildingList(1);
-        string powerWarn = bluePower < 0 ? "  [电力不足!]" : "";
+        string playerBuildings = GetBuildingList(PlayerTeamId);
+        string powerWarn = playerPower < 0 ? "  [电力不足!]" : "";
 
-        string status = _gameOver ? _gameResult : "目标：摧毁敌方所有建筑和单位即可获胜";
-        _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    敌方资金: ${_money[1]}\n" +
-                        $"电力: {bluePower}{powerWarn}    |    敌方电力: {redPower}\n" +
-                        $"蓝方: {blueUnits} 单位 / {blueBuildings}  · " +
-                        $"红方: {redUnits} 单位 / {redBuildings}\n" +
+        // 汇总 7 个 AI 阵营（总单位、总资金、总电力）
+        int aiTotalUnits = 0, aiTotalMoney = 0, aiTotalPower = 0;
+        for (int t = 1; t <= AiTeamCount; t++)
+        {
+            aiTotalUnits += CountUnitsOfTeam(t);
+            aiTotalMoney += _money[t];
+            aiTotalPower += GetTeamPower(t);
+        }
+
+        string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
+        _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}\n" +
+                        $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
+                        $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
+                        $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
                         $"地图剩余矿点: {oreCount}\n" +
                         (string.IsNullOrEmpty(status) ? "" : $"\n★ {status}");
 

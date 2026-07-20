@@ -113,10 +113,8 @@ public partial class Building : Area2D
         _healthBar.Value = Health;
         _healthBar.Visible = false;
 
-        // 轻微色调区分队伍，保留 PNG 自身细节
-        _teamTint = TeamId == 0
-            ? new Color(0.85f, 0.9f, 1.0f)   // 蓝方：极轻微冷色偏蓝
-            : new Color(1.0f, 0.88f, 0.85f);  // 红方：极轻微暖色偏红
+        // 8阵营色染色：向白色混合55%，让8色明显区分同时保留建筑手绘细节
+        _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.55f);
         _body.Modulate = _teamTint;
     }
 

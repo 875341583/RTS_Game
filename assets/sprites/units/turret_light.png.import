@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dgxrj5217kcbg"
-path="res://.godot/imported/tankRed_barrel3.png-e35ea9718868ca1fc4709f473a6fd115.ctex"
+uid="uid://c3r1aqs10kwt7"
+path="res://.godot/imported/turret_light.png-6045ab04e2b0ba50332690e12bdab5b5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/units/tankRed_barrel3.png"
-dest_files=["res://.godot/imported/tankRed_barrel3.png-e35ea9718868ca1fc4709f473a6fd115.ctex"]
+source_file="res://assets/sprites/units/turret_light.png"
+dest_files=["res://.godot/imported/turret_light.png-6045ab04e2b0ba50332690e12bdab5b5.ctex"]
 
 [params]
 

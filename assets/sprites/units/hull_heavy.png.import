@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c6b4mmgfhv0hc"
-path="res://.godot/imported/harvester_alt.png-67e53a23638d01de2b6c97b0224943b2.ctex"
+uid="uid://cgxjtmde56e7w"
+path="res://.godot/imported/hull_heavy.png-bbb77ef171e7e32fcdb3c6ae34d244ce.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/units/harvester_alt.png"
-dest_files=["res://.godot/imported/harvester_alt.png-67e53a23638d01de2b6c97b0224943b2.ctex"]
+source_file="res://assets/sprites/units/hull_heavy.png"
+dest_files=["res://.godot/imported/hull_heavy.png-bbb77ef171e7e32fcdb3c6ae34d244ce.ctex"]
 
 [params]
 

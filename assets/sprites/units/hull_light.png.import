@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cyv8rxbkolley"
-path="res://.godot/imported/tankSand_barrel3.png-642aa7cd952f2960b35bf5e60b90add8.ctex"
+uid="uid://daoujffoyv056"
+path="res://.godot/imported/hull_light.png-44ff2f56ef696e9a9179e6825a86216e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/units/tankSand_barrel3.png"
-dest_files=["res://.godot/imported/tankSand_barrel3.png-642aa7cd952f2960b35bf5e60b90add8.ctex"]
+source_file="res://assets/sprites/units/hull_light.png"
+dest_files=["res://.godot/imported/hull_light.png-44ff2f56ef696e9a9179e6825a86216e.ctex"]
 
 [params]
 
