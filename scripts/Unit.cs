@@ -71,17 +71,17 @@ public partial class Unit : CharacterBody2D
     private const float SpriteRotationOffset = 0f;
 
     // ---- 8阵营色调色板（灰底素材用 Modulate 染色）----
-    /// <summary>8阵营色（红警2原版多人配色）。索引=TeamId。超出范围取模。</summary>
+    /// <summary>8阵营色（基于红警2原版8色，明度/色相优化辨识度）。索引=TeamId。超出范围取模。</summary>
     private static readonly Color[] TeamPalette =
     {
-        new(0.784f, 0.196f, 0.196f), // 0 Red
-        new(0.196f, 0.314f, 0.784f), // 1 Blue
-        new(0.196f, 0.706f, 0.314f), // 2 Green
-        new(0.863f, 0.784f, 0.196f), // 3 Yellow
-        new(0.863f, 0.392f, 0.706f), // 4 Pink
-        new(0.549f, 0.235f, 0.784f), // 5 Purple
-        new(0.863f, 0.471f, 0.157f), // 6 Orange
-        new(0.157f, 0.706f, 0.784f), // 7 Cyan
+        new(0.82f, 0.16f, 0.16f), // 0 Red   纯红
+        new(0.16f, 0.32f, 0.82f), // 1 Blue  深蓝
+        new(0.18f, 0.78f, 0.22f), // 2 Green 纯绿（亮）
+        new(0.95f, 0.82f, 0.18f), // 3 Yellow 明黄
+        new(0.95f, 0.42f, 0.78f), // 4 Pink  亮粉（明度高）
+        new(0.44f, 0.18f, 0.72f), // 5 Purple 深紫（明度低）
+        new(0.95f, 0.51f, 0.12f), // 6 Orange 亮橙
+        new(0.14f, 0.62f, 0.88f), // 7 Cyan  偏蓝青（与2纯绿拉大色相差）
     };
 
     /// <summary>获取 TeamId 对应的阵营色。</summary>

@@ -113,8 +113,8 @@ public partial class Building : Area2D
         _healthBar.Value = Health;
         _healthBar.Visible = false;
 
-        // 8阵营色染色：向白色混合55%，让8色明显区分同时保留建筑手绘细节
-        _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.55f);
+        // 8阵营色染色：向白色混合30%，让阵营色占主体（75%），8色强烈区分同时保留建筑手绘明暗细节
+        _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
         _body.Modulate = _teamTint;
     }
 

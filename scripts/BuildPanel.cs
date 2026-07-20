@@ -57,9 +57,9 @@ public partial class BuildPanel : Control
 
     private const float W = 232f;
 
-    // 图标
-    private static ImageTexture? _iPower, _iBarracks, _iWar, _iTech;
-    private static ImageTexture? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv;
+    // 图标（直接使用游戏 PNG 素材）
+    private static Texture2D? _iPower, _iBarracks, _iWar, _iTech;
+    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -177,11 +177,16 @@ public partial class BuildPanel : Control
 
         var iconRect = new TextureRect();
         iconRect.Texture = icon;
-        iconRect.CustomMinimumSize = new Vector2(48, 40);
+        iconRect.CustomMinimumSize = new Vector2(56, 46);
         iconRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-        iconRect.StretchMode = TextureRect.StretchModeEnum.Scale;
+        iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
         iconRect.SizeFlagsHorizontal = SizeFlags.Fill;
         iconRect.MouseFilter = MouseFilterEnum.Pass;
+        // 建筑PNG原图显示（已带金属色），单位灰底PNG染色为玩家阵营色
+        if (!isBuilding && !harv && icon != null)
+            iconRect.Modulate = Unit.GetTeamColor(0); // 玩家方阵营色
+        else if (harv && icon != null)
+            iconRect.Modulate = Unit.GetTeamColor(0); // 矿车也染玩家色
         vbox.AddChild(iconRect);
 
         var nameLabel = new Label();
@@ -412,165 +417,32 @@ public partial class BuildPanel : Control
         };
     }
 
-    // ---------- 图标生成 ----------
-    private static void EnsureIcons()
+    // ---------- 图标加载（使用真实 PNG 素材） ----------
+    private void EnsureIcons()
     {
         if (_iPower != null) return;
 
-        _iPower = MakeIcon(48, 42, (img) =>
-        {
-            FillRect(img, 8, 6, 32, 30, new Color(0.3f, 0.3f, 0.35f));
-            FillRect(img, 12, 10, 24, 22, new Color(0.45f, 0.45f, 0.5f));
-            // 闪电符号
-            DrawLine(img, 22, 12, 17, 22, new Color(1f, 0.85f, 0.2f));
-            DrawLine(img, 17, 22, 24, 22, new Color(1f, 0.85f, 0.2f));
-            DrawLine(img, 24, 22, 19, 32, new Color(1f, 0.85f, 0.2f));
-        });
+        // 建筑PNG原图显示（已带金属/水泥色，玩家所见即所得）
+        _iPower    = LoadPng("res://assets/sprites/buildings/powerplant.png");
+        _iBarracks = LoadPng("res://assets/sprites/buildings/barracks.png");
+        _iWar      = LoadPng("res://assets/sprites/buildings/warfactory.png");
+        _iTech     = LoadPng("res://assets/sprites/buildings/techcenter.png");
 
-        _iBarracks = MakeIcon(48, 42, (img) =>
-        {
-            FillRect(img, 10, 14, 28, 24, new Color(0.3f, 0.45f, 0.3f));
-            // 盾牌
-            for (int x = 0; x < 48; x++)
-                for (int y = 0; y < 42; y++)
-                {
-                    float dx = x - 24, dy = y - 20;
-                    if (dx * dx + (dy - 2) * (dy - 2) * 1.3f < 64 && dy < 8)
-                        img.SetPixel(x, y, new Color(0.5f, 0.8f, 0.5f));
-                }
-        });
-
-        _iWar = MakeIcon(48, 42, (img) =>
-        {
-            FillRect(img, 8, 8, 32, 30, new Color(0.4f, 0.3f, 0.2f));
-            // 齿轮
-            for (int x = 0; x < 48; x++)
-                for (int y = 0; y < 42; y++)
-                {
-                    float dx = x - 24, dy = y - 21;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    if (d < 12 && d > 7)
-                        img.SetPixel(x, y, new Color(0.8f, 0.6f, 0.3f));
-                    else if (d <= 5)
-                        img.SetPixel(x, y, new Color(0.6f, 0.45f, 0.25f));
-                }
-        });
-
-        _iTech = MakeIcon(48, 42, (img) =>
-        {
-            // 六边形
-            for (int x = 0; x < 48; x++)
-                for (int y = 0; y < 42; y++)
-                {
-                    float dx = Mathf.Abs(x - 24), dy = Mathf.Abs(y - 21);
-                    if (dx < 14 && dy < 12 && dx * 0.5f + dy < 14)
-                        img.SetPixel(x, y, new Color(0.4f, 0.2f, 0.55f));
-                }
-            // 原子轨道
-            for (int x = 0; x < 48; x++)
-                for (int y = 0; y < 42; y++)
-                {
-                    float dx = x - 24, dy = (y - 21) * 1.4f;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    if (d > 8 && d < 10)
-                        img.SetPixel(x, y, new Color(0.7f, 0.5f, 0.9f));
-                }
-        });
-
-        _iLight = MakeIcon(48, 42, (img) =>
-        {
-            // 小三角坦克(蓝)
-            FillRect(img, 16, 24, 16, 8, new Color(0.2f, 0.2f, 0.25f)); // 履带
-            FillRect(img, 18, 16, 12, 10, new Color(0.25f, 0.45f, 0.7f)); // 车身
-            FillRect(img, 23, 10, 4, 8, new Color(0.3f, 0.5f, 0.8f)); // 炮塔
-            DrawLine(img, 25, 8, 25, 2, new Color(0.35f, 0.55f, 0.85f)); // 炮管
-        });
-
-        _iHeavy = MakeIcon(48, 42, (img) =>
-        {
-            // 大方块坦克(深蓝)
-            FillRect(img, 12, 24, 24, 9, new Color(0.15f, 0.15f, 0.2f));
-            FillRect(img, 14, 14, 20, 12, new Color(0.18f, 0.28f, 0.5f));
-            FillRect(img, 18, 8, 12, 8, new Color(0.22f, 0.34f, 0.58f));
-            DrawLine(img, 24, 8, 24, 0, new Color(0.28f, 0.4f, 0.62f)); // 粗炮管
-            DrawLine(img, 23, 8, 23, 0, new Color(0.28f, 0.4f, 0.62f));
-        });
-
-        _iArt = MakeIcon(48, 42, (img) =>
-        {
-            // 长管炮兵(青)
-            FillRect(img, 14, 26, 20, 8, new Color(0.15f, 0.15f, 0.18f));
-            FillRect(img, 16, 18, 16, 10, new Color(0.2f, 0.45f, 0.45f));
-            DrawLine(img, 24, 16, 38, 4, new Color(0.3f, 0.6f, 0.6f)); // 长炮管
-            DrawLine(img, 25, 17, 39, 5, new Color(0.3f, 0.6f, 0.6f));
-        });
-
-        _iRocket = MakeIcon(48, 42, (img) =>
-        {
-            // 多管火箭炮(绿)
-            FillRect(img, 12, 26, 24, 8, new Color(0.15f, 0.18f, 0.12f));
-            FillRect(img, 14, 18, 20, 10, new Color(0.25f, 0.4f, 0.2f));
-            for (int i = 0; i < 4; i++)
-                DrawLine(img, 16 + i * 5, 16, 16 + i * 5, 4, new Color(0.4f, 0.7f, 0.3f));
-        });
-
-        _iMissile = MakeIcon(48, 42, (img) =>
-        {
-            // 导弹车(紫)
-            FillRect(img, 12, 26, 24, 8, new Color(0.15f, 0.12f, 0.18f));
-            FillRect(img, 14, 16, 20, 12, new Color(0.35f, 0.2f, 0.45f));
-            // 尖头导弹
-            DrawLine(img, 24, 16, 24, 2, new Color(0.6f, 0.4f, 0.8f));
-            DrawLine(img, 23, 16, 21, 4, new Color(0.6f, 0.4f, 0.8f));
-            DrawLine(img, 25, 16, 27, 4, new Color(0.6f, 0.4f, 0.8f));
-        });
-
-        _iHarv = MakeIcon(48, 42, (img) =>
-        {
-            // 矿车(黄)
-            FillRect(img, 12, 24, 24, 10, new Color(0.2f, 0.18f, 0.1f));
-            FillRect(img, 14, 14, 20, 12, new Color(0.55f, 0.45f, 0.15f));
-            // 矿铲
-            DrawLine(img, 12, 24, 8, 30, new Color(0.7f, 0.6f, 0.2f));
-            DrawLine(img, 11, 24, 7, 30, new Color(0.7f, 0.6f, 0.2f));
-            DrawLine(img, 12, 30, 6, 34, new Color(0.7f, 0.6f, 0.2f));
-        });
+        // 灰底单位PNG，AddItem 时会染色为玩家阵营色
+        _iLight  = LoadPng("res://assets/sprites/units/hull_light.png");
+        _iHeavy  = LoadPng("res://assets/sprites/units/hull_heavy.png");
+        _iArt    = LoadPng("res://assets/sprites/units/hull_arty.png");
+        _iRocket = LoadPng("res://assets/sprites/units/hull_rocket.png");
+        _iMissile= LoadPng("res://assets/sprites/units/hull_missile.png");
+        _iHarv   = LoadPng("res://assets/sprites/units/harvester.png");
     }
 
-    private delegate void DrawAction(Image img);
-    private static ImageTexture MakeIcon(int w, int h, DrawAction draw)
+    /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>
+    private static Texture2D? LoadPng(string path)
     {
-        var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
-        img.Fill(new Color(0, 0, 0, 0));
-        draw(img);
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    private static void FillRect(Image img, int x, int y, int w, int h, Color c)
-    {
-        for (int i = 0; i < w; i++)
-            for (int j = 0; j < h; j++)
-            {
-                int px = x + i, py = y + j;
-                if (px >= 0 && px < img.GetWidth() && py >= 0 && py < img.GetHeight())
-                    img.SetPixel(px, py, c);
-            }
-    }
-
-    private static void DrawLine(Image img, int x0, int y0, int x1, int y1, Color c)
-    {
-        int dx = Mathf.Abs(x1 - x0), dy = Mathf.Abs(y1 - y0);
-        int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
-        int err = dx - dy;
-        int x = x0, y = y0;
-        while (true)
-        {
-            if (x >= 0 && x < img.GetWidth() && y >= 0 && y < img.GetHeight())
-                img.SetPixel(x, y, c);
-            if (x == x1 && y == y1) break;
-            int e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; x += sx; }
-            if (e2 < dx) { err += dx; y += sy; }
-        }
+        var tex = GD.Load<Texture2D>(path);
+        if (tex == null)
+            GD.PrintErr($"[BuildPanel] Failed to load icon: {path}");
+        return tex;
     }
 }

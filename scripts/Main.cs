@@ -101,6 +101,8 @@ public partial class Main : Node2D
     private BuildPanel _buildPanel = null!;
     private Minimap _minimap = null!;
     private BuildingType? _placementMode;
+    private bool _f12ShotDown = false; // F12 截图按键状态（用于验收渲染）
+    private float _autoshotTimer = 0f; // 自动截图计时器（验收用）
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -514,6 +516,25 @@ public partial class Main : Node2D
     {
         var dt = (float)delta;
 
+        // ===== 截图功能（Godot 内部 API，用于验收渲染效果）=====
+        // 在 ANGLE 软件渲染环境下 CopyFromScreen 抓不到 UI，必须用引擎内部截图
+        // 1. 自动截图：游戏开始12秒后自动截一张（验收用）
+        if (_autoshotTimer >= 0f)
+        {
+            _autoshotTimer += dt;
+            if (_autoshotTimer >= 12f)
+            {
+                _autoshotTimer = -1f;
+                TakeViewportScreenshot("autoshot");
+            }
+        }
+        // 2. F12 手动截图（玩家可在游戏中按 F12 截图）
+        if (Input.IsKeyPressed(Key.F12))
+        {
+            if (!_f12ShotDown) { _f12ShotDown = true; TakeViewportScreenshot("f12"); }
+        }
+        else { _f12ShotDown = false; }
+
         // 制造单位热键
         if (Input.IsActionJustPressed("spawn_unit")) TrySpawnUnit(UnitType.LightTank, LightTankCost);
         if (Input.IsActionJustPressed("spawn_heavy")) TrySpawnUnit(UnitType.HeavyTank, HeavyTankCost);
@@ -634,6 +655,21 @@ public partial class Main : Node2D
         if (_placementMode != null) QueueRedraw();
         // Esc 取消放置
         if (Input.IsKeyPressed(Key.Escape) && _placementMode != null) CancelPlacement();
+    }
+
+    // ---------- 截图 ----------
+    /// <summary>用 Godot 内部 API 截取视口并保存为 PNG。在 ANGLE 软渲染环境下 CopyFromScreen 抓不到 UI，必须用此方法。</summary>
+    private void TakeViewportScreenshot(string tag)
+    {
+        try
+        {
+            var img = GetViewport().GetTexture().GetImage();
+            var ts = DateTime.Now.ToString("HHmmss");
+            var path = $"user://shot_{tag}_{ts}.png";
+            img.SavePng(path);
+            GD.Print($"[截图] 已保存: {ProjectSettings.GlobalizePath(path)} 尺寸={img.GetSize()}");
+        }
+        catch (Exception ex) { GD.PrintErr($"[截图] 失败: {ex.Message}"); }
     }
 
     // ---------- 制造 ----------
