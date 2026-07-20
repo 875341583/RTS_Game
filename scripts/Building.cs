@@ -113,10 +113,10 @@ public partial class Building : Area2D
         _healthBar.Value = Health;
         _healthBar.Visible = false;
 
-        // 素材自带配色，通过轻微色调区分队伍
+        // 轻微色调区分队伍，保留 PNG 自身细节
         _teamTint = TeamId == 0
-            ? new Color(0.7f, 0.82f, 1.0f)   // 蓝方：冷色偏蓝
-            : new Color(1.0f, 0.72f, 0.68f);  // 红方：暖色偏红
+            ? new Color(0.85f, 0.9f, 1.0f)   // 蓝方：极轻微冷色偏蓝
+            : new Color(1.0f, 0.88f, 0.85f);  // 红方：极轻微暖色偏红
         _body.Modulate = _teamTint;
     }
 

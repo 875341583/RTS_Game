@@ -19,7 +19,6 @@ public partial class Main : Node2D
 
     private Node2D _obstaclesNode = null!;
     private Node2D _strategicPointsNode = null!;
-    private Sprite2D _groundSprite = null!;
 
     // Q6：事件通知系统
     private VBoxContainer _toastContainer = null!;
@@ -1377,136 +1376,69 @@ public partial class Main : Node2D
 
     private static Texture2D? _rockTex;
     private static Texture2D? _wallTex;
-    private static Texture2D? _groundTex;
 
     // ========== Q4 地面纹理系统 ==========
 
+    // 地面瓦片纹理缓存
+    private static Texture2D? _grass1Tex, _grass2Tex, _sand1Tex, _sand2Tex;
+    private static Texture2D? _roadETex, _roadNTex, _roadCrossTex;
+
     private void CreateGround()
     {
-        EnsureGroundTexture();
-        _groundSprite = new Sprite2D { Name = "Ground" };
-        _groundSprite.Texture = _groundTex!;
-        _groundSprite.Centered = false;
-        _groundSprite.Position = Vector2.Zero;
-        // 瓦片拼接已生成 2048x2048 纹理，覆盖 2000x2000 地图
-        AddChild(_groundSprite);
-        MoveChild(_groundSprite, 0); // 渲染在最底层
-    }
+        EnsureGroundTileTextures();
 
-    private static void EnsureGroundTexture()
-    {
-        if (_groundTex != null) return;
-
-        // Kenney 瓦片拼接：64x64 PNG → 32x32 网格 = 2048x2048 纹理
         const int TileSize = 64;
-        const int GridSize = 32; // 32*64=2048
-        var img = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
-
-        // 预加载瓦片纹理
-        var grass1 = LoadGroundTile("res://assets/sprites/terrain/tileGrass1.png");
-        var grass2 = LoadGroundTile("res://assets/sprites/terrain/tileGrass2.png");
-        var sand1  = LoadGroundTile("res://assets/sprites/terrain/tileSand1.png");
-        var sand2  = LoadGroundTile("res://assets/sprites/terrain/tileSand2.png");
-        var roadE  = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadEast.png");
-        var roadN  = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadNorth.png");
-        var roadCross = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCrossing.png");
-        var roadCornerUL = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerUL.png");
-        var roadCornerUR = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerUR.png");
-        var roadCornerLL = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerLL.png");
-        var roadCornerLR = LoadGroundTile("res://assets/sprites/terrain/tileGrass_roadCornerLR.png");
-        var transN = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionN.png");
-        var transS = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionS.png");
-        var transE = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionE.png");
-        var transW = LoadGroundTile("res://assets/sprites/terrain/tileGrass_transitionW.png");
-
+        const int GridSize = 32; // 32*64=2048 覆盖 2000x2000
         var rng = new Random(42);
 
-        // 瓦片类型网格：0=grass, 1=sand, 2=roadH, 3=roadV, 4=roadCross, 5-8=corners
+        // 瓦片类型网格
         int[,] tileGrid = new int[GridSize, GridSize];
+        // 沙地区域
+        for (int ty = 2; ty <= 5; ty++) for (int tx = 2; tx <= 5; tx++) tileGrid[tx, ty] = 1;
+        for (int ty = 27; ty <= 30; ty++) for (int tx = 27; tx <= 30; tx++) tileGrid[tx, ty] = 1;
+        for (int ty = 15; ty <= 16; ty++) for (int tx = 15; tx <= 16; tx++) tileGrid[tx, ty] = 1;
+        for (int ty = 10; ty <= 12; ty++) for (int tx = 10; tx <= 12; tx++) tileGrid[tx, ty] = 1;
+        for (int ty = 20; ty <= 21; ty++) for (int tx = 20; tx <= 21; tx++) tileGrid[tx, ty] = 1;
+        // 道路
+        for (int tx = 0; tx < GridSize; tx++) { if (tileGrid[tx, 15] == 0) tileGrid[tx, 15] = 2; if (tileGrid[tx, 16] == 0) tileGrid[tx, 16] = 2; }
+        for (int ty = 0; ty < GridSize; ty++) { if (tileGrid[15, ty] == 0) tileGrid[15, ty] = 3; if (tileGrid[16, ty] == 0) tileGrid[16, ty] = 3; }
+        tileGrid[15, 15] = 4; tileGrid[15, 16] = 4; tileGrid[16, 15] = 4; tileGrid[16, 16] = 4;
+        for (int i = 3; i <= 15; i++) { if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; }
+        for (int i = 16; i <= 28; i++) { if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; }
 
-        // ---- 标记沙地区域（基地周围、矿点周围）----
-        // 蓝方基地约(200,200) 地图像素 → 瓦片(3,3)-(4,4)
-        for (int ty = 2; ty <= 5; ty++)
-            for (int tx = 2; tx <= 5; tx++)
-                tileGrid[tx, ty] = 1;
-        // 红方基地约(1800,1800) → 瓦片(27,27)-(30,30)
-        for (int ty = 27; ty <= 30; ty++)
-            for (int tx = 27; tx <= 30; tx++)
-                tileGrid[tx, ty] = 1;
-        // 中央战略要地(1000,1000) → 瓦片(15,15)-(16,16)
-        for (int ty = 15; ty <= 16; ty++)
-            for (int tx = 15; tx <= 16; tx++)
-                tileGrid[tx, ty] = 1;
-        // 其余泥地用 sand 瓦片（分散矿点等）
-        // (700,700) → (10,10)-(12,12)
-        for (int ty = 10; ty <= 12; ty++)
-            for (int tx = 10; tx <= 12; tx++)
-                tileGrid[tx, ty] = 1;
-        // (1300,1300) → (20,20)-(21,21)
-        for (int ty = 20; ty <= 21; ty++)
-            for (int tx = 20; tx <= 21; tx++)
-                tileGrid[tx, ty] = 1;
-
-        // ---- 标记道路（十字交叉 + 对角线）----
-        // 水平主干道：地图像素 y=1000 → 瓦片行 y=15-16
-        for (int tx = 0; tx < GridSize; tx++)
-        {
-            if (tileGrid[tx, 15] == 0) tileGrid[tx, 15] = 2; // roadH
-            if (tileGrid[tx, 16] == 0) tileGrid[tx, 16] = 2; // roadH
-        }
-        // 垂直主干道：地图像素 x=1000 → 瓦片列 x=15-16
-        for (int ty = 0; ty < GridSize; ty++)
-        {
-            if (tileGrid[15, ty] == 0) tileGrid[15, ty] = 3; // roadV
-            if (tileGrid[16, ty] == 0) tileGrid[16, ty] = 3; // roadV
-        }
-        // 十字交叉点
-        tileGrid[15, 15] = 4; tileGrid[15, 16] = 4;
-        tileGrid[16, 15] = 4; tileGrid[16, 16] = 4;
-        // 对角线道路：蓝方(200,200)→中央(1000,1000)
-        for (int i = 3; i <= 15; i++)
-        {
-            if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; // 近似水平路
-        }
-        // 对角线道路：中央(1000,1000)→红方(1800,1800)
-        for (int i = 16; i <= 28; i++)
-        {
-            if (tileGrid[i, i] == 0) tileGrid[i, i] = 2;
-        }
-
-        // ---- 拼接瓦片到大图 ----
+        // 用单个 Sprite2D 每个瓦片铺地（最直接可靠）
+        var groundParent = new Node2D { Name = "GroundTiles" };
         for (int ty = 0; ty < GridSize; ty++)
         {
             for (int tx = 0; tx < GridSize; tx++)
             {
-                Image tile = tileGrid[tx, ty] switch
+                var tex = tileGrid[tx, ty] switch
                 {
-                    1 => (rng.Next(2) == 0 ? sand1 : sand2),
-                    2 => roadE,  // 水平道路
-                    3 => roadN,  // 垂直道路
-                    4 => roadCross,
-                    _ => (rng.Next(3) == 0 ? grass2 : grass1)  // 草地随机变化
+                    1 => (rng.Next(2) == 0 ? _sand1Tex : _sand2Tex),
+                    2 => _roadETex,
+                    3 => _roadNTex,
+                    4 => _roadCrossTex,
+                    _ => (rng.Next(3) == 0 ? _grass2Tex : _grass1Tex)
                 };
-                img.BlitRect(tile, new Rect2I(0, 0, TileSize, TileSize),
-                    new Vector2I(tx * TileSize, ty * TileSize));
+                var sprite = new Sprite2D { Texture = tex, Centered = false };
+                sprite.Position = new Vector2(tx * TileSize, ty * TileSize);
+                groundParent.AddChild(sprite);
             }
         }
-
-        _groundTex = ImageTexture.CreateFromImage(img);
+        AddChild(groundParent);
+        MoveChild(groundParent, 0); // 最底层
     }
 
-    /// <summary>加载地面瓦片 PNG（Kenney Sci-fi RTS, CC0）。</summary>
-    private static Image LoadGroundTile(string path)
+    private static void EnsureGroundTileTextures()
     {
-        var tex = GD.Load<Texture2D>(path);
-        if (tex == null)
-        {
-            GD.PrintErr($"[Ground] Failed to load tile: {path}");
-            var img = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
-            img.Fill(Colors.Magenta);
-            return img;
-        }
-        return tex.GetImage();
+        if (_grass1Tex != null) return;
+        _grass1Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass1.png");
+        _grass2Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass2.png");
+        _sand1Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSand1.png");
+        _sand2Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSand2.png");
+        _roadETex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadEast.png");
+        _roadNTex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadNorth.png");
+        _roadCrossTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadCrossing.png");
     }
 
     private void SpawnObstacle(Vector2 pos, Vector2 size)

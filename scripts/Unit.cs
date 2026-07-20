@@ -243,7 +243,7 @@ public partial class Unit : CharacterBody2D
         // 按兵种+队伍加载底盘纹理（Kenney 素材自带配色）
         _body.Texture = GetHullTexture(Type, TeamId);
         _body.Modulate = Colors.White; // PNG 自带队伍色，不需 Modulate
-        _body.Scale = new Vector2(1.2f, 1.2f); // 略放大以匹配游戏比例
+        _body.Scale = new Vector2(1.5f, 1.5f); // 放大 Kenney 坦克精灵以匹配游戏比例
         _selectionRing.Texture = _ringTex;
 
         _selectionRing.Visible = false;
@@ -262,7 +262,7 @@ public partial class Unit : CharacterBody2D
             {
                 var tSize = _turret.Texture.GetSize();
                 _turret.Offset = new Vector2(-tSize.X / 2f, -tSize.Y / 4f);
-                _turret.Scale = new Vector2(1.2f, 1.2f);
+                _turret.Scale = new Vector2(1.5f, 1.5f);
             }
             _turret.Modulate = Colors.White; // PNG 自带队伍色
             _turretTint = Colors.White;
