@@ -19,6 +19,7 @@ public partial class Main : Node2D
 
     private Node2D _obstaclesNode = null!;
     private Node2D _strategicPointsNode = null!;
+    private Sprite2D _groundSprite = null!;
 
     // Q6：事件通知系统
     private VBoxContainer _toastContainer = null!;
@@ -1406,27 +1407,37 @@ public partial class Main : Node2D
         for (int i = 3; i <= 15; i++) { if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; }
         for (int i = 16; i <= 28; i++) { if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; }
 
-        // 用单个 Sprite2D 每个瓦片铺地（最直接可靠）
-        var groundParent = new Node2D { Name = "GroundTiles" };
+        // 拼接为单张大纹理（避免创建 1024 个 Sprite2D 节点）
+        var groundImg = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
+        var grass1Img = _grass1Tex!.GetImage();
+        var grass2Img = _grass2Tex!.GetImage();
+        var sand1Img  = _sand1Tex!.GetImage();
+        var sand2Img  = _sand2Tex!.GetImage();
+        var roadEImg  = _roadETex!.GetImage();
+        var roadNImg  = _roadNTex!.GetImage();
+        var roadCrossImg = _roadCrossTex!.GetImage();
+
         for (int ty = 0; ty < GridSize; ty++)
         {
             for (int tx = 0; tx < GridSize; tx++)
             {
-                var tex = tileGrid[tx, ty] switch
+                Image tileImg = tileGrid[tx, ty] switch
                 {
-                    1 => (rng.Next(2) == 0 ? _sand1Tex : _sand2Tex),
-                    2 => _roadETex,
-                    3 => _roadNTex,
-                    4 => _roadCrossTex,
-                    _ => (rng.Next(3) == 0 ? _grass2Tex : _grass1Tex)
+                    1 => (rng.Next(2) == 0 ? sand1Img : sand2Img),
+                    2 => roadEImg,
+                    3 => roadNImg,
+                    4 => roadCrossImg,
+                    _ => (rng.Next(3) == 0 ? grass2Img : grass1Img)
                 };
-                var sprite = new Sprite2D { Texture = tex, Centered = false };
-                sprite.Position = new Vector2(tx * TileSize, ty * TileSize);
-                groundParent.AddChild(sprite);
+                groundImg.BlitRect(tileImg, new Rect2I(0, 0, TileSize, TileSize),
+                    new Vector2I(tx * TileSize, ty * TileSize));
             }
         }
-        AddChild(groundParent);
-        MoveChild(groundParent, 0); // 最底层
+
+        var groundTex = ImageTexture.CreateFromImage(groundImg);
+        _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false };
+        AddChild(_groundSprite);
+        MoveChild(_groundSprite, 0); // 最底层
     }
 
     private static void EnsureGroundTileTextures()

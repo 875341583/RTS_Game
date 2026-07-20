@@ -149,12 +149,12 @@ public partial class BattleEffect : Node2D
         _shellTex = ImageTexture.CreateFromImage(shell);
 
         // 普通爆炸：Kenney explosion1-5 5帧
-        _explosionFrames = new ImageTexture[5];
+        _explosionFrames = new Texture2D[5];
         for (int i = 0; i < 5; i++)
             _explosionFrames[i] = LoadFxTexture($"res://assets/sprites/effects/explosion{i + 1}.png");
 
         // 大爆炸：Kenney explosionSmoke1-5 5帧
-        _bigExplosionFrames = new ImageTexture[5];
+        _bigExplosionFrames = new Texture2D[5];
         for (int i = 0; i < 5; i++)
             _bigExplosionFrames[i] = LoadFxTexture($"res://assets/sprites/effects/explosionSmoke{i + 1}.png");
     }
