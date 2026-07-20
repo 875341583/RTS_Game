@@ -69,8 +69,8 @@ public partial class Unit : CharacterBody2D
     private static Texture2D? _redLightTurret, _redHeavyTurret, _redArtyTurret, _redRocketTurret, _redMissileTurret;
     // 炮塔精灵
     protected Sprite2D _turret = null!;
-    // Kenney 精灵朝向：朝下(DOWN)，游戏约定朝右(RIGHT)为0°
-    private const float SpriteRotationOffset = -Mathf.Pi / 2f;
+    // 新素材朝右（RIGHT=0°），无需额外旋转偏移
+    private const float SpriteRotationOffset = 0f;
 
     /// <summary>加载单位 PNG 纹理（Kenney Top-down Tanks Redux, CC0）。</summary>
     private static void EnsureTextures()
@@ -243,7 +243,7 @@ public partial class Unit : CharacterBody2D
         // 按兵种+队伍加载底盘纹理（Kenney 素材自带配色）
         _body.Texture = GetHullTexture(Type, TeamId);
         _body.Modulate = Colors.White; // PNG 自带队伍色，不需 Modulate
-        _body.Scale = new Vector2(1.5f, 1.5f); // 放大 Kenney 坦克精灵以匹配游戏比例
+        _body.Scale = Vector2.One; // 新素材64×64，1:1显示
         _selectionRing.Texture = _ringTex;
 
         _selectionRing.Visible = false;
@@ -260,9 +260,9 @@ public partial class Unit : CharacterBody2D
             // Kenney 炮塔精灵：旋转中心在炮塔圆盘中心（约图片1/4高度处）
             if (_turret.Texture != null)
             {
-                var tSize = _turret.Texture.GetSize();
-                _turret.Offset = new Vector2(-tSize.X / 2f, -tSize.Y / 4f);
-                _turret.Scale = new Vector2(1.5f, 1.5f);
+                // 新素材：炮塔圆盘在图片正中心(32,32)，centered=true 自动对齐旋转中心
+                _turret.Offset = Vector2.Zero;
+                _turret.Scale = Vector2.One;
             }
             _turret.Modulate = Colors.White; // PNG 自带队伍色
             _turretTint = Colors.White;
