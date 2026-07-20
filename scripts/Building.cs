@@ -49,12 +49,12 @@ public partial class Building : Area2D
     private ProgressBar _healthBar = null!;
     private float _hitFlashTimer;
 
-    private static ImageTexture? _baseTex;
-    private static ImageTexture? _powerTex;
-    private static ImageTexture? _barracksTex;
-    private static ImageTexture? _warTex;
-    private static ImageTexture? _techTex;
-    private static ImageTexture? _buildingRingTex;
+    private static Texture2D? _baseTex;
+    private static Texture2D? _powerTex;
+    private static Texture2D? _barracksTex;
+    private static Texture2D? _warTex;
+    private static Texture2D? _techTex;
+    private static Texture2D? _buildingRingTex;
     private Color _teamTint = Colors.White;
 
     /// <summary>按建筑类型初始化属性。必须在 _Ready 之前调用。</summary>
@@ -148,18 +148,18 @@ public partial class Building : Area2D
         _buildingRingTex = ImageTexture.CreateFromImage(ring);
     }
 
-    private static ImageTexture LoadTexture(string path)
+    private static Texture2D LoadTexture(string path)
     {
         var tex = GD.Load<Texture2D>(path);
         if (tex == null)
         {
             GD.PrintErr($"[Building] Failed to load texture: {path}");
-            // 降级：返回1x1白色纹理
+            // 降级：返回1x1品红色纹理
             var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             img.SetPixel(0, 0, Colors.Magenta);
             return ImageTexture.CreateFromImage(img);
         }
-        return (ImageTexture)tex;
+        return tex; // Godot 导入 PNG 返回 CompressedTexture2D，不是 ImageTexture
     }
 
     public void SetSelected(bool selected)

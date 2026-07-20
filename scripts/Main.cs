@@ -1375,9 +1375,9 @@ public partial class Main : Node2D
         _resourcesNode.AddChild(o);
     }
 
-    private static ImageTexture? _rockTex;
-    private static ImageTexture? _wallTex;
-    private static ImageTexture? _groundTex;
+    private static Texture2D? _rockTex;
+    private static Texture2D? _wallTex;
+    private static Texture2D? _groundTex;
 
     // ========== Q4 地面纹理系统 ==========
 
@@ -1538,7 +1538,7 @@ public partial class Main : Node2D
         if (_rockTex != null) return;
 
         // Kenney 环境素材（CC0）
-        _rockTex = (ImageTexture)GD.Load<Texture2D>("res://assets/sprites/environment/crateMetal.png");
+        _rockTex = GD.Load<Texture2D>("res://assets/sprites/environment/crateMetal.png");
         if (_rockTex == null)
         {
             GD.PrintErr("[Obstacle] Failed to load crateMetal.png");
@@ -1547,7 +1547,7 @@ public partial class Main : Node2D
             _rockTex = ImageTexture.CreateFromImage(img);
         }
 
-        _wallTex = (ImageTexture)GD.Load<Texture2D>("res://assets/sprites/environment/sandbagBrown.png");
+        _wallTex = GD.Load<Texture2D>("res://assets/sprites/environment/sandbagBrown.png");
         if (_wallTex == null)
         {
             GD.PrintErr("[Obstacle] Failed to load sandbagBrown.png");

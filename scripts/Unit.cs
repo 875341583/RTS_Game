@@ -59,14 +59,14 @@ public partial class Unit : CharacterBody2D
     private Sprite2D _selectionRing = null!;
     private ProgressBar _healthBar = null!;
 
-    private static ImageTexture? _ringTex;
+    private static Texture2D? _ringTex;
     // 按队伍+兵种的底盘纹理
-    private static ImageTexture? _blueLightHull, _blueHeavyHull, _blueArtyHull, _blueRocketHull, _blueMissileHull;
-    private static ImageTexture? _redLightHull, _redHeavyHull, _redArtyHull, _redRocketHull, _redMissileHull;
-    private static ImageTexture? _harvesterHull;
+    private static Texture2D? _blueLightHull, _blueHeavyHull, _blueArtyHull, _blueRocketHull, _blueMissileHull;
+    private static Texture2D? _redLightHull, _redHeavyHull, _redArtyHull, _redRocketHull, _redMissileHull;
+    private static Texture2D? _harvesterHull;
     // 按队伍+兵种的炮塔纹理
-    private static ImageTexture? _blueLightTurret, _blueHeavyTurret, _blueArtyTurret, _blueRocketTurret, _blueMissileTurret;
-    private static ImageTexture? _redLightTurret, _redHeavyTurret, _redArtyTurret, _redRocketTurret, _redMissileTurret;
+    private static Texture2D? _blueLightTurret, _blueHeavyTurret, _blueArtyTurret, _blueRocketTurret, _blueMissileTurret;
+    private static Texture2D? _redLightTurret, _redHeavyTurret, _redArtyTurret, _redRocketTurret, _redMissileTurret;
     // 炮塔精灵
     protected Sprite2D _turret = null!;
     // Kenney 精灵朝向：朝下(DOWN)，游戏约定朝右(RIGHT)为0°
@@ -125,7 +125,7 @@ public partial class Unit : CharacterBody2D
         _ringTex = ImageTexture.CreateFromImage(ring);
     }
 
-    private static ImageTexture LoadUnitTexture(string path)
+    private static Texture2D LoadUnitTexture(string path)
     {
         var tex = GD.Load<Texture2D>(path);
         if (tex == null)
@@ -135,11 +135,11 @@ public partial class Unit : CharacterBody2D
             img.SetPixel(0, 0, Colors.Magenta);
             return ImageTexture.CreateFromImage(img);
         }
-        return (ImageTexture)tex;
+        return tex; // Godot 导入 PNG 返回 CompressedTexture2D，不是 ImageTexture
     }
 
     /// <summary>根据兵种和队伍获取底盘纹理。</summary>
-    private ImageTexture GetHullTexture(UnitType type, int teamId) => (type, teamId) switch
+    private Texture2D GetHullTexture(UnitType type, int teamId) => (type, teamId) switch
     {
         (UnitType.LightTank, 0) => _blueLightHull!,
         (UnitType.HeavyTank, 0) => _blueHeavyHull!,
@@ -155,7 +155,7 @@ public partial class Unit : CharacterBody2D
     };
 
     /// <summary>根据兵种和队伍获取炮塔纹理。</summary>
-    private ImageTexture GetTurretTexture(UnitType type, int teamId) => (type, teamId) switch
+    private Texture2D GetTurretTexture(UnitType type, int teamId) => (type, teamId) switch
     {
         (UnitType.LightTank, 0) => _blueLightTurret!,
         (UnitType.HeavyTank, 0) => _blueHeavyTurret!,

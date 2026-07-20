@@ -19,12 +19,12 @@ public partial class BattleEffect : Node2D
     private Sprite2D _sprite = null!;
 
     // 炮口闪光和炮弹：程序化小纹理（不需要PNG）
-    private static ImageTexture? _flashTex;
-    private static ImageTexture? _shellTex;
+    private static Texture2D? _flashTex;
+    private static Texture2D? _shellTex;
 
     // 爆炸：Kenney 5帧动画
-    private static ImageTexture?[] _explosionFrames = null!;
-    private static ImageTexture?[] _bigExplosionFrames = null!;
+    private static Texture2D?[] _explosionFrames = null!;
+    private static Texture2D?[] _bigExplosionFrames = null!;
 
     public override void _Ready()
     {
@@ -159,7 +159,7 @@ public partial class BattleEffect : Node2D
             _bigExplosionFrames[i] = LoadFxTexture($"res://assets/sprites/effects/explosionSmoke{i + 1}.png");
     }
 
-    private static ImageTexture LoadFxTexture(string path)
+    private static Texture2D LoadFxTexture(string path)
     {
         var tex = GD.Load<Texture2D>(path);
         if (tex == null)
@@ -169,6 +169,6 @@ public partial class BattleEffect : Node2D
             img.SetPixel(0, 0, Colors.Magenta);
             return ImageTexture.CreateFromImage(img);
         }
-        return (ImageTexture)tex;
+        return tex; // Godot 导入 PNG 返回 CompressedTexture2D
     }
 }
