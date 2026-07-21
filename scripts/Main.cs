@@ -1594,7 +1594,7 @@ public partial class Main : Node2D
         }
 
         var groundTex = ImageTexture.CreateFromImage(groundImg);
-        _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false };
+        _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false, ZIndex = -3 };
         AddChild(_groundSprite);
         MoveChild(_groundSprite, 0); // 最底层
     }

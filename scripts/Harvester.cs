@@ -33,10 +33,7 @@ public partial class Harvester : Unit
         AttackDamage = 0f;
         AutoDefend = false;
         base._Ready();
-        // 矿车用黄色调
-        _body.Modulate = TeamId == 0
-            ? new Color(0.9f, 0.8f, 0.2f)
-            : new Color(0.9f, 0.5f, 0.2f);
+        // 矿车使用基类设置的阵营色染色（与战斗单位一致）
     }
 
     protected override void ProcessAI(float dt)

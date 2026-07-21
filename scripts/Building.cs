@@ -345,6 +345,12 @@ public partial class Building : Area2D
 
     public override void _Draw()
     {
+        // 脚下椭圆阴影（Area2D 节点不旋转，本地坐标系始终水平）
+        // 向右下偏移模拟光源位于左上，椭圆中心在建筑脚下
+        DrawSetTransform(new Vector2(8f, 38f), 0f, Vector2.One);
+        DrawPolygon(Unit.GetBuildingShadowPoints(), new Color[] { Unit.GetShadowColor() });
+        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+
         // 生产进度条（建筑下方）
         if (_currentProduction.HasValue)
         {

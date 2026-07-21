@@ -58,6 +58,25 @@ public partial class Unit : CharacterBody2D
     protected Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
     private ProgressBar _healthBar = null!;
+    // 椭圆阴影点（32边形，缓存复用）
+    private static readonly Vector2[] _shadowPtsLarge = GenEllipsePoints(26f, 13f);
+    private static readonly Vector2[] _shadowPtsSmall = GenEllipsePoints(13f, 7f);
+    private static readonly Vector2[] _shadowPtsBldg = GenEllipsePoints(52f, 26f);
+    private static readonly Color _shadowColor = new(0, 0, 0, 0.4f);
+
+    private static Vector2[] GenEllipsePoints(float rx, float ry)
+    {
+        var pts = new Vector2[32];
+        for (int i = 0; i < 32; i++)
+        {
+            float a = i * Mathf.Pi * 2f / 32f;
+            pts[i] = new Vector2(Mathf.Cos(a) * rx, Mathf.Sin(a) * ry);
+        }
+        return pts;
+    }
+
+    public static Vector2[] GetBuildingShadowPoints() => _shadowPtsBldg;
+    public static Color GetShadowColor() => _shadowColor;
 
     private static Texture2D? _ringTex;
     // 灰底底盘纹理（按兵种，一套支持任意阵营色染色）
@@ -324,6 +343,9 @@ public partial class Unit : CharacterBody2D
             _body.Modulate = _bodyTint;
             if (_turret != null) _turret.Modulate = _turretTint;
         }
+
+        // 阴影始终水平（由_Draw绘制，需要每帧QueueRedraw）
+        QueueRedraw();
 
         // 调度子类自定义 AI（默认是玩家命令 + 攻击逻辑）
         ProcessAI(dt);
@@ -810,5 +832,16 @@ public partial class Unit : CharacterBody2D
         main.AddChild(BattleEffect.MuzzleFlash(GlobalPosition + dir * 16f));
         main.AddChild(BattleEffect.Shell(GlobalPosition, targetPos));
         main.AddChild(BattleEffect.Explosion(targetPos));
+    }
+
+    public override void _Draw()
+    {
+        // 脚下椭圆阴影（始终水平：CharacterBody2D 节点本身不旋转，仅 _body sprite 旋转）
+        // 通过 DrawSetTransform 把椭圆中心偏移到单位脚下偏右下，模拟光源在左上方
+        var pts = (Type == UnitType.Infantry) ? _shadowPtsSmall : _shadowPtsLarge;
+        float yOff = (Type == UnitType.Infantry) ? 8f : 18f;
+        DrawSetTransform(new Vector2(3f, yOff), 0f, Vector2.One);
+        DrawPolygon(pts, new Color[] { _shadowColor });
+        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
     }
 }
