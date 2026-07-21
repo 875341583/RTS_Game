@@ -106,6 +106,8 @@ public partial class Main : Node2D
     private BuildingType? _placementMode;
     private bool _f12ShotDown = false; // F12 截图按键状态（用于验收渲染）
     private float _autoshotTimer = 0f; // 自动截图计时器（验收用）
+    /// <summary>全景截图倒数帧：在 autoshot 触发后切换全景相机，等待几帧渲染稳定再截图。</summary>
+    private int _panoramaShotPending = 0;
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -528,8 +530,18 @@ public partial class Main : Node2D
             if (_autoshotTimer >= 22f)
             {
                 _autoshotTimer = -1f;
-                TakeViewportScreenshot("autoshot");
+                // 验收全景：将相机移到地图中央 + zoom out 到 0.45 倍，等几帧渲染稳定后截图
+                _camera.Position = new Vector2(1000, 1000);
+                _camera.Zoom = new Vector2(0.45f, 0.45f);
+                _panoramaShotPending = 3;
             }
+        }
+        // 全景截图倒计时：等待渲染稳定后拍全景图（用于验收矿石/地面等全局视觉）
+        if (_panoramaShotPending > 0)
+        {
+            _panoramaShotPending--;
+            if (_panoramaShotPending == 0)
+                TakeViewportScreenshot("autoshot");
         }
         // 2. F12 手动截图（玩家可在游戏中按 F12 截图）
         if (Input.IsKeyPressed(Key.F12))
