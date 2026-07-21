@@ -60,6 +60,10 @@ public partial class Main : Node2D
     private const int BarracksCost = 400;
     private const int WarFactoryCost = 600;
     private const int TechCenterCost = 800;
+    // 阶段12-A1+A2：新建筑造价
+    private const int TurretCost = 400;
+    private const int AntiAirTurretCost = 600;
+    private const int RepairPadCost = 500;
     private const int RocketLauncherCost = 600;
     private const int MissileTankCost = 800;
 
@@ -897,10 +901,16 @@ public partial class Main : Node2D
         if (type == BuildingType.Barracks && !HasBuilding(0, BuildingType.PowerPlant)) { GD.Print("[警告] 需要先有电站！"); return; }
         if (type == BuildingType.WarFactory && !HasBuilding(0, BuildingType.Barracks)) { GD.Print("[警告] 需要先有兵营！"); return; }
         if (type == BuildingType.TechCenter && !HasBuilding(0, BuildingType.WarFactory)) { GD.Print("[警告] 需要先有战车工厂！"); return; }
+        // 阶段12-A1+A2 新增前置
+        if (type == BuildingType.Turret && !HasBuilding(0, BuildingType.Barracks)) { GD.Print("[警告] 需要先有兵营！"); return; }
+        if (type == BuildingType.AntiAirTurret && !HasBuilding(0, BuildingType.WarFactory)) { GD.Print("[警告] 需要先有车厂！"); return; }
+        if (type == BuildingType.RepairPad && !HasBuilding(0, BuildingType.WarFactory)) { GD.Print("[警告] 需要先有车厂！"); return; }
 
         // P5：难度科技等级限制（系统复杂度分级）
         if (type == BuildingType.WarFactory && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁战车工厂！"); return; }
         if (type == BuildingType.TechCenter && _playerTechLevel < 3) { GD.Print("[难度限制] 当前难度未解锁科技中心！"); return; }
+        if (type == BuildingType.AntiAirTurret && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁防空炮！"); return; }
+        if (type == BuildingType.RepairPad && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁维修厂！"); return; }
 
         // 电力检查（电站本身不受电力限制）
         if (type != BuildingType.PowerPlant && GetTeamPower(0) < 0)
@@ -936,6 +946,9 @@ public partial class Main : Node2D
             BuildingType.Barracks => BarracksCost,
             BuildingType.WarFactory => WarFactoryCost,
             BuildingType.TechCenter => TechCenterCost,
+            BuildingType.Turret => TurretCost,
+            BuildingType.AntiAirTurret => AntiAirTurretCost,
+            BuildingType.RepairPad => RepairPadCost,
             _ => 0
         };
     }
@@ -1079,7 +1092,53 @@ public partial class Main : Node2D
             _money[teamId] -= PowerPlantCost;
             SpawnBuilding(BuildingType.PowerPlant, GetBuildPosition(teamId), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant (for tech center), ${_money[teamId]} left");
+            return;
         }
+
+        // ---- 阶段12-A1+A2：防御建筑与维修厂 ----
+        // 优先级7：建造维修厂（已建车厂且无维修厂且资金充裕）
+        if (hasWarFactory && !HasBuilding(teamId, BuildingType.RepairPad)
+            && _money[teamId] >= RepairPadCost + 200 && power >= 0)
+        {
+            _money[teamId] -= RepairPadCost;
+            SpawnBuilding(BuildingType.RepairPad, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built RepairPad, ${_money[teamId]} left");
+            return;
+        }
+
+        // 优先级8：建造机枪塔（已建兵营，每阵营最多2座，资金充裕）
+        int turretCount = CountBuildingOfType(teamId, BuildingType.Turret);
+        if (hasBarracks && turretCount < 2
+            && _money[teamId] >= TurretCost + 300 && power >= 0)
+        {
+            _money[teamId] -= TurretCost;
+            SpawnBuilding(BuildingType.Turret, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built Turret #{turretCount + 1}, ${_money[teamId]} left");
+            return;
+        }
+
+        // 优先级9：建造防空炮（已建车厂，每阵营最多2座）
+        int aaCount = CountBuildingOfType(teamId, BuildingType.AntiAirTurret);
+        if (hasWarFactory && aaCount < 2
+            && _money[teamId] >= AntiAirTurretCost + 300 && power >= 0)
+        {
+            _money[teamId] -= AntiAirTurretCost;
+            SpawnBuilding(BuildingType.AntiAirTurret, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built AntiAirTurret #{aaCount + 1}, ${_money[teamId]} left");
+            return;
+        }
+    }
+
+    /// <summary>阶段12-A1：统计某阵营指定类型的建筑数量（用于AI建造限制）。</summary>
+    private int CountBuildingOfType(int teamId, BuildingType type)
+    {
+        int count = 0;
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is Building b && b.TeamId == teamId && b.Type == type && IsInstanceValid(b))
+                count++;
+        }
+        return count;
     }
 
     /// <summary>AI 阵营 Tick：在每个 _aiThinkInterval 周期内为每个 AI 阵营独立调用。</summary>

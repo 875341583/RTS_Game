@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 建筑类型枚举。
 /// </summary>
-public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter }
+public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter, Turret, AntiAirTurret, RepairPad }
 
 /// <summary>
 /// 生产项类型：可由建筑排产的战斗单位或矿车。
@@ -27,6 +27,28 @@ public partial class Building : Area2D
     public BuildingType Type { get; set; } = BuildingType.Base;
     public int PowerProvided { get; set; } = 0;
     public int PowerConsumed { get; set; } = 0;
+
+    // ---- 阶段12-A1 防御建筑攻击系统 ----
+    /// <summary>是否为防御建筑（会自动攻击敌方单位）。</summary>
+    public bool IsDefensive { get; private set; } = false;
+    /// <summary>攻击伤害（防御建筑）。</summary>
+    public float AttackDamage { get; private set; } = 0f;
+    /// <summary>攻击射程（防御建筑）。</summary>
+    public float AttackRange { get; private set; } = 0f;
+    /// <summary>攻击冷却时间（秒，防御建筑）。</summary>
+    public float AttackCooldown { get; private set; } = 1f;
+    private float _turretAttackTimer = 0f;
+    /// <summary>炮塔当前朝向角度（弧度）。防御建筑会在 _Draw 中渲染旋转炮塔。</summary>
+    private float _turretAngle = 0f;
+
+    // ---- 阶段12-A2 维修厂系统 ----
+    /// <summary>是否为维修厂（自动修复附近友方单位）。</summary>
+    public bool IsRepairStation { get; private set; } = false;
+    /// <summary>维修半径（维修厂）。</summary>
+    public float RepairRadius { get; private set; } = 220f;
+    /// <summary>每次修复血量（维修厂，每秒一次）。</summary>
+    public float RepairPerTick { get; private set; } = 25f;
+    private float _repairTimer = 0f;
 
     // ---- G2 生产系统 ----
     /// <summary>集结点：新生产单位自动移动到此位置。null 表示无集结点。</summary>
@@ -54,6 +76,10 @@ public partial class Building : Area2D
     private static Texture2D? _barracksTex;
     private static Texture2D? _warTex;
     private static Texture2D? _techTex;
+    // 阶段12-A1 新增建筑纹理
+    private static Texture2D? _turretTex;
+    private static Texture2D? _antiAirTurretTex;
+    private static Texture2D? _repairPadTex;
     private static Texture2D? _buildingRingTex;
     private Color _teamTint = Colors.White;
 
@@ -95,6 +121,32 @@ public partial class Building : Area2D
                 MaxHealth = 600f;
                 PowerConsumed = 80;
                 break;
+            // 阶段12-A1：防御建筑
+            case BuildingType.Turret:
+                BuildingName = "机枪塔";
+                MaxHealth = 400f;
+                PowerConsumed = 25;
+                IsDefensive = true;
+                AttackDamage = 18f;
+                AttackRange = 180f;
+                AttackCooldown = 0.6f;
+                break;
+            case BuildingType.AntiAirTurret:
+                BuildingName = "防空炮";
+                MaxHealth = 350f;
+                PowerConsumed = 40;
+                IsDefensive = true;
+                AttackDamage = 30f;
+                AttackRange = 220f;
+                AttackCooldown = 1.0f;
+                break;
+            // 阶段12-A2：维修厂
+            case BuildingType.RepairPad:
+                BuildingName = "维修厂";
+                MaxHealth = 500f;
+                PowerConsumed = 30;
+                IsRepairStation = true;
+                break;
         }
     }
 
@@ -112,6 +164,9 @@ public partial class Building : Area2D
             BuildingType.Barracks => _barracksTex!,
             BuildingType.WarFactory => _warTex!,
             BuildingType.TechCenter => _techTex!,
+            BuildingType.Turret => _turretTex!,
+            BuildingType.AntiAirTurret => _antiAirTurretTex!,
+            BuildingType.RepairPad => _repairPadTex!,
             _ => _baseTex!
         };
         _selectionRing.Texture = _buildingRingTex;
@@ -144,6 +199,9 @@ public partial class Building : Area2D
         _barracksTex  = LoadTexture("res://assets/sprites/buildings/barracks.png");
         _warTex       = LoadTexture("res://assets/sprites/buildings/warfactory.png");
         _techTex      = LoadTexture("res://assets/sprites/buildings/techcenter.png");
+        _turretTex         = LoadTexture("res://assets/sprites/buildings/turret.png");
+        _antiAirTurretTex  = LoadTexture("res://assets/sprites/buildings/antiair.png");
+        _repairPadTex      = LoadTexture("res://assets/sprites/buildings/repairpad.png");
 
         // 通用选择环
         var ring = Image.CreateEmpty(128, 128, false, Image.Format.Rgba8);
@@ -246,6 +304,27 @@ public partial class Building : Area2D
     /// <summary>是否需要维修（血量不满）。</summary>
     public bool NeedsRepair => Health < MaxHealth;
 
+    /// <summary>阶段12-A1 防御建筑：找到攻击范围内的最近敌方单位。无则返回 null。</summary>
+    private Unit? FindNearestEnemyUnitInRange(float range)
+    {
+        Unit? nearest = null;
+        float nearestDistSq = range * range;
+        var unitsNode = GetParent()?.GetParent()?.GetNode<Node2D>("Units");
+        if (unitsNode == null) return null;
+        foreach (var c in unitsNode.GetChildren())
+        {
+            if (c is not Unit u || !IsInstanceValid(u)) continue;
+            if (u.TeamId == TeamId) continue; // 同阵营跳过
+            float dsq = GlobalPosition.DistanceSquaredTo(u.GlobalPosition);
+            if (dsq < nearestDistSq)
+            {
+                nearestDistSq = dsq;
+                nearest = u;
+            }
+        }
+        return nearest;
+    }
+
     /// <summary>执行维修：恢复满血。</summary>
     public void Repair()
     {
@@ -331,6 +410,62 @@ public partial class Building : Area2D
         }
         _captureTickThisFrame = false; // 重置标志
 
+        // ---- 阶段12-A1 防御建筑攻击逻辑 ----
+        if (IsDefensive && AttackDamage > 0f && Health > 0f)
+        {
+            _turretAttackTimer -= dt;
+            if (_turretAttackTimer <= 0f)
+            {
+                var target = FindNearestEnemyUnitInRange(AttackRange);
+                if (target != null)
+                {
+                    _turretAttackTimer = AttackCooldown;
+                    target.TakeDamage(AttackDamage);
+                    // 视觉效果：炮口闪光 + 拖尾弹道（挂在 effects/Units 父节点上）
+                    if (GetParent() is Node2D parentNode)
+                    {
+                        parentNode.AddChild(BattleEffect.MuzzleFlash(GlobalPosition));
+                        parentNode.AddChild(BattleEffect.Shell(GlobalPosition, target.GlobalPosition));
+                    }
+                    // 炮塔转向敌人
+                    var dir = target.GlobalPosition - GlobalPosition;
+                    if (dir.LengthSquared() > 1f) _turretAngle = dir.Angle();
+                }
+                else
+                {
+                    _turretAttackTimer = 0.3f; // 无目标时短间隔再检查
+                }
+            }
+            QueueRedraw();
+        }
+
+        // ---- 阶段12-A2 维修厂自动维修 ----
+        if (IsRepairStation && Health > 0f)
+        {
+            _repairTimer -= dt;
+            if (_repairTimer <= 0f)
+            {
+                _repairTimer = 1f; // 每秒修复一次
+                int repaired = 0;
+                var unitsNode = GetParent()?.GetParent()?.GetNode<Node2D>("Units");
+                if (unitsNode != null)
+                {
+                    foreach (var c in unitsNode.GetChildren())
+                    {
+                        if (c is Unit u && u.TeamId == TeamId && IsInstanceValid(u)
+                            && GlobalPosition.DistanceTo(u.GlobalPosition) <= RepairRadius
+                            && u.Health < u.MaxHealth)
+                        {
+                            u.RepairByRepairPad(RepairPerTick);
+                            repaired++;
+                        }
+                    }
+                }
+                // 仅在有维修行为时刷新重绘（显示维修光晕）
+                if (repaired > 0) QueueRedraw();
+            }
+        }
+
         if (!_currentProduction.HasValue) { QueueRedraw(); return; }
         _productionTimer -= dt;
         if (_productionTimer <= 0f)
@@ -392,6 +527,43 @@ public partial class Building : Area2D
             DrawRect(new Rect2(-30, capBarY, 60, 5), new Color(0.15f, 0.15f, 0.15f, 0.9f), true);
             var capColor = new Color(1f, 0.3f, 0.3f).Lerp(new Color(0.3f, 1f, 0.3f), CaptureProgress);
             DrawRect(new Rect2(-30, capBarY, 60 * CaptureProgress, 5), capColor, true);
+        }
+
+        // ---- 阶段12-A1 防御建筑：旋转炮塔 ----
+        if (IsDefensive)
+        {
+            // 在建筑中心绘制指示性炮管（与 PNG 主体叠加），朝向 _turretAngle
+            DrawSetTransform(Vector2.Zero, _turretAngle, Vector2.One);
+            // 炮管：从中心向射程方向延伸的深色细矩形 + 末端黄铜色炮口
+            DrawRect(new Rect2(4f, -3f, 28f, 6f), new Color(0.08f, 0.08f, 0.10f, 0.95f), true);
+            DrawRect(new Rect2(30f, -4f, 5f, 8f), new Color(0.7f, 0.55f, 0.2f, 1f), true);
+            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+
+            // 射程圈（仅选中时显示）
+            if (IsSelected)
+            {
+                DrawArc(Vector2.Zero, AttackRange, 0f, Mathf.Tau, 48,
+                    new Color(1f, 0.4f, 0.2f, 0.35f), 1.5f);
+            }
+        }
+
+        // ---- 阶段12-A2 维修厂：维修范围 + 修复光晕 ----
+        if (IsRepairStation)
+        {
+            // 维修范围圈（仅选中时显示）
+            if (IsSelected)
+            {
+                DrawArc(Vector2.Zero, RepairRadius, 0f, Mathf.Tau, 48,
+                    new Color(0.3f, 1f, 0.6f, 0.3f), 1.5f);
+            }
+            // 维修工作中的绿色脉冲圈（每秒一次扩散）
+            if (_repairTimer > 0.7f && _repairTimer <= 1f)
+            {
+                float pulseProgress = (1f - _repairTimer) / 0.3f; // 0→1
+                float pulseRadius = pulseProgress * RepairRadius;
+                DrawArc(Vector2.Zero, pulseRadius, 0f, Mathf.Tau, 48,
+                    new Color(0.3f, 1f, 0.6f, (1f - pulseProgress) * 0.7f), 2f);
+            }
         }
     }
 }

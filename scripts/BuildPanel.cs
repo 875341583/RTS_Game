@@ -69,7 +69,9 @@ public partial class BuildPanel : Control
 
     // 图标（直接使用游戏 PNG 素材）
     private static Texture2D? _iPower, _iBarracks, _iWar, _iTech;
-    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv, _iAntiAir, _iEngineer;
+    // 阶段12-A1+A2 新增建筑图标
+    private static Texture2D? _iTurret, _iAntiAir, _iRepairPad;
+    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv, _iAntiAirUnit, _iEngineer;
     private static Texture2D? _iInfantry;
 
     // 悬停项
@@ -168,16 +170,20 @@ public partial class BuildPanel : Control
 
     private void CreateItems()
     {
-        // 建筑（电站/兵营/车厂/科技）
+        // 建筑（电站/兵营/车厂/科技/防御设施）
         AddItem("电站", 300, _iPower, true, BuildingType.PowerPlant, UnitType.Default, false, BuildTab.Buildings);
         AddItem("兵营", 400, _iBarracks, true, BuildingType.Barracks, UnitType.Default, false, BuildTab.Buildings);
         AddItem("车厂", 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false, BuildTab.Buildings);
         AddItem("科技", 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false, BuildTab.Buildings);
+        // 阶段12-A1+A2 新增建筑
+        AddItem("机枪塔", 400, _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("防空炮", 600, _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("维修厂", 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
         // 步兵
         AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
         // 车辆（按价格升序排列：基础→中级→高级）
         AddItem("轻坦",   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
-        AddItem("防空车", 300, _iAntiAir, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
+        AddItem("防空车", 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
         AddItem("工程车", 300, _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
         AddItem("炮兵",   400, _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
         AddItem("重坦",   500, _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
@@ -337,6 +343,21 @@ public partial class BuildPanel : Control
                 else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
                 else if (_playerTechLevel < 3) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
                 break;
+            // 阶段12-A1+A2 新增建筑
+            case BuildingType.Turret:
+                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
+            case BuildingType.AntiAirTurret:
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
+                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
+            case BuildingType.RepairPad:
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
+                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
         }
     }
 
@@ -443,6 +464,9 @@ public partial class BuildPanel : Control
                 BuildingType.Barracks => "解锁步兵/轻坦生产",
                 BuildingType.WarFactory => "解锁重坦/炮兵/防空车/工程车",
                 BuildingType.TechCenter => "解锁火箭炮/导弹车",
+                BuildingType.Turret => "自动对地防御塔，射程犴18，快射速",
+                BuildingType.AntiAirTurret => "重型防御塔，高伤害犴25大范围",
+                BuildingType.RepairPad => "每秒自动修复220范围内友方单位+25HP",
                 _ => ""
             };
         }
@@ -471,6 +495,10 @@ public partial class BuildPanel : Control
         _iBarracks = LoadPng("res://assets/sprites/buildings/barracks.png");
         _iWar      = LoadPng("res://assets/sprites/buildings/warfactory.png");
         _iTech     = LoadPng("res://assets/sprites/buildings/techcenter.png");
+        // 阶段12-A1+A2 新增建筑
+        _iTurret    = LoadPng("res://assets/sprites/buildings/turret.png");
+        _iAntiAir   = LoadPng("res://assets/sprites/buildings/antiair.png");
+        _iRepairPad = LoadPng("res://assets/sprites/buildings/repairpad.png");
 
         // 灰底单位PNG，AddItem 时会染色为玩家阵营色
         _iInfantry = LoadPng("res://assets/sprites/units/infantry.png");
@@ -480,7 +508,7 @@ public partial class BuildPanel : Control
         _iRocket = LoadPng("res://assets/sprites/units/hull_rocket.png");
         _iMissile= LoadPng("res://assets/sprites/units/hull_missile.png");
         _iHarv   = LoadPng("res://assets/sprites/units/harvester.png");
-        _iAntiAir= LoadPng("res://assets/sprites/units/turret_antiair.png");
+        _iAntiAirUnit= LoadPng("res://assets/sprites/units/turret_antiair.png");
         _iEngineer= LoadPng("res://assets/sprites/units/hull_engineer.png");
     }
 

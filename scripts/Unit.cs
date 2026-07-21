@@ -813,6 +813,18 @@ public partial class Unit : CharacterBody2D
         if (Health <= 0 && !_isDead) Die();
     }
 
+    /// <summary>阶段12-A2 阶段12-A2 维修厂自动修复：增加一定血量，但不超过 MaxHealth。</summary>
+    public void RepairByRepairPad(float amount)
+    {
+        if (amount <= 0f || Health >= MaxHealth || _isDead) return;
+        Health = Mathf.Min(MaxHealth, Health + amount);
+        if (_healthBar != null)
+        {
+            _healthBar.Value = Health;
+            UpdateHealthBarVisibility();
+        }
+    }
+
     protected void MoveTo(Vector2 target) { _moveTarget = target; _hasMoveTarget = true; }
     protected void StopMove() { _hasMoveTarget = false; Velocity = Vector2.Zero; }
 
