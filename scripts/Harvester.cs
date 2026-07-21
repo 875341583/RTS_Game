@@ -162,7 +162,23 @@ public partial class Harvester : Unit
                 {
                     if (_cargo > 0f && HomeBase != null && IsInstanceValid(HomeBase))
                     {
-                        HomeBase.Deposit(_cargo);
+                        float deposit = _cargo;
+                        // 工程车采矿辅助：附近140范围内有友方工程车，收益×1.5
+                        var unitsNode = GetParent();
+                        if (unitsNode != null)
+                        {
+                            foreach (var c in unitsNode.GetChildren())
+                            {
+                                if (c is Unit u && u != this && IsInstanceValid(u)
+                                    && u.TeamId == TeamId && u.Type == UnitType.Engineer
+                                    && u.GlobalPosition.DistanceTo(GlobalPosition) <= 140f)
+                                {
+                                    deposit *= 1.5f;
+                                    break;
+                                }
+                            }
+                        }
+                        HomeBase.Deposit(deposit);
                     }
                     _cargo = 0f;
                     _state = HState.Idle;
