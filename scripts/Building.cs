@@ -122,6 +122,12 @@ public partial class Building : Area2D
         // 8阵营色染色：向白色混合30%，让阵营色占主体（75%），8色强烈区分同时保留建筑手绘明暗细节
         _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
         _body.Modulate = _teamTint;
+
+        // v3 放大显示尺寸：PNG 128x128 在 zoom=1.0 下视觉太小看不清砖缝/铆钉/五星等细节
+        // 1.4x 让建筑显示为 ~180px，纹理清晰可辨；cell 90x90 间距足够不严重重叠
+        _body.Scale = new Vector2(1.4f, 1.4f);
+        // 选取圈同步放大
+        _selectionRing.Scale = new Vector2(1.4f, 1.4f);
     }
 
     /// <summary>加载建筑 PNG 纹理（Kenney Sci-fi RTS, CC0）。</summary>

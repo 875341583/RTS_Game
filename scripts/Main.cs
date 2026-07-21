@@ -530,9 +530,11 @@ public partial class Main : Node2D
             if (_autoshotTimer >= 22f)
             {
                 _autoshotTimer = -1f;
-                // 验收全景：将相机移到地图中央 + zoom out 到 0.45 倍，等几帧渲染稳定后截图
-                _camera.Position = new Vector2(1000, 1000);
-                _camera.Zoom = new Vector2(0.45f, 0.45f);
+                // 验收近景：相机移到玩家基地（左上 200,200）附近 + zoom 1.0 倍（真实玩家视角），等几帧渲染稳定后截图
+                // 全景 zoom=0.45 会把 128px 建筑压缩到 57px，纹理细节全部丢失——必须用 zoom=1.0 才能看到砖缝/铆钉
+                // 注意：玩家在(200,200)，相机略偏一点能看到玩家已建好的多座建筑
+                _camera.Position = new Vector2(320, 340);
+                _camera.Zoom = new Vector2(1.0f, 1.0f);
                 _panoramaShotPending = 3;
             }
         }
