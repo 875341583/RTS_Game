@@ -59,7 +59,7 @@ public partial class BuildPanel : Control
 
     // 图标（直接使用游戏 PNG 素材）
     private static Texture2D? _iPower, _iBarracks, _iWar, _iTech;
-    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv;
+    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv, _iAntiAir;
     private static Texture2D? _iInfantry;
 
     // 悬停项
@@ -144,6 +144,7 @@ public partial class BuildPanel : Control
         // 单位
         AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false);
         AddItem("轻坦", 200, _iLight, false, BuildingType.Base, UnitType.LightTank, false);
+        AddItem("防空车", 300, _iAntiAir, false, BuildingType.Base, UnitType.AntiAir, false);
         AddItem("重坦", 500, _iHeavy, false, BuildingType.Base, UnitType.HeavyTank, false);
         AddItem("炮兵", 400, _iArt, false, BuildingType.Base, UnitType.Artillery, false);
         AddItem("火箭炮", 600, _iRocket, false, BuildingType.Base, UnitType.RocketLauncher, false);
@@ -317,6 +318,7 @@ public partial class BuildPanel : Control
                 break;
             case UnitType.HeavyTank:
             case UnitType.Artillery:
+            case UnitType.AntiAir:
                 if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
                 break;
             case UnitType.RocketLauncher:
@@ -403,7 +405,7 @@ public partial class BuildPanel : Control
             {
                 BuildingType.PowerPlant => "提供+100电力",
                 BuildingType.Barracks => "解锁步兵/轻坦生产",
-                BuildingType.WarFactory => "解锁重坦/炮兵",
+                BuildingType.WarFactory => "解锁重坦/炮兵/防空车",
                 BuildingType.TechCenter => "解锁火箭炮/导弹车",
                 _ => ""
             };
@@ -415,6 +417,7 @@ public partial class BuildPanel : Control
             UnitType.LightTank => "快、脆、便宜",
             UnitType.HeavyTank => "慢、硬、主力",
             UnitType.Artillery => "远程高伤，不能近战",
+            UnitType.AntiAir => "高射速，对地补位",
             UnitType.RocketLauncher => "溅射伤害，需科技",
             UnitType.MissileTank => "超远程爆发，需科技",
             _ => ""
@@ -440,6 +443,7 @@ public partial class BuildPanel : Control
         _iRocket = LoadPng("res://assets/sprites/units/hull_rocket.png");
         _iMissile= LoadPng("res://assets/sprites/units/hull_missile.png");
         _iHarv   = LoadPng("res://assets/sprites/units/harvester.png");
+        _iAntiAir= LoadPng("res://assets/sprites/units/turret_antiair.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>

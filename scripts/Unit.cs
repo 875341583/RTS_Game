@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Infantry, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -61,12 +61,12 @@ public partial class Unit : CharacterBody2D
 
     private static Texture2D? _ringTex;
     // 灰底底盘纹理（按兵种，一套支持任意阵营色染色）
-    private static Texture2D? _hullLight, _hullHeavy, _hullArty, _hullRocket, _hullMissile;
+    private static Texture2D? _hullLight, _hullHeavy, _hullArty, _hullRocket, _hullMissile, _hullAntiAir;
     private static Texture2D? _harvesterHull;
     // 灰底步兵纹理（32x32俯视）
     private static Texture2D? _infantryHull;
     // 灰底炮塔纹理（按兵种）
-    private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile;
+    private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile, _turretAntiAir;
     // 炮塔精灵
     protected Sprite2D _turret = null!;
     // 新素材朝右（RIGHT=0°），无需额外旋转偏移
@@ -100,6 +100,7 @@ public partial class Unit : CharacterBody2D
         _hullArty    = LoadUnitTexture("res://assets/sprites/units/hull_arty.png");
         _hullRocket  = LoadUnitTexture("res://assets/sprites/units/hull_rocket.png");
         _hullMissile = LoadUnitTexture("res://assets/sprites/units/hull_missile.png");
+        _hullAntiAir  = LoadUnitTexture("res://assets/sprites/units/hull_antiair.png");
 
         // 步兵（32x32灰底俯视）
         _infantryHull = LoadUnitTexture("res://assets/sprites/units/infantry.png");
@@ -113,6 +114,7 @@ public partial class Unit : CharacterBody2D
         _turretArty    = LoadUnitTexture("res://assets/sprites/units/turret_arty.png");
         _turretRocket  = LoadUnitTexture("res://assets/sprites/units/turret_rocket.png");
         _turretMissile = LoadUnitTexture("res://assets/sprites/units/turret_missile.png");
+        _turretAntiAir  = LoadUnitTexture("res://assets/sprites/units/turret_antiair.png");
 
         // ---- 选中环（保留）----
         var ring = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
@@ -152,6 +154,7 @@ public partial class Unit : CharacterBody2D
         UnitType.Artillery => _hullArty!,
         UnitType.RocketLauncher => _hullRocket!,
         UnitType.MissileTank => _hullMissile!,
+        UnitType.AntiAir => _hullAntiAir!,
         UnitType.Infantry => _infantryHull!,
         _ => _harvesterHull!
     };
@@ -164,6 +167,7 @@ public partial class Unit : CharacterBody2D
         UnitType.Artillery => _turretArty!,
         UnitType.RocketLauncher => _turretRocket!,
         UnitType.MissileTank => _turretMissile!,
+        UnitType.AntiAir => _turretAntiAir!,
         // 步兵无炮塔（身体朝向代替炮塔朝向）
         UnitType.Infantry => null!,
         _ => null!
@@ -223,6 +227,15 @@ public partial class Unit : CharacterBody2D
                 AttackCooldown = 4.0f;
                 MinAttackRange = 150f;
                 AggroRange = 440f;
+                break;
+            case UnitType.AntiAir:
+                UnitName = "防空车";
+                MaxHealth = 70f;
+                MoveSpeed = 220f;
+                AttackDamage = 8f;
+                AttackRange = 140f;
+                AttackCooldown = 0.45f;
+                AggroRange = 260f;
                 break;
             case UnitType.Infantry:
                 UnitName = "步兵";
