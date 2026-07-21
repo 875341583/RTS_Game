@@ -19,9 +19,15 @@ public partial class BuildPanel : Control
     private RichTextLabel _infoLabel = null!;
     private RichTextLabel _hintLabel = null!;
     private GridContainer _buildingGrid = null!;
-    private GridContainer _unitGrid = null!;
+    private GridContainer _infantryGrid = null!;
+    private GridContainer _vehicleGrid = null!;
     private Button _tabBuildings = null!;
-    private Button _tabUnits = null!;
+    private Button _tabInfantry = null!;
+    private Button _tabVehicles = null!;
+
+    /// <summary>侧边栏底部三个分类标签：建筑 / 步兵 / 车辆（参考红警2侧边栏）</summary>
+    private enum BuildTab { Buildings, Infantry, Vehicles }
+    private BuildTab _currentTab = BuildTab.Buildings;
 
     private sealed class BuildItem
     {
@@ -48,12 +54,16 @@ public partial class BuildPanel : Control
     public BuildingType? ActivePlacement { get; set; }
     public string DifficultyName { get; set; } = "Normal";
 
-    // 颜色
-    private static readonly Color CBg = new(0.08f, 0.1f, 0.14f, 0.94f);
-    private static readonly Color CHover = new(0.2f, 0.32f, 0.5f, 0.95f);
-    private static readonly Color CLocked = new(0.05f, 0.06f, 0.08f, 0.9f);
-    private static readonly Color CSelected = new(0.18f, 0.52f, 0.28f, 0.95f);
-    private static readonly Color CReady = new(0.12f, 0.16f, 0.22f, 0.95f);
+    // 颜色：红警2 风格深灰金属 + 暗金高亮
+    private static readonly Color CBg = new(0.13f, 0.14f, 0.16f, 0.96f);
+    private static readonly Color CHover = new(0.34f, 0.29f, 0.18f, 0.97f);
+    private static readonly Color CLocked = new(0.06f, 0.06f, 0.07f, 0.93f);
+    private static readonly Color CSelected = new(0.58f, 0.44f, 0.16f, 0.98f);
+    private static readonly Color CReady = new(0.19f, 0.20f, 0.22f, 0.96f);
+    /// <summary>金色边框（建筑/单位图标外框）。</summary>
+    private static readonly Color CGoldBorder = new(0.72f, 0.58f, 0.22f, 0.9f);
+    /// <summary>金色文本（资金主数字、选中项高亮）。</summary>
+    private static readonly Color CGoldText = new(1f, 0.82f, 0.32f, 1f);
 
     private const float W = 232f;
 
@@ -88,33 +98,31 @@ public partial class BuildPanel : Control
 
         _infoLabel = new RichTextLabel();
         _infoLabel.BbcodeEnabled = true;
-        _infoLabel.AddThemeFontSizeOverride("normal_font_size", 15);
+        _infoLabel.AddThemeFontSizeOverride("normal_font_size", 16);
         _infoLabel.FitContent = true;
-        _infoLabel.CustomMinimumSize = new Vector2(W - 16, 56);
+        _infoLabel.CustomMinimumSize = new Vector2(W - 16, 64);
         root.AddChild(_infoLabel);
 
         var tabs = new HBoxContainer();
-        tabs.AddThemeConstantOverride("separation", 4);
-        _tabBuildings = new Button { Text = "建筑", ToggleMode = true, ButtonPressed = true };
-        _tabUnits = new Button { Text = "单位", ToggleMode = true };
-        _tabBuildings.Pressed += () => ShowTab(true);
-        _tabUnits.Pressed += () => ShowTab(false);
+        tabs.AddThemeConstantOverride("separation", 3);
+        _tabBuildings = MakeTabButton("建筑", BuildTab.Buildings);
+        _tabInfantry  = MakeTabButton("步兵", BuildTab.Infantry);
+        _tabVehicles  = MakeTabButton("车辆", BuildTab.Vehicles);
         tabs.AddChild(_tabBuildings);
-        tabs.AddChild(_tabUnits);
+        tabs.AddChild(_tabInfantry);
+        tabs.AddChild(_tabVehicles);
         root.AddChild(tabs);
 
-        _buildingGrid = new GridContainer { Columns = 2 };
-        _buildingGrid.AddThemeConstantOverride("h_separation", 4);
-        _buildingGrid.AddThemeConstantOverride("v_separation", 4);
-        _buildingGrid.SizeFlagsVertical = SizeFlags.ExpandFill;
+        _buildingGrid = MakeGrid();
         root.AddChild(_buildingGrid);
 
-        _unitGrid = new GridContainer { Columns = 2 };
-        _unitGrid.AddThemeConstantOverride("h_separation", 4);
-        _unitGrid.AddThemeConstantOverride("v_separation", 4);
-        _unitGrid.SizeFlagsVertical = SizeFlags.ExpandFill;
-        _unitGrid.Visible = false;
-        root.AddChild(_unitGrid);
+        _infantryGrid = MakeGrid();
+        _infantryGrid.Visible = false;
+        root.AddChild(_infantryGrid);
+
+        _vehicleGrid = MakeGrid();
+        _vehicleGrid.Visible = false;
+        root.AddChild(_vehicleGrid);
 
         _hintLabel = new RichTextLabel();
         _hintLabel.BbcodeEnabled = true;
@@ -126,34 +134,59 @@ public partial class BuildPanel : Control
         CreateItems();
     }
 
-    private void ShowTab(bool buildings)
+    private Button MakeTabButton(string text, BuildTab tab)
     {
-        _tabBuildings.ButtonPressed = buildings;
-        _tabUnits.ButtonPressed = !buildings;
-        _buildingGrid.Visible = buildings;
-        _unitGrid.Visible = !buildings;
+        var b = new Button { Text = text, ToggleMode = true, ButtonPressed = (tab == _currentTab) };
+        b.AddThemeFontSizeOverride("font_size", 14);
+        b.AddThemeColorOverride("font_color", new Color(0.8f, 0.74f, 0.52f));
+        b.AddThemeColorOverride("font_pressed_color", CGoldText);
+        b.AddThemeColorOverride("font_hover_color", Colors.White);
+        b.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        b.Pressed += () => ShowTab(tab);
+        return b;
+    }
+
+    private static GridContainer MakeGrid()
+    {
+        var g = new GridContainer { Columns = 2 };
+        g.AddThemeConstantOverride("h_separation", 4);
+        g.AddThemeConstantOverride("v_separation", 4);
+        g.SizeFlagsVertical = SizeFlags.ExpandFill;
+        return g;
+    }
+
+    private void ShowTab(BuildTab tab)
+    {
+        _currentTab = tab;
+        _tabBuildings.ButtonPressed = tab == BuildTab.Buildings;
+        _tabInfantry.ButtonPressed  = tab == BuildTab.Infantry;
+        _tabVehicles.ButtonPressed  = tab == BuildTab.Vehicles;
+        _buildingGrid.Visible = tab == BuildTab.Buildings;
+        _infantryGrid.Visible = tab == BuildTab.Infantry;
+        _vehicleGrid.Visible  = tab == BuildTab.Vehicles;
     }
 
     private void CreateItems()
     {
-        // 建筑
-        AddItem("电站", 300, _iPower, true, BuildingType.PowerPlant, UnitType.Default, false);
-        AddItem("兵营", 400, _iBarracks, true, BuildingType.Barracks, UnitType.Default, false);
-        AddItem("车厂", 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false);
-        AddItem("科技", 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false);
-        // 单位
-        AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false);
-        AddItem("轻坦", 200, _iLight, false, BuildingType.Base, UnitType.LightTank, false);
-        AddItem("防空车", 300, _iAntiAir, false, BuildingType.Base, UnitType.AntiAir, false);
-        AddItem("工程车", 300, _iEngineer, false, BuildingType.Base, UnitType.Engineer, false);
-        AddItem("重坦", 500, _iHeavy, false, BuildingType.Base, UnitType.HeavyTank, false);
-        AddItem("炮兵", 400, _iArt, false, BuildingType.Base, UnitType.Artillery, false);
-        AddItem("火箭炮", 600, _iRocket, false, BuildingType.Base, UnitType.RocketLauncher, false);
-        AddItem("导弹车", 800, _iMissile, false, BuildingType.Base, UnitType.MissileTank, false);
-        AddItem("矿车", 500, _iHarv, false, BuildingType.Base, UnitType.Default, true);
+        // 建筑（电站/兵营/车厂/科技）
+        AddItem("电站", 300, _iPower, true, BuildingType.PowerPlant, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("兵营", 400, _iBarracks, true, BuildingType.Barracks, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("车厂", 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("科技", 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false, BuildTab.Buildings);
+        // 步兵
+        AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
+        // 车辆（按价格升序排列：基础→中级→高级）
+        AddItem("轻坦",   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
+        AddItem("防空车", 300, _iAntiAir, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
+        AddItem("工程车", 300, _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
+        AddItem("炮兵",   400, _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
+        AddItem("重坦",   500, _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
+        AddItem("矿车",   500, _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
+        AddItem("火箭炮", 600, _iRocket,  false, BuildingType.Base, UnitType.RocketLauncher, false, BuildTab.Vehicles);
+        AddItem("导弹车", 800, _iMissile, false, BuildingType.Base, UnitType.MissileTank,    false, BuildTab.Vehicles);
     }
 
-    private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv)
+    private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)
     {
         var item = new BuildItem
         {
@@ -163,7 +196,7 @@ public partial class BuildPanel : Control
 
         var panel = new Panel();
         panel.CustomMinimumSize = new Vector2(102, 88);
-        var style = new StyleBoxFlat { BgColor = CReady, BorderWidthBottom = 2, BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderColor = new Color(0.2f, 0.25f, 0.3f, 0.6f), CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4, CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4 };
+        var style = new StyleBoxFlat { BgColor = CReady, BorderWidthBottom = 2, BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderColor = CGoldBorder, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3, CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3 };
         panel.AddThemeStyleboxOverride("panel", style);
 
         var bgRect = new ColorRect();
@@ -218,7 +251,8 @@ public partial class BuildPanel : Control
         panel.GuiInput += (@event) => OnItemGuiInput(@event, item);
 
         if (isBuilding) _buildingGrid.AddChild(panel);
-        else _unitGrid.AddChild(panel);
+        else if (tab == BuildTab.Infantry) _infantryGrid.AddChild(panel);
+        else _vehicleGrid.AddChild(panel);
 
         _items.Add(item);
     }
@@ -332,9 +366,9 @@ public partial class BuildPanel : Control
 
     private void RefreshVisuals()
     {
-        var powerWarn = _power < 0 ? " [电力不足!]" : "";
+        var powerWarn = _power < 0 ? " [color=#ff5555]不足![/color]" : "";
         _infoLabel.Text = $"[color=#ffd54f]{DifficultyName}[/color]  科技Lv{_playerTechLevel}\n" +
-                          $"[color=#66ff99]资金 ${_money}[/color]  上限 {_unitCount}/{_unitCap}\n" +
+                          $"[color=#ffd24f][b]${_money}[/b][/color]   {_unitCount}/{_unitCap} 单位\n" +
                           $"[color={(_power < 0 ? "#ff5555" : "#88ccff")}]电力 {_power}{powerWarn}[/color]";
 
         foreach (var it in _items)
