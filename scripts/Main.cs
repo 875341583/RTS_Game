@@ -110,6 +110,10 @@ public partial class Main : Node2D
     private int _panoramaShotPending = 0;
     /// <summary>autoshot 阶段：0=未开始, 1=已拍全景, 2=已拍地表特写。每阶段切换不同相机位置+zoom。</summary>
     private int _autoshotPhase = 0;
+    /// <summary>当前待截图的文件名后缀（多阶段截图用）。</summary>
+    private string _pendingShotSuffix = "autoshot";
+    /// <summary>AI保护期结束通知是否已发出。</summary>
+    private bool _aiGraceEndedNotified = false;
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -255,10 +259,15 @@ public partial class Main : Node2D
 
         // Q6：开局目标提示（画面内覆盖）
         _startOverlayAge = 0f;
+        string graceHint = Unit.AiGraceRemaining > 0f
+            ? $"★ AI保护期：前{(int)Unit.AiGraceRemaining}秒AI不会主动进攻，抓紧发展！\n"
+            : "";
         _startOverlay = new Label
         {
             Text = "★ 游戏目标：摧毁敌方所有建筑和单位即获胜！\n" +
                    "★ 建造建议：电站→兵营→车厂→科技中心\n" +
+                   "★ 矿车自动采矿，选中基地可生产更多矿车($500)\n" +
+                   graceHint +
                    "★ 选中单位右键点敌方建筑/单位攻击\n" +
                    "★ 选中建筑右键设集结点 | R维修 | V出售",
         };
@@ -296,21 +305,25 @@ public partial class Main : Node2D
                 _aiThinkInterval = 14f; _aiStartMoney = 1500; _blueStartMoney = 3000;
                 _aiStartHarvesters = 2; _aiUsesTech = false; _aiCapturesPoints = false;
                 StrategicPointIncomeEnabled = false; _unitCap = 12; _playerTechLevel = 1;
+                Unit.AiGraceRemaining = 120f; // Easy: 2分钟保护期
                 break;
             case Difficulty.Normal:
                 _aiThinkInterval = 10f; _aiStartMoney = 1800; _blueStartMoney = 2700;
                 _aiStartHarvesters = 3; _aiUsesTech = true; _aiCapturesPoints = true;
-                StrategicPointIncomeEnabled = true; _unitCap = 16; _playerTechLevel = 2;
+                StrategicPointIncomeEnabled = true; _unitCap = 16; _playerTechLevel = 3; // v5修复：Lv2→Lv3，解锁科技中心
+                Unit.AiGraceRemaining = 60f; // Normal: 60秒保护期
                 break;
             case Difficulty.Hard:
                 _aiThinkInterval = 7f; _aiStartMoney = 2200; _blueStartMoney = 2500;
                 _aiStartHarvesters = 3; _aiUsesTech = true; _aiCapturesPoints = true;
                 StrategicPointIncomeEnabled = true; _unitCap = 20; _playerTechLevel = 3;
+                Unit.AiGraceRemaining = 30f; // Hard: 30秒保护期
                 break;
             case Difficulty.Brutal:
                 _aiThinkInterval = 4f; _aiStartMoney = 3000; _blueStartMoney = 2200;
                 _aiStartHarvesters = 4; _aiUsesTech = true; _aiCapturesPoints = true;
                 StrategicPointIncomeEnabled = true; _unitCap = 24; _playerTechLevel = 3;
+                Unit.AiGraceRemaining = 0f; // Brutal: 无保护期，开局即战
                 break;
         }
         _enemyThinkTimer = _aiThinkInterval;
@@ -523,21 +536,42 @@ public partial class Main : Node2D
     {
         var dt = (float)delta;
 
+        // AI保护期递减：保护期内AI不主动进攻，给玩家发展空间
+        if (Unit.AiGraceRemaining > 0f)
+        {
+            Unit.AiGraceRemaining -= dt;
+            if (Unit.AiGraceRemaining <= 0f)
+            {
+                Unit.AiGraceRemaining = 0f;
+                if (!_aiGraceEndedNotified)
+                {
+                    _aiGraceEndedNotified = true;
+                    ShowToast("⚠ AI保护期结束！敌方开始进攻！", new Color(1f, 0.5f, 0.3f));
+                }
+            }
+        }
+
         // ===== 截图功能（Godot 内部 API，用于验收渲染效果）=====
         // 在 ANGLE 软件渲染环境下 CopyFromScreen 抓不到 UI，必须用引擎内部截图
-        // 1. 自动截图：游戏开始22秒后自动截一张（验收用，留足建筑+步兵生产时间）
+        // 1. 自动截图：多时间点截图（22s/45s/75s/110s），观察游戏不同阶段
         if (_autoshotTimer >= 0f)
         {
             _autoshotTimer += dt;
-            if (_autoshotTimer >= 22f)
+            // 多阶段截图时间点
+            float[] shotTimes = { 22f, 45f, 75f, 110f };
+            string[] shotSuffixes = { "t1_22s", "t2_45s", "t3_75s", "t4_110s" };
+            for (int i = 0; i < shotTimes.Length; i++)
             {
-                _autoshotTimer = -1f;
-                _autoshotPhase = 1;
-                // 第1张：zoom=1.0 基地全景（玩家左上(200,200)，相机略偏一点能看到多座建筑）
-                // 全景 zoom=0.45 会把 128px 建筑压缩到 57px，纹理细节全部丢失——必须用 zoom=1.0 才能看到砖缝/铆钉
-                _camera.Position = new Vector2(320, 340);
-                _camera.Zoom = new Vector2(1.0f, 1.0f);
-                _panoramaShotPending = 3;
+                if (_autoshotTimer >= shotTimes[i] && _autoshotPhase == i)
+                {
+                    _autoshotPhase = i + 1;
+                    // 统一用 zoom=1.0 基地全景，观察游戏进展
+                    _camera.Position = new Vector2(320, 340);
+                    _camera.Zoom = new Vector2(1.0f, 1.0f);
+                    _panoramaShotPending = 3;
+                    _pendingShotSuffix = shotSuffixes[i];
+                    break;
+                }
             }
         }
         // 全景截图倒计时：等待渲染稳定后拍全景图（用于验收矿石/地面等全局视觉）
@@ -546,18 +580,7 @@ public partial class Main : Node2D
             _panoramaShotPending--;
             if (_panoramaShotPending == 0)
             {
-                // phase 1 拍基地全景，phase 2 拍地表特写，phase 3 结束
-                string suffix = _autoshotPhase == 1 ? "autoshot" : "autoshot_terrain";
-                TakeViewportScreenshot(suffix);
-                _autoshotPhase++;
-                if (_autoshotPhase == 2)
-                {
-                    // 第2张：zoom=3.0 地表特写（(1100,1100) 在对角线道路与中部沙地过渡区，远离建筑）
-                    // 64x64 tile 在 zoom=1.0 下被压缩到看不清像素细节，zoom=3.0 才能看清草丛/沙石/苔藓
-                    _camera.Position = new Vector2(1100, 1100);
-                    _camera.Zoom = new Vector2(3.0f, 3.0f);
-                    _panoramaShotPending = 3;
-                }
+                TakeViewportScreenshot(_pendingShotSuffix);
             }
         }
         // 2. F12 手动截图（玩家可在游戏中按 F12 截图）
@@ -620,9 +643,9 @@ public partial class Main : Node2D
         if (_startOverlay != null && IsInstanceValid(_startOverlay))
         {
             _startOverlayAge += dt;
-            if (_startOverlayAge > 4f)
+            if (_startOverlayAge > 8f) // v5修复：4f→8f，文字增多需更多阅读时间
             {
-                float fade = 1f - (_startOverlayAge - 4f) / 1.5f;
+                float fade = 1f - (_startOverlayAge - 8f) / 1.5f;
                 _startOverlay.Modulate = new Color(1, 1, 1, Mathf.Max(0, fade));
                 if (fade <= 0f) { _startOverlay.QueueFree(); _startOverlay = null!; }
             }

@@ -54,6 +54,9 @@ public partial class Unit : CharacterBody2D
     private Vector2 _guardPosition;
     private bool _hasGuardPosition;
 
+    /// <summary>AI保护期剩余时间（秒）。>0时AI单位不主动搜敌进攻，给玩家发展空间。由Main每帧递减。</summary>
+    public static float AiGraceRemaining = 0f;
+
     // 节点引用
     protected Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
@@ -457,6 +460,19 @@ public partial class Unit : CharacterBody2D
             _aiThinkTimer -= dt;
             if (_aiThinkTimer > 0f) return;
             _aiThinkTimer = 0.5f;
+
+            // AI保护期：给玩家前期发展空间，保护期内只防守不主动进攻
+            if (AiGraceRemaining > 0f)
+            {
+                // 保护期内：只反击身边近距离敌人，不主动全图搜敌
+                var nearbyEnemy = FindNearestEnemyUnitInRange(AggroRange);
+                if (nearbyEnemy != null)
+                {
+                    _attackUnitTarget = nearbyEnemy;
+                    _attackBuildingTarget = null;
+                }
+                return;
+            }
 
             // 主动 AI：全图搜索敌人
             var enemy = FindNearestEnemyUnit();

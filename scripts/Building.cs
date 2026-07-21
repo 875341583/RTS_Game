@@ -73,6 +73,7 @@ public partial class Building : Area2D
                 BuildingName = "建造厂";
                 MaxHealth = 1000f;
                 PowerConsumed = 50;
+                PowerProvided = 50; // v5体验修复：基地自带基础供电，解决开局缺电卡壳
                 break;
             case BuildingType.PowerPlant:
                 BuildingName = "电站";
