@@ -366,16 +366,19 @@ public partial class Unit : CharacterBody2D
             }
         }
 
-        // 2. 修友方建筑
+        // 2. 修友方建筑 & 3. 占领敌方建筑（共用一次 Buildings 遍历）
         var bnode = main.GetNodeOrNull<Node>("Buildings");
         if (bnode != null)
         {
             foreach (var c in bnode.GetChildren())
             {
-                if (c is Building b && IsInstanceValid(b) && b.TeamId == TeamId && b.Health < b.MaxHealth)
+                if (c is Building b && IsInstanceValid(b))
                 {
-                    if (b.GlobalPosition.DistanceTo(pos) <= repairRange)
+                    if (b.GlobalPosition.DistanceTo(pos) > repairRange) continue;
+                    if (b.TeamId == TeamId && b.Health < b.MaxHealth)
                         b.RepairByEngineer(buildHealPerSec * dt);
+                    else if (b.TeamId != TeamId)
+                        b.CaptureTick(dt, TeamId);
                 }
             }
         }

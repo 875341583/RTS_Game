@@ -57,6 +57,12 @@ public partial class Building : Area2D
     private static Texture2D? _buildingRingTex;
     private Color _teamTint = Colors.White;
 
+    // ---- 工程车占领系统 ----
+    /// <summary>占领进度 0~1（1=占领完成）。</summary>
+    public float CaptureProgress { get; private set; } = 0f;
+    private int _capturingTeamId = -1;
+    private bool _captureTickThisFrame = false;
+
     /// <summary>按建筑类型初始化属性。必须在 _Ready 之前调用。</summary>
     public void InitAsType(BuildingType type)
     {
@@ -255,6 +261,26 @@ public partial class Building : Area2D
         }
     }
 
+    /// <summary>工程车推进占领进度（5秒完成一次占领）。占领完成后建筑阵营转换。</summary>
+    public void CaptureTick(float dt, int capturingTeamId)
+    {
+        if (Health <= 0f) return;
+        _captureTickThisFrame = true;
+        _capturingTeamId = capturingTeamId;
+        CaptureProgress += dt / 5f;
+        if (CaptureProgress >= 1f)
+        {
+            // 占领完成：转换阵营
+            TeamId = capturingTeamId;
+            CaptureProgress = 0f;
+            _capturingTeamId = -1;
+            _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
+            _body.Modulate = _teamTint;
+            GD.Print($"{BuildingName} 被 Team {capturingTeamId} 占领!");
+        }
+        QueueRedraw();
+    }
+
     /// <summary>获取生产所需时间（秒）。</summary>
     public static float GetProductionTime(ProductionType type) => type switch
     {
@@ -283,6 +309,18 @@ public partial class Building : Area2D
         {
             _body.Modulate = _teamTint; // 恢复队伍色调
         }
+
+        // 工程车占领衰减：无工程车附近时自动回退进度
+        if (!_captureTickThisFrame && CaptureProgress > 0f)
+        {
+            CaptureProgress -= dt * 0.3f;
+            if (CaptureProgress <= 0f)
+            {
+                CaptureProgress = 0f;
+                _capturingTeamId = -1;
+            }
+        }
+        _captureTickThisFrame = false; // 重置标志
 
         if (!_currentProduction.HasValue) { QueueRedraw(); return; }
         _productionTimer -= dt;
@@ -330,6 +368,15 @@ public partial class Building : Area2D
             DrawArc(local, 9f, 0f, Mathf.Tau, 24, new Color(1f, 0.85f, 0.2f, 0.9f), 2f);
             DrawLine(local - new Vector2(5, 0), local + new Vector2(5, 0), new Color(1f, 0.85f, 0.2f, 0.9f), 1.5f);
             DrawLine(local - new Vector2(0, 5), local + new Vector2(0, 5), new Color(1f, 0.85f, 0.2f, 0.9f), 1.5f);
+        }
+
+        // 工程车占领进度条（建筑下方，生产条下面）
+        if (CaptureProgress > 0f)
+        {
+            float capBarY = 42f + 8f;
+            DrawRect(new Rect2(-30, capBarY, 60, 5), new Color(0.15f, 0.15f, 0.15f, 0.9f), true);
+            var capColor = new Color(1f, 0.3f, 0.3f).Lerp(new Color(0.3f, 1f, 0.3f), CaptureProgress);
+            DrawRect(new Rect2(-30, capBarY, 60 * CaptureProgress, 5), capColor, true);
         }
     }
 }

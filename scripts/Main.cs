@@ -1056,6 +1056,12 @@ public partial class Main : Node2D
                         types.Remove(UnitType.Infantry);
                         types.Insert(0, UnitType.Infantry);
                     }
+                    // 工程车：15%概率优先生产，保证修理/占领功能稳定出场
+                    if (types.Contains(UnitType.Engineer) && GD.Randf() < 0.15f)
+                    {
+                        types.Remove(UnitType.Engineer);
+                        types.Insert(0, UnitType.Engineer);
+                    }
                     foreach (var t in types)
                     {
                         int c = GetUnitCost(t);
@@ -1186,6 +1192,12 @@ public partial class Main : Node2D
         {
             types.Remove(UnitType.Infantry);
             types.Insert(0, UnitType.Infantry);
+        }
+        // 工程车：15%概率优先生产，保证修理/占领功能稳定出场
+        if (types.Contains(UnitType.Engineer) && GD.Randf() < 0.15f)
+        {
+            types.Remove(UnitType.Engineer);
+            types.Insert(0, UnitType.Engineer);
         }
         foreach (var t in types)
         {
