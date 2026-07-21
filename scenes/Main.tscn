@@ -54,7 +54,8 @@ text = "Loading..."
 
 [node name="HintLabel" type="Label" parent="UI"]
 offset_left = 10.0
-offset_top = 640.0
-offset_right = 800.0
-offset_bottom = 710.0
+offset_top = 560.0
+offset_right = 1000.0
+offset_bottom = 740.0
+theme_override_font_sizes/font_size = 12
 text = ""

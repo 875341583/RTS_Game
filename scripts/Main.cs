@@ -124,6 +124,29 @@ public partial class Main : Node2D
         private int _activeAiCount = 7;
         /// <summary>休眠AI的初始战斗单位是否禁用 AutoAI（True=完全静止，便于玩家集中应对活跃AI）。</summary>
         private const bool DormantAiAutoAi = false;
+
+        // ---- 阶段12-A4 超武系统（核弹） ----
+        /// <summary>核弹冷却总时长（秒）。5分钟。</summary>
+        private const float NukeCooldownDuration = 300f;
+        /// <summary>核弹爆炸半径（像素）。</summary>
+        private const float NukeRadius = 260f;
+        /// <summary>核弹爆炸伤害（点）。</summary>
+        private const float NukeDamage = 600f;
+        /// <summary>玩家核弹冷却剩余（秒）。≤0 表示可发射。</summary>
+        private float _playerNukeCooldown = 0f;
+        /// <summary>玩家是否处于核弹目标选择模式（按 N 进入，左键释放 / 右键取消）。</summary>
+        private bool _nukeTargetMode = false;
+        /// <summary>每个 AI 阵营的核弹冷却（key=teamId，value=剩余秒数）。仅在拥有科技中心后生效。</summary>
+        private readonly Dictionary<int, float> _aiNukeCooldowns = new();
+        /// <summary>核弹特效播放列表（持续若干秒的冲击波+辐射雾）。</summary>
+        private readonly List<NukeVisual> _activeNukeVisuals = new();
+        /// <summary>核弹视觉特效临时数据。</summary>
+        private struct NukeVisual
+        {
+            public Vector2 Position;
+            public float Age;
+            public float Lifetime;
+        }
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -289,7 +312,8 @@ public partial class Main : Node2D
                    activeHint +
                    graceHint +
                    "★ 选中单位右键点敌方建筑/单位攻击\n" +
-                   "★ 选中建筑右键设集结点 | R维修 | V出售",
+                   "★ 选中建筑右键设集结点 | R维修 | V出售\n" +
+                   "★ ☢ 建造科技中心后按 Z 可发射核弹（5分钟冷却）",
         };
         _startOverlay.HorizontalAlignment = HorizontalAlignment.Center;
         _startOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
@@ -371,6 +395,15 @@ public partial class Main : Node2D
             var worldPos = _camera.GetGlobalMousePosition();
             if (mb.ButtonIndex == MouseButton.Left)
             {
+                // 阶段12-A4：核弹目标选择模式优先（左键释放核弹）
+                if (_nukeTargetMode && !mouseOverPanel)
+                {
+                    ApplyNuke(worldPos, PlayerTeamId);
+                    _nukeTargetMode = false;
+                    _playerNukeCooldown = NukeCooldownDuration;
+                    QueueRedraw();
+                    return;
+                }
                 // Q1 放置建筑模式优先
                 if (_placementMode != null && !mouseOverPanel)
                 {
@@ -391,6 +424,7 @@ public partial class Main : Node2D
             }
             if (mb.ButtonIndex == MouseButton.Right)
             {
+                if (_nukeTargetMode) { _nukeTargetMode = false; QueueRedraw(); return; }
                 if (_placementMode != null) { CancelPlacement(); return; }
                 if (_attackMoveMode) { _attackMoveMode = false; return; }
                 if (GetSelectedFriendlyUnits().Count > 0) HandleRightClick(worldPos);
@@ -497,6 +531,30 @@ public partial class Main : Node2D
             if (toSell.Count == 0)
             {
                 GD.Print("[出售] 没有可出售的建筑（基地不可出售）");
+            }
+        }
+        else if (kc == Key.Z)
+        {
+            // 阶段12-A4：核弹超武（需科技中心，5分钟冷却）
+            // 注：N键已被InputMap占用为spawn_heavy（重坦），故核弹改用Z键
+            if (!HasBuilding(PlayerTeamId, BuildingType.TechCenter))
+            {
+                ShowToast("☢ 核弹不可用：需建造科技中心", new Color(1f, 0.5f, 0.3f));
+                GD.Print("[核弹] 不可用：需科技中心");
+            }
+            else if (_playerNukeCooldown > 0f)
+            {
+                int sec = Mathf.CeilToInt(_playerNukeCooldown);
+                ShowToast($"☢ 核弹冷却中：{sec / 60}:{sec % 60:D2}", new Color(1f, 0.6f, 0.3f));
+                GD.Print($"[核弹] 冷却中：{sec}s");
+            }
+            else
+            {
+                _nukeTargetMode = !_nukeTargetMode;
+                if (_nukeTargetMode)
+                    ShowToast("☢ 核弹已就绪：左键点击目标 / 右键取消", new Color(1f, 0.3f, 0.2f));
+                GD.Print($"[核弹] 目标选择模式 {(_nukeTargetMode ? "开启" : "关闭")}");
+                QueueRedraw();
             }
         }
     }
@@ -663,6 +721,39 @@ public partial class Main : Node2D
                 if (_buildingAlertCooldown[k] <= 0f) _buildingAlertCooldown.Remove(k);
             }
         }
+
+        // ---- 阶段12-A4：核弹冷却递减 + 视觉特效更新 ----
+        if (_playerNukeCooldown > 0f)
+        {
+            _playerNukeCooldown -= dt;
+            if (_playerNukeCooldown < 0f) _playerNukeCooldown = 0f;
+        }
+        if (_aiNukeCooldowns.Count > 0)
+        {
+            var aiKeys = new List<int>(_aiNukeCooldowns.Keys);
+            foreach (var k in aiKeys)
+            {
+                if (_aiNukeCooldowns[k] > 0f)
+                {
+                    _aiNukeCooldowns[k] -= dt;
+                    if (_aiNukeCooldowns[k] < 0f) _aiNukeCooldowns[k] = 0f;
+                }
+            }
+        }
+        // 核弹特效推进
+        if (_activeNukeVisuals.Count > 0)
+        {
+            for (int i = _activeNukeVisuals.Count - 1; i >= 0; i--)
+            {
+                var nv = _activeNukeVisuals[i];
+                nv.Age += dt;
+                if (nv.Age >= nv.Lifetime) _activeNukeVisuals.RemoveAt(i);
+                else _activeNukeVisuals[i] = nv;
+            }
+            QueueRedraw();
+        }
+        // 目标选择模式下持续重绘（保持准星跟随鼠标）
+        if (_nukeTargetMode) QueueRedraw();
 
         // Q6：开局提示淡出
         if (_startOverlay != null && IsInstanceValid(_startOverlay))
@@ -990,6 +1081,56 @@ public partial class Main : Node2D
 
     public override void _Draw()
     {
+        // ---- 阶段12-A4：核弹冲击波持久特效（始终绘制） ----
+        foreach (var nuke in _activeNukeVisuals)
+        {
+            float progress = nuke.Age / nuke.Lifetime;
+            float radius = NukeRadius * (0.3f + 0.7f * progress);
+            // 外层冲击波（亮黄白→淡出）
+            DrawArc(nuke.Position, radius, 0f, Mathf.Tau, 48,
+                new Color(1f, 0.95f, 0.6f, (1f - progress) * 0.85f), 4f);
+            // 内层辐射圈（橙红→暗）
+            DrawArc(nuke.Position, radius * 0.6f, 0f, Mathf.Tau, 36,
+                new Color(1f, 0.45f, 0.2f, (1f - progress) * 0.6f), 3f);
+            // 中心辐射填充（绿色毒雾感）
+            if (progress < 0.7f)
+            {
+                float fillR = NukeRadius * 0.5f * (1f - progress / 0.7f);
+                DrawCircle(nuke.Position, fillR,
+                    new Color(0.7f, 1f, 0.3f, (1f - progress) * 0.18f));
+            }
+        }
+
+        // ---- 阶段12-A4：核弹目标选择准星 ----
+        if (_nukeTargetMode)
+        {
+            var mousePos = _camera.GetGlobalMousePosition();
+            // 爆炸范围预览圈
+            DrawArc(mousePos, NukeRadius, 0f, Mathf.Tau, 64,
+                new Color(1f, 0.25f, 0.15f, 0.55f), 2f);
+            // 内圈危险标识
+            DrawArc(mousePos, NukeRadius * 0.5f, 0f, Mathf.Tau, 48,
+                new Color(1f, 0.4f, 0.2f, 0.35f), 1.5f);
+            // 中心十字准星
+            var cross = new Color(1f, 0.3f, 0.2f, 0.9f);
+            DrawLine(mousePos - new Vector2(20, 0), mousePos + new Vector2(20, 0), cross, 2f);
+            DrawLine(mousePos - new Vector2(0, 20), mousePos + new Vector2(0, 20), cross, 2f);
+            // 四角小三角（瞄准框）
+            float corn = 14f;
+            var cornCol = new Color(1f, 0.3f, 0.2f, 0.95f);
+            DrawLine(mousePos + new Vector2(-corn, -corn + 6), mousePos + new Vector2(-corn, -corn), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(-corn, -corn), mousePos + new Vector2(-corn + 6, -corn), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(corn - 6, -corn), mousePos + new Vector2(corn, -corn), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(corn, -corn), mousePos + new Vector2(corn, -corn + 6), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(-corn, corn - 6), mousePos + new Vector2(-corn, corn), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(-corn, corn), mousePos + new Vector2(-corn + 6, corn), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(corn - 6, corn), mousePos + new Vector2(corn, corn), cornCol, 2f);
+            DrawLine(mousePos + new Vector2(corn, corn), mousePos + new Vector2(corn, corn - 6), cornCol, 2f);
+            // 中心 ☢ 字样（用 Label 的复杂，这里画一个简化标识）
+            DrawCircle(mousePos, 3f, new Color(1f, 0.3f, 0.2f, 0.95f));
+        }
+
+        // ---- Q1 建筑放置预览（仅在放置模式） ----
         if (_placementMode == null) return;
         var pos = _camera.GetGlobalMousePosition();
         pos = new Vector2(Mathf.Clamp(pos.X, 80f, 1920f), Mathf.Clamp(pos.Y, 80f, 1920f));
@@ -1141,6 +1282,62 @@ public partial class Main : Node2D
         return count;
     }
 
+    // ---------- 阶段12-A4 超武系统（核弹）----------
+
+    /// <summary>在指定位置释放核弹：对范围内所有非己方单位/建筑造成 NukeDamage 伤害，并播放冲击波 + 多层爆炸特效。</summary>
+    private void ApplyNuke(Vector2 pos, int firingTeamId)
+    {
+        int unitHits = 0, bldHits = 0;
+
+        // 1. 对范围内敌方单位造成伤害
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId
+                && pos.DistanceTo(u.GlobalPosition) <= NukeRadius)
+            {
+                u.TakeDamage(NukeDamage);
+                unitHits++;
+            }
+        }
+        // 2. 对范围内敌方建筑造成伤害
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId
+                && pos.DistanceTo(b.GlobalPosition) <= NukeRadius)
+            {
+                b.TakeDamage(NukeDamage);
+                bldHits++;
+            }
+        }
+
+        // 3. 视觉特效：3 秒持续冲击波 + 辐射雾（由 _Draw 渲染）
+        _activeNukeVisuals.Add(new NukeVisual
+        {
+            Position = pos,
+            Age = 0f,
+            Lifetime = 3f
+        });
+
+        // 4. 中心大爆炸特效（Kenney 烟雾 5 帧动画）
+        AddChild(BattleEffect.BigExplosion(pos));
+        // 5. 多重次级爆炸叠加，增强蘑菇云观感
+        for (int i = 0; i < 6; i++)
+        {
+            float ang = i * Mathf.Tau / 6f + (float)GD.RandRange(-0.3, 0.3);
+            float r = (float)GD.RandRange(30, 90);
+            var offset = new Vector2(Mathf.Cos(ang) * r, Mathf.Sin(ang) * r);
+            AddChild(BattleEffect.Explosion(pos + offset));
+        }
+
+        // 6. 通知提示
+        string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
+        ShowToast($"☢ {who}释放核弹！命中 {unitHits} 单位 / {bldHits} 建筑",
+            new Color(1f, 0.3f, 0.2f));
+        GD.Print($"[核弹] Team {firingTeamId} 于 {pos} 释放，命中 {unitHits} 单位 + {bldHits} 建筑");
+
+        QueueRedraw();
+    }
+
     /// <summary>AI 阵营 Tick：在每个 _aiThinkInterval 周期内为每个 AI 阵营独立调用。</summary>
     private void AITickForTeam(int teamId)
     {
@@ -1237,6 +1434,49 @@ public partial class Main : Node2D
                 AITryCaptureStrategicPoint(teamId);
             }
         }
+
+        // 4. 阶段12-A4：核弹超武（拥有科技中心 + 冷却结束 → 自动选择目标释放）
+        if (HasBuilding(teamId, BuildingType.TechCenter))
+        {
+            // 拥有科技中心后开始 5 分钟冷却倒计时（递减已在 _Process 中处理）
+            if (!_aiNukeCooldowns.ContainsKey(teamId))
+                _aiNukeCooldowns[teamId] = NukeCooldownDuration;
+
+            if (_aiNukeCooldowns[teamId] <= 0f)
+            {
+                var target = FindNukeTargetForAi(teamId);
+                if (target.HasValue)
+                {
+                    ApplyNuke(target.Value, teamId);
+                    _aiNukeCooldowns[teamId] = NukeCooldownDuration;
+                }
+            }
+        }
+    }
+
+    /// <summary>阶段12-A4：为 AI 选择核弹目标。50% 优先玩家基地，其余随机选其他非己方基地。</summary>
+    private Vector2? FindNukeTargetForAi(int firingTeamId)
+    {
+        var candidates = new List<Building>();
+        foreach (var kv in _bases)
+        {
+            if (kv.Key != firingTeamId && IsInstanceValid(kv.Value))
+                candidates.Add(kv.Value);
+        }
+        if (candidates.Count == 0) return null;
+
+        // 50% 概率优先打击玩家基地（若有）
+        if (GD.Randf() < 0.5f
+            && _bases.TryGetValue(PlayerTeamId, out var pb)
+            && IsInstanceValid(pb)
+            && firingTeamId != PlayerTeamId)
+        {
+            return pb.GlobalPosition;
+        }
+
+        // 否则随机任选一个非己方基地
+        int idx = (int)GD.RandRange(0, candidates.Count - 1);
+        return candidates[idx].GlobalPosition;
     }
 
     /// <summary>蓝方测试 AI：模拟玩家自动造兵（仅 headless 模式）。</summary>
@@ -2054,12 +2294,24 @@ public partial class Main : Node2D
             aiTotalPower += GetTeamPower(t);
         }
 
+        // 阶段12-A4：核弹状态行
+        bool hasTech = HasBuilding(PlayerTeamId, BuildingType.TechCenter);
+        string nukeStatus;
+        if (!hasTech) nukeStatus = "无科技中心";
+        else if (_playerNukeCooldown > 0f)
+        {
+            int sec = Mathf.CeilToInt(_playerNukeCooldown);
+            nukeStatus = $"冷却 {sec / 60}:{sec % 60:D2}";
+        }
+        else nukeStatus = "就绪 ★";
+        string nukeLine = $"\n☢ 核弹: {nukeStatus}";
+
         string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
         _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}\n" +
                         $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
                         $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
                         $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
-                        $"地图剩余矿点: {oreCount}\n" +
+                        $"地图剩余矿点: {oreCount}{nukeLine}\n" +
                         (string.IsNullOrEmpty(status) ? "" : $"\n★ {status}");
 
         _hintLabel.Text = "WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点\n" +
@@ -2069,9 +2321,12 @@ public partial class Main : Node2D
                           " | M 炮兵$" + ArtilleryCost + " | H 矿车$" + HarvesterCost + "\n" +
                           "K 火箭炮$" + RocketLauncherCost + " | L 导弹车$" + MissileTankCost + " (需科技中心)\n" +
                           "P 电站$" + PowerPlantCost + " | O 兵营$" + BarracksCost +
-                          " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)";
+                          " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)\n" +
+                          "Z 核弹 (需科技中心+5分钟冷却)";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
+        if (_nukeTargetMode)
+            _hintLabel.Text = "★ 核弹目标模式：左键发射 | 右键取消";
     }
 
     private string GetBuildingList(int teamId)
