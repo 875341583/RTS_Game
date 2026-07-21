@@ -112,8 +112,14 @@ public partial class Main : Node2D
     private int _autoshotPhase = 0;
     /// <summary>当前待截图的文件名后缀（多阶段截图用）。</summary>
     private string _pendingShotSuffix = "autoshot";
-    /// <summary>AI保护期结束通知是否已发出。</summary>
-    private bool _aiGraceEndedNotified = false;
+        /// <summary>AI保护期结束通知是否已发出。</summary>
+        private bool _aiGraceEndedNotified = false;
+        /// <summary>活跃AI数量（剩余AI休眠不发展不进攻）。
+        /// 各难度取值：Easy=2 / Normal=4 / Hard=6 / Brutal=7。
+        /// teamId 1.._activeAiCount 为活跃AI；teamId (_activeAiCount+1)..AiTeamCount 为休眠AI。</summary>
+        private int _activeAiCount = 7;
+        /// <summary>休眠AI的初始战斗单位是否禁用 AutoAI（True=完全静止，便于玩家集中应对活跃AI）。</summary>
+        private const bool DormantAiAutoAi = false;
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -198,11 +204,16 @@ public partial class Main : Node2D
             }
             else
             {
-                // AI 方：N 矿车起步 + 1 重坦 1 轻坦（开放 AutoAI 互相战斗）
+                // AI 方：N 矿车起步 + 1 重坦 1 轻坦
+                // 活跃AI（teamId ≤ _activeAiCount）开放 AutoAI 主动进攻
+                // 休眠AI（teamId > _activeAiCount）禁用 AutoAI 静止原地不主动进攻
+                bool isActiveAi = teamId <= _activeAiCount;
                 for (int i = 0; i < _aiStartHarvesters; i++)
                     SpawnHarvester(basePos + new Vector2(-40 + i * 40, 70), teamId, baseBuilding);
-                SpawnUnit(UnitType.HeavyTank, basePos + new Vector2(-100, -20), teamId, autoAI: true);
-                SpawnUnit(UnitType.LightTank, basePos + new Vector2(-130, 20), teamId, autoAI: true);
+                SpawnUnit(UnitType.HeavyTank, basePos + new Vector2(-100, -20), teamId, autoAI: isActiveAi);
+                SpawnUnit(UnitType.LightTank, basePos + new Vector2(-130, 20), teamId, autoAI: isActiveAi);
+                if (!isActiveAi)
+                    GD.Print($"[Difficulty] Team {teamId} 处于休眠状态（不发展不主动进攻）");
             }
 
             // 每个阵营基地附近自动生成 2 个近矿（800 资源）保证起步经济
@@ -262,11 +273,16 @@ public partial class Main : Node2D
         string graceHint = Unit.AiGraceRemaining > 0f
             ? $"★ AI保护期：前{(int)Unit.AiGraceRemaining}秒AI不会主动进攻，抓紧发展！\n"
             : "";
+        int dormantCount = AiTeamCount - _activeAiCount;
+        string activeHint = dormantCount > 0
+            ? $"★ 对手：{_activeAiCount}个活跃AI阵营（共{AiTeamCount}个，{dormantCount}个休眠不主动进攻）\n"
+            : $"★ 对手：{_activeAiCount}个AI阵营全部活跃\n";
         _startOverlay = new Label
         {
             Text = "★ 游戏目标：摧毁敌方所有建筑和单位即获胜！\n" +
                    "★ 建造建议：电站→兵营→车厂→科技中心\n" +
                    "★ 矿车自动采矿，选中基地可生产更多矿车($500)\n" +
+                   activeHint +
                    graceHint +
                    "★ 选中单位右键点敌方建筑/单位攻击\n" +
                    "★ 选中建筑右键设集结点 | R维修 | V出售",
@@ -306,31 +322,35 @@ public partial class Main : Node2D
                 _aiStartHarvesters = 2; _aiUsesTech = false; _aiCapturesPoints = false;
                 StrategicPointIncomeEnabled = false; _unitCap = 12; _playerTechLevel = 1;
                 Unit.AiGraceRemaining = 120f; // Easy: 2分钟保护期
+                _activeAiCount = 2; // Easy: 仅2个活跃AI，其余5个休眠
                 break;
             case Difficulty.Normal:
                 _aiThinkInterval = 10f; _aiStartMoney = 1800; _blueStartMoney = 2700;
                 _aiStartHarvesters = 3; _aiUsesTech = true; _aiCapturesPoints = true;
                 StrategicPointIncomeEnabled = true; _unitCap = 16; _playerTechLevel = 3; // v5修复：Lv2→Lv3，解锁科技中心
                 Unit.AiGraceRemaining = 60f; // Normal: 60秒保护期
+                _activeAiCount = 4; // v5修复：Normal难度活跃AI 7→4，3个AI休眠，缓解1v7压力
                 break;
             case Difficulty.Hard:
                 _aiThinkInterval = 7f; _aiStartMoney = 2200; _blueStartMoney = 2500;
                 _aiStartHarvesters = 3; _aiUsesTech = true; _aiCapturesPoints = true;
                 StrategicPointIncomeEnabled = true; _unitCap = 20; _playerTechLevel = 3;
                 Unit.AiGraceRemaining = 30f; // Hard: 30秒保护期
+                _activeAiCount = 6; // Hard: 6个活跃AI，1个休眠
                 break;
             case Difficulty.Brutal:
                 _aiThinkInterval = 4f; _aiStartMoney = 3000; _blueStartMoney = 2200;
                 _aiStartHarvesters = 4; _aiUsesTech = true; _aiCapturesPoints = true;
                 StrategicPointIncomeEnabled = true; _unitCap = 24; _playerTechLevel = 3;
                 Unit.AiGraceRemaining = 0f; // Brutal: 无保护期，开局即战
+                _activeAiCount = 7; // Brutal: 全部7个AI活跃，极限挑战
                 break;
         }
         _enemyThinkTimer = _aiThinkInterval;
         _money[0] = _blueStartMoney;
         for (int t = 1; t <= AiTeamCount; t++)
             _money[t] = _aiStartMoney;
-        GD.Print($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney}(x7) | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled}");
+        GD.Print($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney}(x7) | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled} | 活跃AI {_activeAiCount}/7 (休眠 {AiTeamCount - _activeAiCount} 个)");
     }
 
     public override void _Input(InputEvent @event)
@@ -602,13 +622,14 @@ public partial class Main : Node2D
         if (Input.IsActionJustPressed("spawn_rocket")) TrySpawnUnit(UnitType.RocketLauncher, RocketLauncherCost);
         if (Input.IsActionJustPressed("spawn_missile")) TrySpawnUnit(UnitType.MissileTank, MissileTankCost);
 
-        // AI 阵营节奏：每个 AI 阵营（1..7）独立 Tick
+        // AI 阵营节奏：仅活跃 AI 阵营（1.._activeAiCount）独立 Tick
+        // 休眠AI（_activeAiCount+1..AiTeamCount）既不发展建筑也不造兵进攻，给玩家喘息空间
         if (!_gameOver)
         {
             _enemyThinkTimer -= dt;
             if (_enemyThinkTimer <= 0f)
             {
-                for (int t = 1; t <= AiTeamCount; t++)
+                for (int t = 1; t <= _activeAiCount; t++)
                     AITickForTeam(t);
                 _enemyThinkTimer = _aiThinkInterval;
             }
