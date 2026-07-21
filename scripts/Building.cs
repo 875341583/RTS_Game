@@ -11,7 +11,7 @@ public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter }
 /// <summary>
 /// 生产项类型：可由建筑排产的战斗单位或矿车。
 /// </summary>
-public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry, AntiAir }
+public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry, AntiAir, Engineer }
 
 /// <summary>
 /// 建筑/基地：可被选中、可被攻击。不同类型解锁不同单位生产。
@@ -243,6 +243,18 @@ public partial class Building : Area2D
         QueueRedraw();
     }
 
+    /// <summary>工程车持续修复：增加一定血量，但不超过 MaxHealth。不触发 SetRallyPoint 类逻辑。</summary>
+    public void RepairByEngineer(float amount)
+    {
+        if (amount <= 0f || Health >= MaxHealth) return;
+        Health = Mathf.Min(MaxHealth, Health + amount);
+        if (_healthBar != null)
+        {
+            _healthBar.Value = Health;
+            _healthBar.Visible = true;
+        }
+    }
+
     /// <summary>获取生产所需时间（秒）。</summary>
     public static float GetProductionTime(ProductionType type) => type switch
     {
@@ -254,6 +266,7 @@ public partial class Building : Area2D
         ProductionType.Harvester => 5f,
         ProductionType.Infantry => 2f,
         ProductionType.AntiAir => 3f,
+        ProductionType.Engineer => 4f,
         _ => 3f
     };
 

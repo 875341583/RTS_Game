@@ -54,6 +54,7 @@ public partial class Main : Node2D
     private const int HarvesterCost = 500;
     private const int InfantryCost = 100;
     private const int AntiAirCost = 300;
+    private const int EngineerCost = 300;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -744,6 +745,7 @@ public partial class Main : Node2D
             UnitType.HeavyTank => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.Artillery => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.AntiAir => HasBuilding(teamId, BuildingType.WarFactory),
+            UnitType.Engineer => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
             _ => HasBuilding(teamId, BuildingType.Base)
@@ -785,6 +787,7 @@ public partial class Main : Node2D
             UnitType.RocketLauncher => RocketLauncherCost,
             UnitType.MissileTank => MissileTankCost,
             UnitType.AntiAir => AntiAirCost,
+            UnitType.Engineer => EngineerCost,
             _ => 0
         };
     }
@@ -1037,6 +1040,7 @@ public partial class Main : Node2D
                     types.Add(UnitType.HeavyTank);
                     types.Add(UnitType.Artillery);
                     types.Add(UnitType.AntiAir);
+                    types.Add(UnitType.Engineer);
                 }
                 if (hasTech)
                 {
@@ -1167,6 +1171,7 @@ public partial class Main : Node2D
             types.Add(UnitType.HeavyTank);
             types.Add(UnitType.Artillery);
             types.Add(UnitType.AntiAir);
+            types.Add(UnitType.Engineer);
         }
         if (hasTech)
         {
@@ -1427,6 +1432,7 @@ public partial class Main : Node2D
         UnitType.HeavyTank => BuildingType.WarFactory,
         UnitType.Artillery => BuildingType.WarFactory,
         UnitType.AntiAir => BuildingType.WarFactory,
+        UnitType.Engineer => BuildingType.WarFactory,
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -1478,6 +1484,7 @@ public partial class Main : Node2D
         UnitType.RocketLauncher => ProductionType.RocketLauncher,
         UnitType.MissileTank => ProductionType.MissileTank,
         UnitType.AntiAir => ProductionType.AntiAir,
+        UnitType.Engineer => ProductionType.Engineer,
         _ => ProductionType.LightTank
     };
 
@@ -1490,6 +1497,7 @@ public partial class Main : Node2D
         ProductionType.RocketLauncher => UnitType.RocketLauncher,
         ProductionType.MissileTank => UnitType.MissileTank,
         ProductionType.AntiAir => UnitType.AntiAir,
+        ProductionType.Engineer => UnitType.Engineer,
         _ => UnitType.Default
     };
 

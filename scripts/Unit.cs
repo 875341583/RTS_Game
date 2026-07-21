@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -61,7 +61,7 @@ public partial class Unit : CharacterBody2D
 
     private static Texture2D? _ringTex;
     // 灰底底盘纹理（按兵种，一套支持任意阵营色染色）
-    private static Texture2D? _hullLight, _hullHeavy, _hullArty, _hullRocket, _hullMissile, _hullAntiAir;
+    private static Texture2D? _hullLight, _hullHeavy, _hullArty, _hullRocket, _hullMissile, _hullAntiAir, _hullEngineer;
     private static Texture2D? _harvesterHull;
     // 灰底步兵纹理（32x32俯视）
     private static Texture2D? _infantryHull;
@@ -101,6 +101,7 @@ public partial class Unit : CharacterBody2D
         _hullRocket  = LoadUnitTexture("res://assets/sprites/units/hull_rocket.png");
         _hullMissile = LoadUnitTexture("res://assets/sprites/units/hull_missile.png");
         _hullAntiAir  = LoadUnitTexture("res://assets/sprites/units/hull_antiair.png");
+        _hullEngineer  = LoadUnitTexture("res://assets/sprites/units/hull_engineer.png");
 
         // 步兵（32x32灰底俯视）
         _infantryHull = LoadUnitTexture("res://assets/sprites/units/infantry.png");
@@ -155,6 +156,7 @@ public partial class Unit : CharacterBody2D
         UnitType.RocketLauncher => _hullRocket!,
         UnitType.MissileTank => _hullMissile!,
         UnitType.AntiAir => _hullAntiAir!,
+        UnitType.Engineer => _hullEngineer!,
         UnitType.Infantry => _infantryHull!,
         _ => _harvesterHull!
     };
@@ -168,6 +170,8 @@ public partial class Unit : CharacterBody2D
         UnitType.RocketLauncher => _turretRocket!,
         UnitType.MissileTank => _turretMissile!,
         UnitType.AntiAir => _turretAntiAir!,
+        // 工程车无炮塔（底盘已含维修吊臂）
+        UnitType.Engineer => null!,
         // 步兵无炮塔（身体朝向代替炮塔朝向）
         UnitType.Infantry => null!,
         _ => null!
@@ -246,6 +250,15 @@ public partial class Unit : CharacterBody2D
                 AttackCooldown = 0.6f;
                 AggroRange = 200f;
                 break;
+            case UnitType.Engineer:
+                UnitName = "工程车";
+                MaxHealth = 120f;
+                MoveSpeed = 240f;
+                AttackDamage = 0f;     // 纯辅助不攻击
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 0f;       // 不主动锁定目标
+                break;
         }
     }
 
@@ -276,8 +289,8 @@ public partial class Unit : CharacterBody2D
         _healthBar.Value = Health;
         UpdateHealthBarVisibility();
 
-        // 炮塔精灵（战斗单位专用，矿车和步兵不需要）
-        if (this is not Harvester && Type != UnitType.Infantry)
+        // 炮塔精灵（战斗单位专用，矿车、步兵和工程车不需要）
+        if (this is not Harvester && Type != UnitType.Infantry && Type != UnitType.Engineer)
         {
             _turret = new Sprite2D { Name = "Turret", ZIndex = 1 };
             AddChild(_turret);
@@ -323,6 +336,57 @@ public partial class Unit : CharacterBody2D
 
         // Q3：炮塔朝向目标平滑旋转
         UpdateTurretRotation(dt);
+
+        // 工程车辅助：每帧治疗附近的友方建筑/单位
+        if (Type == UnitType.Engineer) TryRepairNearby(dt);
+    }
+
+    /// <summary>工程车辅助逻辑：修理140范围内友方单位(25 HP/s)和建筑(50 HP/s)。</summary>
+    private void TryRepairNearby(float dt)
+    {
+        const float repairRange = 140f;
+        const float unitHealPerSec = 25f;
+        const float buildHealPerSec = 50f;
+        var pos = GlobalPosition;
+
+        var main = GetParent()?.GetParent();
+        if (main == null) return;
+
+        // 1. 修友方单位
+        var unitsNode = GetParent();
+        if (unitsNode != null)
+        {
+            foreach (var c in unitsNode.GetChildren())
+            {
+                if (c is Unit u && u != this && IsInstanceValid(u) && u.TeamId == TeamId && u.Health < u.MaxHealth)
+                {
+                    if (u.GlobalPosition.DistanceTo(pos) <= repairRange)
+                        u.Heal(unitHealPerSec * dt);
+                }
+            }
+        }
+
+        // 2. 修友方建筑
+        var bnode = main.GetNodeOrNull<Node>("Buildings");
+        if (bnode != null)
+        {
+            foreach (var c in bnode.GetChildren())
+            {
+                if (c is Building b && IsInstanceValid(b) && b.TeamId == TeamId && b.Health < b.MaxHealth)
+                {
+                    if (b.GlobalPosition.DistanceTo(pos) <= repairRange)
+                        b.RepairByEngineer(buildHealPerSec * dt);
+                }
+            }
+        }
+    }
+
+    /// <summary>治疗单位：增加 Health，但不超过 MaxHealth。可被工程车外部调用。</summary>
+    public void Heal(float amount)
+    {
+        if (_isDead || amount <= 0f) return;
+        Health = Mathf.Min(MaxHealth, Health + amount);
+        UpdateHealthBarVisibility();
     }
 
     /// <summary>Q3：炮塔朝向攻击目标平滑旋转，无目标时跟随车体方向。</summary>
