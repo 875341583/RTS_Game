@@ -302,6 +302,8 @@ public partial class Unit : CharacterBody2D
         _bodyTint = teamColor;
         // 步兵32×32素材按 0.85 缩放，更贴近红警2步兵体里坦克的视觉比例
         _body.Scale = (Type == UnitType.Infantry) ? new Vector2(0.9f, 0.9f) : Vector2.One;
+        // 像素艺术必须用 Nearest 过滤，Linear 会把 14-17 色的底盘细节插值平滑成单色块
+        _body.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         _selectionRing.Texture = _ringTex;
         _selectionRing.Visible = false;
         _healthBar.MaxValue = MaxHealth;
@@ -311,7 +313,7 @@ public partial class Unit : CharacterBody2D
         // 炮塔精灵（战斗单位专用，矿车、步兵和工程车不需要）
         if (this is not Harvester && Type != UnitType.Infantry && Type != UnitType.Engineer)
         {
-            _turret = new Sprite2D { Name = "Turret", ZIndex = 1 };
+            _turret = new Sprite2D { Name = "Turret", ZIndex = 1, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
             AddChild(_turret);
             _turret.Texture = GetTurretTexture(Type, TeamId);
             // 新素材：炮塔圆盘在图片正中心(32,32)，centered=true 自动对齐旋转中心

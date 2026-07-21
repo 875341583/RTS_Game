@@ -108,6 +108,8 @@ public partial class Main : Node2D
     private float _autoshotTimer = 0f; // 自动截图计时器（验收用）
     /// <summary>全景截图倒数帧：在 autoshot 触发后切换全景相机，等待几帧渲染稳定再截图。</summary>
     private int _panoramaShotPending = 0;
+    /// <summary>autoshot 阶段：0=未开始, 1=已拍全景, 2=已拍地表特写。每阶段切换不同相机位置+zoom。</summary>
+    private int _autoshotPhase = 0;
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -530,9 +532,9 @@ public partial class Main : Node2D
             if (_autoshotTimer >= 22f)
             {
                 _autoshotTimer = -1f;
-                // 验收近景：相机移到玩家基地（左上 200,200）附近 + zoom 1.0 倍（真实玩家视角），等几帧渲染稳定后截图
+                _autoshotPhase = 1;
+                // 第1张：zoom=1.0 基地全景（玩家左上(200,200)，相机略偏一点能看到多座建筑）
                 // 全景 zoom=0.45 会把 128px 建筑压缩到 57px，纹理细节全部丢失——必须用 zoom=1.0 才能看到砖缝/铆钉
-                // 注意：玩家在(200,200)，相机略偏一点能看到玩家已建好的多座建筑
                 _camera.Position = new Vector2(320, 340);
                 _camera.Zoom = new Vector2(1.0f, 1.0f);
                 _panoramaShotPending = 3;
@@ -543,7 +545,20 @@ public partial class Main : Node2D
         {
             _panoramaShotPending--;
             if (_panoramaShotPending == 0)
-                TakeViewportScreenshot("autoshot");
+            {
+                // phase 1 拍基地全景，phase 2 拍地表特写，phase 3 结束
+                string suffix = _autoshotPhase == 1 ? "autoshot" : "autoshot_terrain";
+                TakeViewportScreenshot(suffix);
+                _autoshotPhase++;
+                if (_autoshotPhase == 2)
+                {
+                    // 第2张：zoom=3.0 地表特写（(1100,1100) 在对角线道路与中部沙地过渡区，远离建筑）
+                    // 64x64 tile 在 zoom=1.0 下被压缩到看不清像素细节，zoom=3.0 才能看清草丛/沙石/苔藓
+                    _camera.Position = new Vector2(1100, 1100);
+                    _camera.Zoom = new Vector2(3.0f, 3.0f);
+                    _panoramaShotPending = 3;
+                }
+            }
         }
         // 2. F12 手动截图（玩家可在游戏中按 F12 截图）
         if (Input.IsKeyPressed(Key.F12))
@@ -1554,7 +1569,8 @@ public partial class Main : Node2D
     // ========== Q4 地面纹理系统 ==========
 
     // 地面瓦片纹理缓存
-    private static Texture2D? _grass1Tex, _grass2Tex, _sand1Tex, _sand2Tex;
+    private static Texture2D? _grass1Tex, _grass2Tex, _grass3Tex, _grass4Tex;
+    private static Texture2D? _sand1Tex, _sand2Tex, _sand3Tex;
     private static Texture2D? _roadETex, _roadNTex, _roadCrossTex;
 
     private void CreateGround()
@@ -1584,8 +1600,11 @@ public partial class Main : Node2D
         var groundImg = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
         var grass1Img = _grass1Tex!.GetImage();
         var grass2Img = _grass2Tex!.GetImage();
+        var grass3Img = _grass3Tex!.GetImage();
+        var grass4Img = _grass4Tex!.GetImage();
         var sand1Img  = _sand1Tex!.GetImage();
         var sand2Img  = _sand2Tex!.GetImage();
+        var sand3Img  = _sand3Tex!.GetImage();
         var roadEImg  = _roadETex!.GetImage();
         var roadNImg  = _roadNTex!.GetImage();
         var roadCrossImg = _roadCrossTex!.GetImage();
@@ -1596,11 +1615,11 @@ public partial class Main : Node2D
             {
                 Image tileImg = tileGrid[tx, ty] switch
                 {
-                    1 => (rng.Next(2) == 0 ? sand1Img : sand2Img),
+                    1 => (rng.Next(3) switch { 0 => sand1Img, 1 => sand2Img, _ => sand3Img }),
                     2 => roadEImg,
                     3 => roadNImg,
                     4 => roadCrossImg,
-                    _ => (rng.Next(3) == 0 ? grass2Img : grass1Img)
+                    _ => (rng.Next(4) switch { 0 => grass1Img, 1 => grass2Img, 2 => grass3Img, _ => grass4Img })
                 };
                 groundImg.BlitRect(tileImg, new Rect2I(0, 0, TileSize, TileSize),
                     new Vector2I(tx * TileSize, ty * TileSize));
@@ -1608,7 +1627,7 @@ public partial class Main : Node2D
         }
 
         var groundTex = ImageTexture.CreateFromImage(groundImg);
-        _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false, ZIndex = -3 };
+        _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false, ZIndex = -3, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
         AddChild(_groundSprite);
         MoveChild(_groundSprite, 0); // 最底层
     }
@@ -1618,8 +1637,11 @@ public partial class Main : Node2D
         if (_grass1Tex != null) return;
         _grass1Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass1.png");
         _grass2Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass2.png");
+        _grass3Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass3.png");
+        _grass4Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass4.png");
         _sand1Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSand1.png");
         _sand2Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSand2.png");
+        _sand3Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSand3.png");
         _roadETex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadEast.png");
         _roadNTex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadNorth.png");
         _roadCrossTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadCrossing.png");

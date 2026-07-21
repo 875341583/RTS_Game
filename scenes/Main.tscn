@@ -9,6 +9,7 @@ script = ExtResource("1_main")
 [node name="Background" type="Polygon2D" parent="."]
 color = Color(0.15, 0.3, 0.12, 1)
 polygon = PackedVector2Array(0, 0, 2000, 0, 2000, 2000, 0, 2000)
+z_index = -10
 
 [node name="GridLines" type="Line2D" parent="."]
 width = 1.0
