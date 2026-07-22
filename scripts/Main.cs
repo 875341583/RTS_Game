@@ -63,6 +63,10 @@ public partial class Main : Node2D
     private const int SniperCost = 250;
     private const int FlameInfantryCost = 180;
     private const int TransportCost = 400;
+    // E6b：特殊单位造价
+    private const int HeroCost = 600;
+    private const int SpyCost = 500;
+    private const int ThiefCost = 300;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -839,6 +843,14 @@ public partial class Main : Node2D
         if (Input.IsKeyPressed(Key.T) && !Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.Transport, TransportCost);
 
+        // E6b：特殊单位热键 Y(英雄) / Shift+Y(间谍) / U(窃贼)
+        if (Input.IsKeyPressed(Key.Y) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Hero, HeroCost);
+        if (Input.IsKeyPressed(Key.Y) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Spy, SpyCost);
+        if (Input.IsKeyPressed(Key.U) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Thief, ThiefCost);
+
         // E6：E键运输车下车
         if (Input.IsKeyPressed(Key.E))
         {
@@ -1147,6 +1159,9 @@ public partial class Main : Node2D
             UnitType.AntiAir => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.Engineer => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.Transport => HasBuilding(teamId, BuildingType.WarFactory),      // E6：运输车
+            UnitType.Hero => HasBuilding(teamId, BuildingType.TechCenter),         // E6b：英雄需科技
+            UnitType.Spy => HasBuilding(teamId, BuildingType.TechCenter),          // E6b：间谍需科技
+            UnitType.Thief => HasBuilding(teamId, BuildingType.Barracks),          // E6b：窃贼需兵营
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.ChiefEngineer => HasBuilding(teamId, BuildingType.TechCenter),
@@ -1196,6 +1211,9 @@ public partial class Main : Node2D
             UnitType.Sniper => SniperCost,
             UnitType.FlameInfantry => FlameInfantryCost,
             UnitType.Transport => TransportCost,
+            UnitType.Hero => HeroCost,         // E6b
+            UnitType.Spy => SpyCost,            // E6b
+            UnitType.Thief => ThiefCost,        // E6b
             _ => 0
         };
     }
@@ -1770,6 +1788,7 @@ public partial class Main : Node2D
                     types.Add(UnitType.Grenadier);       // E6
                     types.Add(UnitType.FlameInfantry);   // E6
                     types.Add(UnitType.Sniper);           // E6
+                    types.Add(UnitType.Thief);            // E6b
                 }
                 if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
@@ -1778,6 +1797,9 @@ public partial class Main : Node2D
                     types.Add(UnitType.AntiAir);
                     types.Add(UnitType.Engineer);
                     types.Add(UnitType.Transport);        // E6
+                    types.Add(UnitType.Hero);              // E6b
+                    types.Add(UnitType.Spy);               // E6b
+                    types.Add(UnitType.Thief);             // E6b
                 }
                 if (hasTech)
                 {
@@ -2382,7 +2404,10 @@ public partial class Main : Node2D
         UnitType.Artillery => BuildingType.WarFactory,
         UnitType.AntiAir => BuildingType.WarFactory,
         UnitType.Engineer => BuildingType.WarFactory,
-        UnitType.Transport => BuildingType.WarFactory,     // E6
+            UnitType.Transport => BuildingType.WarFactory,     // E6
+            UnitType.Hero => BuildingType.TechCenter,          // E6b
+            UnitType.Spy => BuildingType.TechCenter,           // E6b
+            UnitType.Thief => BuildingType.Barracks,           // E6b
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -2439,6 +2464,9 @@ public partial class Main : Node2D
         UnitType.Sniper => ProductionType.Sniper,             // E6
         UnitType.FlameInfantry => ProductionType.FlameInfantry, // E6
         UnitType.Transport => ProductionType.Transport,       // E6
+        UnitType.Hero => ProductionType.Hero,                 // E6b
+        UnitType.Spy => ProductionType.Spy,                    // E6b
+        UnitType.Thief => ProductionType.Thief,               // E6b
         _ => ProductionType.LightTank
     };
 
@@ -2456,6 +2484,9 @@ public partial class Main : Node2D
         ProductionType.Sniper => UnitType.Sniper,             // E6
         ProductionType.FlameInfantry => UnitType.FlameInfantry, // E6
         ProductionType.Transport => UnitType.Transport,       // E6
+        ProductionType.Hero => UnitType.Hero,                 // E6b
+        ProductionType.Spy => UnitType.Spy,                    // E6b
+        ProductionType.Thief => UnitType.Thief,               // E6b
         _ => UnitType.Default
     };
 
@@ -3232,6 +3263,14 @@ public partial class Main : Node2D
     {
         if (teamId >= 0 && teamId < _money.Length)
             _money[teamId] += amount;
+    }
+
+    /// <summary>获取指定阵营当前资金。</summary>
+    public int GetMoney(int teamId)
+    {
+        if (teamId >= 0 && teamId < _money.Length)
+            return _money[teamId];
+        return 0;
     }
 
     // ---- G4+: 建筑受击回防 ----

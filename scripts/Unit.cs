@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -66,6 +66,17 @@ public partial class Unit : CharacterBody2D
     // E6：搭载交互
     /// <summary>步兵上车目标（移动到运输车附近后执行上车）。</summary>
     public Unit? _embarkTarget;
+
+    // ======== E6b：特殊单位系统 ========
+    /// <summary>英雄技能类型。</summary>
+    public enum HeroSkill { None, DoubleShot, HealAura, Dash, CriticalStrike, Shield }
+    public HeroSkill _heroSkill = HeroSkill.None;
+    /// <summary>间谍伪装的阵营ID（-1=未伪装）。</summary>
+    public int _spyDisguiseTeam = -1;
+    /// <summary>间谍渗透计时器。</summary>
+    private float _spyInfiltrateTimer;
+    /// <summary>窃贼偷钱冷却。</summary>
+    private float _thiefStealCooldown;
 
     // ======== E4：地形改造系统 ========
     public enum TerrainModType { None, Flatten, Tunnel, Bridge, UnderseaTunnel }
@@ -373,10 +384,51 @@ public partial class Unit : CharacterBody2D
                 AggroRange = 0f;
                 MaxPassengers = 3;
                 break;
+            // E6b：特殊单位
+            case UnitType.Hero:
+                UnitName = "英雄";
+                MaxHealth = 200f;
+                MoveSpeed = 160f;
+                AttackDamage = 35f;
+                AttackRange = 160f;
+                AttackCooldown = 0.6f;
+                AggroRange = 300f;
+                AutoDefend = true;
+                // E6b：随机技能
+                _heroSkill = (HeroSkill)(GD.Randi() % 5 + 1);
+                switch (_heroSkill)
+                {
+                    case HeroSkill.DoubleShot: UnitName = "英雄·双发"; AttackCooldown = 0.35f; break;
+                    case HeroSkill.HealAura: UnitName = "英雄·治疗光环"; break;
+                    case HeroSkill.Dash: UnitName = "英雄·冲锋"; MoveSpeed = 260f; break;
+                    case HeroSkill.CriticalStrike: UnitName = "英雄·暴击"; break;
+                    case HeroSkill.Shield: UnitName = "英雄·护盾"; MaxHealth = 300f; break;
+                }
+                Health = MaxHealth;
+                GD.Print($"[E6b] 英雄技能：{_heroSkill}");
+                break;
+            case UnitType.Spy:
+                UnitName = "间谍";
+                MaxHealth = 45f;
+                MoveSpeed = 110f;
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 0f;
+                break;
+            case UnitType.Thief:
+                UnitName = "窃贼";
+                MaxHealth = 40f;
+                MoveSpeed = 130f;
+                AttackDamage = 5f;
+                AttackRange = 60f;
+                AttackCooldown = 0.8f;
+                AggroRange = 100f;
+                break;
         }
     }
 
-    /// <summary>判断兵种是否为步兵类（步体、工兵、高级工程师、掷弹兵、狙击手、喷火兵）。</summary>
+    /// <summary>判断兵种是否为步兵类（步体、工兵、高级工程师、掷弹兵、狙击手、喷火兵、英雄、间谍、窃贼）。</summary>
     public static bool IsInfantryType(UnitType type) => type switch
     {
         UnitType.Infantry => true,
@@ -385,6 +437,9 @@ public partial class Unit : CharacterBody2D
         UnitType.Grenadier => true,
         UnitType.Sniper => true,
         UnitType.FlameInfantry => true,
+        UnitType.Hero => true,
+        UnitType.Spy => true,
+        UnitType.Thief => true,
         _ => false,
     };
 
@@ -517,6 +572,41 @@ public partial class Unit : CharacterBody2D
                 AggroRange = 150f;
                 AutoDefend = true;
                 GD.Print("[IFV] 合体：喷火战车（近距高DPS）");
+                break;
+            // E6b：特殊单位IFV合体
+            case UnitType.Hero:
+                // 英雄→英雄战车：超强火力
+                UnitName = "英雄战车";
+                AttackDamage = 40f;
+                AttackRange = 200f;
+                AttackCooldown = 0.5f;
+                MaxHealth = 250f;
+                Health = 250f;
+                AggroRange = 300f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：英雄战车（超强火力）");
+                break;
+            case UnitType.Spy:
+                // 间谍→间谍车：渗透战车
+                UnitName = "间谍车";
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                MaxHealth = 180f;
+                Health = 180f;
+                MoveSpeed = 280f;
+                GD.Print("[IFV] 合体：间谍车（高速渗透）");
+                break;
+            case UnitType.Thief:
+                // 窃贼→劫掠车：偷钱战车
+                UnitName = "劫掠车";
+                AttackDamage = 8f;
+                AttackRange = 120f;
+                AttackCooldown = 0.6f;
+                MaxHealth = 160f;
+                Health = 160f;
+                AggroRange = 180f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：劫掠车（偷钱战车）");
                 break;
             default:
                 // 其他步兵→轻型武装车
@@ -677,6 +767,15 @@ public partial class Unit : CharacterBody2D
 
         // 工程车/合体工程车辅助：每帧治疗附近的友方建筑/单位
         if (IsEngineerUnit) TryRepairNearby(dt);
+
+        // E6b：英雄技能逻辑
+        ProcessHeroSkill(dt);
+
+        // E6b：间谍渗透逻辑
+        ProcessSpyInfiltrate(dt);
+
+        // E6b：窃贼偷钱逻辑
+        ProcessThiefSteal(dt);
     }
 
     /// <summary>工程车辅助逻辑：修理140范围内友方单位(25 HP/s)和建筑(50 HP/s)。</summary>
@@ -728,6 +827,171 @@ public partial class Unit : CharacterBody2D
         if (_isDead || amount <= 0f) return;
         Health = Mathf.Min(MaxHealth, Health + amount);
         UpdateHealthBarVisibility();
+    }
+
+    // ======== E6b：英雄技能 ========
+    private float _heroSkillTimer;
+    private void ProcessHeroSkill(float dt)
+    {
+        if (Type != UnitType.Hero || _heroSkill == HeroSkill.None) return;
+        _heroSkillTimer += dt;
+
+        switch (_heroSkill)
+        {
+            case HeroSkill.HealAura:
+                // 治疗光环：每3秒治疗120范围内友方单位20HP
+                if (_heroSkillTimer >= 3f)
+                {
+                    _heroSkillTimer = 0f;
+                    var unitsNode = GetParent();
+                    if (unitsNode == null) break;
+                    foreach (var c in unitsNode.GetChildren())
+                    {
+                        if (c is Unit u && u != this && IsInstanceValid(u) && u.TeamId == TeamId
+                            && u.GlobalPosition.DistanceTo(GlobalPosition) < 120f && u.Health < u.MaxHealth)
+                        {
+                            u.Heal(20f);
+                        }
+                    }
+                }
+                break;
+            case HeroSkill.Dash:
+                // 冲锋：移速已在InitAsType中提升，这里给攻击加成
+                // 冲锋已在属性中体现(高移速)
+                break;
+            case HeroSkill.CriticalStrike:
+                // 暴击：30%概率双倍伤害（在ResolveCombat中处理）
+                break;
+            case HeroSkill.Shield:
+                // 护盾：每10秒获得50临时护盾（用heal模拟）
+                if (_heroSkillTimer >= 10f)
+                {
+                    _heroSkillTimer = 0f;
+                    if (Health < MaxHealth)
+                        Heal(50f);
+                }
+                break;
+        }
+    }
+
+    // ======== E6b：间谍渗透 ========
+    private void ProcessSpyInfiltrate(float dt)
+    {
+        if (Type != UnitType.Spy) return;
+
+        // 间谍伪装：接近敌方建筑时自动伪装成敌方阵营颜色
+        var main = GetParent()?.GetParent();
+        if (main == null) return;
+        var bnode = main.GetNodeOrNull<Node>("Buildings");
+        if (bnode == null) return;
+
+        bool nearEnemy = false;
+        foreach (var c in bnode.GetChildren())
+        {
+            if (c is Building b && IsInstanceValid(b) && b.TeamId != TeamId
+                && b.GlobalPosition.DistanceTo(GlobalPosition) < 60f)
+            {
+                nearEnemy = true;
+
+                // 渗透倒计时
+                _spyInfiltrateTimer += dt;
+                if (_spyInfiltrateTimer >= 4f)
+                {
+                    _spyInfiltrateTimer = 0f;
+                    // 渗透效果：让敌方建筑停电5秒 + 偷取科技
+                    GD.Print($"[E6b] 间谍成功渗透 {b.BuildingName} (Team {b.TeamId})！");
+                    b.PowerConsumed += 100; // 紧急停电
+                    // 5秒后恢复
+                    DelayedRestorePower(b, 5f);
+                    // 偷取$200
+                    if (main is Main mainNode)
+                    {
+                        int stolen = Mathf.Min(200, mainNode.GetMoney(b.TeamId));
+                        mainNode.SpendMoney(b.TeamId, stolen);
+                        mainNode.AddResourceForTeam(TeamId, stolen);
+                        GD.Print($"[E6b] 间谍偷取 ${stolen} (Team {b.TeamId} → Team {TeamId})");
+                    }
+                }
+                break; // 只渗透最近的一个建筑
+            }
+        }
+
+        // 伪装逻辑：靠近敌方建筑时外观变色
+        if (nearEnemy && _spyDisguiseTeam == -1)
+        {
+            _spyDisguiseTeam = 1; // 伪装为敌方颜色
+            _body.Modulate = GetTeamColor(_spyDisguiseTeam);
+        }
+        else if (!nearEnemy && _spyDisguiseTeam != -1)
+        {
+            _spyDisguiseTeam = -1;
+            _body.Modulate = _bodyTint; // 恢复原色
+        }
+    }
+
+    private async void DelayedRestorePower(Building b, float delay)
+    {
+        await ToSignal(GetTree().CreateTimer(delay), "timeout");
+        if (IsInstanceValid(b))
+        {
+            b.PowerConsumed -= 100;
+            if (b.PowerConsumed < 0) b.PowerConsumed = 0;
+        }
+    }
+
+    // ======== E6b：窃贼偷钱 ========
+    private void ProcessThiefSteal(float dt)
+    {
+        if (Type != UnitType.Thief) return;
+        _thiefStealCooldown -= dt;
+        if (_thiefStealCooldown > 0f) return;
+
+        var main = GetParent()?.GetParent() as Main;
+        if (main == null) return;
+
+        // 偷钱范围：接近敌方基地或资源单位
+        var bnode = main.GetNodeOrNull<Node>("Buildings");
+        if (bnode != null)
+        {
+            foreach (var c in bnode.GetChildren())
+            {
+                if (c is Building b && IsInstanceValid(b) && b.TeamId != TeamId
+                    && b.GlobalPosition.DistanceTo(GlobalPosition) < 60f)
+                {
+                    int stolen = Mathf.Min(100, main.GetMoney(b.TeamId));
+                    if (stolen > 0)
+                    {
+                        main.SpendMoney(b.TeamId, stolen);
+                        main.AddResourceForTeam(TeamId, stolen);
+                        _thiefStealCooldown = 8f; // 8秒冷却
+                        GD.Print($"[E6b] 窃贼偷取 ${stolen} (Team {b.TeamId} → Team {TeamId})");
+                    }
+                    return;
+                }
+            }
+        }
+
+        // 偷敌方矿车
+        var unitsNode = GetParent();
+        if (unitsNode != null)
+        {
+            foreach (var c in unitsNode.GetChildren())
+            {
+                if (c is Unit u && u != this && IsInstanceValid(u) && u.TeamId != TeamId
+                    && u is Harvester && u.GlobalPosition.DistanceTo(GlobalPosition) < 60f)
+                {
+                    int stolen = Mathf.Min(150, main.GetMoney(u.TeamId));
+                    if (stolen > 0)
+                    {
+                        main.SpendMoney(u.TeamId, stolen);
+                        main.AddResourceForTeam(TeamId, stolen);
+                        _thiefStealCooldown = 8f;
+                        GD.Print($"[E6b] 窃贼偷取矿车 ${stolen} (Team {u.TeamId} → Team {TeamId})");
+                    }
+                    return;
+                }
+            }
+        }
     }
 
     /// <summary>Q3：炮塔朝向攻击目标平滑旋转，无目标时跟随车体方向。</summary>
@@ -896,7 +1160,11 @@ public partial class Unit : CharacterBody2D
                     _attackTimer -= dt;
                     if (_attackTimer <= 0)
                     {
-                        _attackUnitTarget.TakeDamage(AttackDamage);
+                        float dmg = AttackDamage;
+                        // E6b：英雄暴击30%概率双倍伤害
+                        if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && GD.Randf() < 0.3f)
+                            dmg *= 2f;
+                        _attackUnitTarget.TakeDamage(dmg);
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackUnitTarget.GlobalPosition);
                         // 溅射伤害：对目标周围敌方单位造成 50% 伤害
@@ -946,7 +1214,11 @@ public partial class Unit : CharacterBody2D
                     _attackTimer -= dt;
                     if (_attackTimer <= 0)
                     {
-                        _attackBuildingTarget.TakeDamage(AttackDamage);
+                        float dmgB = AttackDamage;
+                        // E6b：英雄暴击30%概率双倍伤害
+                        if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && GD.Randf() < 0.3f)
+                            dmgB *= 2f;
+                        _attackBuildingTarget.TakeDamage(dmgB);
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackBuildingTarget.GlobalPosition);
                         _attackTimer = AttackCooldown;
@@ -1206,6 +1478,7 @@ public partial class Unit : CharacterBody2D
                 UnitType.HeavyTank => BattleEffect.BigExplosion(GlobalPosition),
                 UnitType.Infantry or UnitType.Sapper or UnitType.ChiefEngineer
                     or UnitType.Grenadier or UnitType.Sniper or UnitType.FlameInfantry
+                    or UnitType.Hero or UnitType.Spy or UnitType.Thief  // E6b
                     => BattleEffect.Explosion(GlobalPosition),
                 _ => BattleEffect.Explosion(GlobalPosition)
             };

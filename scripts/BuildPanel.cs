@@ -73,6 +73,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iTurret, _iAntiAir, _iRepairPad;
     private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv, _iAntiAirUnit, _iEngineer, _iTransport;
     private static Texture2D? _iInfantry, _iGrenadier, _iSniper, _iFlameInfantry;
+    // E6b：特殊单位图标
+    private static Texture2D? _iHero, _iSpy, _iThief;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -184,6 +186,10 @@ public partial class BuildPanel : Control
         AddItem("掷弹兵", 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
         AddItem("喷火兵", 180, _iFlameInfantry, false, BuildingType.Base, UnitType.FlameInfantry, false, BuildTab.Infantry);
         AddItem("狙击手", 250, _iSniper, false, BuildingType.Base, UnitType.Sniper, false, BuildTab.Infantry);
+        // E6b：特殊步兵
+        AddItem("窃贼", 300, _iThief, false, BuildingType.Base, UnitType.Thief, false, BuildTab.Infantry);
+        AddItem("英雄", 600, _iHero, false, BuildingType.TechCenter, UnitType.Hero, false, BuildTab.Infantry);
+        AddItem("间谍", 500, _iSpy, false, BuildingType.TechCenter, UnitType.Spy, false, BuildTab.Infantry);
         // 车辆（按价格升序排列：基础→中级→高级）
         AddItem("轻坦",   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
         AddItem("防空车", 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
@@ -377,6 +383,7 @@ public partial class BuildPanel : Control
             case UnitType.Grenadier:       // E6
             case UnitType.FlameInfantry:   // E6
             case UnitType.Sniper:          // E6
+            case UnitType.Thief:          // E6b
                 if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
                 break;
             case UnitType.HeavyTank:
@@ -388,6 +395,8 @@ public partial class BuildPanel : Control
                 break;
             case UnitType.RocketLauncher:
             case UnitType.MissileTank:
+            case UnitType.Hero:           // E6b
+            case UnitType.Spy:            // E6b
                 if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
                 break;
         }
@@ -491,6 +500,9 @@ public partial class BuildPanel : Control
             UnitType.Sniper => "超远程精确射击，脆皮",
             UnitType.FlameInfantry => "近距高射速喷火，灼烧区域",
             UnitType.Transport => "搭载步兵变战车，IFV合体系统",
+            UnitType.Hero => "强力步兵，随机技能(双发/治疗/冲锋/暴击/护盾)",
+            UnitType.Spy => "渗透敌方建筑，停电+偷钱",
+            UnitType.Thief => "潜入偷取敌方资金",
             UnitType.RocketLauncher => "溅射伤害，需科技",
             UnitType.MissileTank => "超远程爆发，需科技",
             _ => ""
@@ -526,6 +538,10 @@ public partial class BuildPanel : Control
         _iGrenadier = LoadPng("res://assets/sprites/units/grenadier.png");
         _iSniper    = LoadPng("res://assets/sprites/units/sniper.png");
         _iFlameInfantry = LoadPng("res://assets/sprites/units/flame_infantry.png");
+        // E6b：特殊单位图标
+        _iHero = LoadPng("res://assets/sprites/units/hero.png");
+        _iSpy  = LoadPng("res://assets/sprites/units/spy.png");
+        _iThief = LoadPng("res://assets/sprites/units/thief.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>
