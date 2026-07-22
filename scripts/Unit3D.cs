@@ -254,7 +254,33 @@ public partial class Unit3D : CharacterBody3D
 
     protected StandardMaterial3D MakeMat(Color color, float roughness = 0.6f, float metallic = 0.3f)
     {
-        return new StandardMaterial3D { AlbedoColor = color, Roughness = roughness, Metallic = metallic };
+        var mat = new StandardMaterial3D { AlbedoColor = color, Roughness = roughness, Metallic = metallic };
+        return mat;
+    }
+
+    /// <summary>带纹理的材质 — 用于坦克底盘等</summary>
+    protected StandardMaterial3D MakeTexturedMat(string texPath, Color tintColor, float roughness = 0.6f, float metallic = 0.3f)
+    {
+        var mat = new StandardMaterial3D { AlbedoColor = tintColor, Roughness = roughness, Metallic = metallic };
+        var tex = GD.Load<Texture2D>(texPath);
+        if (tex != null)
+        {
+            mat.AlbedoTexture = tex;
+            mat.Uv1Scale = new Vector3(1, 1, 1);
+        }
+        return mat;
+    }
+
+    /// <summary>坦克材质（迷彩纹理+阵营色调）</summary>
+    protected StandardMaterial3D MakeTankMat(Color teamColor)
+    {
+        return MakeTexturedMat("res://textures/camo.png", teamColor, 0.5f, 0.4f);
+    }
+
+    /// <summary>金属装甲材质</summary>
+    protected StandardMaterial3D MakeArmorMat(Color teamColor)
+    {
+        return MakeTexturedMat("res://textures/metal_panel.png", teamColor, 0.4f, 0.5f);
     }
 
     protected MeshInstance3D AddBox(Node3D parent, Vector3 size, Vector3 pos, StandardMaterial3D mat, bool shadow = true)
@@ -297,8 +323,8 @@ public partial class Unit3D : CharacterBody3D
     /// <summary>创建坦克模型：底盘+履带+轮子+炮塔+炮管</summary>
     protected void BuildTankModel(Color bodyColor, Color darkColor, float width, float length, float hullHeight)
     {
-        var bodyMat = MakeMat(bodyColor, 0.6f, 0.3f);
-        var darkMat = MakeMat(darkColor, 0.7f, 0.2f);
+        var bodyMat = MakeTankMat(bodyColor);
+        var darkMat = MakeArmorMat(darkColor);
         var trackMat = MakeMat(new Color(0.12f, 0.12f, 0.12f), 0.9f, 0f);
         var metalMat = MakeMat(new Color(0.35f, 0.35f, 0.38f), 0.3f, 0.8f);
 

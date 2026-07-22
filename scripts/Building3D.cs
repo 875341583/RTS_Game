@@ -207,6 +207,43 @@ public partial class Building3D : Area3D
         return new StandardMaterial3D { AlbedoColor = color, Roughness = roughness, Metallic = metallic };
     }
 
+    /// <summary>带纹理的材质</summary>
+    protected StandardMaterial3D MakeTexturedMat(string texPath, Color tintColor, float roughness = 0.7f, float metallic = 0.1f)
+    {
+        var mat = new StandardMaterial3D { AlbedoColor = tintColor, Roughness = roughness, Metallic = metallic };
+        var tex = GD.Load<Texture2D>(texPath);
+        if (tex != null)
+        {
+            mat.AlbedoTexture = tex;
+            mat.Uv1Scale = new Vector3(2, 2, 1);
+        }
+        return mat;
+    }
+
+    /// <summary>混凝土材质（用于地基）</summary>
+    protected StandardMaterial3D MakeConcreteMat(Color tintColor)
+    {
+        return MakeTexturedMat("res://textures/concrete.png", tintColor, 0.9f, 0f);
+    }
+
+    /// <summary>金属面板材质（用于墙体）</summary>
+    protected StandardMaterial3D MakeMetalPanelMat(Color tintColor)
+    {
+        return MakeTexturedMat("res://textures/metal_panel.png", tintColor, 0.5f, 0.3f);
+    }
+
+    /// <summary>砖墙材质（用于兵营）</summary>
+    protected StandardMaterial3D MakeBrickMat(Color tintColor)
+    {
+        return MakeTexturedMat("res://textures/bricks.png", tintColor, 0.8f, 0f);
+    }
+
+    /// <summary>屋顶材质</summary>
+    protected StandardMaterial3D MakeRoofMat(Color tintColor)
+    {
+        return MakeTexturedMat("res://textures/roof.png", tintColor, 0.8f, 0f);
+    }
+
     protected MeshInstance3D AddBox(Node3D parent, Vector3 size, Vector3 pos, StandardMaterial3D mat, bool shadow = true)
     {
         var mi = new MeshInstance3D();
@@ -243,9 +280,9 @@ public partial class Building3D : Area3D
 
     private void BuildBaseModel(Color teamColor, Color darkColor)
     {
-        var wallMat = MakeMat(teamColor);
-        var roofMat = MakeMat(darkColor);
-        var darkMat = MakeMat(new Color(0.15f, 0.14f, 0.13f), 0.9f);
+        var wallMat = MakeMetalPanelMat(teamColor);
+        var roofMat = MakeRoofMat(darkColor);
+        var darkMat = MakeConcreteMat(new Color(0.15f, 0.14f, 0.13f));
         var windowMat = MakeMat(new Color(0.6f, 0.7f, 0.8f), 0.2f, 0.5f);
         windowMat.Emission = new Color(0.3f, 0.4f, 0.5f);
         windowMat.EmissionEnergyMultiplier = 0.3f;
@@ -274,10 +311,10 @@ public partial class Building3D : Area3D
 
     private void BuildPowerPlantModel(Color teamColor, Color darkColor)
     {
-        var wallMat = MakeMat(new Color(0.6f, 0.55f, 0.5f));
-        var darkMat = MakeMat(new Color(0.15f, 0.14f, 0.13f), 0.9f);
+        var wallMat = MakeMetalPanelMat(new Color(0.6f, 0.55f, 0.5f));
+        var darkMat = MakeConcreteMat(new Color(0.15f, 0.14f, 0.13f));
         var metalMat = MakeMat(new Color(0.35f, 0.35f, 0.38f), 0.3f, 0.8f);
-        var glowMat = MakeMat(new Color(0.2f, 0.8f, 0.2f), 0.2f, 0.5f);
+        var glowMat = MakeTexturedMat("res://textures/glow_green.png", new Color(0.2f, 0.8f, 0.2f), 0.2f, 0.5f);
         glowMat.Emission = new Color(0.2f, 0.8f, 0.2f);
         glowMat.EmissionEnergyMultiplier = 0.5f;
 
@@ -294,9 +331,9 @@ public partial class Building3D : Area3D
 
     private void BuildBarracksModel(Color teamColor, Color darkColor)
     {
-        var wallMat = MakeMat(new Color(0.55f, 0.42f, 0.28f));
-        var roofMat = MakeMat(darkColor);
-        var darkMat = MakeMat(new Color(0.15f, 0.14f, 0.13f), 0.9f);
+        var wallMat = MakeBrickMat(new Color(0.55f, 0.42f, 0.28f));
+        var roofMat = MakeRoofMat(darkColor);
+        var darkMat = MakeConcreteMat(new Color(0.15f, 0.14f, 0.13f));
 
         AddBox(_modelRoot, new Vector3(5, 0.3f, 4), new Vector3(0, 0.15f, 0), darkMat);
         AddBox(_modelRoot, new Vector3(4, 2, 3.5f), new Vector3(0, 1.3f, 0), wallMat);
@@ -310,9 +347,9 @@ public partial class Building3D : Area3D
 
     private void BuildWarFactoryModel(Color teamColor, Color darkColor)
     {
-        var wallMat = MakeMat(new Color(0.5f, 0.48f, 0.45f));
-        var roofMat = MakeMat(darkColor);
-        var darkMat = MakeMat(new Color(0.15f, 0.14f, 0.13f), 0.9f);
+        var wallMat = MakeMetalPanelMat(new Color(0.5f, 0.48f, 0.45f));
+        var roofMat = MakeRoofMat(darkColor);
+        var darkMat = MakeConcreteMat(new Color(0.15f, 0.14f, 0.13f));
         var metalMat = MakeMat(new Color(0.35f, 0.35f, 0.38f), 0.3f, 0.8f);
 
         AddBox(_modelRoot, new Vector3(7, 0.3f, 5), new Vector3(0, 0.15f, 0), darkMat);
@@ -329,7 +366,7 @@ public partial class Building3D : Area3D
 
     private void BuildTechCenterModel(Color teamColor, Color darkColor)
     {
-        var wallMat = MakeMat(new Color(0.8f, 0.8f, 0.85f), 0.3f, 0.3f);
+        var wallMat = MakeMetalPanelMat(new Color(0.8f, 0.8f, 0.85f));
         var glassMat = MakeMat(new Color(0.3f, 0.5f, 0.7f), 0.1f, 0.5f);
         glassMat.Emission = new Color(0.2f, 0.4f, 0.6f);
         glassMat.EmissionEnergyMultiplier = 0.3f;

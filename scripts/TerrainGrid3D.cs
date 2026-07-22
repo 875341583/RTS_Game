@@ -51,20 +51,39 @@ public class TerrainGrid3D
 
     private void InitMaterials()
     {
-        _grassMat = CreateTerrainMat(GrassColor, 0.9f, 0f);
-        _sandMat = CreateTerrainMat(SandColor, 0.95f, 0f);
-        _snowMat = CreateTerrainMat(SnowColor, 0.8f, 0f);
-        _cityMat = CreateTerrainMat(CityColor, 0.7f, 0.1f);
-        _fieldMat = CreateTerrainMat(FieldColor, 0.9f, 0f);
-        _shallowWaterMat = CreateTerrainMat(ShallowWaterColor, 0.1f, 0.4f);
+        _grassMat = CreateTexturedMat("res://textures/grass.png", GrassColor, 0.9f, 0f);
+        _sandMat = CreateTexturedMat("res://textures/sand.png", SandColor, 0.95f, 0f);
+        _snowMat = CreateTexturedMat("res://textures/snow.png", SnowColor, 0.8f, 0f);
+        _cityMat = CreateTexturedMat("res://textures/city.png", CityColor, 0.7f, 0.1f);
+        _fieldMat = CreateTexturedMat("res://textures/field.png", FieldColor, 0.9f, 0f);
+        _shallowWaterMat = CreateTexturedMat("res://textures/water_shallow.png", ShallowWaterColor, 0.1f, 0.4f);
         _shallowWaterMat.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
-        _deepWaterMat = CreateTerrainMat(DeepWaterColor, 0.1f, 0.5f);
+        _deepWaterMat = CreateTexturedMat("res://textures/water_deep.png", DeepWaterColor, 0.1f, 0.5f);
         _deepWaterMat.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
-        _mountainMat = CreateTerrainMat(MountainColor, 0.9f, 0f);
-        _roadMat = CreateTerrainMat(RoadColor, 0.8f, 0f);
-        _cliffMat = CreateTerrainMat(CliffColor, 0.95f, 0f);
+        _mountainMat = CreateTexturedMat("res://textures/mountain.png", MountainColor, 0.9f, 0f);
+        _roadMat = CreateTexturedMat("res://textures/road_dashes.png", RoadColor, 0.8f, 0f);
+        _cliffMat = CreateTexturedMat("res://textures/cliff.png", CliffColor, 0.95f, 0f);
         _bridgeMat = CreateTerrainMat(BridgeColor, 0.8f, 0f);
         _tunnelMat = CreateTerrainMat(TunnelColor, 0.9f, 0f);
+    }
+
+    private static StandardMaterial3D CreateTexturedMat(string texPath, Color tintColor, float roughness, float metallic)
+    {
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = tintColor,
+            Roughness = roughness,
+            Metallic = metallic,
+        };
+        // 尝试加载纹理
+        var tex = GD.Load<Texture2D>(texPath);
+        if (tex != null)
+        {
+            mat.AlbedoTexture = tex;
+            // UV重复
+            mat.Uv1Scale = new Vector3(2, 2, 1);
+        }
+        return mat;
     }
 
     private static StandardMaterial3D CreateTerrainMat(Color color, float roughness, float metallic)
