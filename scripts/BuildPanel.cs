@@ -50,7 +50,7 @@ public partial class BuildPanel : Control
 
     // 状态（由 Main 刷新）
     private int _money, _power, _playerTechLevel, _unitCount, _unitCap;
-    private bool _hasBase, _hasPower, _hasBarracks, _hasWarFactory, _hasTechCenter;
+    private bool _hasBase, _hasPower, _hasBarracks, _hasWarFactory, _hasTechCenter, HasAirfield;
     public BuildingType? ActivePlacement { get; set; }
     public string DifficultyName { get; set; } = "Normal";
 
@@ -75,6 +75,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iInfantry, _iGrenadier, _iSniper, _iFlameInfantry;
     // E6b：特殊单位图标
     private static Texture2D? _iHero, _iSpy, _iThief;
+    // E7：空军图标
+    private static Texture2D? _iFighter, _iHelicopter, _iRocketInfantry, _iAirfield;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -181,6 +183,8 @@ public partial class BuildPanel : Control
         AddItem("机枪塔", 400, _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
         AddItem("防空炮", 600, _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
         AddItem("维修厂", 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
+        // E7：机场
+        AddItem("机场", 700, _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
         // 步兵（按价格升序）
         AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
         AddItem("掷弹兵", 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
@@ -190,6 +194,8 @@ public partial class BuildPanel : Control
         AddItem("窃贼", 300, _iThief, false, BuildingType.Base, UnitType.Thief, false, BuildTab.Infantry);
         AddItem("英雄", 600, _iHero, false, BuildingType.TechCenter, UnitType.Hero, false, BuildTab.Infantry);
         AddItem("间谍", 500, _iSpy, false, BuildingType.TechCenter, UnitType.Spy, false, BuildTab.Infantry);
+        // E7：火箭兵
+        AddItem("火箭兵", 350, _iRocketInfantry, false, BuildingType.Barracks, UnitType.RocketInfantry, false, BuildTab.Infantry);
         // 车辆（按价格升序排列：基础→中级→高级）
         AddItem("轻坦",   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
         AddItem("防空车", 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
@@ -200,6 +206,9 @@ public partial class BuildPanel : Control
         AddItem("矿车",   500, _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
         AddItem("火箭炮", 600, _iRocket,  false, BuildingType.Base, UnitType.RocketLauncher, false, BuildTab.Vehicles);
         AddItem("导弹车", 800, _iMissile, false, BuildingType.Base, UnitType.MissileTank,    false, BuildTab.Vehicles);
+        // E7：空军
+        AddItem("战斗机", 500, _iFighter, false, BuildingType.Airfield, UnitType.Fighter,       false, BuildTab.Vehicles);
+        AddItem("直升机", 600, _iHelicopter, false, BuildingType.Airfield, UnitType.Helicopter, false, BuildTab.Vehicles);
     }
 
     private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)
@@ -298,12 +307,12 @@ public partial class BuildPanel : Control
 
     /// <summary>由 Main 每帧/定期调用刷新所有按钮状态。</summary>
     public void UpdateState(int money, int power, int techLevel, int unitCount, int unitCap,
-        bool hasBase, bool hasPower, bool hasBarracks, bool hasWarFactory, bool hasTechCenter)
+        bool hasBase, bool hasPower, bool hasBarracks, bool hasWarFactory, bool hasTechCenter, bool hasAirfield = false)
     {
         _money = money; _power = power; _playerTechLevel = techLevel;
         _unitCount = unitCount; _unitCap = unitCap;
         _hasBase = hasBase; _hasPower = hasPower; _hasBarracks = hasBarracks;
-        _hasWarFactory = hasWarFactory; _hasTechCenter = hasTechCenter;
+        _hasWarFactory = hasWarFactory; _hasTechCenter = hasTechCenter; HasAirfield = hasAirfield;
 
         foreach (var it in _items)
         {
@@ -368,6 +377,11 @@ public partial class BuildPanel : Control
                 else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
                 else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
                 break;
+            // E7：机场
+            case BuildingType.Airfield:
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
         }
     }
 
@@ -384,6 +398,7 @@ public partial class BuildPanel : Control
             case UnitType.FlameInfantry:   // E6
             case UnitType.Sniper:          // E6
             case UnitType.Thief:          // E6b
+            case UnitType.RocketInfantry:   // E7
                 if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
                 break;
             case UnitType.HeavyTank:
@@ -392,6 +407,11 @@ public partial class BuildPanel : Control
             case UnitType.Engineer:
             case UnitType.Transport:       // E6
                 if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
+                break;
+            case UnitType.Fighter:          // E7
+            case UnitType.Helicopter:       // E7
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
+                else if (!HasAirfield) { it.IsLocked = true; it.LockReason = "需要机场"; }
                 break;
             case UnitType.RocketLauncher:
             case UnitType.MissileTank:
@@ -503,6 +523,9 @@ public partial class BuildPanel : Control
             UnitType.Hero => "强力步兵，随机技能(双发/治疗/冲锋/暴击/护盾)",
             UnitType.Spy => "渗透敌方建筑，停电+偷钱",
             UnitType.Thief => "潜入偷取敌方资金",
+            UnitType.Fighter => "高速空战，需机场",
+            UnitType.Helicopter => "空中火力支援，需机场",
+            UnitType.RocketInfantry => "防空火箭步兵，对空专精",
             UnitType.RocketLauncher => "溅射伤害，需科技",
             UnitType.MissileTank => "超远程爆发，需科技",
             _ => ""
@@ -542,6 +565,11 @@ public partial class BuildPanel : Control
         _iHero = LoadPng("res://assets/sprites/units/hero.png");
         _iSpy  = LoadPng("res://assets/sprites/units/spy.png");
         _iThief = LoadPng("res://assets/sprites/units/thief.png");
+        // E7：空军图标
+        _iFighter = LoadPng("res://assets/sprites/units/fighter.png");
+        _iHelicopter = LoadPng("res://assets/sprites/units/helicopter.png");
+        _iRocketInfantry = LoadPng("res://assets/sprites/units/rocket_infantry.png");
+        _iAirfield = LoadPng("res://assets/sprites/buildings/airfield.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>

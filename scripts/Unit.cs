@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -37,6 +37,10 @@ public partial class Unit : CharacterBody2D
     public bool AutoDefend { get; set; } = true;
     /// <summary>自动防御警戒范围。</summary>
     public float AggroRange { get; set; } = 280f;
+    /// <summary>是否是空中单位（飞行高度模拟，不受地形减速）。</summary>
+    public bool IsAirUnit { get; set; } = false;
+    /// <summary>是否可以对空攻击（防空车/火箭兵默认对空）。</summary>
+    public bool CanAttackAir { get; set; } = false;
 
     // 子类可访问的移动状态
     protected Vector2 _moveTarget;
@@ -304,6 +308,7 @@ public partial class Unit : CharacterBody2D
                 AttackRange = 140f;
                 AttackCooldown = 0.45f;
                 AggroRange = 260f;
+                CanAttackAir = true;  // E7：防空车对空
                 break;
             case UnitType.Infantry:
                 UnitName = "步兵";
@@ -425,6 +430,41 @@ public partial class Unit : CharacterBody2D
                 AttackCooldown = 0.8f;
                 AggroRange = 100f;
                 break;
+            // E7：空军单位
+            case UnitType.Fighter:
+                UnitName = "战斗机";
+                MaxHealth = 80f;
+                MoveSpeed = 350f;
+                AttackDamage = 25f;
+                AttackRange = 200f;
+                AttackCooldown = 1.0f;
+                AggroRange = 300f;
+                AutoDefend = true;
+                IsAirUnit = true;
+                break;
+            case UnitType.Helicopter:
+                UnitName = "直升机";
+                MaxHealth = 120f;
+                MoveSpeed = 220f;
+                AttackDamage = 15f;
+                AttackRange = 160f;
+                AttackCooldown = 0.5f;
+                SplashRadius = 30f;
+                AggroRange = 250f;
+                AutoDefend = true;
+                IsAirUnit = true;
+                break;
+            case UnitType.RocketInfantry:
+                UnitName = "火箭兵";
+                MaxHealth = 45f;
+                MoveSpeed = 85f;
+                AttackDamage = 20f;
+                AttackRange = 200f;
+                AttackCooldown = 1.8f;
+                MinAttackRange = 40f;
+                AggroRange = 250f;
+                CanAttackAir = true;
+                break;
         }
     }
 
@@ -440,6 +480,7 @@ public partial class Unit : CharacterBody2D
         UnitType.Hero => true,
         UnitType.Spy => true,
         UnitType.Thief => true,
+        UnitType.RocketInfantry => true,  // E7
         _ => false,
     };
 
@@ -732,6 +773,8 @@ public partial class Unit : CharacterBody2D
             terrain.WorldToGrid(GlobalPosition.X, GlobalPosition.Y, out int gx, out int gy);
             var cell = terrain.GetCell(gx, gy);
             float yOffset = cell.Elevation switch { 2 => -3f, 3 => -6f, _ => 0f };
+            // E7：空中单位额外上浮模拟飞行高度
+            if (IsAirUnit) yOffset -= 12f;
             _body.Position = new Vector2(_body.Position.X, yOffset + (Type == UnitType.Infantry ? 0f : 0f));
             if (_turret != null) _turret.Position = new Vector2(_turret.Position.X, yOffset);
         }
@@ -1245,7 +1288,8 @@ public partial class Unit : CharacterBody2D
 
                 // E2：地形速度修正——查询当前所在地形获取速度系数
                 float speedMult = 1.0f;
-                if (GetParent()?.GetParent() is Main mainNode)
+                // E7：空中单位不受地形减速，始终全速
+                if (!IsAirUnit && GetParent()?.GetParent() is Main mainNode)
                 {
                     var terrain = mainNode.GetTerrainGrid();
                     var cat = GetTerrainCategory();
@@ -1322,6 +1366,8 @@ public partial class Unit : CharacterBody2D
         {
             if (child is Unit u && u.TeamId != TeamId && !u._isDead)
             {
+                // E7：对空规则——非对空单位不能锁定空中单位
+                if (u.IsAirUnit && !CanAttackAir && !IsAirUnit) continue;
                 var d = GlobalPosition.DistanceSquaredTo(u.GlobalPosition);
                 if (d < bestDist) { bestDist = d; best = u; }
             }

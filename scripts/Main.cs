@@ -67,6 +67,10 @@ public partial class Main : Node2D
     private const int HeroCost = 600;
     private const int SpyCost = 500;
     private const int ThiefCost = 300;
+    // E7：空军造价
+    private const int FighterCost = 500;
+    private const int HelicopterCost = 600;
+    private const int RocketInfantryCost = 350;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -76,6 +80,8 @@ public partial class Main : Node2D
     private const int TurretCost = 400;
     private const int AntiAirTurretCost = 600;
     private const int RepairPadCost = 500;
+    // E7：机场造价
+    private const int AirfieldCost = 700;
     private const int RocketLauncherCost = 600;
     private const int MissileTankCost = 800;
 
@@ -851,6 +857,14 @@ public partial class Main : Node2D
         if (Input.IsKeyPressed(Key.U) && !Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.Thief, ThiefCost);
 
+        // E7：空军热键 J(战斗机) / Shift+J(直升机) / R(火箭兵已在维修，改用Shift+R)
+        if (Input.IsKeyPressed(Key.J) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Fighter, FighterCost);
+        if (Input.IsKeyPressed(Key.J) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Helicopter, HelicopterCost);
+        if (Input.IsKeyPressed(Key.W) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.RocketInfantry, RocketInfantryCost);
+
         // E6：E键运输车下车
         if (Input.IsKeyPressed(Key.E))
         {
@@ -1058,7 +1072,7 @@ public partial class Main : Node2D
                 CountUnitsOfTeam(0), _unitCap,
                 HasBuilding(0, BuildingType.Base), HasBuilding(0, BuildingType.PowerPlant),
                 HasBuilding(0, BuildingType.Barracks), HasBuilding(0, BuildingType.WarFactory),
-                HasBuilding(0, BuildingType.TechCenter));
+                HasBuilding(0, BuildingType.TechCenter), HasBuilding(0, BuildingType.Airfield));
         }
         // 放置模式预览重绘
         if (_placementMode != null) QueueRedraw();
@@ -1162,6 +1176,9 @@ public partial class Main : Node2D
             UnitType.Hero => HasBuilding(teamId, BuildingType.TechCenter),         // E6b：英雄需科技
             UnitType.Spy => HasBuilding(teamId, BuildingType.TechCenter),          // E6b：间谍需科技
             UnitType.Thief => HasBuilding(teamId, BuildingType.Barracks),          // E6b：窃贼需兵营
+            UnitType.Fighter => HasBuilding(teamId, BuildingType.Airfield),      // E7
+            UnitType.Helicopter => HasBuilding(teamId, BuildingType.Airfield),   // E7
+            UnitType.RocketInfantry => HasBuilding(teamId, BuildingType.Barracks), // E7
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.ChiefEngineer => HasBuilding(teamId, BuildingType.TechCenter),
@@ -1214,6 +1231,9 @@ public partial class Main : Node2D
             UnitType.Hero => HeroCost,         // E6b
             UnitType.Spy => SpyCost,            // E6b
             UnitType.Thief => ThiefCost,        // E6b
+            UnitType.Fighter => FighterCost,         // E7
+            UnitType.Helicopter => HelicopterCost,   // E7
+            UnitType.RocketInfantry => RocketInfantryCost, // E7
             _ => 0
         };
     }
@@ -1617,6 +1637,16 @@ public partial class Main : Node2D
             GD.Print($"[AI] Team {teamId} built AntiAirTurret #{aaCount + 1}, ${_money[teamId]} left");
             return;
         }
+
+        // E7：优先级10：建造机场（已建科技中心，每阵营最多1座）
+        if (hasTechCenter && !HasBuilding(teamId, BuildingType.Airfield)
+            && _money[teamId] >= AirfieldCost + 300 && power >= 0)
+        {
+            _money[teamId] -= AirfieldCost;
+            SpawnBuilding(BuildingType.Airfield, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built Airfield, ${_money[teamId]} left");
+            return;
+        }
     }
 
     /// <summary>阶段12-A1：统计某阵营指定类型的建筑数量（用于AI建造限制）。</summary>
@@ -1789,6 +1819,9 @@ public partial class Main : Node2D
                     types.Add(UnitType.FlameInfantry);   // E6
                     types.Add(UnitType.Sniper);           // E6
                     types.Add(UnitType.Thief);            // E6b
+                    types.Add(UnitType.RocketInfantry);   // E7
+                    types.Add(UnitType.Fighter);           // E7
+                    types.Add(UnitType.Helicopter);        // E7
                 }
                 if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
@@ -2408,6 +2441,9 @@ public partial class Main : Node2D
             UnitType.Hero => BuildingType.TechCenter,          // E6b
             UnitType.Spy => BuildingType.TechCenter,           // E6b
             UnitType.Thief => BuildingType.Barracks,           // E6b
+            UnitType.Fighter => BuildingType.Airfield,          // E7
+            UnitType.Helicopter => BuildingType.Airfield,       // E7
+            UnitType.RocketInfantry => BuildingType.Barracks,   // E7
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -2467,6 +2503,9 @@ public partial class Main : Node2D
         UnitType.Hero => ProductionType.Hero,                 // E6b
         UnitType.Spy => ProductionType.Spy,                    // E6b
         UnitType.Thief => ProductionType.Thief,               // E6b
+        UnitType.Fighter => ProductionType.Fighter,           // E7
+        UnitType.Helicopter => ProductionType.Helicopter,     // E7
+        UnitType.RocketInfantry => ProductionType.RocketInfantry, // E7
         _ => ProductionType.LightTank
     };
 
@@ -2487,6 +2526,9 @@ public partial class Main : Node2D
         ProductionType.Hero => UnitType.Hero,                 // E6b
         ProductionType.Spy => UnitType.Spy,                    // E6b
         ProductionType.Thief => UnitType.Thief,               // E6b
+        ProductionType.Fighter => UnitType.Fighter,           // E7
+        ProductionType.Helicopter => UnitType.Helicopter,     // E7
+        ProductionType.RocketInfantry => UnitType.RocketInfantry, // E7
         _ => UnitType.Default
     };
 
