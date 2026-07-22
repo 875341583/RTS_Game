@@ -260,6 +260,9 @@ public partial class Building : Area2D
             // Q5：建筑被摧毁爆炸
             if (GetParent()?.GetParent() is Node2D parentNode)
                 parentNode.AddChild(BattleEffect.BigExplosion(GlobalPosition));
+            // 阶段12-C：建筑被毁音效
+            if (GetParent()?.GetParent() is Main mainNode)
+                mainNode.PlayBuildingDestroyedSfx();
             QueueFree();
         }
     }

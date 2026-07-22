@@ -850,6 +850,11 @@ public partial class Unit : CharacterBody2D
             };
             main.AddChild(effect);
         }
+
+        // 阶段12-C：单位死亡音效
+        if (GetParent()?.GetParent() is Main mainNode)
+            mainNode.PlayUnitDeathSfx(Type);
+
         QueueFree();
     }
 
@@ -862,6 +867,12 @@ public partial class Unit : CharacterBody2D
         main.AddChild(BattleEffect.MuzzleFlash(GlobalPosition + dir * 16f));
         main.AddChild(BattleEffect.Shell(GlobalPosition, targetPos));
         main.AddChild(BattleEffect.Explosion(targetPos));
+
+        // 阶段12-C：开火音效（街机风格短促cannon + muzzle）
+        if (main is Main m)
+        {
+            m.PlayUnitFireSfx(Type);
+        }
     }
 
     public override void _Draw()

@@ -186,6 +186,9 @@ public partial class Main : Node2D
     /// <summary>地图大小常量（像素）。阵营基地分布在 200..(MapSize-200) 范围内。</summary>
     private const float MapSize = 2000f;
 
+    // ---- 阶段12-C 音效系统 ----
+    private AudioManager _audio = null!;
+
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -323,6 +326,11 @@ public partial class Main : Node2D
         _buildPanel.BuildUnitRequested += (ut) => TrySpawnUnit(ut, GetUnitCost(ut));
         _buildPanel.BuildHarvesterRequested += () => TrySpawnHarvester();
         GD.Print("[UI] 侧边栏建造面板已加载");
+
+        // 阶段12-C：音效系统初始化 + BGM
+        _audio = new AudioManager();
+        AddChild(_audio);
+        _audio.StartBgm();
 
         // Q2：小地图
         _minimap = new Minimap();
@@ -1008,17 +1016,19 @@ public partial class Main : Node2D
         if (_money[0] < cost)
         {
             GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}");
+            _audio?.PlaySfx(AudioManager.Sfx.UiError);
             return;
         }
 
         _money[0] -= cost;
         producer.EnqueueProduction(UnitTypeToProductionType(type));
         GD.Print($"蓝方排产{type}，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+        _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
     }
 
     public void TrySpawnHarvester()
     {
-        if (_money[0] < HarvesterCost) { GD.Print("[警告] 资金不足！"); return; }
+        if (_money[0] < HarvesterCost) { GD.Print("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
         if (GetTeamPower(0) < 0) { GD.Print("[警告] 电力不足！"); return; }
 
         int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
@@ -1141,12 +1151,13 @@ public partial class Main : Node2D
 
         // 资金检查
         int cost = GetBuildingCost(type);
-        if (_money[0] < cost) { GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}"); return; }
+        if (_money[0] < cost) { GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
 
         // Q1：进入放置模式（玩家手动选择位置）
         _placementMode = type;
         if (_buildPanel != null) _buildPanel.ActivePlacement = type;
         QueueRedraw();
+        _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
         GD.Print($"[放置] 选择 {type} 放置位置，左键放置 / 右键取消");
     }
 
@@ -1205,6 +1216,7 @@ public partial class Main : Node2D
         _money[0] -= cost;
         SpawnBuilding(type, pos, teamId: 0);
         GD.Print($"蓝方建造{type}，扣 ${cost}，剩余 ${_money[0]}，位置 {pos}");
+        _audio?.PlaySfx(AudioManager.Sfx.UiPlace);
         if (_money[0] < cost) CancelPlacement();
     }
 
@@ -1553,6 +1565,9 @@ public partial class Main : Node2D
             new Color(1f, 0.3f, 0.2f));
         GD.Print($"[核弹] Team {firingTeamId} 于 {pos} 释放，命中 {unitHits} 单位 + {bldHits} 建筑");
 
+        // 阶段12-C：核弹音效
+        _audio?.PlaySfxForce(AudioManager.Sfx.Nuke);
+        _audio?.PlaySfxForce(AudioManager.Sfx.BigExplosion);
         QueueRedraw();
     }
 
@@ -1596,6 +1611,8 @@ public partial class Main : Node2D
             new Color(0.5f, 0.8f, 1f));
         GD.Print($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {LightningDuration}s");
 
+        // 阶段12-C：闪电风暴音效
+        _audio?.PlaySfxForce(AudioManager.Sfx.Lightning);
         QueueRedraw();
     }
 
@@ -1959,6 +1976,8 @@ public partial class Main : Node2D
             int row = i / cols;
             friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
         }
+        // 阶段12-C：下令移动音效
+        _audio?.PlaySfx(AudioManager.Sfx.Move);
     }
 
     // ---------- 选择 ----------
@@ -2017,6 +2036,10 @@ public partial class Main : Node2D
                 if (!_selected.Contains(b)) _selected.Add(b);
             }
         }
+
+        // 阶段12-C：选中单位音效
+        if (_selected.Count > 0)
+            _audio?.PlaySfx(AudioManager.Sfx.Select);
     }
 
     private void UpdateDragBox(Vector2 start, Vector2 end)
@@ -2097,6 +2120,59 @@ public partial class Main : Node2D
             }
             GD.Print($"[生产完成] {producer.BuildingName} (Team {teamId}) 生产 {unitType}");
         }
+
+        // 阶段12-C：玩家方生产完成音效
+        if (teamId == PlayerTeamId)
+            _audio?.PlaySfx(AudioManager.Sfx.UiUnitReady);
+    }
+
+    // ---- 阶段12-C 音效回调（供 Unit/Building 调用） ----
+
+    /// <summary>单位开火音效：根据单位类型选择不同音效和音调。</summary>
+    public void PlayUnitFireSfx(UnitType type)
+    {
+        if (_audio == null) return;
+        switch (type)
+        {
+            case UnitType.Infantry:
+            case UnitType.Engineer:
+                // 步兵用高频muzzle
+                _audio.PlaySfx(AudioManager.Sfx.Muzzle, 1.2f);
+                break;
+            case UnitType.Artillery:
+            case UnitType.RocketLauncher:
+            case UnitType.MissileTank:
+                // 远程用低沉cannon
+                _audio.PlaySfx(AudioManager.Sfx.Cannon, 0.8f);
+                _audio.PlaySfx(AudioManager.Sfx.Muzzle, 0.6f);
+                break;
+            default:
+                // 坦克通用
+                _audio.PlaySfx(AudioManager.Sfx.Cannon);
+                _audio.PlaySfx(AudioManager.Sfx.Muzzle, 0.9f);
+                break;
+        }
+    }
+
+    /// <summary>单位死亡音效。</summary>
+    public void PlayUnitDeathSfx(UnitType type)
+    {
+        if (_audio == null) return;
+        switch (type)
+        {
+            case UnitType.HeavyTank:
+                _audio.PlaySfx(AudioManager.Sfx.BigExplosion);
+                break;
+            default:
+                _audio.PlaySfx(AudioManager.Sfx.UnitDie);
+                break;
+        }
+    }
+
+    /// <summary>建筑被毁音效。</summary>
+    public void PlayBuildingDestroyedSfx()
+    {
+        _audio?.PlaySfxForce(AudioManager.Sfx.BigExplosion);
     }
 
     private Building? FindHomeBase(int teamId)
@@ -2590,6 +2666,10 @@ public partial class Main : Node2D
     // ---------- G5 游戏结束 UI ----------
     private void ShowGameOverUI()
     {
+        // 阶段12-C：游戏结束音效
+        bool win = _gameResult.StartsWith("胜利");
+        _audio?.PlaySfxForce(win ? AudioManager.Sfx.NotifyVictory : AudioManager.Sfx.NotifyDefeat);
+
         var layer = new CanvasLayer { Name = "GameOverUI" };
         AddChild(layer);
 
@@ -2607,7 +2687,6 @@ public partial class Main : Node2D
         vbox.AddThemeConstantOverride("separation", 20);
         center.AddChild(vbox);
 
-        bool win = _gameResult.StartsWith("胜利");
         var title = new Label();
         title.Text = _gameResult;
         title.AddThemeFontSizeOverride("font_size", 32);
