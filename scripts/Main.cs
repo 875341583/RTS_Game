@@ -191,6 +191,8 @@ public partial class Main : Node2D
 
     // ---- E1 地形系统 ----
     private TerrainGrid _terrain = null!;
+    /// <summary>获取地形网格（供Unit等查询速度修正和通行性）。</summary>
+    public TerrainGrid GetTerrainGrid() => _terrain;
 
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
@@ -2410,7 +2412,7 @@ public partial class Main : Node2D
                     {
                         // 在低侧绘制阴影条
                         int sx = nx * TileSize, sy = ny * TileSize;
-                        int shadowW = 4, shadowH = 4;
+                        int shadowH = 4;
                         for (int py = 0; py < TileSize && py < shadowH; py++)
                         {
                             for (int px = 0; px < TileSize; px++)

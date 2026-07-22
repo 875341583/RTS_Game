@@ -36,6 +36,8 @@ public partial class Harvester : Unit
         // 矿车使用基类设置的阵营色染色（与战斗单位一致）
     }
 
+    public override TerrainUnitCategory GetTerrainCategory() => TerrainUnitCategory.Harvester;
+
     protected override void ProcessAI(float dt)
     {
         // 优先检测：附近有敌方战斗单位时逃跑

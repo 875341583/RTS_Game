@@ -659,7 +659,23 @@ public partial class Unit : CharacterBody2D
             if (distance > 5f)
             {
                 direction = direction.Normalized();
-                Velocity = direction * MoveSpeed;
+
+                // E2：地形速度修正——查询当前所在地形获取速度系数
+                float speedMult = 1.0f;
+                if (GetParent()?.GetParent() is Main mainNode)
+                {
+                    var terrain = mainNode.GetTerrainGrid();
+                    var cat = GetTerrainCategory();
+                    speedMult = terrain.GetMovementSpeedAtWorld(cat, GlobalPosition.X, GlobalPosition.Y);
+                    // 速度修正为0=不可通行，停下
+                    if (speedMult <= 0f)
+                    {
+                        Velocity = Vector2.Zero;
+                        return;
+                    }
+                }
+
+                Velocity = direction * MoveSpeed * speedMult;
                 MoveAndSlide();
                 if (direction != Vector2.Zero)
                     _body.Rotation = direction.Angle() + SpriteRotationOffset;
@@ -675,6 +691,20 @@ public partial class Unit : CharacterBody2D
             Velocity = Vector2.Zero;
         }
     }
+
+    /// <summary>获取当前单位的地形类别（用于速度修正查询）。</summary>
+    public virtual TerrainUnitCategory GetTerrainCategory() => Type switch
+    {
+        UnitType.Infantry => TerrainUnitCategory.Infantry,
+        UnitType.Engineer => TerrainUnitCategory.EngineerVehicle,
+        UnitType.LightTank => TerrainUnitCategory.LightVehicle,
+        UnitType.AntiAir => TerrainUnitCategory.LightVehicle,
+        UnitType.HeavyTank => TerrainUnitCategory.HeavyVehicle,
+        UnitType.Artillery => TerrainUnitCategory.HeavyVehicle,
+        UnitType.RocketLauncher => TerrainUnitCategory.HeavyVehicle,
+        UnitType.MissileTank => TerrainUnitCategory.HeavyVehicle,
+        _ => TerrainUnitCategory.HeavyVehicle, // 默认归为重载具
+    };
 
     // ---- 查询辅助（供子类使用）----
     protected Unit? FindNearestEnemyUnit()
