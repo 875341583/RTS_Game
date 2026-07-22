@@ -210,12 +210,16 @@ public partial class Building3D : Area3D
     /// <summary>带纹理的材质</summary>
     protected StandardMaterial3D MakeTexturedMat(string texPath, Color tintColor, float roughness = 0.7f, float metallic = 0.1f)
     {
-        var mat = new StandardMaterial3D { AlbedoColor = tintColor, Roughness = roughness, Metallic = metallic };
+        var mat = new StandardMaterial3D { AlbedoColor = new Color(1f, 1f, 1f), Roughness = roughness, Metallic = metallic };
         var tex = GD.Load<Texture2D>(texPath);
         if (tex != null)
         {
             mat.AlbedoTexture = tex;
-            mat.Uv1Scale = new Vector3(2, 2, 1);
+            mat.Uv1Scale = new Vector3(1, 1, 1);
+        }
+        else
+        {
+            mat.AlbedoColor = tintColor;
         }
         return mat;
     }

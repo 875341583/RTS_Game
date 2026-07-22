@@ -71,7 +71,8 @@ public class TerrainGrid3D
     {
         var mat = new StandardMaterial3D
         {
-            AlbedoColor = tintColor,
+            // 当有纹理时用白色让纹理原色显示；无纹理时用tintColor
+            AlbedoColor = new Color(1f, 1f, 1f),
             Roughness = roughness,
             Metallic = metallic,
         };
@@ -80,8 +81,12 @@ public class TerrainGrid3D
         if (tex != null)
         {
             mat.AlbedoTexture = tex;
-            // UV重复
-            mat.Uv1Scale = new Vector3(2, 2, 1);
+            // UV重复：每个tile重复2次纹理
+            mat.Uv1Scale = new Vector3(1, 1, 1);
+        }
+        else
+        {
+            mat.AlbedoColor = tintColor;
         }
         return mat;
     }
@@ -446,14 +451,11 @@ public class TerrainGrid3D
 
     // ======== 3D 地形 Mesh 构建 ========
 
-    /// <summary>构建可视3D地形Mesh（合并所有格子到一个Mesh）</summary>
+    /// <summary>构建可视3D地形Mesh（使用单独BoxMesh tile确保纹理可见）</summary>
     public void Build3DTerrainMesh()
     {
-        // 使用SurfaceTool构建一个大Mesh，性能更好
-        var surfaceTool = new SurfaceTool();
-        surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
-
         var rng = new Random(99);
+        var colBody = new StaticBody3D { Name = "TerrainCollider" };
 
         for (int x = 0; x < GridSize; x++)
         {
@@ -468,33 +470,30 @@ public class TerrainGrid3D
                 // 水面单独处理
                 if (cell.Type == TerrainType.DeepWater || cell.Type == TerrainType.ShallowWater)
                 {
-                    // 水面在 y=-0.3，河底在 y=-1.0
-                    AddQuadToSurface(surfaceTool, worldX, -0.3f, worldZ, CellSize, CellSize,
-                        cell.Type == TerrainType.DeepWater ? _deepWaterMat : _shallowWaterMat, rng);
+                    var waterMat = cell.Type == TerrainType.DeepWater ? _deepWaterMat : _shallowWaterMat;
+                    AddTerrainTile(worldX, -0.3f, worldZ, waterMat, false, colBody, false);
                     continue;
                 }
 
                 // 桥梁在水面上
                 if (effType == TerrainType.Bridge)
                 {
-                    // 先画水面
-                    AddQuadToSurface(surfaceTool, worldX, -0.3f, worldZ, CellSize, CellSize, _shallowWaterMat, rng);
-                    // 再画桥面在 y=0.1
-                    AddQuadToSurface(surfaceTool, worldX, 0.1f, worldZ, CellSize, CellSize, _bridgeMat, rng);
+                    AddTerrainTile(worldX, -0.3f, worldZ, _shallowWaterMat, false, colBody, false);
+                    AddTerrainTile(worldX, 0.1f, worldZ, _bridgeMat, false, colBody, true);
                     continue;
                 }
 
                 // 隧道在山脉中
                 if (effType == TerrainType.Tunnel)
                 {
-                    AddQuadToSurface(surfaceTool, worldX, 0.05f, worldZ, CellSize, CellSize, _tunnelMat, rng);
+                    AddTerrainTile(worldX, 0.05f, worldZ, _tunnelMat, false, colBody, true);
                     continue;
                 }
 
-                // 普通= tile
+                // 普通 tile
                 StandardMaterial3D mat = effType switch
                 {
-                    TerrainType.Grass => rng.NextDouble() < 0.5 ? _grassMat : _grassMat,
+                    TerrainType.Grass => _grassMat,
                     TerrainType.Sand => _sandMat,
                     TerrainType.Snow => _snowMat,
                     TerrainType.City => _cityMat,
@@ -530,6 +529,11 @@ public class TerrainGrid3D
                         snowInst.Position = new Vector3(worldX + CellSize * 0.5f, mountainHeight + 0.1f, worldZ + CellSize * 0.5f);
                         _terrainRoot.AddChild(snowInst);
                     }
+
+                    // 碰撞体
+                    var colShape = new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3(CellSize, mountainHeight, CellSize) } };
+                    colShape.Position = new Vector3(worldX + CellSize * 0.5f, mountainHeight * 0.5f, worldZ + CellSize * 0.5f);
+                    colBody.AddChild(colShape);
                     continue;
                 }
 
@@ -544,6 +548,10 @@ public class TerrainGrid3D
                     mInst.Position = new Vector3(worldX + CellSize * 0.5f, 1.5f, worldZ + CellSize * 0.5f);
                     mInst.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
                     _terrainRoot.AddChild(mInst);
+
+                    var colShape = new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3(CellSize, 3.0f, CellSize) } };
+                    colShape.Position = new Vector3(worldX + CellSize * 0.5f, 1.5f, worldZ + CellSize * 0.5f);
+                    colBody.AddChild(colShape);
                     continue;
                 }
 
@@ -551,22 +559,34 @@ public class TerrainGrid3D
                 float tileY = elevationY;
                 if (cell.Elevation == 2) tileY = 0.5f;
 
-                // 添加颜色微变化
+                // 添加颜色微变化 — 保留纹理（用白色让纹理原色显示）
                 Color baseColor = mat.AlbedoColor;
                 float r = (float)rng.NextDouble() * 0.05f - 0.025f;
                 var tileMat = new StandardMaterial3D
                 {
-                    AlbedoColor = new Color(
-                        Math.Clamp(baseColor.R + r, 0, 1),
-                        Math.Clamp(baseColor.G + r, 0, 1),
-                        Math.Clamp(baseColor.B + r, 0, 1)),
                     Roughness = mat.Roughness,
                     Metallic = mat.Metallic,
                 };
+                // 保留纹理 — 有纹理时用微调白色，无纹理时用原色+微变化
+                if (mat.AlbedoTexture != null)
+                {
+                    tileMat.AlbedoTexture = mat.AlbedoTexture;
+                    tileMat.Uv1Scale = mat.Uv1Scale;
+                    // 轻微明暗变化
+                    float v = 1f + r;
+                    tileMat.AlbedoColor = new Color(Math.Clamp(v, 0.85f, 1f), Math.Clamp(v, 0.85f, 1f), Math.Clamp(v, 0.85f, 1f));
+                }
+                else
+                {
+                    tileMat.AlbedoColor = new Color(
+                        Math.Clamp(baseColor.R + r, 0, 1),
+                        Math.Clamp(baseColor.G + r, 0, 1),
+                        Math.Clamp(baseColor.B + r, 0, 1));
+                }
                 if (mat.Transparency != BaseMaterial3D.TransparencyEnum.Disabled)
                     tileMat.Transparency = mat.Transparency;
 
-                AddQuadToSurface(surfaceTool, worldX, tileY, worldZ, CellSize, CellSize, tileMat, rng);
+                AddTerrainTile(worldX, tileY, worldZ, tileMat, false, colBody, true);
 
                 // 道路标线
                 if (effType == TerrainType.Road && rng.NextDouble() < 0.3)
@@ -582,26 +602,30 @@ public class TerrainGrid3D
             }
         }
 
-        surfaceTool.Index();
-        surfaceTool.GenerateNormals();
-        var terrainMesh = surfaceTool.Commit();
-
-        var terrainMi = new MeshInstance3D();
-        terrainMi.Mesh = terrainMesh;
-        terrainMi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-        _terrainRoot.AddChild(terrainMi);
-
-        // 生成静态碰撞体
-        var colShape = new ConcavePolygonShape3D();
-        var faces = terrainMesh.GetFaces();
-        colShape.SetFaces(faces);
-        var colBody = new StaticBody3D();
-        var colOwner = new CollisionShape3D { Shape = colShape };
-        colBody.AddChild(colOwner);
         _terrainRoot.AddChild(colBody);
 
         // 构建导航网格
         BuildNavigationMesh();
+    }
+
+    /// <summary>添加一个地形tile（BoxMesh + 可选碰撞体）</summary>
+    private void AddTerrainTile(float worldX, float y, float worldZ, StandardMaterial3D mat, bool castShadow, StaticBody3D colBody, bool addCollision)
+    {
+        var mInst = new MeshInstance3D();
+        var boxMesh = new BoxMesh();
+        boxMesh.Size = new Vector3(CellSize, 0.1f, CellSize);
+        mInst.Mesh = boxMesh;
+        mInst.MaterialOverride = mat;
+        mInst.Position = new Vector3(worldX + CellSize * 0.5f, y, worldZ + CellSize * 0.5f);
+        mInst.CastShadow = castShadow ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off;
+        _terrainRoot.AddChild(mInst);
+
+        if (addCollision)
+        {
+            var colShape = new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3(CellSize, 0.1f, CellSize) } };
+            colShape.Position = new Vector3(worldX + CellSize * 0.5f, y, worldZ + CellSize * 0.5f);
+            colBody.AddChild(colShape);
+        }
     }
 
     private void AddQuadToSurface(SurfaceTool st, float x, float y, float z, float w, float d,
@@ -619,14 +643,19 @@ public class TerrainGrid3D
         // 法线朝上
         st.SetNormal(new Vector3(0, 1, 0));
 
-        // 三角形1
+        // UV坐标：让纹理在每个tile上完整映射一次
+        st.SetUV(new Vector2(0, 0));
         st.AddVertex(new Vector3(x, h1, z));
+        st.SetUV(new Vector2(1, 0));
         st.AddVertex(new Vector3(x + w, h2, z));
+        st.SetUV(new Vector2(1, 1));
         st.AddVertex(new Vector3(x + w, h3, z + d));
 
-        // 三角形2
+        st.SetUV(new Vector2(0, 0));
         st.AddVertex(new Vector3(x, h1, z));
+        st.SetUV(new Vector2(1, 1));
         st.AddVertex(new Vector3(x + w, h3, z + d));
+        st.SetUV(new Vector2(0, 1));
         st.AddVertex(new Vector3(x, h4, z + d));
     }
 

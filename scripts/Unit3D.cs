@@ -1034,13 +1034,68 @@ public partial class Unit3D : CharacterBody3D
 
     private void FlashModel(bool flash)
     {
-        // 简单实现：调整模型可见性
         if (_modelRoot == null) return;
-        // 实际3D闪白需要Shader，这里用简单scale pulse替代
-        if (flash)
+        // 遍历_modelRoot下所有MeshInstance3D，切换emission实现受击闪白
+        foreach (var child in _modelRoot.GetChildren())
         {
-            var scale = _modelRoot.Scale;
-            _modelRoot.Scale = new Vector3(scale.X * 1f, scale.Y * 1f, scale.Z * 1f);
+            if (child is MeshInstance3D mi)
+            {
+                var mat = mi.MaterialOverride as StandardMaterial3D;
+                if (mat == null) continue;
+                if (flash)
+                {
+                    // 受击闪白：增强emission到白色
+                    mat.Emission = new Color(1f, 0.3f, 0.3f);
+                    mat.EmissionEnergyMultiplier = 3f;
+                }
+                else
+                {
+                    // 恢复：低emission
+                    mat.EmissionEnergyMultiplier = 0f;
+                }
+            }
+            else if (child is Node3D sub && sub != _turretNode)
+            {
+                // 也检查子节点的子节点（炮塔上的barrel等在_turretNode下）
+                foreach (var sub2 in sub.GetChildren())
+                {
+                    if (sub2 is MeshInstance3D mi2)
+                    {
+                        var mat = mi2.MaterialOverride as StandardMaterial3D;
+                        if (mat == null) continue;
+                        if (flash)
+                        {
+                            mat.Emission = new Color(1f, 0.3f, 0.3f);
+                            mat.EmissionEnergyMultiplier = 3f;
+                        }
+                        else
+                        {
+                            mat.EmissionEnergyMultiplier = 0f;
+                        }
+                    }
+                }
+            }
+        }
+        // 炮塔下的网格也要闪
+        if (_turretNode != null)
+        {
+            foreach (var child in _turretNode.GetChildren())
+            {
+                if (child is MeshInstance3D mi)
+                {
+                    var mat = mi.MaterialOverride as StandardMaterial3D;
+                    if (mat == null) continue;
+                    if (flash)
+                    {
+                        mat.Emission = new Color(1f, 0.3f, 0.3f);
+                        mat.EmissionEnergyMultiplier = 3f;
+                    }
+                    else
+                    {
+                        mat.EmissionEnergyMultiplier = 0f;
+                    }
+                }
+            }
         }
     }
 

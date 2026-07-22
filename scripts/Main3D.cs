@@ -97,7 +97,7 @@ public partial class Main3D : Node3D
 
     // 昼夜系统
     private float _timeOfDay = 8f; // 0-24小时
-    private const float DayLength = 90f; // 一天=90秒（加速让昼夜变化更快可见）
+    private const float DayLength = 180f; // 一天=180秒（白天更充裕，夜间不至于太长截图看不见）
     private float _sunRotation;
 
     // 灾害系统
@@ -234,14 +234,10 @@ public partial class Main3D : Node3D
         env.Sky = skyResource;
         env.BackgroundEnergyMultiplier = 1.0f;
         env.AmbientLightSource = Godot.Environment.AmbientSource.Sky;
-        env.AmbientLightColor = new Color(0.5f, 0.55f, 0.6f);
-        env.AmbientLightEnergy = 0.4f;
-        env.FogEnabled = true;
-        env.FogLightColor = new Color(0.6f, 0.65f, 0.7f);
-        env.FogLightEnergy = 0.2f;
-        env.FogDensity = 0.003f;
-        env.VolumetricFogEnabled = true;
-        env.VolumetricFogDensity = 0.01f;
+        env.AmbientLightColor = new Color(0.6f, 0.65f, 0.7f);
+        env.AmbientLightEnergy = 0.6f;
+        env.FogEnabled = false;
+        env.VolumetricFogEnabled = false;
         _worldEnv = new WorldEnvironment { Environment = env };
         AddChild(_worldEnv);
 
@@ -281,7 +277,7 @@ public partial class Main3D : Node3D
     {
         (_activeAiCount, float grace, int aiInterval) = _difficulty switch
         {
-            Difficulty.Easy => (2, 120f, 12),
+            Difficulty.Easy => (2, 30f, 12),
             Difficulty.Normal => (4, 60f, 8),
             Difficulty.Hard => (6, 30f, 5),
             Difficulty.Brutal => (7, 0f, 3),
@@ -619,48 +615,389 @@ public partial class Main3D : Node3D
 
     // ======== 特效 ========
 
-    public void SpawnMuzzleFlash(Vector3 from, Vector3 to)
+    /// <summary>活跃特效列表，用于_Process中逐帧更新动画</summary>
+    private struct FxParticle
     {
-        // 简单粒子效果：从from到to的闪光
-        var flash = new MeshInstance3D();
-        var sphere = new SphereMesh { Radius = 0.2f, Height = 0.4f };
-        flash.Mesh = sphere;
-        flash.MaterialOverride = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(1f, 0.8f, 0.3f),
-            Emission = new Color(1f, 0.8f, 0.3f),
-            EmissionEnergyMultiplier = 2f,
-        };
-        flash.Position = from + (to - from).Normalized() * 2f;
-        _effectsNode.AddChild(flash);
-
-        // 用Timer删除
-        var timer = new Timer { WaitTime = 0.1f, OneShot = true };
-        flash.AddChild(timer);
-        timer.Timeout += () => flash.QueueFree();
-        timer.Start();
+        public Node3D Node;
+        public float Age;
+        public float Lifetime;
+        public Vector3 StartScale;
+        public Vector3 EndScale;
+        public Color StartColor;
+        public Color EndColor;
+        public float StartEmission;
+        public float EndEmission;
+        public bool FadeOut;
+        public Vector3 Velocity;   // 用于烟雾/碎片飘移
+        public FxType Type;
     }
 
-    public void SpawnExplosion(Vector3 pos, float scale)
+    private enum FxType { ExplosionCore, ExplosionShell, Smoke, Spark, Tracer, MuzzleFlash, Shockwave }
+
+    private readonly List<FxParticle> _activeFx = new();
+    private const int MaxActiveFx = 300;
+
+    /// <summary>
+    /// 增强版炮口闪光：OmniLight3D短暂闪烁 + 扩散发光球 + 方向喷射
+    /// </summary>
+    public void SpawnMuzzleFlash(Vector3 from, Vector3 to)
     {
-        var explosion = new MeshInstance3D();
-        var sphere = new SphereMesh { Radius = scale * 0.5f, Height = scale };
-        explosion.Mesh = sphere;
-        explosion.MaterialOverride = new StandardMaterial3D
+        if (_activeFx.Count >= MaxActiveFx) return;
+
+        var dir = (to - from).Normalized();
+        var flashPos = from + dir * 2f + new Vector3(0, 0.5f, 0);
+
+        // 1) 短暂点光源 — 模拟枪炮火光照明
+        var light = new OmniLight3D
         {
-            AlbedoColor = new Color(1f, 0.4f, 0.1f, 0.8f),
-            Emission = new Color(1f, 0.3f, 0.05f),
+            LightColor = new Color(1f, 0.85f, 0.4f),
+            LightEnergy = 4f,
+            OmniRange = 8f,
+            OmniAttenuation = 1.5f,
+            Position = flashPos,
+        };
+        _effectsNode.AddChild(light);
+
+        var lightFx = new FxParticle
+        {
+            Node = light,
+            Age = 0,
+            Lifetime = 0.12f,
+            StartScale = Vector3.One,
+            EndScale = Vector3.One,
+            StartColor = new Color(1f, 0.85f, 0.4f),
+            EndColor = new Color(1f, 0.85f, 0.4f, 0f),
+            StartEmission = 4f,
+            EndEmission = 0f,
+            FadeOut = true,
+            Type = FxType.MuzzleFlash,
+        };
+        _activeFx.Add(lightFx);
+
+        // 2) 扩散发光球 — 火球本体
+        var flash = new MeshInstance3D();
+        var sphere = new SphereMesh { Radius = 0.3f, Height = 0.6f };
+        flash.Mesh = sphere;
+        var flashMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.9f, 0.5f),
+            Emission = new Color(1f, 0.7f, 0.2f),
+            EmissionEnergyMultiplier = 5f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        };
+        flash.MaterialOverride = flashMat;
+        flash.Position = flashPos;
+        _effectsNode.AddChild(flash);
+
+        var flashFx = new FxParticle
+        {
+            Node = flash,
+            Age = 0,
+            Lifetime = 0.15f,
+            StartScale = new Vector3(0.5f, 0.5f, 0.5f),
+            EndScale = new Vector3(2.5f, 2.5f, 2.5f),
+            StartColor = new Color(1f, 0.9f, 0.5f, 1f),
+            EndColor = new Color(1f, 0.3f, 0.05f, 0f),
+            StartEmission = 5f,
+            EndEmission = 0f,
+            FadeOut = true,
+            Type = FxType.MuzzleFlash,
+        };
+        _activeFx.Add(flashFx);
+
+        // 3) 炮弹/子弹轨迹线 — 从枪口到目标的快速光迹
+        SpawnTracer(from, to);
+    }
+
+    /// <summary>生成快速轨迹线：一条从from到to的发光圆柱体，0.08秒消失</summary>
+    private void SpawnTracer(Vector3 from, Vector3 to)
+    {
+        if (_activeFx.Count >= MaxActiveFx) return;
+
+        var mid = (from + to) * 0.5f + new Vector3(0, 0.5f, 0);
+        var diff = to - from;
+        var dist = diff.Length();
+        if (dist < 0.1f) return;
+
+        var tracer = new MeshInstance3D();
+        var cyl = new CylinderMesh { TopRadius = 0.04f, BottomRadius = 0.04f, Height = dist };
+        tracer.Mesh = cyl;
+        var tracerMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.95f, 0.6f, 0.8f),
+            Emission = new Color(1f, 0.8f, 0.3f),
             EmissionEnergyMultiplier = 3f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
-        explosion.Position = pos + new Vector3(0, 1f, 0);
-        _effectsNode.AddChild(explosion);
+        tracer.MaterialOverride = tracerMat;
+        tracer.Position = mid;
+        // 旋转圆柱体使其朝向射击方向（CylinderMesh默认沿Y轴，需要转到dir方向）
+        var dir = diff.Normalized();
+        // 构造从Y轴(0,1,0)到dir的旋转
+        var yAxis = new Vector3(0, 1, 0);
+        var rotAxis = yAxis.Cross(dir);
+        var rotAngle = MathF.Acos(Mathf.Clamp(yAxis.Dot(dir), -1f, 1f));
+        if (rotAxis.Length() > 0.001f)
+        {
+            rotAxis = rotAxis.Normalized();
+            tracer.Transform = new Transform3D(
+                new Basis(rotAxis, rotAngle),
+                mid);
+        }
+        _effectsNode.AddChild(tracer);
 
-        // 简单动画：放大+消失
-        var timer = new Timer { WaitTime = 0.5f, OneShot = true };
-        explosion.AddChild(timer);
-        timer.Timeout += () => explosion.QueueFree();
-        timer.Start();
+        var tracerFx = new FxParticle
+        {
+            Node = tracer,
+            Age = 0,
+            Lifetime = 0.08f,
+            StartScale = Vector3.One,
+            EndScale = new Vector3(1f, 1f, 1f),
+            StartColor = new Color(1f, 0.95f, 0.6f, 0.8f),
+            EndColor = new Color(1f, 0.95f, 0.6f, 0f),
+            StartEmission = 3f,
+            EndEmission = 0f,
+            FadeOut = true,
+            Type = FxType.Tracer,
+        };
+        _activeFx.Add(tracerFx);
+    }
+
+    /// <summary>
+    /// 增强版爆炸：中心火球(扩散+消散) + 冲击波环(扁平扩散) + 点光源(强光闪烁) + 烟雾(上升飘移) + 火花碎片
+    /// </summary>
+    public void SpawnExplosion(Vector3 pos, float scale)
+    {
+        var center = pos + new Vector3(0, scale * 0.3f, 0);
+
+        // 1) 爆炸点光源 — 强光短暂照明周围
+        {
+            var light = new OmniLight3D
+            {
+                LightColor = new Color(1f, 0.5f, 0.15f),
+                LightEnergy = 6f * Math.Min(scale, 5f),
+                OmniRange = scale * 3f,
+                OmniAttenuation = 1.2f,
+                Position = center,
+            };
+            _effectsNode.AddChild(light);
+            _activeFx.Add(new FxParticle
+            {
+                Node = light,
+                Age = 0,
+                Lifetime = 0.4f,
+                StartScale = Vector3.One,
+                EndScale = Vector3.One,
+                StartColor = new Color(1f, 0.5f, 0.15f),
+                EndColor = new Color(1f, 0.5f, 0.15f, 0f),
+                StartEmission = 6f * Math.Min(scale, 5f),
+                EndEmission = 0f,
+                FadeOut = true,
+                Type = FxType.ExplosionCore,
+            });
+        }
+
+        // 2) 中心火球 — 初始小，快速膨胀，颜色从白热→橙红→暗烟
+        {
+            var fireball = new MeshInstance3D();
+            var sph = new SphereMesh { Radius = scale * 0.3f, Height = scale * 0.6f };
+            fireball.Mesh = sph;
+            var mat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.6f, 0.15f, 1f),
+                Emission = new Color(1f, 0.4f, 0.05f),
+                EmissionEnergyMultiplier = 5f,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            };
+            fireball.MaterialOverride = mat;
+            fireball.Position = center;
+            _effectsNode.AddChild(fireball);
+            _activeFx.Add(new FxParticle
+            {
+                Node = fireball,
+                Age = 0,
+                Lifetime = 0.5f,
+                StartScale = new Vector3(0.3f, 0.3f, 0.3f),
+                EndScale = new Vector3(1f, 1f, 1f),
+                StartColor = new Color(1f, 0.9f, 0.5f, 1f),
+                EndColor = new Color(0.4f, 0.15f, 0.05f, 0f),
+                StartEmission = 5f,
+                EndEmission = 0.5f,
+                FadeOut = true,
+                Type = FxType.ExplosionCore,
+            });
+        }
+
+        // 3) 冲击波环 — 扁平圆盘水平扩散
+        if (scale >= 1.5f && _activeFx.Count < MaxActiveFx)
+        {
+            var ring = new MeshInstance3D();
+            var cyl = new CylinderMesh { TopRadius = scale * 0.2f, BottomRadius = scale * 0.2f, Height = 0.08f };
+            ring.Mesh = cyl;
+            var mat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.8f, 0.3f, 0.6f),
+                Emission = new Color(1f, 0.6f, 0.15f),
+                EmissionEnergyMultiplier = 2f,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            };
+            ring.MaterialOverride = mat;
+            ring.Position = pos + new Vector3(0, 0.1f, 0);
+            _effectsNode.AddChild(ring);
+            _activeFx.Add(new FxParticle
+            {
+                Node = ring,
+                Age = 0,
+                Lifetime = 0.35f,
+                StartScale = new Vector3(0.3f, 1f, 0.3f),
+                EndScale = new Vector3(scale * 1.5f, 1f, scale * 1.5f),
+                StartColor = new Color(1f, 0.8f, 0.3f, 0.6f),
+                EndColor = new Color(1f, 0.4f, 0.1f, 0f),
+                StartEmission = 2f,
+                EndEmission = 0f,
+                FadeOut = true,
+                Type = FxType.Shockwave,
+            });
+        }
+
+        // 4) 烟雾 — 多个灰色半透明球体上升+膨胀
+        int smokeCount = Math.Min((int)(scale * 1.5f), 6);
+        for (int i = 0; i < smokeCount; i++)
+        {
+            if (_activeFx.Count >= MaxActiveFx) break;
+            var angle = (float)i / smokeCount * MathF.PI * 2f + (float)(new Random().NextDouble() * 0.5);
+            var offset = new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * scale * 0.3f;
+            var smoke = new MeshInstance3D();
+            var sph = new SphereMesh { Radius = scale * 0.2f, Height = scale * 0.4f };
+            smoke.Mesh = sph;
+            var mat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.3f, 0.25f, 0.2f, 0.7f),
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            };
+            smoke.MaterialOverride = mat;
+            smoke.Position = center + offset;
+            _effectsNode.AddChild(smoke);
+            _activeFx.Add(new FxParticle
+            {
+                Node = smoke,
+                Age = 0,
+                Lifetime = 1.2f + (float)new Random().NextDouble() * 0.5f,
+                StartScale = new Vector3(0.4f, 0.4f, 0.4f),
+                EndScale = new Vector3(scale * 0.8f, scale * 0.8f, scale * 0.8f),
+                StartColor = new Color(0.35f, 0.3f, 0.25f, 0.7f),
+                EndColor = new Color(0.15f, 0.12f, 0.1f, 0f),
+                StartEmission = 0f,
+                EndEmission = 0f,
+                FadeOut = true,
+                Velocity = new Vector3(offset.X * 0.5f, scale * 0.8f, offset.Z * 0.5f),
+                Type = FxType.Smoke,
+            });
+        }
+
+        // 5) 火花碎片 — 小亮点向四周飞溅
+        int sparkCount = Math.Min((int)(scale * 2f), 8);
+        for (int i = 0; i < sparkCount; i++)
+        {
+            if (_activeFx.Count >= MaxActiveFx) break;
+            var angle = (float)i / sparkCount * MathF.PI * 2f;
+            var elev = 0.3f + (float)new Random().NextDouble() * 0.5f;
+            var dir = new Vector3(MathF.Cos(angle), elev, MathF.Sin(angle)).Normalized();
+            var spark = new MeshInstance3D();
+            var sph = new SphereMesh { Radius = 0.06f, Height = 0.12f };
+            spark.Mesh = sph;
+            var mat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.7f, 0.2f),
+                Emission = new Color(1f, 0.5f, 0.1f),
+                EmissionEnergyMultiplier = 4f,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            };
+            spark.MaterialOverride = mat;
+            spark.Position = center;
+            _effectsNode.AddChild(spark);
+            _activeFx.Add(new FxParticle
+            {
+                Node = spark,
+                Age = 0,
+                Lifetime = 0.4f + (float)new Random().NextDouble() * 0.3f,
+                StartScale = Vector3.One,
+                EndScale = new Vector3(0.2f, 0.2f, 0.2f),
+                StartColor = new Color(1f, 0.7f, 0.2f, 1f),
+                EndColor = new Color(0.5f, 0.1f, 0.02f, 0f),
+                StartEmission = 4f,
+                EndEmission = 0f,
+                FadeOut = true,
+                Velocity = dir * scale * 3f,
+                Type = FxType.Spark,
+            });
+        }
+    }
+
+    /// <summary>每帧更新所有活跃特效的动画（缩放/颜色/发光/位移/光源强度）</summary>
+    private void UpdateActiveFx(float dt)
+    {
+        for (int i = _activeFx.Count - 1; i >= 0; i--)
+        {
+            var fx = _activeFx[i];
+            fx.Age += dt;
+            float t = fx.Age / fx.Lifetime;
+            if (t >= 1f)
+            {
+                if (IsInstanceValid(fx.Node))
+                    fx.Node.QueueFree();
+                _activeFx.RemoveAt(i);
+                continue;
+            }
+
+            if (!IsInstanceValid(fx.Node))
+            {
+                _activeFx.RemoveAt(i);
+                continue;
+            }
+
+            // 缩放插值
+            var scale = fx.StartScale.Lerp(fx.EndScale, t);
+            fx.Node.Scale = scale;
+
+            // 位移（烟雾上升/火花飞溅）
+            if (fx.Velocity != Vector3.Zero)
+            {
+                // 简单物理：匀速 + 重力
+                var v = fx.Velocity;
+                v.Y -= 5f * dt; // 重力
+                fx.Velocity = v;
+                fx.Node.GlobalPosition += fx.Velocity * dt;
+            }
+
+            // 颜色+发光更新
+            var mat = fx.Node switch
+            {
+                MeshInstance3D mi => mi.MaterialOverride as StandardMaterial3D,
+                OmniLight3D => null,
+                _ => null,
+            };
+
+            if (mat != null)
+            {
+                mat.AlbedoColor = fx.StartColor.Lerp(fx.EndColor, t);
+                mat.EmissionEnergyMultiplier = Mathf.Lerp(fx.StartEmission, fx.EndEmission, t);
+            }
+
+            // 光源更新
+            if (fx.Node is OmniLight3D light)
+            {
+                light.LightEnergy = Mathf.Lerp(fx.StartEmission, fx.EndEmission, t);
+                if (t > 0.5f)
+                    light.LightEnergy *= (1f - t) * 2f; // 后半段快速衰减
+            }
+
+            _activeFx[i] = fx;
+        }
     }
 
     // ======== AI 逻辑 ========
@@ -1742,13 +2079,13 @@ public partial class Main3D : Node3D
         }
         _sunLight.LightEnergy = sunIntensity;
 
-        // 月光
-        _moonLight.LightEnergy = sunIntensity < 0.1f ? 0.15f : 0f;
+        // 月光（夜间最低光照保证可见性）
+        _moonLight.LightEnergy = sunIntensity < 0.1f ? 0.3f : 0f;
 
         // 环境光
         if (_worldEnv?.Environment != null)
         {
-            float ambEnergy = sunIntensity * 0.5f + 0.1f;
+            float ambEnergy = sunIntensity * 0.5f + 0.25f; // 最低环境光0.25保证夜间勉强可见
             _worldEnv.Environment.AmbientLightEnergy = ambEnergy;
 
             // 天空颜色
@@ -1916,14 +2253,10 @@ public partial class Main3D : Node3D
     {
         float dt = (float)delta;
 
-        // 自动截图（15秒、45秒两个时间点）
+        // 自动截图（15秒、30秒、45秒、60秒、75秒、90秒、120秒）
         _autoShotTimer += dt;
-        if (_autoShotIndex == 0 && _autoShotTimer >= 15f)
-        {
-            _autoShotIndex++;
-            CallDeferred(nameof(TakeScreenshot));
-        }
-        else if (_autoShotIndex == 1 && _autoShotTimer >= 45f)
+        int[] shotTimes = { 15, 30, 45, 60, 75, 90, 120 };
+        if (_autoShotIndex < shotTimes.Length && _autoShotTimer >= shotTimes[_autoShotIndex])
         {
             _autoShotIndex++;
             CallDeferred(nameof(TakeScreenshot));
@@ -1937,6 +2270,9 @@ public partial class Main3D : Node3D
 
         // 灾害
         ProcessDisasters(dt);
+
+        // 战斗特效动画更新
+        UpdateActiveFx(dt);
 
         // AI保护期递减
         if (Unit3D.AiGraceRemaining > 0)
