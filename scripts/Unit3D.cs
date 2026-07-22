@@ -47,6 +47,7 @@ public partial class Unit3D : CharacterBody3D
     private bool _hasAttackMoveTarget;
     private Vector3 _guardPosition;
     private bool _hasGuardPosition;
+    private float _dustTimer; // 移动尘埃计时器
 
     // 运输系统
     public List<Unit3D> Passengers { get; } = new();
@@ -1474,6 +1475,19 @@ public partial class Unit3D : CharacterBody3D
         var velocity = dir * MoveSpeed * speedMult;
         Velocity = new Vector3(velocity.X, 0, velocity.Z);
         MoveAndSlide();
+
+        // 移动尘埃 (地面车辆/坦克移动时扬尘)
+        _dustTimer -= dt;
+        if (!IsAirUnit && _dustTimer <= 0f && Type != UnitType.Infantry
+            && Type != UnitType.Grenadier && Type != UnitType.Sniper
+            && Type != UnitType.FlameInfantry && Type != UnitType.RocketInfantry
+            && Type != UnitType.Engineer && Type != UnitType.Sapper
+            && Type != UnitType.ChiefEngineer && Type != UnitType.Spy
+            && Type != UnitType.Thief && Type != UnitType.Hero)
+        {
+            _dustTimer = 0.15f; // 每0.15秒一团尘
+            _game?.SpawnMoveDust(GlobalPosition, 0.6f);
+        }
 
         // 转向
         float targetAngle = Mathf.Atan2(dir.X, dir.Z);

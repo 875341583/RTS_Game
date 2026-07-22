@@ -453,6 +453,9 @@ public partial class Main3D : Node3D
 
         var unit = SpawnUnit(unitType, producer.TeamId, exitPos);
 
+        // 单位出厂特效
+        SpawnBuildEffect(exitPos, 1.5f);
+
         // 音效：单位出厂（仅玩家方）
         if (producer.TeamId == PlayerTeamId)
             AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.UiUnitReady);
@@ -585,6 +588,7 @@ public partial class Main3D : Node3D
     public void OnBuildingDied(Building3D building)
     {
         SpawnExplosion(building.GlobalPosition, 5f);
+        SpawnBuildingDebris(building.GlobalPosition, 3f);
         _selected.Remove(building);
         if (building.Type == Building3D.BuildingType.Base)
         {
@@ -1007,6 +1011,190 @@ public partial class Main3D : Node3D
                 Type = FxType.Spark,
             });
         }
+    }
+
+    // ======== 新增战斗/环境特效 (阶段E6) ========
+
+    /// <summary>建筑被摧毁时的碎片飞散效果</summary>
+    public void SpawnBuildingDebris(Vector3 pos, float scale)
+    {
+        if (_activeFx.Count >= MaxActiveFx) return;
+
+        // 大块碎片飞溅
+        int debrisCount = Math.Min((int)(scale * 3f), 12);
+        for (int i = 0; i < debrisCount; i++)
+        {
+            if (_activeFx.Count >= MaxActiveFx) break;
+            var angle = (float)i / debrisCount * MathF.PI * 2f + (float)(new Random().NextDouble() * 0.5);
+            var elev = 0.5f + (float)new Random().NextDouble() * 0.8f;
+            var dir = new Vector3(MathF.Cos(angle), elev, MathF.Sin(angle)).Normalized();
+            var debris = new MeshInstance3D();
+            var boxSize = 0.15f + (float)new Random().NextDouble() * 0.2f;
+            var box = new BoxMesh { Size = new Vector3(boxSize, boxSize * 0.7f, boxSize * 0.5f) };
+            debris.Mesh = box;
+            var darkMat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.4f, 0.35f, 0.3f),
+                Roughness = 0.9f,
+            };
+            debris.MaterialOverride = darkMat;
+            debris.Position = pos + new Vector3(0, scale * 0.5f, 0);
+            debris.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+            _effectsNode.AddChild(debris);
+            _activeFx.Add(new FxParticle
+            {
+                Node = debris,
+                Age = 0,
+                Lifetime = 1.5f + (float)new Random().NextDouble() * 0.5f,
+                StartScale = Vector3.One,
+                EndScale = new Vector3(0.3f, 0.3f, 0.3f),
+                StartColor = new Color(0.4f, 0.35f, 0.3f),
+                EndColor = new Color(0.2f, 0.15f, 0.1f, 0f),
+                StartEmission = 0f,
+                EndEmission = 0f,
+                FadeOut = true,
+                Velocity = dir * scale * 4f,
+                Type = FxType.Spark,
+            });
+        }
+
+        // 灰尘柱 (浓烟上升)
+        int dustCount = Math.Min((int)(scale * 2f), 8);
+        for (int i = 0; i < dustCount; i++)
+        {
+            if (_activeFx.Count >= MaxActiveFx) break;
+            var angle = (float)i / dustCount * MathF.PI * 2f;
+            var offset = new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * scale * 0.25f;
+            var dust = new MeshInstance3D();
+            var sph = new SphereMesh { Radius = scale * 0.3f, Height = scale * 0.6f };
+            dust.Mesh = sph;
+            var mat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.35f, 0.3f, 0.25f, 0.6f),
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            };
+            dust.MaterialOverride = mat;
+            dust.Position = pos + offset + new Vector3(0, scale * 0.3f, 0);
+            _effectsNode.AddChild(dust);
+            _activeFx.Add(new FxParticle
+            {
+                Node = dust,
+                Age = 0,
+                Lifetime = 2.0f + (float)new Random().NextDouble() * 1f,
+                StartScale = new Vector3(0.5f, 0.5f, 0.5f),
+                EndScale = new Vector3(scale * 1.2f, scale * 1.2f, scale * 1.2f),
+                StartColor = new Color(0.4f, 0.35f, 0.3f, 0.6f),
+                EndColor = new Color(0.15f, 0.12f, 0.1f, 0f),
+                StartEmission = 0f,
+                EndEmission = 0f,
+                FadeOut = true,
+                Velocity = new Vector3(offset.X * 0.3f, scale * 1.2f, offset.Z * 0.3f),
+                Type = FxType.Smoke,
+            });
+        }
+    }
+
+    /// <summary>单位移动尘埃 — 坦克/车辆移动时在地面上扬起尘土</summary>
+    public void SpawnMoveDust(Vector3 pos, float scale = 0.5f)
+    {
+        if (_activeFx.Count >= MaxActiveFx) return;
+
+        var dust = new MeshInstance3D();
+        var sph = new SphereMesh { Radius = scale * 0.2f, Height = scale * 0.4f };
+        dust.Mesh = sph;
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.55f, 0.48f, 0.35f, 0.5f),
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        dust.MaterialOverride = mat;
+        dust.Position = pos + new Vector3(0, 0.1f, 0);
+        _effectsNode.AddChild(dust);
+
+        var angle = (float)(new Random().NextDouble() * MathF.PI * 2f);
+        _activeFx.Add(new FxParticle
+        {
+            Node = dust,
+            Age = 0,
+            Lifetime = 0.6f,
+            StartScale = new Vector3(0.3f, 0.2f, 0.3f),
+            EndScale = new Vector3(scale * 1.5f, 0.3f, scale * 1.5f),
+            StartColor = new Color(0.55f, 0.48f, 0.35f, 0.5f),
+            EndColor = new Color(0.3f, 0.25f, 0.2f, 0f),
+            StartEmission = 0f,
+            EndEmission = 0f,
+            FadeOut = true,
+            Velocity = new Vector3(MathF.Cos(angle) * 0.5f, 0.3f, MathF.Sin(angle) * 0.5f),
+            Type = FxType.Smoke,
+        });
+    }
+
+    /// <summary>建造特效 — 建筑放置/完成时的光圈效果</summary>
+    public void SpawnBuildEffect(Vector3 pos, float scale = 2f)
+    {
+        if (_activeFx.Count >= MaxActiveFx) return;
+
+        // 光环扩散
+        var ring = new MeshInstance3D();
+        var cyl = new CylinderMesh { TopRadius = 0.3f, BottomRadius = 0.3f, Height = 0.1f };
+        ring.Mesh = cyl;
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.3f, 1f, 0.5f, 0.6f),
+            Emission = new Color(0.2f, 0.8f, 0.4f),
+            EmissionEnergyMultiplier = 3f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        ring.MaterialOverride = mat;
+        ring.Position = pos + new Vector3(0, 0.15f, 0);
+        _effectsNode.AddChild(ring);
+        _activeFx.Add(new FxParticle
+        {
+            Node = ring,
+            Age = 0,
+            Lifetime = 0.8f,
+            StartScale = new Vector3(0.2f, 1f, 0.2f),
+            EndScale = new Vector3(scale, 1f, scale),
+            StartColor = new Color(0.3f, 1f, 0.5f, 0.7f),
+            EndColor = new Color(0.2f, 0.6f, 0.3f, 0f),
+            StartEmission = 3f,
+            EndEmission = 0f,
+            FadeOut = true,
+            Type = FxType.Shockwave,
+        });
+
+        // 上升光柱
+        var beam = new MeshInstance3D();
+        var beamCyl = new CylinderMesh { TopRadius = 0.1f, BottomRadius = 0.5f, Height = scale };
+        beam.Mesh = beamCyl;
+        var beamMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.3f, 1f, 0.5f, 0.3f),
+            Emission = new Color(0.2f, 0.8f, 0.4f),
+            EmissionEnergyMultiplier = 2f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        beam.MaterialOverride = beamMat;
+        beam.Position = pos + new Vector3(0, scale * 0.5f, 0);
+        _effectsNode.AddChild(beam);
+        _activeFx.Add(new FxParticle
+        {
+            Node = beam,
+            Age = 0,
+            Lifetime = 0.6f,
+            StartScale = Vector3.One,
+            EndScale = new Vector3(0.1f, 1.5f, 0.1f),
+            StartColor = new Color(0.3f, 1f, 0.5f, 0.4f),
+            EndColor = new Color(0.2f, 0.6f, 0.3f, 0f),
+            StartEmission = 2f,
+            EndEmission = 0f,
+            FadeOut = true,
+            Type = FxType.MuzzleFlash,
+        });
     }
 
     /// <summary>每帧更新所有活跃特效的动画（缩放/颜色/发光/位移/光源强度）</summary>
@@ -2265,6 +2453,7 @@ public partial class Main3D : Node3D
         }
 
         CreateBuilding(_placementType, PlayerTeamId, pos);
+        SpawnBuildEffect(pos, 2f);
         _isPlacing = false; // 放完自动退出（红警2风格）
         AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.UiPlace);
     }
