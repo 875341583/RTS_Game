@@ -81,6 +81,10 @@ public partial class Main : Node2D
     private const int AircraftCarrierCost = 1200;
     private const int LandingCraftCost = 400;
     private const int ShipyardCost = 900;
+    // E10：超武建筑造价
+    private const int NukeSiloCost = 1500;
+    private const int LightningTowerCost = 1500;
+    private const int MissileSiloCost = 1200;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -191,9 +195,17 @@ public partial class Main : Node2D
         private bool _lightningTargetMode = false;
         /// <summary>每个 AI 阵营的闪电风暴冷却。</summary>
         private readonly Dictionary<int, float> _aiLightningCooldowns = new();
-        /// <summary>活跃闪电风暴特效列表（持续伤害区域）。每秒对范围内敌方造成 LightningDps 伤害。</summary>
-        private readonly List<LightningVisual> _activeLightnings = new();
-        /// <summary>闪电风暴视觉与持续伤害数据。DamageTickTimer 累积到1.0即结算一次伤害。</summary>
+    /// <summary>活跃闪电风暴特效列表（持续伤害区域）。每秒对范围内敌方造成 LightningDps 伤害。</summary>
+    private readonly List<LightningVisual> _activeLightnings = new();
+    /// <summary>闪电风暴视觉与持续伤害数据。DamageTickTimer 累积到1.0即结算一次伤害。</summary>
+
+    // E10：巡航导弹超武
+    private const float MissileCooldownDuration = 180f;
+    private const float MissileRadius = 180f;
+    private const float MissileDamage = 300f;
+    private float _playerMissileCooldown = 0f;
+    private bool _missileTargetMode = false;
+    private readonly Dictionary<int, float> _aiMissileCooldowns = new();
         private struct LightningVisual
         {
             public Vector2 Position;
@@ -533,6 +545,15 @@ public partial class Main : Node2D
                     QueueRedraw();
                     return;
                 }
+                // E10：巡航导弹目标选择模式
+                if (_missileTargetMode && !mouseOverPanel)
+                {
+                    ApplyCruiseMissile(worldPos, PlayerTeamId);
+                    _missileTargetMode = false;
+                    _playerMissileCooldown = MissileCooldownDuration;
+                    QueueRedraw();
+                    return;
+                }
                 // Q1 放置建筑模式优先
                 if (_placementMode != null && !mouseOverPanel)
                 {
@@ -555,6 +576,7 @@ public partial class Main : Node2D
             {
                 if (_lightningTargetMode) { _lightningTargetMode = false; QueueRedraw(); return; }
                 if (_nukeTargetMode) { _nukeTargetMode = false; QueueRedraw(); return; }
+                if (_missileTargetMode) { _missileTargetMode = false; QueueRedraw(); return; }
                 if (_placementMode != null) { CancelPlacement(); return; }
                 if (_attackMoveMode) { _attackMoveMode = false; return; }
                 if (GetSelectedFriendlyUnits().Count > 0) HandleRightClick(worldPos);
@@ -667,10 +689,11 @@ public partial class Main : Node2D
         {
             // 阶段12-A4：核弹超武（需科技中心，5分钟冷却）
             // 注：N键已被InputMap占用为spawn_heavy（重坦），故核弹改用Z键
-            if (!HasBuilding(PlayerTeamId, BuildingType.TechCenter))
+            // E10：核弹需核弹发射井建筑
+            if (!HasBuilding(PlayerTeamId, BuildingType.NukeSilo))
             {
-                ShowToast("☢ 核弹不可用：需建造科技中心", new Color(1f, 0.5f, 0.3f));
-                GD.Print("[核弹] 不可用：需科技中心");
+                ShowToast("☢ 核弹不可用：需建造核弹发射井", new Color(1f, 0.5f, 0.3f));
+                GD.Print("[核弹] 不可用：需核弹发射井");
             }
             else if (_playerNukeCooldown > 0f)
             {
@@ -682,6 +705,7 @@ public partial class Main : Node2D
             {
                 _nukeTargetMode = !_nukeTargetMode;
                 if (_nukeTargetMode) _lightningTargetMode = false; // 与闪电风暴互斥
+                if (_nukeTargetMode) _missileTargetMode = false;   // 与巡航导弹互斥
                 if (_nukeTargetMode)
                     ShowToast("☢ 核弹已就绪：左键点击目标 / 右键取消", new Color(1f, 0.3f, 0.2f));
                 GD.Print($"[核弹] 目标选择模式 {(_nukeTargetMode ? "开启" : "关闭")}");
@@ -692,10 +716,11 @@ public partial class Main : Node2D
         {
             // 阶段12-A4：闪电风暴超武（需科技中心，4分钟冷却，持续5秒范围伤害）
             // 注：C 键原本未占用，用作闪电 Storm（雷电英文首字母冲突多，用 C 取"持续伤害"意）
-            if (!HasBuilding(PlayerTeamId, BuildingType.TechCenter))
+            // E10：闪电风暴需闪电风暴塔建筑
+            if (!HasBuilding(PlayerTeamId, BuildingType.LightningTower))
             {
-                ShowToast("⚡ 闪电风暴不可用：需建造科技中心", new Color(0.5f, 0.7f, 1f));
-                GD.Print("[闪电] 不可用：需科技中心");
+                ShowToast("⚡ 闪电不可用：需建造闪电风暴塔", new Color(0.5f, 0.7f, 1f));
+                GD.Print("[闪电] 不可用：需闪电风暴塔");
             }
             else if (_playerLightningCooldown > 0f)
             {
@@ -707,15 +732,41 @@ public partial class Main : Node2D
             {
                 _lightningTargetMode = !_lightningTargetMode;
                 if (_lightningTargetMode) _nukeTargetMode = false; // 与核弹互斥
+                if (_lightningTargetMode) _missileTargetMode = false; // 与导弹互斥
                 if (_lightningTargetMode)
                     ShowToast("⚡ 闪电风暴已就绪：左键点击目标 / 右键取消", new Color(0.5f, 0.8f, 1f));
                 GD.Print($"[闪电] 目标选择模式 {(_lightningTargetMode ? "开启" : "关闭")}");
                 QueueRedraw();
             }
         }
+        // E10：巡航导弹超武（Shift+V，需导弹发射井，3分钟冷却）
+        else if (kc == Key.V && Input.IsKeyPressed(Key.Shift))
+        {
+            if (!HasBuilding(PlayerTeamId, BuildingType.MissileSilo))
+            {
+                ShowToast("🚀 导弹不可用：需建造导弹发射井", new Color(1f, 0.8f, 0.3f));
+                GD.Print("[导弹] 不可用：需导弹发射井");
+            }
+            else if (_playerMissileCooldown > 0f)
+            {
+                int sec = Mathf.CeilToInt(_playerMissileCooldown);
+                ShowToast($"🚀 导弹冷却中：{sec / 60}:{sec % 60:D2}", new Color(1f, 0.8f, 0.5f));
+                GD.Print($"[导弹] 冷却中：{sec}s");
+            }
+            else
+            {
+                _missileTargetMode = !_missileTargetMode;
+                if (_missileTargetMode) _nukeTargetMode = false;
+                if (_missileTargetMode) _lightningTargetMode = false;
+                if (_missileTargetMode)
+                    ShowToast("🚀 巡航导弹已就绪：左键点击目标 / 右键取消", new Color(1f, 0.8f, 0.3f));
+                GD.Print($"[导弹] 目标选择模式 {(_missileTargetMode ? "开启" : "关闭")}");
+                QueueRedraw();
+            }
+        }
     }
 
-    private static int SquadIndexFromKey(Key kc)
+    private int SquadIndexFromKey(Key kc)
     {
         int v = (int)kc, a = (int)Key.Key1, b = (int)Key.Key9;
         return (v >= a && v <= b) ? v - a : -1;
@@ -989,6 +1040,24 @@ public partial class Main : Node2D
                 {
                     _aiLightningCooldowns[k] -= dt;
                     if (_aiLightningCooldowns[k] < 0f) _aiLightningCooldowns[k] = 0f;
+                }
+            }
+        }
+        // E10：巡航导弹冷却
+        if (_playerMissileCooldown > 0f)
+        {
+            _playerMissileCooldown -= dt;
+            if (_playerMissileCooldown < 0f) _playerMissileCooldown = 0f;
+        }
+        if (_aiMissileCooldowns.Count > 0)
+        {
+            var aiKeys3 = new List<int>(_aiMissileCooldowns.Keys);
+            foreach (var k in aiKeys3)
+            {
+                if (_aiMissileCooldowns[k] > 0f)
+                {
+                    _aiMissileCooldowns[k] -= dt;
+                    if (_aiMissileCooldowns[k] < 0f) _aiMissileCooldowns[k] = 0f;
                 }
             }
         }
@@ -1701,6 +1770,31 @@ public partial class Main : Node2D
             GD.Print($"[AI] Team {teamId} built Shipyard, ${_money[teamId]} left");
             return;
         }
+        // E10：优先级12-14：超武建筑（已建科技中心）
+        if (hasTechCenter && !HasBuilding(teamId, BuildingType.NukeSilo)
+            && _money[teamId] >= NukeSiloCost + 300 && power >= 0)
+        {
+            _money[teamId] -= NukeSiloCost;
+            SpawnBuilding(BuildingType.NukeSilo, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built NukeSilo, ${_money[teamId]} left");
+            return;
+        }
+        if (hasTechCenter && !HasBuilding(teamId, BuildingType.LightningTower)
+            && _money[teamId] >= LightningTowerCost + 300 && power >= 0)
+        {
+            _money[teamId] -= LightningTowerCost;
+            SpawnBuilding(BuildingType.LightningTower, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built LightningTower, ${_money[teamId]} left");
+            return;
+        }
+        if (hasTechCenter && !HasBuilding(teamId, BuildingType.MissileSilo)
+            && _money[teamId] >= MissileSiloCost + 300 && power >= 0)
+        {
+            _money[teamId] -= MissileSiloCost;
+            SpawnBuilding(BuildingType.MissileSilo, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built MissileSilo, ${_money[teamId]} left");
+            return;
+        }
     }
 
     /// <summary>阶段12-A1：统计某阵营指定类型的建筑数量（用于AI建造限制）。</summary>
@@ -1816,6 +1910,42 @@ public partial class Main : Node2D
 
         // 阶段12-C：闪电风暴音效
         _audio?.PlaySfxForce(AudioManager.Sfx.Lightning);
+        QueueRedraw();
+    }
+
+    /// <summary>E10：在指定位置释放巡航导弹——单次大范围高伤打击。</summary>
+    private void ApplyCruiseMissile(Vector2 pos, int firingTeamId)
+    {
+        int unitHits = 0, bldHits = 0;
+        foreach (var child in _unitsNode.GetChildren())
+        {
+            if (child is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId && !u.IsDead)
+            {
+                float d = u.GlobalPosition.DistanceTo(pos);
+                if (d < MissileRadius)
+                {
+                    float dmg = MissileDamage * (1f - d / MissileRadius);
+                    u.TakeDamage(dmg);
+                    unitHits++;
+                }
+            }
+        }
+        foreach (var child in _buildingsNode.GetChildren())
+        {
+            if (child is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId)
+            {
+                float d = b.GlobalPosition.DistanceTo(pos);
+                if (d < MissileRadius)
+                {
+                    float dmg = MissileDamage * (1f - d / MissileRadius) * 0.8f; // 建筑伤害8折
+                    b.TakeDamage(dmg);
+                    bldHits++;
+                }
+            }
+        }
+        GD.Print($"[巡航导弹] 位置{pos}，命中{unitHits}单位/{bldHits}建筑");
+        // 视觉特效：复用核弹爆炸
+        _activeNukeVisuals.Add(new NukeVisual { Position = pos, Age = 0f, Lifetime = 4f });
         QueueRedraw();
     }
 
@@ -1960,10 +2090,9 @@ public partial class Main : Node2D
             }
         }
 
-        // 4. 阶段12-A4：核弹超武（拥有科技中心 + 冷却结束 → 自动选择目标释放）
-        if (HasBuilding(teamId, BuildingType.TechCenter))
+        // 4. E10：超武——核弹需核弹发射井，闪电需闪电风暴塔，巡航导弹需导弹发射井
+        if (HasBuilding(teamId, BuildingType.NukeSilo))
         {
-            // 拥有科技中心后开始 5 分钟冷却倒计时（递减已在 _Process 中处理）
             if (!_aiNukeCooldowns.ContainsKey(teamId))
                 _aiNukeCooldowns[teamId] = NukeCooldownDuration;
 
@@ -1976,8 +2105,10 @@ public partial class Main : Node2D
                     _aiNukeCooldowns[teamId] = NukeCooldownDuration;
                 }
             }
+        }
 
-            // 阶段12-A4：闪电风暴（4 分钟冷却，与核弹独立计时）
+        if (HasBuilding(teamId, BuildingType.LightningTower))
+        {
             if (!_aiLightningCooldowns.ContainsKey(teamId))
                 _aiLightningCooldowns[teamId] = LightningCooldownDuration;
 
@@ -1991,7 +2122,24 @@ public partial class Main : Node2D
                 }
             }
         }
-    }
+
+        // E10：AI巡航导弹
+        if (HasBuilding(teamId, BuildingType.MissileSilo))
+        {
+            if (!_aiMissileCooldowns.ContainsKey(teamId))
+                _aiMissileCooldowns[teamId] = MissileCooldownDuration;
+
+            if (_aiMissileCooldowns[teamId] <= 0f)
+            {
+                var target = FindNukeTargetForAi(teamId);
+                if (target.HasValue)
+                {
+                    ApplyCruiseMissile(target.Value, teamId);
+                    _aiMissileCooldowns[teamId] = MissileCooldownDuration;
+                }
+            }
+        }
+        }
 
     /// <summary>阶段12-A4：为 AI 选择核弹目标。50% 优先玩家基地，其余随机选其他非己方基地。</summary>
     private Vector2? FindNukeTargetForAi(int firingTeamId)
@@ -3491,12 +3639,24 @@ public partial class Main : Node2D
         else lightStatus = "就绪 ★";
         string lightLine = $" | ⚡ 闪电: {lightStatus}";
 
+        // E10：巡航导弹状态
+        string missileStatus;
+        if (!HasBuilding(PlayerTeamId, BuildingType.MissileSilo))
+            missileStatus = "无导弹井";
+        else if (_playerMissileCooldown > 0f)
+        {
+            int sec3 = Mathf.CeilToInt(_playerMissileCooldown);
+            missileStatus = $"冷却 {sec3 / 60}:{sec3 % 60:D2}";
+        }
+        else missileStatus = "就绪 ★";
+        string missileLine = $" | 🚀 导弹: {missileStatus}";
+
         string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
         _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}\n" +
                         $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
                         $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
                         $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
-                        $"地图剩余矿点: {oreCount}{nukeLine}{lightLine}\n" +
+                        $"地图剩余矿点: {oreCount}{nukeLine}{lightLine}{missileLine}\n" +
                         (string.IsNullOrEmpty(status) ? "" : $"\n★ {status}");
 
         _hintLabel.Text = "WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点\n" +

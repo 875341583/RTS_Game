@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 建筑类型枚举。
 /// </summary>
-public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter, Turret, AntiAirTurret, RepairPad, Airfield, Shipyard }
+public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter, Turret, AntiAirTurret, RepairPad, Airfield, Shipyard, NukeSilo, LightningTower, MissileSilo }
 
 /// <summary>
 /// 生产项类型：可由建筑排产的战斗单位或矿车。
@@ -82,6 +82,8 @@ public partial class Building : Area2D
     private static Texture2D? _repairPadTex;
     private static Texture2D? _airfieldTex;  // E7
     private static Texture2D? _shipyardTex;  // E9
+    // E10：超武建筑纹理
+    private static Texture2D? _nukeSiloTex, _lightningTowerTex, _missileSiloTex;
     private static Texture2D? _buildingRingTex;
     private Color _teamTint = Colors.White;
 
@@ -161,6 +163,22 @@ public partial class Building : Area2D
                 MaxHealth = 800f;
                 PowerConsumed = 60;
                 break;
+            // E10：超武建筑
+            case BuildingType.NukeSilo:
+                BuildingName = "核弹发射井";
+                MaxHealth = 500f;
+                PowerConsumed = 100;
+                break;
+            case BuildingType.LightningTower:
+                BuildingName = "闪电风暴塔";
+                MaxHealth = 500f;
+                PowerConsumed = 100;
+                break;
+            case BuildingType.MissileSilo:
+                BuildingName = "导弹发射井";
+                MaxHealth = 400f;
+                PowerConsumed = 80;
+                break;
         }
     }
 
@@ -183,6 +201,9 @@ public partial class Building : Area2D
             BuildingType.RepairPad => _repairPadTex!,
             BuildingType.Airfield => _airfieldTex!,  // E7
             BuildingType.Shipyard => _shipyardTex!,  // E9
+            BuildingType.NukeSilo => _nukeSiloTex!,       // E10
+            BuildingType.LightningTower => _lightningTowerTex!, // E10
+            BuildingType.MissileSilo => _missileSiloTex!,     // E10
             _ => _baseTex!
         };
         _selectionRing.Texture = _buildingRingTex;
@@ -220,6 +241,9 @@ public partial class Building : Area2D
         _repairPadTex      = LoadTexture("res://assets/sprites/buildings/repairpad.png");
         _airfieldTex       = LoadTexture("res://assets/sprites/buildings/airfield.png");  // E7
         _shipyardTex       = LoadTexture("res://assets/sprites/buildings/shipyard.png");  // E9
+        _nukeSiloTex       = LoadTexture("res://assets/sprites/buildings/nuke_silo.png");       // E10
+        _lightningTowerTex = LoadTexture("res://assets/sprites/buildings/lightning_tower.png"); // E10
+        _missileSiloTex    = LoadTexture("res://assets/sprites/buildings/missile_silo.png");     // E10
 
         // 通用选择环
         var ring = Image.CreateEmpty(128, 128, false, Image.Format.Rgba8);

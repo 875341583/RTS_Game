@@ -81,6 +81,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iBomber, _iScout, _iTransportHeli;
     // E9：海军图标
     private static Texture2D? _iDestroyer, _iSubmarine, _iCarrier, _iLandingCraft, _iShipyard;
+    // E10：超武建筑图标
+    private static Texture2D? _iNukeSilo, _iLightningTower, _iMissileSilo;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -191,6 +193,10 @@ public partial class BuildPanel : Control
         AddItem("机场", 700, _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
         // E9：船厂
         AddItem("船厂", 900, _iShipyard, true, BuildingType.Shipyard, UnitType.Default, false, BuildTab.Buildings);
+        // E10：超武建筑
+        AddItem("核弹井", 1500, _iNukeSilo, true, BuildingType.NukeSilo, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("闪电塔", 1500, _iLightningTower, true, BuildingType.LightningTower, UnitType.Default, false, BuildTab.Buildings);
+        AddItem("导弹井", 1200, _iMissileSilo, true, BuildingType.MissileSilo, UnitType.Default, false, BuildTab.Buildings);
         // 步兵（按价格升序）
         AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
         AddItem("掷弹兵", 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
@@ -404,6 +410,19 @@ public partial class BuildPanel : Control
                 if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
                 else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
                 break;
+            // E10：超武建筑
+            case BuildingType.NukeSilo:
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
+            case BuildingType.LightningTower:
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
+            case BuildingType.MissileSilo:
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
         }
     }
 
@@ -444,7 +463,6 @@ public partial class BuildPanel : Control
             case UnitType.AircraftCarrier:
             case UnitType.LandingCraft:
                 if (!HasShipyard) { it.IsLocked = true; it.LockReason = "需要船厂"; }
-                break;
                 break;
             case UnitType.RocketLauncher:
             case UnitType.MissileTank:
@@ -537,6 +555,11 @@ public partial class BuildPanel : Control
                 BuildingType.Turret => "自动对地防御塔，射程犴18，快射速",
                 BuildingType.AntiAirTurret => "重型防御塔，高伤害犴25大范围",
                 BuildingType.RepairPad => "每秒自动修复220范围内友方单位+25HP",
+                BuildingType.Airfield => "解锁空军单位，需科技中心",
+                BuildingType.Shipyard => "解锁海军单位，需科技中心",
+                BuildingType.NukeSilo => "核弹发射井，Z键释放核弹，5分钟冷却",
+                BuildingType.LightningTower => "闪电风暴塔，C键释放闪电风暴，4分钟冷却",
+                BuildingType.MissileSilo => "导弹发射井，Shift+V巡航导弹，3分钟冷却",
                 _ => ""
             };
         }
@@ -621,6 +644,10 @@ public partial class BuildPanel : Control
         _iCarrier = LoadPng("res://assets/sprites/units/carrier.png");
         _iLandingCraft = LoadPng("res://assets/sprites/units/landing_craft.png");
         _iShipyard = LoadPng("res://assets/sprites/buildings/shipyard.png");
+        // E10：超武建筑图标
+        _iNukeSilo = LoadPng("res://assets/sprites/buildings/nuke_silo.png");
+        _iLightningTower = LoadPng("res://assets/sprites/buildings/lightning_tower.png");
+        _iMissileSilo = LoadPng("res://assets/sprites/buildings/missile_silo.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>

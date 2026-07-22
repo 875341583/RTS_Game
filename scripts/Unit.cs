@@ -53,6 +53,8 @@ public partial class Unit : CharacterBody2D
     private Building? _attackBuildingTarget;
     private float _attackTimer;
     protected bool _isDead;
+    /// <summary>单位是否已死亡（公开只读访问）。</summary>
+    public bool IsDead => _isDead;
     private float _hitFlashTimer;
     private Color _bodyTint = Colors.White;
     private Color _turretTint = Colors.White;
