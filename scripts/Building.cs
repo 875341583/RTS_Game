@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace RTSGame;
@@ -65,6 +66,12 @@ public partial class Building : Area2D
     public float ProductionProgress => (_currentProduction.HasValue && _productionDuration > 0f)
         ? Mathf.Clamp(1f - _productionTimer / _productionDuration, 0f, 1f) : 0f;
     public bool IsProducing => _currentProduction.HasValue;
+    /// <summary>当前正在生产的单位类型（无则null）。</summary>
+    public ProductionType? CurrentProductionType => _currentProduction;
+    /// <summary>当前生产剩余时间（秒）。</summary>
+    public float ProductionTimeRemaining => _productionTimer;
+    /// <summary>当前生产总时间（秒）。</summary>
+    public float ProductionTimeTotal => _productionDuration;
 
     private Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
@@ -342,6 +349,12 @@ public partial class Building : Area2D
     {
         RallyPoint = point;
         QueueRedraw();
+    }
+
+    /// <summary>获取等待队列中的生产类型快照（不含当前正在生产的）。</summary>
+    public List<ProductionType> GetQueueSnapshot()
+    {
+        return _productionQueue.ToList();
     }
 
     // ---- G4 建筑维修与出售 ----

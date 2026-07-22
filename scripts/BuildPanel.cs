@@ -44,6 +44,12 @@ public partial class BuildPanel : Control
         public string LockReason = "";
         public bool IsLocked;
         public bool CanAfford;
+        // E11b：生产队列UI
+        public Label? QueueBadge;       // 右上角 "×N" 标签
+        public ProgressBar? ProdBar;     // 底部进度条
+        public int QueueCount;          // 当前队列数
+        public float ProdProgress;      // 当前进度 0~1
+        public float _timeRemaining;    // 剩余时间（秒）
     }
 
     private readonly List<BuildItem> _items = new();
@@ -290,6 +296,39 @@ public partial class BuildPanel : Control
         item.CostLabel = costLabel;
         item.BgRect = bgRect;
 
+        // 生产队列UI（仅非建筑单位）：右上角数量标签 + 底部进度条
+        if (!isBuilding)
+        {
+            var badge = new Label();
+            badge.Text = "";
+            badge.AddThemeFontSizeOverride("font_size", 14);
+            badge.AddThemeColorOverride("font_color", new Color(1f, 0.9f, 0.3f));
+            badge.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f));
+            badge.AddThemeConstantOverride("outline_size", 2);
+            badge.HorizontalAlignment = HorizontalAlignment.Right;
+            badge.VerticalAlignment = VerticalAlignment.Top;
+            badge.AnchorLeft = 0.35f; badge.AnchorTop = 0f;
+            badge.AnchorRight = 0.95f; badge.AnchorBottom = 0.3f;
+            badge.MouseFilter = MouseFilterEnum.Pass;
+            panel.AddChild(badge);
+            item.QueueBadge = badge;
+
+            var bar = new ProgressBar();
+            bar.MinValue = 0f; bar.MaxValue = 1f; bar.Value = 0f;
+            bar.CustomMinimumSize = new Vector2(0, 5);
+            bar.AnchorLeft = 0.05f; bar.AnchorTop = 0.88f;
+            bar.AnchorRight = 0.95f; bar.AnchorBottom = 0.96f;
+            bar.MouseFilter = MouseFilterEnum.Pass;
+            bar.ShowPercentage = false;
+            var barStyle = new StyleBoxFlat { BgColor = new Color(0.1f, 0.1f, 0.1f, 0.8f) };
+            bar.AddThemeStyleboxOverride("background", barStyle);
+            var fillStyle = new StyleBoxFlat { BgColor = new Color(0.3f, 0.8f, 0.3f, 0.9f) };
+            bar.AddThemeStyleboxOverride("fill", fillStyle);
+            bar.Visible = false;
+            panel.AddChild(bar);
+            item.ProdBar = bar;
+        }
+
         // 悬停
         panel.MouseEntered += () => { _hoverItem = item; };
         panel.MouseExited += () => { if (_hoverItem == item) _hoverItem = null; };
@@ -365,6 +404,29 @@ public partial class BuildPanel : Control
         RefreshVisuals();
     }
 
+    /// <summary>更新生产队列显示（由Main每帧调用）。传入每个UnitType的队列数和最高进度。</summary>
+    public void UpdateProductionQueue(Dictionary<UnitType, (int count, float progress, float timeRemaining)> queueData)
+    {
+        foreach (var it in _items)
+        {
+            if (it.IsBuilding) continue;
+
+            var ut = it.IsHarvester ? UnitType.Default : it.UType;
+            if (queueData.TryGetValue(ut, out var info))
+            {
+                it.QueueCount = info.count;
+                it.ProdProgress = info.progress;
+                it._timeRemaining = info.timeRemaining;
+            }
+            else
+            {
+                it.QueueCount = 0;
+                it.ProdProgress = 0f;
+                it._timeRemaining = 0f;
+            }
+        }
+        // 在 RefreshVisuals 中更新UI
+    }
     private void EvaluateBuildingLock(BuildItem it)
     {
         switch (it.BType)
@@ -523,6 +585,28 @@ public partial class BuildPanel : Control
                 else
                     it.CostLabel.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.3f));
             }
+
+            // 生产队列UI：数量标签 + 进度条
+            if (it.QueueBadge != null)
+            {
+                if (it.QueueCount > 0)
+                {
+                    it.QueueBadge.Text = it.QueueCount > 1 ? $"×{it.QueueCount}" : "●";
+                    it.QueueBadge.Visible = true;
+                }
+                else
+                    it.QueueBadge.Visible = false;
+            }
+            if (it.ProdBar != null)
+            {
+                if (it.QueueCount > 0 && it.ProdProgress > 0f)
+                {
+                    it.ProdBar.Value = it.ProdProgress;
+                    it.ProdBar.Visible = true;
+                }
+                else
+                    it.ProdBar.Visible = false;
+            }
         }
 
         // 悬停提示
@@ -532,7 +616,12 @@ public partial class BuildPanel : Control
             string status = h.IsLocked ? $"[color=#ff7777]{h.LockReason}[/color]"
                           : !h.CanAfford ? "[color=#ffaa55]资金不足[/color]"
                           : "[color=#77ff77]可建造[/color]";
-            _hintLabel.Text = $"{h.Name}  ${h.Cost}\n{GetItemDesc(h)}\n{status}";
+            string queueInfo = h.QueueCount > 0
+                ? $"\n[color=#88ff88]队列: {h.QueueCount}  进度: {h.ProdProgress * 100:F0}%"
+                + (h._timeRemaining > 0f ? $"  剩余{h._timeRemaining:F1}s[/color]"
+                : "[/color]")
+                : "";
+            _hintLabel.Text = $"{h.Name}  ${h.Cost}\n{GetItemDesc(h)}\n{status}{queueInfo}";
         }
         else
         {

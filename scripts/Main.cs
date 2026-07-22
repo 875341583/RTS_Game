@@ -1171,6 +1171,10 @@ public partial class Main : Node2D
                  HasBuilding(0, BuildingType.Barracks), HasBuilding(0, BuildingType.WarFactory),
                  HasBuilding(0, BuildingType.TechCenter), HasBuilding(0, BuildingType.Airfield),
                  HasBuilding(0, BuildingType.Shipyard));
+
+             // 生产队列信息
+             var queueData = CollectPlayerProductionInfo();
+             _buildPanel.UpdateProductionQueue(queueData);
         }
         // 放置模式预览重绘
         if (_placementMode != null) QueueRedraw();
@@ -1470,7 +1474,8 @@ public partial class Main : Node2D
         SpawnBuilding(type, pos, teamId: 0);
         GD.Print($"蓝方建造{type}，扣 ${cost}，剩余 ${_money[0]}，位置 {pos}");
         _audio?.PlaySfx(AudioManager.Sfx.UiPlace);
-        if (_money[0] < cost) CancelPlacement();
+        // 放一个就退出放置模式（红警2风格：点一次放一个）
+        CancelPlacement();
     }
 
     public override void _Draw()
@@ -2709,6 +2714,53 @@ public partial class Main : Node2D
                 n += b.QueueCount;
         }
         return n;
+    }
+
+    /// <summary>收集玩家方所有建筑的生产队列信息，按UnitType汇总（队列数+最高进度+剩余时间）。</summary>
+    private Dictionary<UnitType, (int count, float progress, float timeRemaining)> CollectPlayerProductionInfo()
+    {
+        var result = new Dictionary<UnitType, (int count, float progress, float timeRemaining)>();
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is not Building b || b.TeamId != PlayerTeamId || !IsInstanceValid(b))
+                continue;
+            if (b.QueueCount == 0) continue;
+
+            // 当前正在生产的类型
+            if (b.CurrentProductionType.HasValue)
+            {
+                var pt = b.CurrentProductionType.Value;
+                var ut = ProductionTypeToUnitType(pt);
+                float progress = b.ProductionProgress;
+                float remaining = b.ProductionTimeRemaining;
+                if (result.ContainsKey(ut))
+                {
+                    var prev = result[ut];
+                    if (progress > prev.progress)
+                        result[ut] = (prev.count, progress, remaining);
+                }
+                else
+                    result[ut] = (1, progress, remaining);
+            }
+
+            // 等待队列中的项
+            if (b.QueueCount > 1)
+            {
+                var snapshot = b.GetQueueSnapshot();
+                foreach (var pt in snapshot)
+                {
+                    var ut = ProductionTypeToUnitType(pt);
+                    if (result.ContainsKey(ut))
+                    {
+                        var prev = result[ut];
+                        result[ut] = (prev.count + 1, prev.progress, prev.timeRemaining);
+                    }
+                    else
+                        result[ut] = (1, 0f, 0f);
+                }
+            }
+        }
+        return result;
     }
 
     private static ProductionType UnitTypeToProductionType(UnitType type) => type switch
