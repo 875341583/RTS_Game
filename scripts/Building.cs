@@ -6,12 +6,12 @@ namespace RTSGame;
 /// <summary>
 /// 建筑类型枚举。
 /// </summary>
-public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter, Turret, AntiAirTurret, RepairPad, Airfield }
+public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter, Turret, AntiAirTurret, RepairPad, Airfield, Shipyard }
 
 /// <summary>
 /// 生产项类型：可由建筑排产的战斗单位或矿车。
 /// </summary>
-public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry, AntiAir, Engineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli }
+public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry, AntiAir, Engineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft }
 
 /// <summary>
 /// 建筑/基地：可被选中、可被攻击。不同类型解锁不同单位生产。
@@ -81,6 +81,7 @@ public partial class Building : Area2D
     private static Texture2D? _antiAirTurretTex;
     private static Texture2D? _repairPadTex;
     private static Texture2D? _airfieldTex;  // E7
+    private static Texture2D? _shipyardTex;  // E9
     private static Texture2D? _buildingRingTex;
     private Color _teamTint = Colors.White;
 
@@ -154,6 +155,12 @@ public partial class Building : Area2D
                 MaxHealth = 600f;
                 PowerConsumed = 50;
                 break;
+            // E9：船厂
+            case BuildingType.Shipyard:
+                BuildingName = "船厂";
+                MaxHealth = 800f;
+                PowerConsumed = 60;
+                break;
         }
     }
 
@@ -175,6 +182,7 @@ public partial class Building : Area2D
             BuildingType.AntiAirTurret => _antiAirTurretTex!,
             BuildingType.RepairPad => _repairPadTex!,
             BuildingType.Airfield => _airfieldTex!,  // E7
+            BuildingType.Shipyard => _shipyardTex!,  // E9
             _ => _baseTex!
         };
         _selectionRing.Texture = _buildingRingTex;
@@ -211,6 +219,7 @@ public partial class Building : Area2D
         _antiAirTurretTex  = LoadTexture("res://assets/sprites/buildings/antiair.png");
         _repairPadTex      = LoadTexture("res://assets/sprites/buildings/repairpad.png");
         _airfieldTex       = LoadTexture("res://assets/sprites/buildings/airfield.png");  // E7
+        _shipyardTex       = LoadTexture("res://assets/sprites/buildings/shipyard.png");  // E9
 
         // 通用选择环
         var ring = Image.CreateEmpty(128, 128, false, Image.Format.Rgba8);
@@ -406,6 +415,11 @@ public partial class Building : Area2D
         ProductionType.Bomber => 10f,            // E8
         ProductionType.Scout => 4f,               // E8
         ProductionType.TransportHeli => 8f,       // E8
+        // E9：海军生产时间
+        ProductionType.Destroyer => 8f,
+        ProductionType.Submarine => 10f,
+        ProductionType.AircraftCarrier => 15f,
+        ProductionType.LandingCraft => 6f,
         _ => 3f
     };
 

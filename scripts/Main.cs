@@ -75,6 +75,12 @@ public partial class Main : Node2D
     private const int BomberCost = 800;
     private const int ScoutCost = 300;
     private const int TransportHeliCost = 600;
+    // E9：海军造价
+    private const int DestroyerCost = 500;
+    private const int SubmarineCost = 600;
+    private const int AircraftCarrierCost = 1200;
+    private const int LandingCraftCost = 400;
+    private const int ShipyardCost = 900;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -877,6 +883,16 @@ public partial class Main : Node2D
         if (Input.IsKeyPressed(Key.H) && Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.TransportHeli, TransportHeliCost);
 
+        // E9：海军热键 Shift+1(驱逐舰) / Shift+2(潜艇) / Shift+3(航母) / Shift+4(登陆艇)
+        if (Input.IsKeyPressed(Key.Key1) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Destroyer, DestroyerCost);
+        if (Input.IsKeyPressed(Key.Key2) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Submarine, SubmarineCost);
+        if (Input.IsKeyPressed(Key.Key3) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.AircraftCarrier, AircraftCarrierCost);
+        if (Input.IsKeyPressed(Key.Key4) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.LandingCraft, LandingCraftCost);
+
         // E6：E键运输车下车
         if (Input.IsKeyPressed(Key.E))
         {
@@ -1080,11 +1096,12 @@ public partial class Main : Node2D
         // Q1 刷新侧边栏建造面板
         if (_buildPanel != null)
         {
-            _buildPanel.UpdateState(_money[0], GetTeamPower(0), _playerTechLevel,
-                CountUnitsOfTeam(0), _unitCap,
-                HasBuilding(0, BuildingType.Base), HasBuilding(0, BuildingType.PowerPlant),
-                HasBuilding(0, BuildingType.Barracks), HasBuilding(0, BuildingType.WarFactory),
-                HasBuilding(0, BuildingType.TechCenter), HasBuilding(0, BuildingType.Airfield));
+             _buildPanel.UpdateState(_money[0], GetTeamPower(0), _playerTechLevel,
+                 CountUnitsOfTeam(0), _unitCap,
+                 HasBuilding(0, BuildingType.Base), HasBuilding(0, BuildingType.PowerPlant),
+                 HasBuilding(0, BuildingType.Barracks), HasBuilding(0, BuildingType.WarFactory),
+                 HasBuilding(0, BuildingType.TechCenter), HasBuilding(0, BuildingType.Airfield),
+                 HasBuilding(0, BuildingType.Shipyard));
         }
         // 放置模式预览重绘
         if (_placementMode != null) QueueRedraw();
@@ -1194,6 +1211,11 @@ public partial class Main : Node2D
             UnitType.Bomber => HasBuilding(teamId, BuildingType.Airfield),       // E8
             UnitType.Scout => HasBuilding(teamId, BuildingType.Airfield),        // E8
             UnitType.TransportHeli => HasBuilding(teamId, BuildingType.Airfield), // E8
+            // E9：海军单位需船厂
+            UnitType.Destroyer => HasBuilding(teamId, BuildingType.Shipyard),
+            UnitType.Submarine => HasBuilding(teamId, BuildingType.Shipyard),
+            UnitType.AircraftCarrier => HasBuilding(teamId, BuildingType.Shipyard),
+            UnitType.LandingCraft => HasBuilding(teamId, BuildingType.Shipyard),
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.ChiefEngineer => HasBuilding(teamId, BuildingType.TechCenter),
@@ -1252,6 +1274,11 @@ public partial class Main : Node2D
             UnitType.Bomber => BomberCost,                 // E8
             UnitType.Scout => ScoutCost,                   // E8
             UnitType.TransportHeli => TransportHeliCost,    // E8
+            // E9：海军造价
+            UnitType.Destroyer => DestroyerCost,
+            UnitType.Submarine => SubmarineCost,
+            UnitType.AircraftCarrier => AircraftCarrierCost,
+            UnitType.LandingCraft => LandingCraftCost,
             _ => 0
         };
     }
@@ -1665,6 +1692,15 @@ public partial class Main : Node2D
             GD.Print($"[AI] Team {teamId} built Airfield, ${_money[teamId]} left");
             return;
         }
+        // E9：优先级11：建造船厂（已建科技中心，每阵营最多1座）
+        if (hasTechCenter && !HasBuilding(teamId, BuildingType.Shipyard)
+            && _money[teamId] >= ShipyardCost + 300 && power >= 0)
+        {
+            _money[teamId] -= ShipyardCost;
+            SpawnBuilding(BuildingType.Shipyard, GetBuildPosition(teamId), teamId);
+            GD.Print($"[AI] Team {teamId} built Shipyard, ${_money[teamId]} left");
+            return;
+        }
     }
 
     /// <summary>阶段12-A1：统计某阵营指定类型的建筑数量（用于AI建造限制）。</summary>
@@ -1843,6 +1879,11 @@ public partial class Main : Node2D
                     types.Add(UnitType.Bomber);            // E8
                     types.Add(UnitType.Scout);             // E8
                     types.Add(UnitType.TransportHeli);      // E8
+                    // E9：海军
+                    types.Add(UnitType.Destroyer);
+                    types.Add(UnitType.Submarine);
+                    types.Add(UnitType.LandingCraft);
+                    types.Add(UnitType.AircraftCarrier);
                 }
                 if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
@@ -2053,6 +2094,13 @@ public partial class Main : Node2D
         {
             types.Add(UnitType.RocketLauncher);
             types.Add(UnitType.MissileTank);
+        }
+        // E9：蓝方AI也生产海军
+        if (HasBuilding(0, BuildingType.Shipyard))
+        {
+            types.Add(UnitType.Destroyer);
+            types.Add(UnitType.Submarine);
+            types.Add(UnitType.LandingCraft);
         }
         if (types.Count == 0) return;
 
@@ -2468,6 +2516,11 @@ public partial class Main : Node2D
             UnitType.Bomber => BuildingType.Airfield,            // E8
             UnitType.Scout => BuildingType.Airfield,             // E8
             UnitType.TransportHeli => BuildingType.Airfield,     // E8
+            // E9：海军单位由船厂生产
+            UnitType.Destroyer => BuildingType.Shipyard,
+            UnitType.Submarine => BuildingType.Shipyard,
+            UnitType.AircraftCarrier => BuildingType.Shipyard,
+            UnitType.LandingCraft => BuildingType.Shipyard,
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -2533,6 +2586,11 @@ public partial class Main : Node2D
         UnitType.Bomber => ProductionType.Bomber,                 // E8
         UnitType.Scout => ProductionType.Scout,                   // E8
         UnitType.TransportHeli => ProductionType.TransportHeli,  // E8
+        // E9：海军生产映射
+        UnitType.Destroyer => ProductionType.Destroyer,
+        UnitType.Submarine => ProductionType.Submarine,
+        UnitType.AircraftCarrier => ProductionType.AircraftCarrier,
+        UnitType.LandingCraft => ProductionType.LandingCraft,
         _ => ProductionType.LightTank
     };
 
@@ -2559,6 +2617,11 @@ public partial class Main : Node2D
         ProductionType.Bomber => UnitType.Bomber,                 // E8
         ProductionType.Scout => UnitType.Scout,                   // E8
         ProductionType.TransportHeli => UnitType.TransportHeli,    // E8
+        // E9：海军生产映射
+        ProductionType.Destroyer => UnitType.Destroyer,
+        ProductionType.Submarine => UnitType.Submarine,
+        ProductionType.AircraftCarrier => UnitType.AircraftCarrier,
+        ProductionType.LandingCraft => UnitType.LandingCraft,
         _ => UnitType.Default
     };
 
@@ -2569,7 +2632,8 @@ public partial class Main : Node2D
         {
             if (o is Building b && b.TeamId == 0 && IsInstanceValid(b)
                 && (b.Type == BuildingType.Barracks || b.Type == BuildingType.WarFactory
-                    || b.Type == BuildingType.TechCenter || b.Type == BuildingType.Base))
+                    || b.Type == BuildingType.TechCenter || b.Type == BuildingType.Base
+                    || b.Type == BuildingType.Airfield || b.Type == BuildingType.Shipyard))
                 return b;
         }
         return null;

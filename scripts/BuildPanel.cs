@@ -50,7 +50,7 @@ public partial class BuildPanel : Control
 
     // 状态（由 Main 刷新）
     private int _money, _power, _playerTechLevel, _unitCount, _unitCap;
-    private bool _hasBase, _hasPower, _hasBarracks, _hasWarFactory, _hasTechCenter, HasAirfield;
+    private bool _hasBase, _hasPower, _hasBarracks, _hasWarFactory, _hasTechCenter, HasAirfield, HasShipyard;
     public BuildingType? ActivePlacement { get; set; }
     public string DifficultyName { get; set; } = "Normal";
 
@@ -79,6 +79,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iFighter, _iHelicopter, _iRocketInfantry, _iAirfield;
     // E8：扩展空军图标
     private static Texture2D? _iBomber, _iScout, _iTransportHeli;
+    // E9：海军图标
+    private static Texture2D? _iDestroyer, _iSubmarine, _iCarrier, _iLandingCraft, _iShipyard;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -187,6 +189,8 @@ public partial class BuildPanel : Control
         AddItem("维修厂", 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
         // E7：机场
         AddItem("机场", 700, _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
+        // E9：船厂
+        AddItem("船厂", 900, _iShipyard, true, BuildingType.Shipyard, UnitType.Default, false, BuildTab.Buildings);
         // 步兵（按价格升序）
         AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
         AddItem("掷弹兵", 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
@@ -215,6 +219,11 @@ public partial class BuildPanel : Control
         AddItem("轰炸机", 800, _iBomber, false, BuildingType.Airfield, UnitType.Bomber,         false, BuildTab.Vehicles);
         AddItem("侦察机", 300, _iScout, false, BuildingType.Airfield, UnitType.Scout,           false, BuildTab.Vehicles);
         AddItem("运直",   600, _iTransportHeli, false, BuildingType.Airfield, UnitType.TransportHeli, false, BuildTab.Vehicles);
+        // E9：海军
+        AddItem("驱逐舰",  500, _iDestroyer,  false, BuildingType.Shipyard, UnitType.Destroyer,     false, BuildTab.Vehicles);
+        AddItem("潜艇",    600, _iSubmarine,  false, BuildingType.Shipyard, UnitType.Submarine,      false, BuildTab.Vehicles);
+        AddItem("航母",   1200, _iCarrier,    false, BuildingType.Shipyard, UnitType.AircraftCarrier, false, BuildTab.Vehicles);
+        AddItem("登陆艇",  400, _iLandingCraft, false, BuildingType.Shipyard, UnitType.LandingCraft,  false, BuildTab.Vehicles);
     }
 
     private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)
@@ -313,12 +322,14 @@ public partial class BuildPanel : Control
 
     /// <summary>由 Main 每帧/定期调用刷新所有按钮状态。</summary>
     public void UpdateState(int money, int power, int techLevel, int unitCount, int unitCap,
-        bool hasBase, bool hasPower, bool hasBarracks, bool hasWarFactory, bool hasTechCenter, bool hasAirfield = false)
+        bool hasBase, bool hasPower, bool hasBarracks, bool hasWarFactory, bool hasTechCenter,
+        bool hasAirfield = false, bool hasShipyard = false)
     {
         _money = money; _power = power; _playerTechLevel = techLevel;
         _unitCount = unitCount; _unitCap = unitCap;
         _hasBase = hasBase; _hasPower = hasPower; _hasBarracks = hasBarracks;
-        _hasWarFactory = hasWarFactory; _hasTechCenter = hasTechCenter; HasAirfield = hasAirfield;
+        _hasWarFactory = hasWarFactory; _hasTechCenter = hasTechCenter;
+        HasAirfield = hasAirfield; HasShipyard = hasShipyard;
 
         foreach (var it in _items)
         {
@@ -388,6 +399,11 @@ public partial class BuildPanel : Control
                 if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
                 else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
                 break;
+            // E9：船厂
+            case BuildingType.Shipyard:
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                break;
         }
     }
 
@@ -421,6 +437,14 @@ public partial class BuildPanel : Control
             case UnitType.TransportHeli:    // E8
                 if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
                 else if (!HasAirfield) { it.IsLocked = true; it.LockReason = "需要机场"; }
+                break;
+            // E9：海军单位需船厂
+            case UnitType.Destroyer:
+            case UnitType.Submarine:
+            case UnitType.AircraftCarrier:
+            case UnitType.LandingCraft:
+                if (!HasShipyard) { it.IsLocked = true; it.LockReason = "需要船厂"; }
+                break;
                 break;
             case UnitType.RocketLauncher:
             case UnitType.MissileTank:
@@ -538,6 +562,11 @@ public partial class BuildPanel : Control
             UnitType.Bomber => "高空大范围轰炸，溅射100",
             UnitType.Scout => "超高速侦察，600视野",
             UnitType.TransportHeli => "空中搭载4名步兵",
+            // E9：海军描述
+            UnitType.Destroyer => "水面主力战舰，对海对陆",
+            UnitType.Submarine => "隐身潜艇，鱼雷高伤",
+            UnitType.AircraftCarrier => "搭载4架战斗机的海上基地",
+            UnitType.LandingCraft => "水面运兵3名，两栖登陆",
             UnitType.RocketLauncher => "溅射伤害，需科技",
             UnitType.MissileTank => "超远程爆发，需科技",
             _ => ""
@@ -586,6 +615,12 @@ public partial class BuildPanel : Control
         _iBomber = LoadPng("res://assets/sprites/units/bomber.png");
         _iScout = LoadPng("res://assets/sprites/units/scout.png");
         _iTransportHeli = LoadPng("res://assets/sprites/units/transport_heli.png");
+        // E9：海军图标
+        _iDestroyer = LoadPng("res://assets/sprites/units/destroyer.png");
+        _iSubmarine = LoadPng("res://assets/sprites/units/submarine.png");
+        _iCarrier = LoadPng("res://assets/sprites/units/carrier.png");
+        _iLandingCraft = LoadPng("res://assets/sprites/units/landing_craft.png");
+        _iShipyard = LoadPng("res://assets/sprites/buildings/shipyard.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>

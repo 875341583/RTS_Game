@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -43,6 +43,8 @@ public partial class Unit : CharacterBody2D
     public bool CanAttackAir { get; set; } = false;
     /// <summary>是否是运输直升机（空中搭载步兵）。</summary>
     public bool IsTransportHeli => Type == UnitType.TransportHeli;
+    /// <summary>是否是海军单位（水面移动，只在浅水/深水通行）。</summary>
+    public bool IsNavalUnit => Type == UnitType.Destroyer || Type == UnitType.Submarine || Type == UnitType.AircraftCarrier || Type == UnitType.LandingCraft;
 
     // 子类可访问的移动状态
     protected Vector2 _moveTarget;
@@ -64,8 +66,9 @@ public partial class Unit : CharacterBody2D
     public List<Unit> Passengers { get; } = new();
     /// <summary>运输车最大搭载人数。</summary>
     public int MaxPassengers { get; set; } = 3;
-    /// <summary>是否是运输载具（运输车或运输直升机，可搭载步兵）。</summary>
-    public bool IsTransport => Type == UnitType.Transport || Type == UnitType.TransportHeli;
+    /// <summary>是否是运输载具（运输车或运输直升机或登陆艇或航母，可搭载单位）。</summary>
+    public bool IsTransport => Type == UnitType.Transport || Type == UnitType.TransportHeli
+        || Type == UnitType.LandingCraft || Type == UnitType.AircraftCarrier;
     /// <summary>合体后的功能类型（空=未合体，或合体后立即变Type）。</summary>
     private UnitType _preMergeType = UnitType.Default;
 
@@ -131,6 +134,8 @@ public partial class Unit : CharacterBody2D
     private static Texture2D? _infantryHull;
     // E7/E8：空军专用纹理
     private static Texture2D? _fighterHull, _helicopterHull, _bomberHull, _scoutHull, _transportHeliHull;
+    // E9：海军纹理
+    private static Texture2D? _destroyerHull, _submarineHull, _carrierHull, _landingCraftHull;
     // 灰底炮塔纹理（按兵种）
     private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile, _turretAntiAir;
     // 炮塔精灵
@@ -181,6 +186,11 @@ public partial class Unit : CharacterBody2D
         _bomberHull = LoadUnitTexture("res://assets/sprites/units/bomber.png");
         _scoutHull = LoadUnitTexture("res://assets/sprites/units/scout.png");
         _transportHeliHull = LoadUnitTexture("res://assets/sprites/units/transport_heli.png");
+        // E9：海军纹理
+        _destroyerHull = LoadUnitTexture("res://assets/sprites/units/destroyer.png");
+        _submarineHull = LoadUnitTexture("res://assets/sprites/units/submarine.png");
+        _carrierHull = LoadUnitTexture("res://assets/sprites/units/carrier.png");
+        _landingCraftHull = LoadUnitTexture("res://assets/sprites/units/landing_craft.png");
 
         // 灰底炮塔（按兵种）
         _turretLight   = LoadUnitTexture("res://assets/sprites/units/turret_light.png");
@@ -245,6 +255,11 @@ public partial class Unit : CharacterBody2D
         UnitType.Bomber => _bomberHull!,
         UnitType.Scout => _scoutHull!,
         UnitType.TransportHeli => _transportHeliHull!,
+        // E9：海军底盘
+        UnitType.Destroyer => _destroyerHull!,
+        UnitType.Submarine => _submarineHull!,
+        UnitType.AircraftCarrier => _carrierHull!,
+        UnitType.LandingCraft => _landingCraftHull!,
         _ => _harvesterHull!
     };
 
@@ -268,6 +283,11 @@ public partial class Unit : CharacterBody2D
         UnitType.Bomber => null!,
         UnitType.Scout => null!,
         UnitType.TransportHeli => null!,
+        // E9：海军单位无独立炮塔
+        UnitType.Destroyer => null!,
+        UnitType.Submarine => null!,
+        UnitType.AircraftCarrier => null!,
+        UnitType.LandingCraft => null!,
         _ => null!
     };
 
@@ -527,6 +547,49 @@ public partial class Unit : CharacterBody2D
                 IsAirUnit = true;
                 MaxPassengers = 4;
                 break;
+            // E9：海军单位
+            case UnitType.Destroyer:
+                UnitName = "驱逐舰";
+                MaxHealth = 150f;
+                MoveSpeed = 150f;
+                AttackDamage = 20f;
+                AttackRange = 180f;
+                AttackCooldown = 0.8f;
+                AggroRange = 250f;
+                AutoDefend = true;
+                break;
+            case UnitType.Submarine:
+                UnitName = "潜艇";
+                MaxHealth = 80f;
+                MoveSpeed = 120f;
+                AttackDamage = 35f;
+                AttackRange = 160f;
+                AttackCooldown = 2.0f;
+                AggroRange = 200f;
+                AutoDefend = true;
+                break;
+            case UnitType.AircraftCarrier:
+                UnitName = "航母";
+                MaxHealth = 300f;
+                MoveSpeed = 80f;
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 0f;
+                AutoDefend = false;
+                MaxPassengers = 4; // 搭载战斗机
+                break;
+            case UnitType.LandingCraft:
+                UnitName = "登陆艇";
+                MaxHealth = 120f;
+                MoveSpeed = 100f;
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 0f;
+                AutoDefend = false;
+                MaxPassengers = 3; // 搭载步兵
+                break;
         }
     }
 
@@ -563,8 +626,8 @@ public partial class Unit : CharacterBody2D
 
         GD.Print($"[IFV] {passenger.UnitName} 进入 {UnitName} (搭载 {Passengers.Count}/{MaxPassengers})");
 
-        // 首个乘客决定合体功能（运输直升机不做IFV合体，只搭载）
-        if (Passengers.Count == 1 && Type != UnitType.TransportHeli)
+        // 首个乘客决定合体功能（运输直升机/登陆艇/航母不做IFV合体，只搭载）
+        if (Passengers.Count == 1 && Type == UnitType.Transport)
         {
             ApplyMergeEffect(passenger.Type);
         }
@@ -753,6 +816,34 @@ public partial class Unit : CharacterBody2D
             AggroRange = 0f;
             AutoDefend = false;
             MoveSpeed = 200f;
+            MaxPassengers = 4;
+        }
+        else if (Type == UnitType.LandingCraft)
+        {
+            UnitName = "登陆艇";
+            MaxHealth = 120f;
+            AttackDamage = 0f;
+            AttackRange = 0f;
+            AttackCooldown = 0f;
+            MinAttackRange = 0f;
+            SplashRadius = 0f;
+            AggroRange = 0f;
+            AutoDefend = false;
+            MoveSpeed = 100f;
+            MaxPassengers = 3;
+        }
+        else if (Type == UnitType.AircraftCarrier)
+        {
+            UnitName = "航母";
+            MaxHealth = 300f;
+            AttackDamage = 0f;
+            AttackRange = 0f;
+            AttackCooldown = 0f;
+            MinAttackRange = 0f;
+            SplashRadius = 0f;
+            AggroRange = 0f;
+            AutoDefend = false;
+            MoveSpeed = 80f;
             MaxPassengers = 4;
         }
         else
@@ -1423,6 +1514,11 @@ public partial class Unit : CharacterBody2D
         UnitType.Bomber => TerrainUnitCategory.HeavyVehicle,
         UnitType.Scout => TerrainUnitCategory.LightVehicle,
         UnitType.TransportHeli => TerrainUnitCategory.LightVehicle,
+        // E9：海军单位
+        UnitType.Destroyer => TerrainUnitCategory.Naval,
+        UnitType.Submarine => TerrainUnitCategory.Naval,
+        UnitType.AircraftCarrier => TerrainUnitCategory.Naval,
+        UnitType.LandingCraft => TerrainUnitCategory.Naval,
         _ => TerrainUnitCategory.HeavyVehicle,
     };
 
