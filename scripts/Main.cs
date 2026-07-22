@@ -328,6 +328,11 @@ public partial class Main : Node2D
         // 中场争夺矿 + 中央高价值矿（位置由种子随机化，但保持围绕地图中央分布）
         GenerateRandomOreDeposits();
 
+        // E5 资源扩展：油田/稀有矿/陆地矿脉
+        GenerateOilFields();
+        GenerateRareMinerals();
+        GenerateLandVeins();
+
         // ---- 地形障碍物（种子驱动） ----
         GenerateRandomObstacles();
 
@@ -370,6 +375,8 @@ public partial class Main : Node2D
             Text = "★ 游戏目标：摧毁敌方所有建筑和单位即获胜！\n" +
                    "★ 建造建议：电站→兵营→车厂→科技中心\n" +
                    "★ 矿车自动采矿，选中基地可生产更多矿车($500)\n" +
+                   "★ E5 油田：战斗单位停留4秒占领，占领后每秒产$8\n" +
+                   "★ E5 稀有矿(紫色)：矿车采集收益×2 | 陆地矿脉：散布广储值低\n" +
                    activeHint +
                    graceHint +
                    "★ 选中单位右键点敌方建筑/单位攻击\n" +
@@ -968,6 +975,13 @@ public partial class Main : Node2D
                 t.Label.QueueFree();
                 _activeToasts.RemoveAt(i);
             }
+        }
+
+        // E5：油田占领+产钱处理
+        foreach (var child in _resourcesNode.GetChildren())
+        {
+            if (child is ResourceNode rn && IsInstanceValid(rn) && rn.ResourceType == ResourceType.OilField)
+                rn.ProcessOilField(dt);
         }
 
         // 调试：每5秒输出游戏状态
@@ -1982,6 +1996,31 @@ public partial class Main : Node2D
                 return;
             }
         }
+
+        // E5：AI 也尝试占领油田
+        foreach (var child in _resourcesNode.GetChildren())
+        {
+            if (child is not ResourceNode rn || !IsInstanceValid(rn)) continue;
+            if (rn.ResourceType != ResourceType.OilField) continue;
+            if (rn.OilOwner == teamId) continue;
+
+            Unit? nearest = null;
+            float nearestDist = float.MaxValue;
+            foreach (var uc in _unitsNode.GetChildren())
+            {
+                if (uc is Unit u && IsInstanceValid(u) && u.TeamId == teamId && u.AttackDamage > 0f)
+                {
+                    float d = u.GlobalPosition.DistanceTo(rn.GlobalPosition);
+                    if (d < nearestDist) { nearestDist = d; nearest = u; }
+                }
+            }
+            if (nearest != null && nearestDist < 1400f)
+            {
+                nearest.CommandMove(rn.GlobalPosition);
+                GD.Print($"[AI] Team {teamId} sending unit to capture oil field at {rn.GlobalPosition} (dist {(int)nearestDist})");
+                return;
+            }
+        }
     }
 
     // ---------- 右键命令 ----------
@@ -2661,6 +2700,182 @@ public partial class Main : Node2D
         }
 
         GD.Print($"[Map] 矿点生成完毕（种子 {_mapSeed}）");
+    }
+
+    // ========== E5 资源扩展生成 ==========
+
+    /// <summary>生成油田（占领后持续产钱）。3-4个，分布在道路附近和资源争夺区。</summary>
+    private void GenerateOilFields()
+    {
+        var oilPositions = _terrain.GetOilFieldPositions();
+        if (oilPositions.Count == 0)
+        {
+            GD.Print("[E5] 没有合适的油田位置，跳过");
+            return;
+        }
+
+        // 随机选取3-4个位置
+        int count = 3 + _mapRng.Next(2); // 3-4个
+        // 打乱位置列表
+        for (int i = oilPositions.Count - 1; i > 0; i--)
+        {
+            int j = _mapRng.Next(i + 1);
+            (oilPositions[i], oilPositions[j]) = (oilPositions[j], oilPositions[i]);
+        }
+
+        int placed = 0;
+        for (int i = 0; i < oilPositions.Count && placed < count; i++)
+        {
+            var (gx, gy) = oilPositions[i];
+            var worldPos = new Vector2(gx * TerrainGrid.TileSize + TerrainGrid.TileSize / 2f,
+                                        gy * TerrainGrid.TileSize + TerrainGrid.TileSize / 2f);
+
+            // 避免和其他资源/战略点太近
+            if (IsTooCloseToExistingResource(worldPos, 200f)) continue;
+            // 避免在基地附近
+            if (IsTooCloseToBasePos(worldPos, 250f)) continue;
+
+            SpawnOilField(worldPos);
+            placed++;
+        }
+
+        GD.Print($"[E5] 油田生成完毕：{placed} 个");
+    }
+
+    /// <summary>生成稀有矿（采集收益×2）。2-3个，分布在山脉附近高地。</summary>
+    private void GenerateRareMinerals()
+    {
+        var rarePositions = _terrain.GetRareMineralPositions();
+        if (rarePositions.Count == 0)
+        {
+            GD.Print("[E5] 没有合适的稀有矿位置，跳过");
+            return;
+        }
+
+        int count = 2 + _mapRng.Next(2); // 2-3个
+        for (int i = rarePositions.Count - 1; i > 0; i--)
+        {
+            int j = _mapRng.Next(i + 1);
+            (rarePositions[i], rarePositions[j]) = (rarePositions[j], rarePositions[i]);
+        }
+
+        int placed = 0;
+        for (int i = 0; i < rarePositions.Count && placed < count; i++)
+        {
+            var (gx, gy) = rarePositions[i];
+            var worldPos = new Vector2(gx * TerrainGrid.TileSize + TerrainGrid.TileSize / 2f,
+                                        gy * TerrainGrid.TileSize + TerrainGrid.TileSize / 2f);
+
+            if (IsTooCloseToExistingResource(worldPos, 180f)) continue;
+            if (IsTooCloseToBasePos(worldPos, 200f)) continue;
+
+            SpawnRareMineral(worldPos, 1500 + _mapRng.Next(500)); // 1500-2000储量
+            placed++;
+        }
+
+        GD.Print($"[E5] 稀有矿生成完毕：{placed} 个");
+    }
+
+    /// <summary>生成陆地矿脉（散布广、储值低、数量多）。8-12个，遍布可通行陆地。</summary>
+    private void GenerateLandVeins()
+    {
+        var veinPositions = _terrain.GetSuitableResourcePositions(1, 1, false, false);
+        if (veinPositions.Count == 0)
+        {
+            GD.Print("[E5] 没有合适的陆地矿脉位置，跳过");
+            return;
+        }
+
+        int count = 8 + _mapRng.Next(5); // 8-12个
+        for (int i = veinPositions.Count - 1; i > 0; i--)
+        {
+            int j = _mapRng.Next(i + 1);
+            (veinPositions[i], veinPositions[j]) = (veinPositions[j], veinPositions[i]);
+        }
+
+        int placed = 0;
+        for (int i = 0; i < veinPositions.Count && placed < count; i++)
+        {
+            var (gx, gy) = veinPositions[i];
+            var worldPos = new Vector2(gx * TerrainGrid.TileSize + TerrainGrid.TileSize / 2f,
+                                        gy * TerrainGrid.TileSize + TerrainGrid.TileSize / 2f);
+
+            if (IsTooCloseToExistingResource(worldPos, 120f)) continue;
+            if (IsTooCloseToBasePos(worldPos, 150f)) continue;
+
+            SpawnLandVein(worldPos, 300 + _mapRng.Next(200)); // 300-500储量
+            placed++;
+        }
+
+        GD.Print($"[E5] 陆地矿脉生成完毕：{placed} 个");
+    }
+
+    /// <summary>生成油田节点。</summary>
+    private void SpawnOilField(Vector2 pos)
+    {
+        var o = _oreScene.Instantiate<ResourceNode>();
+        o.ResourceType = ResourceType.OilField;
+        o.InitialAmount = 0; // 油田不可被采集，无储量
+        o.GlobalPosition = pos;
+        _resourcesNode.AddChild(o);
+    }
+
+    /// <summary>生成稀有矿节点。</summary>
+    private void SpawnRareMineral(Vector2 pos, int amount)
+    {
+        var o = _oreScene.Instantiate<ResourceNode>();
+        o.ResourceType = ResourceType.RareMineral;
+        o.InitialAmount = amount;
+        o.GlobalPosition = pos;
+        _resourcesNode.AddChild(o);
+    }
+
+    /// <summary>生成陆地矿脉节点。</summary>
+    private void SpawnLandVein(Vector2 pos, int amount)
+    {
+        var o = _oreScene.Instantiate<ResourceNode>();
+        o.ResourceType = ResourceType.LandVein;
+        o.InitialAmount = amount;
+        o.GlobalPosition = pos;
+        _resourcesNode.AddChild(o);
+    }
+
+    /// <summary>检查世界坐标是否距离已有资源点太近。</summary>
+    private bool IsTooCloseToExistingResource(Vector2 pos, float minDist)
+    {
+        foreach (var child in _resourcesNode.GetChildren())
+        {
+            if (child is ResourceNode rn && IsInstanceValid(rn))
+            {
+                if (rn.GlobalPosition.DistanceTo(pos) < minDist)
+                    return true;
+            }
+        }
+        // 也检查战略点
+        foreach (var child in _strategicPointsNode.GetChildren())
+        {
+            if (child is Node2D n && IsInstanceValid(n))
+            {
+                if (n.GlobalPosition.DistanceTo(pos) < minDist)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>检查世界坐标是否距离基地位置太近。</summary>
+    private bool IsTooCloseToBasePos(Vector2 pos, float minDist)
+    {
+        var basePositions = new Vector2[TotalTeamCount]
+        {
+            new(200, 200), new(1800, 1800), new(1800, 200), new(200, 1800),
+            new(1000, 200), new(1000, 1800), new(200, 1000), new(1800, 1000),
+        };
+        foreach (var bp in basePositions)
+        {
+            if (pos.DistanceTo(bp) < minDist) return true;
+        }
+        return false;
     }
 
     /// <summary>种子驱动生成障碍物：中央保留 4 面墙 + 随机散布 6-10 个岩石。</summary>

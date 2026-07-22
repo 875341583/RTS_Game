@@ -806,6 +806,104 @@ public class TerrainGrid
         WaterRegionId = -1,
     };
 
+    // ======== E5 资源点位置查询 ========
+
+    /// <summary>
+    /// 获取适合放置资源点的格子列表。
+    /// 条件：陆地可通行地形（草地/沙地/雪地/城市/田地/道路），非基地区域，指定海拔范围内。
+    /// </summary>
+    public List<(int gx, int gy)> GetSuitableResourcePositions(
+        int minElevation = 1, int maxElevation = 2,
+        bool allowCity = true, bool allowField = true)
+    {
+        var positions = new List<(int, int)>();
+        for (int y = 0; y < GridSize; y++)
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (IsBaseArea(x, y)) continue;
+                var cell = _cells[x, y];
+                if (cell.Elevation < minElevation || cell.Elevation > maxElevation) continue;
+                if (cell.HasBridge || cell.HasTunnel) continue;
+
+                bool suitable = cell.Type switch
+                {
+                    TerrainType.Grass => true,
+                    TerrainType.Sand => true,
+                    TerrainType.Snow => true,
+                    TerrainType.Road => true,
+                    TerrainType.City => allowCity,
+                    TerrainType.Field => allowField,
+                    _ => false,
+                };
+                if (suitable)
+                    positions.Add((x, y));
+            }
+        return positions;
+    }
+
+    /// <summary>
+    /// 获取适合放置油田的格子列表。
+    /// 油田偏好在沙地/平地，远离山脉，靠近道路。
+    /// </summary>
+    public List<(int gx, int gy)> GetOilFieldPositions()
+    {
+        var positions = new List<(int, int)>();
+        for (int y = 2; y < GridSize - 2; y++)
+            for (int x = 2; x < GridSize - 2; x++)
+            {
+                if (IsBaseArea(x, y)) continue;
+                var cell = _cells[x, y];
+                if (cell.Elevation != 1) continue;
+                if (cell.Type != TerrainType.Sand && cell.Type != TerrainType.Grass && cell.Type != TerrainType.Field)
+                    continue;
+                // 远离山脉（3格内无山脉）
+                bool nearMountain = false;
+                for (int dy = -3; dy <= 3 && !nearMountain; dy++)
+                    for (int dx = -3; dx <= 3 && !nearMountain; dx++)
+                    {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize)
+                            if (_cells[nx, ny].Type == TerrainType.Mountain || _cells[nx, ny].Type == TerrainType.Cliff)
+                                nearMountain = true;
+                    }
+                if (nearMountain) continue;
+                // 附近有道路加分（偏好道路附近）
+                positions.Add((x, y));
+            }
+        return positions;
+    }
+
+    /// <summary>
+    /// 获取适合放置稀有矿的格子列表。
+    /// 稀有矿偏好山脉附近、高海拔区域。
+    /// </summary>
+    public List<(int gx, int gy)> GetRareMineralPositions()
+    {
+        var positions = new List<(int, int)>();
+        for (int y = 2; y < GridSize - 2; y++)
+            for (int x = 2; x < GridSize - 2; x++)
+            {
+                if (IsBaseArea(x, y)) continue;
+                var cell = _cells[x, y];
+                if (cell.Elevation < 2) continue; // 高地/山脉附近
+                if (cell.Type != TerrainType.Grass && cell.Type != TerrainType.Snow && cell.Type != TerrainType.Sand)
+                    continue;
+                // 必须在山脉2格范围内
+                bool nearMountain = false;
+                for (int dy = -2; dy <= 2 && !nearMountain; dy++)
+                    for (int dx = -2; dx <= 2 && !nearMountain; dx++)
+                    {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize)
+                            if (_cells[nx, ny].Type == TerrainType.Mountain)
+                                nearMountain = true;
+                    }
+                if (!nearMountain) continue;
+                positions.Add((x, y));
+            }
+        return positions;
+    }
+
     /// <summary>统计各类型格子数量（用于调试日志）。</summary>
     public Dictionary<TerrainType, int> GetStats()
     {

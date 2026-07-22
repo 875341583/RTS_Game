@@ -117,7 +117,10 @@ public partial class Harvester : Unit
                 _timer -= dt;
                 if (_timer <= 0f)
                 {
-                    int harvested = _targetMine.Harvest(Mathf.Min(MineYieldPerCycle, _targetMine.Amount));
+                    // E5：收益受资源类型倍率影响（稀有矿×2，陆地矿脉×0.6，普通×1）
+                    float yieldMultiplier = _targetMine.YieldMultiplier;
+                    int baseYield = Mathf.Min(MineYieldPerCycle, _targetMine.Amount);
+                    int harvested = _targetMine.Harvest((int)(baseYield * yieldMultiplier));
                     _cargo += harvested;
                     if (_cargo >= CargoCapacity || _targetMine.IsDepleted)
                     {
@@ -198,10 +201,14 @@ public partial class Harvester : Unit
         float bestDist = float.MaxValue;
         foreach (var child in ores.GetChildren())
         {
-            if (child is ResourceNode r && !r.IsDepleted && IsInstanceValid(r))
+            // E5：油田不可被矿车采集，跳过
+            if (child is ResourceNode r && !r.IsDepleted && IsInstanceValid(r)
+                && r.ResourceType != ResourceType.OilField)
             {
-                var d = GlobalPosition.DistanceSquaredTo(r.GlobalPosition);
-                if (d < bestDist) { bestDist = d; best = r; }
+                // 稀有矿加权距离更短（优先采稀有矿）
+                float distSq = GlobalPosition.DistanceSquaredTo(r.GlobalPosition);
+                float weightedDist = r.ResourceType == ResourceType.RareMineral ? distSq * 0.6f : distSq;
+                if (weightedDist < bestDist) { bestDist = weightedDist; best = r; }
             }
         }
         return best;

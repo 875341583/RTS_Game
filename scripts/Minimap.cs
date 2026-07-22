@@ -104,7 +104,26 @@ public partial class Minimap : Control
                 if (c is ResourceNode rn && GodotObject.IsInstanceValid(rn) && !rn.IsDepleted)
                 {
                     var mp = W2M(rn.GlobalPosition);
-                    DrawCircle(mp, 2f, rn.Amount > 500 ? COre : COreDim);
+                    // E5：不同资源类型在小地图上用不同颜色
+                    Color oreColor;
+                    switch (rn.ResourceType)
+                    {
+                        case ResourceType.RareMineral:
+                            oreColor = new Color(0.6f, 0.4f, 0.9f); // 紫蓝
+                            break;
+                        case ResourceType.OilField:
+                            oreColor = rn.OilOwner == 0 ? new Color(0.3f, 0.6f, 1.0f) :
+                                       rn.OilOwner == 1 ? new Color(1.0f, 0.35f, 0.35f) :
+                                       new Color(0.4f, 0.7f, 0.3f); // 绿色=中立油田
+                            break;
+                        case ResourceType.LandVein:
+                            oreColor = new Color(0.7f, 0.55f, 0.35f); // 淡铜色
+                            break;
+                        default:
+                            oreColor = rn.Amount > 500 ? COre : COreDim; // 金矿
+                            break;
+                    }
+                    DrawCircle(mp, rn.ResourceType == ResourceType.OilField ? 3f : 2f, oreColor);
                 }
             }
         }
