@@ -605,6 +605,9 @@ public class TerrainGrid3D
             }
         }
 
+        // 地形装饰 — 岩石、树木、草丛
+        BuildTerrainDecorations();
+
         _terrainRoot.AddChild(colBody);
 
         // 构建导航网格
@@ -629,6 +632,181 @@ public class TerrainGrid3D
             colShape.Position = new Vector3(worldX + CellSize * 0.5f, y, worldZ + CellSize * 0.5f);
             colBody.AddChild(colShape);
         }
+    }
+
+    /// <summary>在地形上随机放置装饰物（岩石、树木、草丛、雪堆）</summary>
+    private void BuildTerrainDecorations()
+    {
+        var rng = new Random(777);
+        int grassCount = 0, rockCount = 0, treeCount = 0, snowMoundCount = 0;
+
+        for (int x = 0; x < GridSize; x++)
+        {
+            for (int y = 0; y < GridSize; y++)
+            {
+                var cell = _cells[x, y];
+                float worldX = x * CellSize + CellSize * 0.5f;
+                float worldZ = y * CellSize + CellSize * 0.5f;
+                float tileY = GetElevationY(cell.Elevation);
+                TerrainType effType = GetEffectiveType(x, y);
+
+                // 水面、悬崖、桥梁不加装饰
+                if (cell.Type == TerrainType.DeepWater || cell.Type == TerrainType.ShallowWater) continue;
+                if (effType == TerrainType.Cliff || effType == TerrainType.Bridge || effType == TerrainType.Tunnel) continue;
+                if (cell.Elevation >= 3) continue; // 山顶不加
+
+                // 草地 — 草丛
+                if (cell.Type == TerrainType.Grass && rng.NextDouble() < 0.25)
+                {
+                    float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    AddGrassTuft(worldX + ox, tileY + 0.05f, worldZ + oz, rng);
+                    grassCount++;
+                }
+
+                // 山地/悬崖边缘 — 岩石
+                if ((cell.Type == TerrainType.Mountain || cell.Type == TerrainType.Cliff || cell.Type == TerrainType.Grass)
+                    && rng.NextDouble() < 0.08)
+                {
+                    float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    AddRock(worldX + ox, tileY, worldZ + oz, rng);
+                    rockCount++;
+                }
+
+                // 草地 — 树木（低概率）
+                if (cell.Type == TerrainType.Grass && rng.NextDouble() < 0.05)
+                {
+                    float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.5f;
+                    float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.5f;
+                    AddTree(worldX + ox, tileY, worldZ + oz, rng);
+                    treeCount++;
+                }
+
+                // 雪地 — 雪堆
+                if (cell.Type == TerrainType.Snow && rng.NextDouble() < 0.12)
+                {
+                    float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    AddSnowMound(worldX + ox, tileY, worldZ + oz, rng);
+                    snowMoundCount++;
+                }
+
+                // 沙地 — 石块
+                if (cell.Type == TerrainType.Sand && rng.NextDouble() < 0.06)
+                {
+                    float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
+                    AddRock(worldX + ox, tileY, worldZ + oz, rng);
+                    rockCount++;
+                }
+            }
+        }
+    }
+
+    private void AddGrassTuft(float x, float y, float z, Random rng)
+    {
+        // 草丛 — 几片细长的BoxMesh叶
+        int blades = rng.Next(3, 6);
+        var grassMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.15f, 0.35f, 0.08f),
+            Roughness = 0.95f,
+        };
+        for (int i = 0; i < blades; i++)
+        {
+            float angle = (float)(rng.NextDouble() * Mathf.Pi * 2);
+            float h = 0.4f + (float)rng.NextDouble() * 0.3f;
+            var blade = new MeshInstance3D();
+            blade.Mesh = new BoxMesh { Size = new Vector3(0.08f, h, 0.08f) };
+            blade.MaterialOverride = grassMat;
+            blade.Position = new Vector3(
+                x + Mathf.Cos(angle) * 0.15f,
+                y + h * 0.5f,
+                z + Mathf.Sin(angle) * 0.15f);
+            blade.RotationDegrees = new Vector3(
+                (float)(rng.NextDouble() - 0.5) * 15f,
+                angle * Mathf.RadToDeg(1f),
+                (float)(rng.NextDouble() - 0.5) * 15f);
+            blade.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+            _terrainRoot.AddChild(blade);
+        }
+    }
+
+    private void AddRock(float x, float y, float z, Random rng)
+    {
+        float scale = 0.4f + (float)rng.NextDouble() * 0.6f;
+        var rockMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.38f, 0.34f, 0.28f),
+            Roughness = 0.95f,
+        };
+        var rock = new MeshInstance3D();
+        // 不规则形状 — 用BoxMesh + 缩放模拟
+        rock.Mesh = new BoxMesh { Size = new Vector3(scale, scale * 0.7f, scale * 0.8f) };
+        rock.MaterialOverride = rockMat;
+        rock.Position = new Vector3(x, y + scale * 0.35f, z);
+        rock.RotationDegrees = new Vector3(
+            (float)(rng.NextDouble() - 0.5) * 20f,
+            (float)rng.NextDouble() * 360f,
+            (float)(rng.NextDouble() - 0.5) * 20f);
+        rock.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        _terrainRoot.AddChild(rock);
+    }
+
+    private void AddTree(float x, float y, float z, Random rng)
+    {
+        float trunkH = 1.5f + (float)rng.NextDouble() * 0.8f;
+        float crownR = 0.8f + (float)rng.NextDouble() * 0.4f;
+
+        var trunkMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.25f, 0.18f, 0.1f),
+            Roughness = 0.9f,
+        };
+        var crownMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.1f, 0.3f, 0.06f),
+            Roughness = 0.85f,
+        };
+
+        // 树干
+        var trunk = new MeshInstance3D();
+        trunk.Mesh = new BoxMesh { Size = new Vector3(0.25f, trunkH, 0.25f) };
+        trunk.MaterialOverride = trunkMat;
+        trunk.Position = new Vector3(x, y + trunkH * 0.5f, z);
+        trunk.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        _terrainRoot.AddChild(trunk);
+
+        // 树冠 — 3层球体
+        for (int i = 0; i < 3; i++)
+        {
+            var crown = new MeshInstance3D();
+            crown.Mesh = new SphereMesh { Radius = crownR - i * 0.15f, Height = (crownR - i * 0.15f) * 2f };
+            crown.MaterialOverride = crownMat;
+            float cx = x + (float)(rng.NextDouble() - 0.5) * 0.2f;
+            float cz = z + (float)(rng.NextDouble() - 0.5) * 0.2f;
+            float cy = y + trunkH + crownR * 0.3f - i * 0.3f;
+            crown.Position = new Vector3(cx, cy, cz);
+            crown.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+            _terrainRoot.AddChild(crown);
+        }
+    }
+
+    private void AddSnowMound(float x, float y, float z, Random rng)
+    {
+        float r = 0.5f + (float)rng.NextDouble() * 0.5f;
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.92f, 0.94f, 0.98f),
+            Roughness = 0.7f,
+        };
+        var mound = new MeshInstance3D();
+        mound.Mesh = new SphereMesh { Radius = r, Height = r * 1.2f };
+        mound.MaterialOverride = mat;
+        mound.Position = new Vector3(x, y + r * 0.3f, z);
+        mound.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        _terrainRoot.AddChild(mound);
     }
 
     private void AddQuadToSurface(SurfaceTool st, float x, float y, float z, float w, float d,
