@@ -34,7 +34,7 @@ public partial class Main3D : Node3D
     private const int TotalTeamCount = 8;
     private const int PlayerTeamId = 0;
 
-    private readonly int[] _money = new int[TotalTeamCount] { 2500, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };
+    private readonly int[] _money = new int[TotalTeamCount] { 3000, 3500, 3500, 3500, 3500, 3500, 3500, 3500 };
 
     // 选中
     private readonly List<GodotObject> _selected = new();
@@ -277,11 +277,11 @@ public partial class Main3D : Node3D
     {
         (_activeAiCount, float grace, int aiInterval) = _difficulty switch
         {
-            Difficulty.Easy => (2, 30f, 12),
-            Difficulty.Normal => (4, 60f, 8),
-            Difficulty.Hard => (6, 30f, 5),
+            Difficulty.Easy => (4, 15f, 6),
+            Difficulty.Normal => (5, 30f, 5),
+            Difficulty.Hard => (6, 15f, 4),
             Difficulty.Brutal => (7, 0f, 3),
-            _ => (4, 60f, 8),
+            _ => (4, 30f, 6),
         };
 
         // 初始化AI思考计时器
@@ -338,9 +338,16 @@ public partial class Main3D : Node3D
             CreateBuilding(Building3D.BuildingType.Base, i, aiPos);
             CreateBuilding(Building3D.BuildingType.PowerPlant, i, aiPos + new Vector3(0, 0, TerrainGrid3D.CellSize * 2));
             CreateBuilding(Building3D.BuildingType.Barracks, i, aiPos + new Vector3(TerrainGrid3D.CellSize * 2, 0, 0));
+            CreateBuilding(Building3D.BuildingType.WarFactory, i, aiPos + new Vector3(-TerrainGrid3D.CellSize * 2, 0, 0));
 
             // AI初始矿车
             SpawnUnit(UnitType.Harvester, i, aiPos + new Vector3(0, 0, -TerrainGrid3D.CellSize * 2));
+
+            // AI初始战斗单位（加速节奏，让AI保护期结束后立刻有进攻力）
+            SpawnUnit(UnitType.LightTank, i, aiPos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
+            SpawnUnit(UnitType.LightTank, i, aiPos + new Vector3(-TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
+            SpawnUnit(UnitType.Infantry, i, aiPos + new Vector3(TerrainGrid3D.CellSize * 2, 0, -TerrainGrid3D.CellSize));
+            SpawnUnit(UnitType.Infantry, i, aiPos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize * 2));
         }
     }
 
@@ -1007,6 +1014,59 @@ public partial class Main3D : Node3D
         // 造兵逻辑
         AIBuildLogic(teamId);
         AITrainUnits(teamId);
+        // 攻击波管理
+        AIManageAttacks(teamId);
+    }
+
+    /// <summary>AI攻击波管理：积累足够单位后整编向玩家基地进攻。</summary>
+    private void AIManageAttacks(int teamId)
+    {
+        if (Unit3D.AiGraceRemaining > 0) return; // 保护期不进攻
+        if (!_bases.TryGetValue(PlayerTeamId, out var playerBase) || playerBase._isDead) return;
+
+        // 收集该AI阵营所有非矿车、非工程车的战斗单位
+        var army = GetAllUnits()
+            .Where(u => u.TeamId == teamId && !u._isDead
+                && u.Type != UnitType.Harvester
+                && u.Type != UnitType.Engineer
+                && u.Type != UnitType.ChiefEngineer
+                && u.Type != UnitType.Thief
+                && u.Type != UnitType.Spy)
+            .ToList();
+
+        if (army.Count < 5) return; // 至少攒5个单位才进攻
+
+        // 检查是否已有单位在进攻路上（距离玩家基地<60格的单位算"已出发"）
+        var playerBasePos = playerBase.GlobalPosition;
+        int alreadyAttacking = army.Count(u => u.GlobalPosition.DistanceTo(playerBasePos) < 80f);
+
+        // 如果超过60%的军队还没出发，发一次进攻命令
+        if (alreadyAttacking < army.Count * 0.4)
+        {
+            // 目标：玩家基地（带一些散布）
+            foreach (var u in army)
+            {
+                // 已经在靠近的就不重复命令
+                if (u.GlobalPosition.DistanceTo(playerBasePos) < 50f) continue;
+
+                // 关闭AutoAI，改用AttackMove让它们成群推进
+                u.AutoAI = false;
+                var offset = new Vector3(
+                    (float)(new Random().NextDouble() - 0.5) * 8f,
+                    0,
+                    (float)(new Random().NextDouble() - 0.5) * 8f);
+                u.CommandAttackMove(playerBasePos + offset);
+            }
+        }
+        else
+        {
+            // 已经在交战区域，恢复AutoAI让它们自由攻击
+            foreach (var u in army)
+            {
+                if (u.GlobalPosition.DistanceTo(playerBasePos) < 40f)
+                    u.AutoAI = true;
+            }
+        }
     }
 
     private void AIBuildLogic(int teamId)
@@ -1029,7 +1089,7 @@ public partial class Main3D : Node3D
             TryAIBuild(teamId, Building3D.BuildingType.WarFactory);
             return;
         }
-        if (_difficulty >= Difficulty.Normal && !HasBuilding(teamId, Building3D.BuildingType.TechCenter))
+        if (!HasBuilding(teamId, Building3D.BuildingType.TechCenter))
         {
             TryAIBuild(teamId, Building3D.BuildingType.TechCenter);
             return;
@@ -1049,12 +1109,12 @@ public partial class Main3D : Node3D
             TryAIBuild(teamId, Building3D.BuildingType.AntiAirTurret);
             return;
         }
-        if (_difficulty >= Difficulty.Normal && !HasBuilding(teamId, Building3D.BuildingType.RepairPad))
+        if (!HasBuilding(teamId, Building3D.BuildingType.RepairPad))
         {
             TryAIBuild(teamId, Building3D.BuildingType.RepairPad);
             return;
         }
-        if (_difficulty >= Difficulty.Normal && !HasBuilding(teamId, Building3D.BuildingType.Airfield))
+        if (!HasBuilding(teamId, Building3D.BuildingType.Airfield))
         {
             TryAIBuild(teamId, Building3D.BuildingType.Airfield);
             return;
@@ -1078,7 +1138,7 @@ public partial class Main3D : Node3D
     private void TryAIBuild(int teamId, Building3D.BuildingType type)
     {
         int cost = BuildingCosts.GetValueOrDefault(type, 0);
-        if (_money[teamId] < cost + 200) return; // 留200储备
+        if (_money[teamId] < cost + 50) return; // 留50储备
         if (!SpendMoney(teamId, cost)) return;
 
         // 在基地附近放置
@@ -2281,17 +2341,17 @@ public partial class Main3D : Node3D
         // AI回合
         for (int i = 1; i <= AiTeamCount; i++)
         {
-            if (i > _activeAiCount && _difficulty == Difficulty.Easy) continue;
+            if (i > _activeAiCount) continue;
             _aiThinkTimers[i] -= dt;
             if (_aiThinkTimers[i] <= 0)
             {
                 _aiThinkTimers[i] = _difficulty switch
                 {
-                    Difficulty.Easy => 12f,
-                    Difficulty.Normal => 8f,
-                    Difficulty.Hard => 5f,
+                    Difficulty.Easy => 6f,
+                    Difficulty.Normal => 5f,
+                    Difficulty.Hard => 4f,
                     Difficulty.Brutal => 3f,
-                    _ => 8f,
+                    _ => 6f,
                 };
                 AITickForTeam(i);
             }
