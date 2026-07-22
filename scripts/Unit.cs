@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Harvester, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。

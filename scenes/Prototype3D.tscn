@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b_proto3d_001"]
+
+[ext_resource type="Script" path="res://scripts/Prototype3D.cs" id="1_proto"]
+
+[node name="Prototype3D" type="Node3D"]
+script = ExtResource("1_proto")

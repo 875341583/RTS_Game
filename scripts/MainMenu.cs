@@ -126,6 +126,33 @@ public partial class MainMenu : Control
         var spacer3 = new Control { CustomMinimumSize = new Vector2(0, 8) };
         vbox.AddChild(spacer3);
 
+        // 3D原型预览按钮
+        var protoBtn = new Button();
+        protoBtn.Text = "3D 2.5D 原型预览";
+        protoBtn.CustomMinimumSize = new Vector2(0, 40);
+        protoBtn.AddThemeFontSizeOverride("font_size", 18);
+        protoBtn.Pressed += () =>
+        {
+            GD.Print("[MainMenu] 进入3D原型预览");
+            GetTree().ChangeSceneToFile("res://scenes/Prototype3D.tscn");
+        };
+        vbox.AddChild(protoBtn);
+
+        // 3D正式游戏按钮
+        var game3DBtn = new Button();
+        game3DBtn.Text = "3D 全3D模式 (昼夜+灾害)";
+        game3DBtn.CustomMinimumSize = new Vector2(0, 50);
+        game3DBtn.AddThemeFontSizeOverride("font_size", 20);
+        game3DBtn.Pressed += () =>
+        {
+            GD.Print("[MainMenu] 进入3D正式游戏");
+            GetTree().ChangeSceneToFile("res://scenes/Main3D.tscn");
+        };
+        vbox.AddChild(game3DBtn);
+
+        var spacer4 = new Control { CustomMinimumSize = new Vector2(0, 8) };
+        vbox.AddChild(spacer4);
+
         // 退出按钮
         var exitBtn = new Button();
         exitBtn.Text = "退出游戏";

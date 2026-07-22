@@ -107,6 +107,10 @@ spawn_missile={
 2d_physics/layer_1="Terrain"
 2d_physics/layer_2="Units"
 2d_physics/layer_3="Selection"
+3d_physics/layer_1="Terrain3D"
+3d_physics/layer_2="Units3D"
+3d_physics/layer_3="Buildings3D"
+3d_physics/layer_4="Selection3D"
 
 [dotnet]
 
