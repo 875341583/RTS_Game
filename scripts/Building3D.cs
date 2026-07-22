@@ -215,7 +215,8 @@ public partial class Building3D : Area3D
         if (tex != null)
         {
             mat.AlbedoTexture = tex;
-            mat.Uv1Scale = new Vector3(1, 1, 1);
+            mat.Uv1Scale = new Vector3(2, 2, 2);
+            mat.Uv1Triplanar = true;
         }
         else
         {

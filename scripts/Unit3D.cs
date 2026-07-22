@@ -258,17 +258,23 @@ public partial class Unit3D : CharacterBody3D
         return mat;
     }
 
-    /// <summary>带纹理的材质 — 用于坦克底盘等</summary>
+    /// <summary>带纹理的材质 — 用于坦克底盘等。tintColor与纹理按0.5/0.5混合保留阵营色</summary>
     protected StandardMaterial3D MakeTexturedMat(string texPath, Color tintColor, float roughness = 0.6f, float metallic = 0.3f)
     {
-        var mat = new StandardMaterial3D { AlbedoColor = tintColor, Roughness = roughness, Metallic = metallic };
         var tex = GD.Load<Texture2D>(texPath);
         if (tex != null)
         {
+            // 纹理+阵营色调混合：用浅色调让纹理可见同时保留阵营色
+            var blend = new Color(
+                Math.Clamp(tintColor.R * 0.6f + 0.4f, 0, 1),
+                Math.Clamp(tintColor.G * 0.6f + 0.4f, 0, 1),
+                Math.Clamp(tintColor.B * 0.6f + 0.4f, 0, 1));
+            var mat = new StandardMaterial3D { AlbedoColor = blend, Roughness = roughness, Metallic = metallic };
             mat.AlbedoTexture = tex;
             mat.Uv1Scale = new Vector3(1, 1, 1);
+            return mat;
         }
-        return mat;
+        return new StandardMaterial3D { AlbedoColor = tintColor, Roughness = roughness, Metallic = metallic };
     }
 
     /// <summary>坦克材质（迷彩纹理+阵营色调）</summary>
