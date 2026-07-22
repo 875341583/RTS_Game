@@ -95,6 +95,10 @@ public partial class Main3D : Node3D
     // 建造面板
     private Control _buildPanel;
 
+    // 生产进度面板
+    private VBoxContainer _prodPanel;
+    private readonly List<Control> _prodBars = new();
+
     // 昼夜系统
     private float _timeOfDay = 8f; // 0-24小时
     private const float DayLength = 180f; // 一天=180秒（白天更充裕，夜间不至于太长截图看不见）
@@ -1455,6 +1459,27 @@ public partial class Main3D : Node3D
         unitLabel.AddThemeFontSizeOverride("font_size", 10);
         unitLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.7f, 0.9f));
         _uiLayer.AddChild(unitLabel);
+
+        // 生产进度面板 — 建造面板右侧
+        SetupProductionPanel();
+    }
+
+    private void SetupProductionPanel()
+    {
+        _prodPanel = new VBoxContainer
+        {
+            Position = new Vector2(210, 420),
+            Size = new Vector2(180, 290),
+        };
+        _uiLayer.AddChild(_prodPanel);
+
+        var titleLbl = new Label
+        {
+            Text = "生产进度",
+        };
+        titleLbl.AddThemeFontSizeOverride("font_size", 13);
+        titleLbl.AddThemeColorOverride("font_color", Colors.White);
+        _prodPanel.AddChild(titleLbl);
     }
 
     // 小地图配置
@@ -1619,6 +1644,107 @@ public partial class Main3D : Node3D
         foreach (var k in keys)
             _buildingAlertCooldown[k] -= (float)GetProcessDeltaTime();
         _buildingAlertCooldown.Where(k => k.Value <= 0).ToList().ForEach(k => _buildingAlertCooldown.Remove(k.Key));
+
+        // 生产进度面板
+        UpdateProductionPanel();
+    }
+
+    private static string ProdTypeName(Building3D.ProductionType pt) => pt switch
+    {
+        Building3D.ProductionType.Infantry => "步兵",
+        Building3D.ProductionType.Engineer => "工程师",
+        Building3D.ProductionType.Sapper => "爆破手",
+        Building3D.ProductionType.ChiefEngineer => "主工",
+        Building3D.ProductionType.Grenadier => "掷弹兵",
+        Building3D.ProductionType.Sniper => "狙击手",
+        Building3D.ProductionType.FlameInfantry => "火焰兵",
+        Building3D.ProductionType.LightTank => "轻坦",
+        Building3D.ProductionType.HeavyTank => "重坦",
+        Building3D.ProductionType.Artillery => "炮兵",
+        Building3D.ProductionType.RocketLauncher => "火箭炮",
+        Building3D.ProductionType.MissileTank => "导弹车",
+        Building3D.ProductionType.AntiAir => "防空",
+        Building3D.ProductionType.Harvester => "矿车",
+        Building3D.ProductionType.Transport => "运输车",
+        Building3D.ProductionType.Hero => "英雄",
+        Building3D.ProductionType.Spy => "间谍",
+        Building3D.ProductionType.Thief => "窃贼",
+        Building3D.ProductionType.Fighter => "战机",
+        Building3D.ProductionType.Helicopter => "直升机",
+        Building3D.ProductionType.RocketInfantry => "火箭兵",
+        Building3D.ProductionType.Bomber => "轰炸机",
+        Building3D.ProductionType.Scout => "侦察机",
+        Building3D.ProductionType.TransportHeli => "运输机",
+        _ => pt.ToString(),
+    };
+
+    private void UpdateProductionPanel()
+    {
+        if (_prodPanel == null) return;
+
+        // 清除旧条目（保留标题）
+        while (_prodPanel.GetChildCount() > 1)
+        {
+            var child = _prodPanel.GetChild(1);
+            _prodPanel.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        // 收集玩家正在生产的建筑
+        var producers = GetAllBuildings()
+            .Where(b => b.TeamId == PlayerTeamId && !b._isDead
+                && (b.Type == Building3D.BuildingType.Barracks
+                 || b.Type == Building3D.BuildingType.WarFactory
+                 || b.Type == Building3D.BuildingType.Airfield)
+                && b.CurrentProductionType.HasValue)
+            .ToList();
+
+        if (producers.Count == 0)
+        {
+            var idle = new Label { Text = "（无生产中）" };
+            idle.AddThemeFontSizeOverride("font_size", 11);
+            idle.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f, 0.7f));
+            _prodPanel.AddChild(idle);
+            return;
+        }
+
+        foreach (var bldg in producers)
+        {
+            var pt = bldg.CurrentProductionType.Value;
+            float progress = bldg.ProductionProgress;
+            int queued = bldg.QueueCount;
+
+            // 每个生产条目：一行文字 + 一条进度条
+            var row = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.Fill };
+
+            var info = new Label
+            {
+                Text = $"{ProdTypeName(pt)} ({bldg.Type})  [队列:{queued}]",
+            };
+            info.AddThemeFontSizeOverride("font_size", 10);
+            info.AddThemeColorOverride("font_color", Colors.White);
+            row.AddChild(info);
+
+            // 进度条背景
+            var barBg = new ColorRect
+            {
+                CustomMinimumSize = new Vector2(170, 10),
+                Color = new Color(0.15f, 0.15f, 0.15f),
+            };
+            row.AddChild(barBg);
+
+            // 进度条前景
+            float barWidth = 170f * Mathf.Clamp(progress, 0f, 1f);
+            var barFg = new ColorRect
+            {
+                Position = Vector2.Zero,
+                Size = new Vector2(barWidth, 10),
+                Color = new Color(0.2f, 0.8f, 0.3f),
+            };
+            barBg.AddChild(barFg);
+
+            _prodPanel.AddChild(row);
+        }
     }
 
     // ======== 输入处理 ========
@@ -2173,12 +2299,12 @@ public partial class Main3D : Node3D
         _sunLight.LightEnergy = sunIntensity;
 
         // 月光（夜间最低光照保证可见性）
-        _moonLight.LightEnergy = sunIntensity < 0.1f ? 0.3f : 0f;
+        _moonLight.LightEnergy = sunIntensity < 0.1f ? 0.45f : 0f;
 
         // 环境光
         if (_worldEnv?.Environment != null)
         {
-            float ambEnergy = sunIntensity * 0.5f + 0.25f; // 最低环境光0.25保证夜间勉强可见
+            float ambEnergy = sunIntensity * 0.5f + 0.38f; // 最低环境光0.38保证夜间清晰可见
             _worldEnv.Environment.AmbientLightEnergy = ambEnergy;
 
             // 天空颜色

@@ -81,8 +81,10 @@ public class TerrainGrid3D
         if (tex != null)
         {
             mat.AlbedoTexture = tex;
-            // UV重复：每个tile重复2次纹理
-            mat.Uv1Scale = new Vector3(1, 1, 1);
+            // UV重复：每个tile重复3次纹理，让纹理细节更密集可见
+            mat.Uv1Scale = new Vector3(3, 3, 3);
+            // 三平面映射确保纹理在所有面上正确显示且自动重复
+            mat.Uv1Triplanar = true;
         }
         else
         {
@@ -572,6 +574,7 @@ public class TerrainGrid3D
                 {
                     tileMat.AlbedoTexture = mat.AlbedoTexture;
                     tileMat.Uv1Scale = mat.Uv1Scale;
+                    tileMat.Uv1Triplanar = mat.Uv1Triplanar;
                     // 轻微明暗变化
                     float v = 1f + r;
                     tileMat.AlbedoColor = new Color(Math.Clamp(v, 0.85f, 1f), Math.Clamp(v, 0.85f, 1f), Math.Clamp(v, 0.85f, 1f));
