@@ -147,6 +147,36 @@ public partial class Main : Node2D
             public float Age;
             public float Lifetime;
         }
+
+        // ---- 阶段12-A4 超武系统（闪电风暴） ----
+        /// <summary>闪电风暴冷却总时长（秒）。4分钟（比核弹短）。</summary>
+        private const float LightningCooldownDuration = 240f;
+        /// <summary>闪电风暴作用半径（像素）。比核弹小。</summary>
+        private const float LightningRadius = 160f;
+        /// <summary>闪电风暴每秒伤害（点/秒）。</summary>
+        private const float LightningDps = 80f;
+        /// <summary>闪电风暴持续时间（秒）。在此期间持续对范围内敌方造成伤害。</summary>
+        private const float LightningDuration = 5f;
+        /// <summary>玩家闪电风暴冷却剩余（秒）。</summary>
+        private float _playerLightningCooldown = 0f;
+        /// <summary>玩家是否处于闪电风暴目标选择模式（按 C 进入，左键释放 / 右键取消）。</summary>
+        private bool _lightningTargetMode = false;
+        /// <summary>每个 AI 阵营的闪电风暴冷却。</summary>
+        private readonly Dictionary<int, float> _aiLightningCooldowns = new();
+        /// <summary>活跃闪电风暴特效列表（持续伤害区域）。每秒对范围内敌方造成 LightningDps 伤害。</summary>
+        private readonly List<LightningVisual> _activeLightnings = new();
+        /// <summary>闪电风暴视觉与持续伤害数据。DamageTickTimer 累积到1.0即结算一次伤害。</summary>
+        private struct LightningVisual
+        {
+            public Vector2 Position;
+            public int FiringTeamId;
+            public float Age;            // 已持续时间
+            public float Lifetime;       // 总持续时间（5秒）
+            public float DamageTickTimer; // 每秒伤害累计器
+            public float BoltRefreshTimer; // 闪电形状刷新计时
+        }
+        // 阶段12-A4 闪电柱形状种子（用于绘制随机折线）
+        private float _lightningBoltSeed;
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -313,7 +343,8 @@ public partial class Main : Node2D
                    graceHint +
                    "★ 选中单位右键点敌方建筑/单位攻击\n" +
                    "★ 选中建筑右键设集结点 | R维修 | V出售\n" +
-                   "★ ☢ 建造科技中心后按 Z 可发射核弹（5分钟冷却）",
+                   "★ ☢ 建造科技中心后按 Z 可发射核弹（5分钟冷却）\n" +
+                   "★ ⚡ 按 C 释放闪电风暴（持续5秒范围伤害/4分钟冷却）",
         };
         _startOverlay.HorizontalAlignment = HorizontalAlignment.Center;
         _startOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
@@ -395,6 +426,15 @@ public partial class Main : Node2D
             var worldPos = _camera.GetGlobalMousePosition();
             if (mb.ButtonIndex == MouseButton.Left)
             {
+                // 阶段12-A4：闪电风暴目标选择模式（与核弹互斥优先）
+                if (_lightningTargetMode && !mouseOverPanel)
+                {
+                    ApplyLightning(worldPos, PlayerTeamId);
+                    _lightningTargetMode = false;
+                    _playerLightningCooldown = LightningCooldownDuration;
+                    QueueRedraw();
+                    return;
+                }
                 // 阶段12-A4：核弹目标选择模式优先（左键释放核弹）
                 if (_nukeTargetMode && !mouseOverPanel)
                 {
@@ -424,6 +464,7 @@ public partial class Main : Node2D
             }
             if (mb.ButtonIndex == MouseButton.Right)
             {
+                if (_lightningTargetMode) { _lightningTargetMode = false; QueueRedraw(); return; }
                 if (_nukeTargetMode) { _nukeTargetMode = false; QueueRedraw(); return; }
                 if (_placementMode != null) { CancelPlacement(); return; }
                 if (_attackMoveMode) { _attackMoveMode = false; return; }
@@ -551,9 +592,35 @@ public partial class Main : Node2D
             else
             {
                 _nukeTargetMode = !_nukeTargetMode;
+                if (_nukeTargetMode) _lightningTargetMode = false; // 与闪电风暴互斥
                 if (_nukeTargetMode)
                     ShowToast("☢ 核弹已就绪：左键点击目标 / 右键取消", new Color(1f, 0.3f, 0.2f));
                 GD.Print($"[核弹] 目标选择模式 {(_nukeTargetMode ? "开启" : "关闭")}");
+                QueueRedraw();
+            }
+        }
+        else if (kc == Key.C)
+        {
+            // 阶段12-A4：闪电风暴超武（需科技中心，4分钟冷却，持续5秒范围伤害）
+            // 注：C 键原本未占用，用作闪电 Storm（雷电英文首字母冲突多，用 C 取"持续伤害"意）
+            if (!HasBuilding(PlayerTeamId, BuildingType.TechCenter))
+            {
+                ShowToast("⚡ 闪电风暴不可用：需建造科技中心", new Color(0.5f, 0.7f, 1f));
+                GD.Print("[闪电] 不可用：需科技中心");
+            }
+            else if (_playerLightningCooldown > 0f)
+            {
+                int sec = Mathf.CeilToInt(_playerLightningCooldown);
+                ShowToast($"⚡ 闪电风暴冷却中：{sec / 60}:{sec % 60:D2}", new Color(0.5f, 0.7f, 1f));
+                GD.Print($"[闪电] 冷却中：{sec}s");
+            }
+            else
+            {
+                _lightningTargetMode = !_lightningTargetMode;
+                if (_lightningTargetMode) _nukeTargetMode = false; // 与核弹互斥
+                if (_lightningTargetMode)
+                    ShowToast("⚡ 闪电风暴已就绪：左键点击目标 / 右键取消", new Color(0.5f, 0.8f, 1f));
+                GD.Print($"[闪电] 目标选择模式 {(_lightningTargetMode ? "开启" : "关闭")}");
                 QueueRedraw();
             }
         }
@@ -754,6 +821,60 @@ public partial class Main : Node2D
         }
         // 目标选择模式下持续重绘（保持准星跟随鼠标）
         if (_nukeTargetMode) QueueRedraw();
+
+        // ---- 阶段12-A4：闪电风暴冷却递减 + 持续伤害 Tick + 视觉刷新 ----
+        if (_playerLightningCooldown > 0f)
+        {
+            _playerLightningCooldown -= dt;
+            if (_playerLightningCooldown < 0f) _playerLightningCooldown = 0f;
+        }
+        if (_aiLightningCooldowns.Count > 0)
+        {
+            var aiKeys2 = new List<int>(_aiLightningCooldowns.Keys);
+            foreach (var k in aiKeys2)
+            {
+                if (_aiLightningCooldowns[k] > 0f)
+                {
+                    _aiLightningCooldowns[k] -= dt;
+                    if (_aiLightningCooldowns[k] < 0f) _aiLightningCooldowns[k] = 0f;
+                }
+            }
+        }
+        // 闪电风暴特效推进 + 每秒持续伤害
+        if (_activeLightnings.Count > 0)
+        {
+            for (int i = _activeLightnings.Count - 1; i >= 0; i--)
+            {
+                var lv = _activeLightnings[i];
+                lv.Age += dt;
+                lv.DamageTickTimer += dt;
+                lv.BoltRefreshTimer += dt;
+                // 每秒结算一次持续伤害
+                if (lv.DamageTickTimer >= 1f)
+                {
+                    lv.DamageTickTimer -= 1f;
+                    int hits = DamageLightningAreaOnce(lv.Position, lv.FiringTeamId);
+                    GD.Print($"[闪电] 持续伤害 Tick @ {lv.Position}，命中 {hits}（剩余 {(lv.Lifetime - lv.Age):F1}s）");
+                }
+                // 每 0.08 秒刷新闪电形状种子（让折线抖动闪烁）
+                if (lv.BoltRefreshTimer >= 0.08f)
+                {
+                    lv.BoltRefreshTimer -= 0.08f;
+                    _lightningBoltSeed = (float)GD.RandRange(0, 1000);
+                }
+                if (lv.Age >= lv.Lifetime)
+                {
+                    GD.Print($"[闪电] 特效结束 @ {lv.Position}");
+                    _activeLightnings.RemoveAt(i);
+                }
+                else
+                {
+                    _activeLightnings[i] = lv;
+                }
+            }
+            QueueRedraw();
+        }
+        if (_lightningTargetMode) QueueRedraw();
 
         // Q6：开局提示淡出
         if (_startOverlay != null && IsInstanceValid(_startOverlay))
@@ -1130,6 +1251,50 @@ public partial class Main : Node2D
             DrawCircle(mousePos, 3f, new Color(1f, 0.3f, 0.2f, 0.95f));
         }
 
+        // ---- 阶段12-A4：闪电风暴视觉（持续伤害区域 + 闪电柱 + 乌云 + 电光环） ----
+        foreach (var lv in _activeLightnings)
+        {
+            float progress = lv.Age / lv.Lifetime;
+            // 1. 地面电光填充圈（淡蓝色发光）
+            DrawCircle(lv.Position, LightningRadius,
+                new Color(0.3f, 0.6f, 1f, 0.15f * (1f - progress * 0.5f)));
+            // 2. 多重电光环（白蓝色同心圆，向外扩散）
+            for (int ring = 0; ring < 3; ring++)
+            {
+                float ringR = LightningRadius * (0.4f + 0.3f * ring) * (1f + 0.05f * Mathf.Sin(lv.Age * 8f + ring));
+                DrawArc(lv.Position, ringR, 0f, Mathf.Tau, 48,
+                    new Color(0.7f, 0.9f, 1f, (1f - progress) * 0.7f), 2f);
+            }
+            // 3. 中心闪电柱（程序化折线，每 0.08s 抖动一次，从地面向上延伸）
+            DrawLightningBolt(lv.Position, _lightningBoltSeed, lv.Age);
+            // 4. 上方暗乌云盘（深灰圆盘，模拟闪电来源）
+            float cloudY = lv.Position.Y - 60f;
+            DrawCircle(new Vector2(lv.Position.X, cloudY), 50f,
+                new Color(0.2f, 0.2f, 0.3f, 0.6f));
+            DrawCircle(new Vector2(lv.Position.X - 25f, cloudY + 5f), 35f,
+                new Color(0.25f, 0.25f, 0.35f, 0.55f));
+            DrawCircle(new Vector2(lv.Position.X + 30f, cloudY + 8f), 30f,
+                new Color(0.2f, 0.2f, 0.3f, 0.55f));
+        }
+
+        // ---- 阶段12-A4：闪电风暴目标选择准星 ----
+        if (_lightningTargetMode)
+        {
+            var mousePos = _camera.GetGlobalMousePosition();
+            // 爆炸范围预览圈（蓝色）
+            DrawArc(mousePos, LightningRadius, 0f, Mathf.Tau, 64,
+                new Color(0.4f, 0.8f, 1f, 0.55f), 2f);
+            // 内圈
+            DrawArc(mousePos, LightningRadius * 0.5f, 0f, Mathf.Tau, 48,
+                new Color(0.5f, 0.85f, 1f, 0.35f), 1.5f);
+            // 中心十字准星（青蓝色）
+            var cross = new Color(0.6f, 0.9f, 1f, 0.95f);
+            DrawLine(mousePos - new Vector2(20, 0), mousePos + new Vector2(20, 0), cross, 2f);
+            DrawLine(mousePos - new Vector2(0, 20), mousePos + new Vector2(0, 20), cross, 2f);
+            // 中心光点
+            DrawCircle(mousePos, 4f, new Color(0.7f, 0.95f, 1f, 0.95f));
+        }
+
         // ---- Q1 建筑放置预览（仅在放置模式） ----
         if (_placementMode == null) return;
         var pos = _camera.GetGlobalMousePosition();
@@ -1170,6 +1335,51 @@ public partial class Main : Node2D
         var heavyLine = ok ? new Color(0.3f, 1f, 0.3f, 0.6f) : new Color(1f, 0.3f, 0.3f, 0.6f);
         DrawLine(new Vector2(pos.X, pos.Y - CellSize), new Vector2(pos.X, pos.Y + CellSize), heavyLine, 1.5f);
         DrawLine(new Vector2(pos.X - CellSize, pos.Y), new Vector2(pos.X + CellSize, pos.Y), heavyLine, 1.5f);
+    }
+
+    /// <summary>阶段12-A4：绘制程序化闪电柱折线（白蓝色，从地面向上抖动）。基于 seed 生成确定形状避免每帧变化太剧烈。</summary>
+    private void DrawLightningBolt(Vector2 origin, float seed, float age)
+    {
+        // 闪烁强度：靠近生命末尾淡出
+        float alpha = age < 0.2f ? age / 0.2f : (age > 4.5f ? (5f - age) / 0.5f : 1f);
+        alpha = Mathf.Clamp(alpha, 0.2f, 1f);
+
+        // 主闪电柱：从 origin 向上延伸约 60 像素，分 6 段折线
+        int segments = 6;
+        var points = new Vector2[segments + 1];
+        points[0] = origin;
+        for (int i = 1; i <= segments; i++)
+        {
+            float t = (float)i / segments;
+            // 伪随机：基于 seed 和段落索引生成横向偏移
+            float r1 = Mathf.Sin(seed * 0.7f + i * 2.3f) * 0.5f;
+            float r2 = Mathf.Cos(seed * 1.1f + i * 3.7f) * 0.5f;
+            float offset = (r1 + r2) * 8f;
+            points[i] = new Vector2(origin.X + offset, origin.Y - t * 60f);
+        }
+        // 外层光晕（粗白线）
+        var glowCol = new Color(0.8f, 0.95f, 1f, alpha * 0.6f);
+        for (int i = 0; i < segments; i++)
+            DrawLine(points[i], points[i + 1], glowCol, 5f);
+        // 内层亮白核心（细线）
+        var coreCol = new Color(1f, 1f, 1f, alpha);
+        for (int i = 0; i < segments; i++)
+            DrawLine(points[i], points[i + 1], coreCol, 2f);
+
+        // 分叉闪电（左右两根更短的支线）
+        for (int branch = 0; branch < 2; branch++)
+        {
+            int startIdx = 2 + branch * 2;
+            if (startIdx >= segments) continue;
+            var bp = new Vector2[3];
+            bp[0] = points[startIdx];
+            float dir = branch == 0 ? -1f : 1f;
+            float br1 = Mathf.Sin(seed * 2.1f + branch * 5.3f) * 0.5f;
+            bp[1] = bp[0] + new Vector2(dir * (12f + br1 * 8f), -10f);
+            bp[2] = bp[1] + new Vector2(dir * (6f + br1 * 5f), -8f);
+            for (int i = 0; i < 2; i++)
+                DrawLine(bp[i], bp[i + 1], new Color(0.8f, 0.95f, 1f, alpha * 0.7f), 2f);
+        }
     }
 
     private void AIBuildLogic(int teamId)
@@ -1338,6 +1548,74 @@ public partial class Main : Node2D
         QueueRedraw();
     }
 
+    // ---------- 阶段12-A4 闪电风暴 ----------
+
+    /// <summary>在指定位置释放闪电风暴：立即造成一次 LightningDps 伤害，并在接下来 LightningDuration 秒内持续每秒造成同等伤害。
+    /// 伤害结算由 _Process 中的 _activeLightnings 列表推进。</summary>
+    private void ApplyLightning(Vector2 pos, int firingTeamId)
+    {
+        // 1. 立即造成一次伤害（首击）
+        int unitHits = DamageLightningAreaOnce(pos, firingTeamId);
+
+        // 2. 添加持续特效数据（5秒内每秒继续造成伤害）
+        _activeLightnings.Add(new LightningVisual
+        {
+            Position = pos,
+            FiringTeamId = firingTeamId,
+            Age = 0f,
+            Lifetime = LightningDuration,
+            DamageTickTimer = 0f, // 下次伤害在 1 秒后
+            BoltRefreshTimer = 0f
+        });
+
+        // 3. 视觉特效：中心小爆炸（闪电击中地表的火花）
+        AddChild(BattleEffect.Explosion(pos));
+        // 4. 范围内多个次级火花
+        for (int i = 0; i < 4; i++)
+        {
+            float ang = i * Mathf.Tau / 4f + (float)GD.RandRange(0, 1.5);
+            float r = (float)GD.RandRange(30, 70);
+            var offset = new Vector2(Mathf.Cos(ang) * r, Mathf.Sin(ang) * r);
+            AddChild(BattleEffect.Explosion(pos + offset));
+        }
+
+        // 5. 重置闪电形状种子，让 _Draw 生成新的折线形状
+        _lightningBoltSeed = (float)GD.RandRange(0, 1000);
+
+        // 6. 通知提示
+        string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
+        ShowToast($"⚡ {who}释放闪电风暴！初始命中 {unitHits} 敌方目标，持续 {LightningDuration:F0}s",
+            new Color(0.5f, 0.8f, 1f));
+        GD.Print($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {LightningDuration}s");
+
+        QueueRedraw();
+    }
+
+    /// <summary>对闪电风暴作用半径内的所有非己方单位/建筑造成一次 LightningDps 伤害，返回命中数量。</summary>
+    private int DamageLightningAreaOnce(Vector2 pos, int firingTeamId)
+    {
+        int hits = 0;
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId
+                && pos.DistanceTo(u.GlobalPosition) <= LightningRadius)
+            {
+                u.TakeDamage(LightningDps);
+                hits++;
+            }
+        }
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId
+                && pos.DistanceTo(b.GlobalPosition) <= LightningRadius)
+            {
+                b.TakeDamage(LightningDps);
+                hits++;
+            }
+        }
+        return hits;
+    }
+
     /// <summary>AI 阵营 Tick：在每个 _aiThinkInterval 周期内为每个 AI 阵营独立调用。</summary>
     private void AITickForTeam(int teamId)
     {
@@ -1449,6 +1727,20 @@ public partial class Main : Node2D
                 {
                     ApplyNuke(target.Value, teamId);
                     _aiNukeCooldowns[teamId] = NukeCooldownDuration;
+                }
+            }
+
+            // 阶段12-A4：闪电风暴（4 分钟冷却，与核弹独立计时）
+            if (!_aiLightningCooldowns.ContainsKey(teamId))
+                _aiLightningCooldowns[teamId] = LightningCooldownDuration;
+
+            if (_aiLightningCooldowns[teamId] <= 0f)
+            {
+                var target = FindNukeTargetForAi(teamId);
+                if (target.HasValue)
+                {
+                    ApplyLightning(target.Value, teamId);
+                    _aiLightningCooldowns[teamId] = LightningCooldownDuration;
                 }
             }
         }
@@ -2306,12 +2598,23 @@ public partial class Main : Node2D
         else nukeStatus = "就绪 ★";
         string nukeLine = $"\n☢ 核弹: {nukeStatus}";
 
+        // 阶段12-A4：闪电风暴状态行
+        string lightStatus;
+        if (!hasTech) lightStatus = "无科技中心";
+        else if (_playerLightningCooldown > 0f)
+        {
+            int sec2 = Mathf.CeilToInt(_playerLightningCooldown);
+            lightStatus = $"冷却 {sec2 / 60}:{sec2 % 60:D2}";
+        }
+        else lightStatus = "就绪 ★";
+        string lightLine = $" | ⚡ 闪电: {lightStatus}";
+
         string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
         _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}\n" +
                         $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
                         $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
                         $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
-                        $"地图剩余矿点: {oreCount}{nukeLine}\n" +
+                        $"地图剩余矿点: {oreCount}{nukeLine}{lightLine}\n" +
                         (string.IsNullOrEmpty(status) ? "" : $"\n★ {status}");
 
         _hintLabel.Text = "WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点\n" +
@@ -2322,11 +2625,13 @@ public partial class Main : Node2D
                           "K 火箭炮$" + RocketLauncherCost + " | L 导弹车$" + MissileTankCost + " (需科技中心)\n" +
                           "P 电站$" + PowerPlantCost + " | O 兵营$" + BarracksCost +
                           " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)\n" +
-                          "Z 核弹 (需科技中心+5分钟冷却)";
+                          "Z 核弹 (需科技中心+5分钟冷却) | C 闪电风暴 (持续5s范围伤害+4分钟冷却)";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
             _hintLabel.Text = "★ 核弹目标模式：左键发射 | 右键取消";
+        if (_lightningTargetMode)
+            _hintLabel.Text = "★ 闪电风暴目标模式：左键发射 | 右键取消";
     }
 
     private string GetBuildingList(int teamId)
