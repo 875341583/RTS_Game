@@ -58,6 +58,11 @@ public partial class Main : Node2D
     // E4：工程单位造价
     private const int SapperCost = 150;
     private const int ChiefEngineerCost = 400;
+    // E6：新步兵造价
+    private const int GrenadierCost = 200;
+    private const int SniperCost = 250;
+    private const int FlameInfantryCost = 180;
+    private const int TransportCost = 400;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -824,6 +829,26 @@ public partial class Main : Node2D
         }
         _prevKeyState = Input.IsKeyPressed(Key.K) ? Key.K : Key.None;
 
+        // E6：新步兵热键 G(掷弹兵) / Shift+G(狙击手) / F(喷火兵) / T(运输车)
+        if (Input.IsKeyPressed(Key.G) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Grenadier, GrenadierCost);
+        if (Input.IsKeyPressed(Key.G) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Sniper, SniperCost);
+        if (Input.IsKeyPressed(Key.F) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.FlameInfantry, FlameInfantryCost);
+        if (Input.IsKeyPressed(Key.T) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Transport, TransportCost);
+
+        // E6：E键运输车下车
+        if (Input.IsKeyPressed(Key.E))
+        {
+            foreach (var obj in _selected)
+            {
+                if (obj is Unit u && IsInstanceValid(u) && u.IsTransport && u.Passengers.Count > 0)
+                    u.DisembarkAll();
+            }
+        }
+
         // AI 阵营节奏：仅活跃 AI 阵营（1.._activeAiCount）独立 Tick
         // 休眠AI（_activeAiCount+1..AiTeamCount）既不发展建筑也不造兵进攻，给玩家喘息空间
         if (!_gameOver)
@@ -1113,12 +1138,18 @@ public partial class Main : Node2D
         {
             UnitType.LightTank => HasBuilding(teamId, BuildingType.Barracks),
             UnitType.Infantry => HasBuilding(teamId, BuildingType.Barracks),
+            UnitType.Sapper => HasBuilding(teamId, BuildingType.Barracks),
+            UnitType.Grenadier => HasBuilding(teamId, BuildingType.Barracks),       // E6：掷弹兵
+            UnitType.Sniper => HasBuilding(teamId, BuildingType.Barracks),          // E6：狙击手
+            UnitType.FlameInfantry => HasBuilding(teamId, BuildingType.Barracks),     // E6：喷火兵
             UnitType.HeavyTank => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.Artillery => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.AntiAir => HasBuilding(teamId, BuildingType.WarFactory),
             UnitType.Engineer => HasBuilding(teamId, BuildingType.WarFactory),
+            UnitType.Transport => HasBuilding(teamId, BuildingType.WarFactory),      // E6：运输车
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
+            UnitType.ChiefEngineer => HasBuilding(teamId, BuildingType.TechCenter),
             _ => HasBuilding(teamId, BuildingType.Base)
         };
     }
@@ -1161,6 +1192,10 @@ public partial class Main : Node2D
             UnitType.Engineer => EngineerCost,
             UnitType.Sapper => SapperCost,
             UnitType.ChiefEngineer => ChiefEngineerCost,
+            UnitType.Grenadier => GrenadierCost,
+            UnitType.Sniper => SniperCost,
+            UnitType.FlameInfantry => FlameInfantryCost,
+            UnitType.Transport => TransportCost,
             _ => 0
         };
     }
@@ -1732,6 +1767,9 @@ public partial class Main : Node2D
                 {
                     types.Add(UnitType.LightTank);
                     types.Add(UnitType.Infantry);
+                    types.Add(UnitType.Grenadier);       // E6
+                    types.Add(UnitType.FlameInfantry);   // E6
+                    types.Add(UnitType.Sniper);           // E6
                 }
                 if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
@@ -1739,6 +1777,7 @@ public partial class Main : Node2D
                     types.Add(UnitType.Artillery);
                     types.Add(UnitType.AntiAir);
                     types.Add(UnitType.Engineer);
+                    types.Add(UnitType.Transport);        // E6
                 }
                 if (hasTech)
                 {
@@ -2059,6 +2098,24 @@ public partial class Main : Node2D
                 unit.CommandAttackBuilding(enemyBuilding);
             return;
         }
+
+        // E6：步兵点击友方运输车 → 上车
+        var friendlyTransport = PickTransportAt(worldPos, requireFriendly: true);
+        if (friendlyTransport != null)
+        {
+            foreach (var unit in friendlyUnits)
+            {
+                if (Unit.IsInfantryType(unit.Type) && unit != friendlyTransport)
+                {
+                    // 步兵移动到运输车位置后上车
+                    unit.CommandMove(friendlyTransport.GlobalPosition);
+                    // 在到达时通过 ProcessInteraction 完成上车
+                    unit._embarkTarget = friendlyTransport;
+                }
+            }
+            if (friendlyUnits.Any(u => Unit.IsInfantryType(u.Type)))
+                return; // 有步兵上车命令，不执行移动
+        }
         // 普通移动：保持简易队形
         int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(friendlyUnits.Count)));
         // E4：工程单位右键不可通行地形 → 触发地形改造
@@ -2316,12 +2373,16 @@ public partial class Main : Node2D
     {
         UnitType.LightTank => BuildingType.Barracks,
         UnitType.Infantry => BuildingType.Barracks,
-        UnitType.Sapper => BuildingType.Barracks,           // E4：工兵从兵营生产
-        UnitType.ChiefEngineer => BuildingType.TechCenter,  // E4：高级工程师从科技中心生产
+        UnitType.Sapper => BuildingType.Barracks,
+        UnitType.Grenadier => BuildingType.Barracks,       // E6
+        UnitType.Sniper => BuildingType.Barracks,          // E6
+        UnitType.FlameInfantry => BuildingType.Barracks,   // E6
+        UnitType.ChiefEngineer => BuildingType.TechCenter,
         UnitType.HeavyTank => BuildingType.WarFactory,
         UnitType.Artillery => BuildingType.WarFactory,
         UnitType.AntiAir => BuildingType.WarFactory,
         UnitType.Engineer => BuildingType.WarFactory,
+        UnitType.Transport => BuildingType.WarFactory,     // E6
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -2374,6 +2435,10 @@ public partial class Main : Node2D
         UnitType.MissileTank => ProductionType.MissileTank,
         UnitType.AntiAir => ProductionType.AntiAir,
         UnitType.Engineer => ProductionType.Engineer,
+        UnitType.Grenadier => ProductionType.Grenadier,       // E6
+        UnitType.Sniper => ProductionType.Sniper,             // E6
+        UnitType.FlameInfantry => ProductionType.FlameInfantry, // E6
+        UnitType.Transport => ProductionType.Transport,       // E6
         _ => ProductionType.LightTank
     };
 
@@ -2387,6 +2452,10 @@ public partial class Main : Node2D
         ProductionType.MissileTank => UnitType.MissileTank,
         ProductionType.AntiAir => UnitType.AntiAir,
         ProductionType.Engineer => UnitType.Engineer,
+        ProductionType.Grenadier => UnitType.Grenadier,       // E6
+        ProductionType.Sniper => UnitType.Sniper,             // E6
+        ProductionType.FlameInfantry => UnitType.FlameInfantry, // E6
+        ProductionType.Transport => UnitType.Transport,       // E6
         _ => UnitType.Default
     };
 
@@ -2966,6 +3035,22 @@ public partial class Main : Node2D
                 if (requireEnemy && u.TeamId == 0) continue;
                 if (!requireEnemy && u.TeamId != 0) continue;
                 if (u.GlobalPosition.DistanceTo(worldPos) < 30f)
+                    return u;
+            }
+        }
+        return null;
+    }
+
+    // E6：拾取友方运输车
+    private Unit? PickTransportAt(Vector2 worldPos, bool requireFriendly)
+    {
+        foreach (var child in _unitsNode.GetChildren())
+        {
+            if (child is Unit u && IsInstanceValid(u) && u.IsTransport)
+            {
+                if (requireFriendly && u.TeamId != 0) continue;
+                if (!requireFriendly && u.TeamId == 0) continue;
+                if (u.GlobalPosition.DistanceTo(worldPos) < 36f)
                     return u;
             }
         }

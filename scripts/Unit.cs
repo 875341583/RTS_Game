@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -54,7 +54,20 @@ public partial class Unit : CharacterBody2D
     private Vector2 _guardPosition;
     private bool _hasGuardPosition;
 
-    // E4：地形改造系统
+    /// <summary>运输车内搭载的乘客（步兵类单位）。</summary>
+    public List<Unit> Passengers { get; } = new();
+    /// <summary>运输车最大搭载人数。</summary>
+    public int MaxPassengers { get; set; } = 3;
+    /// <summary>是否是运输车（可搭载步兵）。</summary>
+    public bool IsTransport => Type == UnitType.Transport;
+    /// <summary>合体后的功能类型（空=未合体，或合体后立即变Type）。</summary>
+    private UnitType _preMergeType = UnitType.Default;
+
+    // E6：搭载交互
+    /// <summary>步兵上车目标（移动到运输车附近后执行上车）。</summary>
+    public Unit? _embarkTarget;
+
+    // ======== E4：地形改造系统 ========
     public enum TerrainModType { None, Flatten, Tunnel, Bridge, UnderseaTunnel }
     private TerrainModType _terrainModType = TerrainModType.None;
     private Vector2 _terrainModTarget;  // 改造目标世界坐标
@@ -62,8 +75,9 @@ public partial class Unit : CharacterBody2D
     private float _terrainModDuration;  // 施工总时长
     private int _terrainModCost;        // 施工费用
     private bool _isConstructing;       // 正在施工中
-    /// <summary>是否是工程单位（工兵/高级工程师/工程车）。</summary>
-    public bool IsEngineerUnit => Type == UnitType.Sapper || Type == UnitType.ChiefEngineer || Type == UnitType.Engineer;
+    /// <summary>是否是工程单位（工兵/高级工程师/工程车，或合体后的工兵战车/高级工兵战车）。</summary>
+    public bool IsEngineerUnit => Type == UnitType.Sapper || Type == UnitType.ChiefEngineer || Type == UnitType.Engineer
+        || (IsTransport && Passengers.Count > 0 && Passengers[0] is { } p && (p.Type == UnitType.Sapper || p.Type == UnitType.ChiefEngineer));
 
     /// <summary>AI保护期剩余时间（秒）。>0时AI单位不主动搜敌进攻，给玩家发展空间。由Main每帧递减。</summary>
     public static float AiGraceRemaining = 0f;
@@ -193,6 +207,10 @@ public partial class Unit : CharacterBody2D
         UnitType.Infantry => _infantryHull!,
         UnitType.Sapper => _infantryHull!,     // 工兵复用步兵底盘
         UnitType.ChiefEngineer => _infantryHull!, // 高级工程师复用步兵底盘
+        UnitType.Grenadier => _infantryHull!,     // E6：掷弹兵复用步兵底盘
+        UnitType.Sniper => _infantryHull!,          // E6：狙击手复用步兵底盘
+        UnitType.FlameInfantry => _infantryHull!,  // E6：喷火兵复用步兵底盘
+        UnitType.Transport => _hullLight!,          // E6：运输车复用轻坦底盘
         _ => _harvesterHull!
     };
 
@@ -312,6 +330,240 @@ public partial class Unit : CharacterBody2D
                 AttackCooldown = 0.7f;
                 AggroRange = 120f;
                 break;
+            // E6：新步兵系兵种
+            case UnitType.Grenadier:
+                UnitName = "掷弹兵";
+                MaxHealth = 40f;
+                MoveSpeed = 85f;
+                AttackDamage = 20f;
+                AttackRange = 180f;
+                AttackCooldown = 2.0f;
+                MinAttackRange = 50f;
+                SplashRadius = 60f;  // 掷弹兵AOE
+                AggroRange = 220f;
+                break;
+            case UnitType.Sniper:
+                UnitName = "狙击手";
+                MaxHealth = 30f;
+                MoveSpeed = 80f;
+                AttackDamage = 45f;
+                AttackRange = 350f;
+                AttackCooldown = 2.5f;
+                MinAttackRange = 80f;
+                AggroRange = 380f;
+                break;
+            case UnitType.FlameInfantry:
+                UnitName = "喷火兵";
+                MaxHealth = 50f;
+                MoveSpeed = 85f;
+                AttackDamage = 8f;
+                AttackRange = 80f;
+                AttackCooldown = 0.3f;  // 高射速近战
+                SplashRadius = 40f;    // 短距AOE
+                AggroRange = 120f;
+                break;
+            // E6：运输车
+            case UnitType.Transport:
+                UnitName = "运输车";
+                MaxHealth = 150f;
+                MoveSpeed = 200f;
+                AttackDamage = 0f;    // 基础无攻击，合体后有
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 0f;
+                MaxPassengers = 3;
+                break;
+        }
+    }
+
+    /// <summary>判断兵种是否为步兵类（步体、工兵、高级工程师、掷弹兵、狙击手、喷火兵）。</summary>
+    public static bool IsInfantryType(UnitType type) => type switch
+    {
+        UnitType.Infantry => true,
+        UnitType.Sapper => true,
+        UnitType.ChiefEngineer => true,
+        UnitType.Grenadier => true,
+        UnitType.Sniper => true,
+        UnitType.FlameInfantry => true,
+        _ => false,
+    };
+
+    // ======== E6：运输车搭载系统 ========
+
+    /// <summary>步兵进入运输车。执行IFV式合体逻辑。</summary>
+    public void EmbarkPassenger(Unit passenger)
+    {
+        if (!IsTransport) return;
+        if (Passengers.Count >= MaxPassengers) return;
+        if (passenger == this || !IsInstanceValid(passenger)) return;
+
+        // 将步兵从场景树移除（视觉隐藏），记录在运输车内部
+        Passengers.Add(passenger);
+        passenger.GetParent().RemoveChild(passenger);
+        passenger.Visible = false;
+        passenger.SetSelected(false);
+
+        GD.Print($"[IFV] {passenger.UnitName} 进入 {UnitName} (搭载 {Passengers.Count}/{MaxPassengers})");
+
+        // 首个乘客决定合体功能
+        if (Passengers.Count == 1)
+        {
+            ApplyMergeEffect(passenger.Type);
+        }
+    }
+
+    /// <summary>所有乘客下车。</summary>
+    public void DisembarkAll()
+    {
+        if (!IsTransport || Passengers.Count == 0) return;
+
+        var main = GetParent()?.GetParent() as Node2D;
+        if (main == null) return;
+
+        foreach (var p in Passengers)
+        {
+            if (!IsInstanceValid(p)) continue;
+            // 在运输车附近下车
+            var exitPos = GlobalPosition + new Vector2(
+                (float)(GD.RandRange(-40, 40)),
+                (float)(GD.RandRange(-40, 40)));
+            p.Visible = true;
+            p.GlobalPosition = exitPos;
+            main.GetNode<Node2D>("Units").AddChild(p);
+        }
+
+        GD.Print($"[IFV] {Passengers.Count} 名乘客从 {UnitName} 下车");
+        Passengers.Clear();
+
+        // 恢复运输车基础属性
+        RevertToBaseTransport();
+    }
+
+    /// <summary>IFV合体效果：首个乘客类型决定运输车的战斗功能。</summary>
+    private void ApplyMergeEffect(UnitType passengerType)
+    {
+        _preMergeType = Type; // 保存原始类型
+
+        // 保存基础运输车属性用于恢复
+        string oldName = UnitName;
+
+        switch (passengerType)
+        {
+            case UnitType.Sapper:
+                // 工兵→工程车：维修+改造
+                UnitName = "工兵战车";
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                MaxHealth = 200f;
+                Health = 200f;
+                GD.Print("[IFV] 合体：工兵战车（维修+地形改造）");
+                break;
+            case UnitType.ChiefEngineer:
+                // 高级工程师→高级工程车：高效改造
+                UnitName = "高级工兵战车";
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                MaxHealth = 250f;
+                Health = 250f;
+                GD.Print("[IFV] 合体：高级工兵战车（高级改造）");
+                break;
+            case UnitType.Infantry:
+                // 步兵→武装吉普：轻机枪火力
+                UnitName = "武装吉普";
+                AttackDamage = 12f;
+                AttackRange = 150f;
+                AttackCooldown = 0.5f;
+                MaxHealth = 160f;
+                Health = 160f;
+                AggroRange = 250f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：武装吉普（轻机枪）");
+                break;
+            case UnitType.Grenadier:
+                // 掷弹兵→自走炮：AOE火力
+                UnitName = "自走炮";
+                AttackDamage = 25f;
+                AttackRange = 220f;
+                AttackCooldown = 1.5f;
+                SplashRadius = 70f;
+                MaxHealth = 180f;
+                Health = 180f;
+                AggroRange = 280f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：自走炮（AOE火力）");
+                break;
+            case UnitType.Sniper:
+                // 狙击手→狙击战车：远程精确火力
+                UnitName = "狙击战车";
+                AttackDamage = 50f;
+                AttackRange = 380f;
+                AttackCooldown = 2.0f;
+                MinAttackRange = 100f;
+                MaxHealth = 150f;
+                Health = 150f;
+                AggroRange = 400f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：狙击战车（远程精确）");
+                break;
+            case UnitType.FlameInfantry:
+                // 喷火兵→喷火战车：近距高DPS
+                UnitName = "喷火战车";
+                AttackDamage = 15f;
+                AttackRange = 100f;
+                AttackCooldown = 0.25f;
+                SplashRadius = 50f;
+                MaxHealth = 200f;
+                Health = 200f;
+                AggroRange = 150f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：喷火战车（近距高DPS）");
+                break;
+            default:
+                // 其他步兵→轻型武装车
+                UnitName = "轻型武装车";
+                AttackDamage = 10f;
+                AttackRange = 140f;
+                AttackCooldown = 0.7f;
+                MaxHealth = 170f;
+                Health = 170f;
+                AggroRange = 220f;
+                AutoDefend = true;
+                GD.Print("[IFV] 合体：轻型武装车");
+                break;
+        }
+
+        // 合体后更新视觉
+        if (GetNodeOrNull<Sprite2D>("Turret") == null && AttackDamage > 0f)
+        {
+            // 添加炮塔（合体后变为战斗载具）
+            _turret = new Sprite2D { Name = "Turret", ZIndex = 1, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
+            AddChild(_turret);
+            _turret.Texture = _turretLight; // 复用轻坦炮塔
+            _turret.Modulate = GetTeamColor(TeamId);
+            _turretTint = GetTeamColor(TeamId);
+        }
+    }
+
+    /// <summary>恢复运输车基础属性（所有乘客下车后）。</summary>
+    private void RevertToBaseTransport()
+    {
+        UnitName = "运输车";
+        MaxHealth = 150f;
+        AttackDamage = 0f;
+        AttackRange = 0f;
+        AttackCooldown = 0f;
+        MinAttackRange = 0f;
+        SplashRadius = 0f;
+        AggroRange = 0f;
+        AutoDefend = false;
+        _preMergeType = UnitType.Default;
+
+        // 移除炮塔
+        if (_turret != null)
+        {
+            RemoveChild(_turret);
+            _turret.QueueFree();
+            _turret = null;
         }
     }
 
@@ -335,7 +587,7 @@ public partial class Unit : CharacterBody2D
         _body.Modulate = teamColor;
         _bodyTint = teamColor;
         // 步兵32×32素材按 0.85 缩放，更贴近红警2步兵体里坦克的视觉比例
-        _body.Scale = (Type == UnitType.Infantry || Type == UnitType.Sapper || Type == UnitType.ChiefEngineer) ? new Vector2(0.9f, 0.9f) : Vector2.One;
+        _body.Scale = IsInfantryType(Type) ? new Vector2(0.9f, 0.9f) : Vector2.One;
         // 像素艺术必须用 Nearest 过滤，Linear 会把 14-17 色的底盘细节插值平滑成单色块
         _body.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         _selectionRing.Texture = _ringTex;
@@ -345,7 +597,7 @@ public partial class Unit : CharacterBody2D
         UpdateHealthBarVisibility();
 
         // 炮塔精灵（战斗单位专用，矿车、步兵和工程车不需要）
-        if (this is not Harvester && Type != UnitType.Infantry && Type != UnitType.Engineer && Type != UnitType.Sapper && Type != UnitType.ChiefEngineer)
+        if (this is not Harvester && !IsInfantryType(Type) && Type != UnitType.Engineer)
         {
             _turret = new Sprite2D { Name = "Turret", ZIndex = 1, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
             AddChild(_turret);
@@ -403,14 +655,28 @@ public partial class Unit : CharacterBody2D
         // 通用移动
         ProcessMovement(dt);
 
+        // E6：搭载交互——步兵到达运输车附近后执行上车
+        if (_embarkTarget != null && IsInstanceValid(_embarkTarget))
+        {
+            if (GlobalPosition.DistanceTo(_embarkTarget.GlobalPosition) < 50f)
+            {
+                _embarkTarget.EmbarkPassenger(this);
+                _embarkTarget = null;
+            }
+        }
+        else if (_embarkTarget != null)
+        {
+            _embarkTarget = null; // 目标失效
+        }
+
         // E4：地形改造施工进度
         ProcessTerrainModification(dt);
 
         // Q3：炮塔朝向目标平滑旋转
         UpdateTurretRotation(dt);
 
-        // 工程车辅助：每帧治疗附近的友方建筑/单位
-        if (Type == UnitType.Engineer) TryRepairNearby(dt);
+        // 工程车/合体工程车辅助：每帧治疗附近的友方建筑/单位
+        if (IsEngineerUnit) TryRepairNearby(dt);
     }
 
     /// <summary>工程车辅助逻辑：修理140范围内友方单位(25 HP/s)和建筑(50 HP/s)。</summary>
@@ -741,9 +1007,13 @@ public partial class Unit : CharacterBody2D
     public virtual TerrainUnitCategory GetTerrainCategory() => Type switch
     {
         UnitType.Infantry => TerrainUnitCategory.Infantry,
-        UnitType.Sapper => TerrainUnitCategory.Engineer,         // 工兵=步兵类工程单位
-        UnitType.ChiefEngineer => TerrainUnitCategory.Engineer,  // 高级工程师=步兵类工程单位
-        UnitType.Engineer => TerrainUnitCategory.EngineerVehicle, // 工程车=载具类工程单位
+        UnitType.Sapper => TerrainUnitCategory.Engineer,
+        UnitType.ChiefEngineer => TerrainUnitCategory.Engineer,
+        UnitType.Grenadier => TerrainUnitCategory.Infantry,
+        UnitType.Sniper => TerrainUnitCategory.Infantry,
+        UnitType.FlameInfantry => TerrainUnitCategory.Infantry,
+        UnitType.Transport => TerrainUnitCategory.LightVehicle,
+        UnitType.Engineer => TerrainUnitCategory.EngineerVehicle,
         UnitType.LightTank => TerrainUnitCategory.LightVehicle,
         UnitType.AntiAir => TerrainUnitCategory.LightVehicle,
         UnitType.HeavyTank => TerrainUnitCategory.HeavyVehicle,
@@ -915,6 +1185,18 @@ public partial class Unit : CharacterBody2D
     {
         _isDead = true;
         GD.Print($"{UnitName} (Team {TeamId}) destroyed!");
+
+        // E6：运输车被摧毁时，乘客全部阵亡
+        if (IsTransport && Passengers.Count > 0)
+        {
+            foreach (var p in Passengers)
+            {
+                if (IsInstanceValid(p))
+                    p.QueueFree();
+            }
+            Passengers.Clear();
+        }
+
         // Q5：死亡爆炸特效，步兵用小爆炸，重坦用大爆炸，其他默认
         var main = GetParent()?.GetParent() as Node2D;
         if (main != null)
@@ -922,7 +1204,9 @@ public partial class Unit : CharacterBody2D
             var effect = Type switch
             {
                 UnitType.HeavyTank => BattleEffect.BigExplosion(GlobalPosition),
-                UnitType.Infantry => BattleEffect.Explosion(GlobalPosition),  // 步兵用小爆炸
+                UnitType.Infantry or UnitType.Sapper or UnitType.ChiefEngineer
+                    or UnitType.Grenadier or UnitType.Sniper or UnitType.FlameInfantry
+                    => BattleEffect.Explosion(GlobalPosition),
                 _ => BattleEffect.Explosion(GlobalPosition)
             };
             main.AddChild(effect);
@@ -956,8 +1240,8 @@ public partial class Unit : CharacterBody2D
     {
         // 脚下椭圆阴影（始终水平：CharacterBody2D 节点本身不旋转，仅 _body sprite 旋转）
         // 通过 DrawSetTransform 把椭圆中心偏移到单位脚下偏右下，模拟光源在左上方
-        var pts = (Type == UnitType.Infantry) ? _shadowPtsSmall : _shadowPtsLarge;
-        float yOff = (Type == UnitType.Infantry) ? 8f : 18f;
+        var pts = IsInfantryType(Type) ? _shadowPtsSmall : _shadowPtsLarge;
+        float yOff = IsInfantryType(Type) ? 8f : 18f;
         DrawSetTransform(new Vector2(3f, yOff), 0f, Vector2.One);
         DrawPolygon(pts, new Color[] { _shadowColor });
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);

@@ -71,8 +71,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iPower, _iBarracks, _iWar, _iTech;
     // 阶段12-A1+A2 新增建筑图标
     private static Texture2D? _iTurret, _iAntiAir, _iRepairPad;
-    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv, _iAntiAirUnit, _iEngineer;
-    private static Texture2D? _iInfantry;
+    private static Texture2D? _iLight, _iHeavy, _iArt, _iRocket, _iMissile, _iHarv, _iAntiAirUnit, _iEngineer, _iTransport;
+    private static Texture2D? _iInfantry, _iGrenadier, _iSniper, _iFlameInfantry;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -179,12 +179,16 @@ public partial class BuildPanel : Control
         AddItem("机枪塔", 400, _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
         AddItem("防空炮", 600, _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
         AddItem("维修厂", 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
-        // 步兵
+        // 步兵（按价格升序）
         AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
+        AddItem("掷弹兵", 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
+        AddItem("喷火兵", 180, _iFlameInfantry, false, BuildingType.Base, UnitType.FlameInfantry, false, BuildTab.Infantry);
+        AddItem("狙击手", 250, _iSniper, false, BuildingType.Base, UnitType.Sniper, false, BuildTab.Infantry);
         // 车辆（按价格升序排列：基础→中级→高级）
         AddItem("轻坦",   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
         AddItem("防空车", 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
         AddItem("工程车", 300, _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
+        AddItem("运输车", 400, _iTransport, false, BuildingType.WarFactory, UnitType.Transport, false, BuildTab.Vehicles);
         AddItem("炮兵",   400, _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
         AddItem("重坦",   500, _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
         AddItem("矿车",   500, _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
@@ -370,12 +374,16 @@ public partial class BuildPanel : Control
         {
             case UnitType.LightTank:
             case UnitType.Infantry:
+            case UnitType.Grenadier:       // E6
+            case UnitType.FlameInfantry:   // E6
+            case UnitType.Sniper:          // E6
                 if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
                 break;
             case UnitType.HeavyTank:
             case UnitType.Artillery:
             case UnitType.AntiAir:
             case UnitType.Engineer:
+            case UnitType.Transport:       // E6
                 if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
                 break;
             case UnitType.RocketLauncher:
@@ -479,6 +487,10 @@ public partial class BuildPanel : Control
             UnitType.Artillery => "远程高伤，不能近战",
             UnitType.AntiAir => "高射速，对地补位",
             UnitType.Engineer => "修复友军建筑/单位，多功能辅助",
+            UnitType.Grenadier => "AOE溅射，克制密集步兵",
+            UnitType.Sniper => "超远程精确射击，脆皮",
+            UnitType.FlameInfantry => "近距高射速喷火，灼烧区域",
+            UnitType.Transport => "搭载步兵变战车，IFV合体系统",
             UnitType.RocketLauncher => "溅射伤害，需科技",
             UnitType.MissileTank => "超远程爆发，需科技",
             _ => ""
@@ -510,6 +522,10 @@ public partial class BuildPanel : Control
         _iHarv   = LoadPng("res://assets/sprites/units/harvester.png");
         _iAntiAirUnit= LoadPng("res://assets/sprites/units/turret_antiair.png");
         _iEngineer= LoadPng("res://assets/sprites/units/hull_engineer.png");
+        _iTransport = LoadPng("res://assets/sprites/units/hull_transport.png");
+        _iGrenadier = LoadPng("res://assets/sprites/units/grenadier.png");
+        _iSniper    = LoadPng("res://assets/sprites/units/sniper.png");
+        _iFlameInfantry = LoadPng("res://assets/sprites/units/flame_infantry.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>
