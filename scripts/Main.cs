@@ -3595,6 +3595,13 @@ public partial class Main : Node2D
         return 0;
     }
 
+    /// <summary>E11：掠夺能力回调——击杀敌人时奖励金钱。</summary>
+    public void AwardPlunderGold(int teamId, int amount)
+    {
+        if (teamId >= 0 && teamId < _money.Length)
+            _money[teamId] += amount;
+    }
+
     // ---------- UI ----------
     private void UpdateUI()
     {
@@ -3667,7 +3674,8 @@ public partial class Main : Node2D
                           "K 火箭炮$" + RocketLauncherCost + " | L 导弹车$" + MissileTankCost + " (需科技中心)\n" +
                           "P 电站$" + PowerPlantCost + " | O 兵营$" + BarracksCost +
                           " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)\n" +
-                          "Z 核弹 (需科技中心+5分钟冷却) | C 闪电风暴 (持续5s范围伤害+4分钟冷却)";
+                          "Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)\n" +
+                          "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)

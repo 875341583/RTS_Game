@@ -89,6 +89,27 @@ public partial class Unit : CharacterBody2D
     /// <summary>窃贼偷钱冷却。</summary>
     private float _thiefStealCooldown;
 
+    // ======== E11：单位升级制度 ========
+    /// <summary>单位随机能力类型（4大类11种）。</summary>
+    public enum UnitAbility { None,
+        ArmorPiercing, DoubleShot, Scatter,       // 攻击类
+        ReactiveArmor, SelfRepair, SmokeScreen,    // 防御类
+        TurboEngine,                               // 机动类
+        ReconVision, BattleFrenzy, Plunder, Tenacity // 特殊类
+    }
+    /// <summary>当前经验值。</summary>
+    public float _experience = 0f;
+    /// <summary>当前等级（1-4）。</summary>
+    public int _level = 1;
+    /// <summary>已获得的能力列表。</summary>
+    public readonly List<UnitAbility> _abilities = new();
+    /// <summary>升级所需经验阈值：Lv2=100, Lv3=300, Lv4=600。</summary>
+    private static readonly int[] LevelThresholds = { 0, 100, 300, 600 };
+    /// <summary>脱离战斗计时（3秒无攻击=脱战）。</summary>
+    private float _outOfCombatTimer = 0f;
+    /// <summary>上次升级提示（避免重复Toast）。</summary>
+    private int _lastToastLevel = 0;
+
     // ======== E4：地形改造系统 ========
     public enum TerrainModType { None, Flatten, Tunnel, Bridge, UnderseaTunnel }
     private TerrainModType _terrainModType = TerrainModType.None;
@@ -992,6 +1013,13 @@ public partial class Unit : CharacterBody2D
 
         // E6b：窃贼偷钱逻辑
         ProcessThiefSteal(dt);
+
+        // E11：脱战计时 + 自修复
+        bool inCombat = _attackUnitTarget != null || _attackBuildingTarget != null;
+        if (inCombat) _outOfCombatTimer = 0f;
+        else _outOfCombatTimer += dt;
+        if (_abilities.Contains(UnitAbility.SelfRepair) && _outOfCombatTimer >= 3f && Health < MaxHealth && !_isDead)
+            Health = Mathf.Min(MaxHealth, Health + MaxHealth * 0.01f * dt);
     }
 
     /// <summary>工程车辅助逻辑：修理140范围内友方单位(25 HP/s)和建筑(50 HP/s)。</summary>
@@ -1360,11 +1388,33 @@ public partial class Unit : CharacterBody2D
 
     private void ResolveCombat(float dt)
     {
+        // E11：计算战斗狂热加成（附近有敌方单位则+20%攻速）
+        bool frenzyActive = _abilities.Contains(UnitAbility.BattleFrenzy)
+            && GetParent() is Node2D frenzyParent;
+        if (frenzyActive)
+        {
+            frenzyActive = false;
+            foreach (var c in ((Node2D)GetParent()).GetChildren())
+            {
+                if (c is Unit eu && eu.TeamId != TeamId && !eu._isDead
+                    && GlobalPosition.DistanceTo(eu.GlobalPosition) <= AggroRange)
+                { frenzyActive = true; break; }
+            }
+        }
+
         // 攻击单位目标
         if (_attackUnitTarget != null)
         {
             if (_attackUnitTarget._isDead || !IsInstanceValid(_attackUnitTarget))
             {
+                // E11：击杀敌方单位获得经验
+                if (IsInstanceValid(_attackUnitTarget))
+                {
+                    GainExperience(50);
+                    // E11：掠夺能力——击杀+$10
+                    if (_abilities.Contains(UnitAbility.Plunder) && GetParent()?.GetParent() is Main plunderMain)
+                        plunderMain.AwardPlunderGold(TeamId, 10);
+                }
                 _attackUnitTarget = null;
             }
             else
@@ -1373,6 +1423,13 @@ public partial class Unit : CharacterBody2D
                 if (dist <= AttackRange && dist >= MinAttackRange)
                 {
                     _hasMoveTarget = false;
+                    float effectiveCooldown = AttackCooldown;
+                    // E11：双发 +40%射速
+                    if (_abilities.Contains(UnitAbility.DoubleShot))
+                        effectiveCooldown *= 0.6f;
+                    // E11：战斗狂热 +20%攻速
+                    if (frenzyActive)
+                        effectiveCooldown *= 0.8f;
                     _attackTimer -= dt;
                     if (_attackTimer <= 0)
                     {
@@ -1380,7 +1437,20 @@ public partial class Unit : CharacterBody2D
                         // E6b：英雄暴击30%概率双倍伤害
                         if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && GD.Randf() < 0.3f)
                             dmg *= 2f;
+                        // E11：穿甲弹 +25%对重甲单位
+                        if (_abilities.Contains(UnitAbility.ArmorPiercing) && IsHeavyUnit(_attackUnitTarget.Type))
+                            dmg *= 1.25f;
                         _attackUnitTarget.TakeDamage(dmg);
+                        // E11：散射能力——额外溅射60px范围
+                        if (_abilities.Contains(UnitAbility.Scatter) && GetParent() is Node2D sp)
+                        {
+                            foreach (var child in sp.GetChildren())
+                            {
+                                if (child is Unit su && su != _attackUnitTarget && su.TeamId != TeamId && !su._isDead
+                                    && su.GlobalPosition.DistanceTo(_attackUnitTarget.GlobalPosition) <= 60f)
+                                    su.TakeDamage(dmg * 0.5f);
+                            }
+                        }
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackUnitTarget.GlobalPosition);
                         // 溅射伤害：对目标周围敌方单位造成 50% 伤害
@@ -1395,7 +1465,9 @@ public partial class Unit : CharacterBody2D
                                 }
                             }
                         }
-                        _attackTimer = AttackCooldown;
+                        _attackTimer = effectiveCooldown;
+                        // E11：造成伤害获得经验
+                        GainExperience(dmg * 0.5f);
                     }
                 }
                 else if (dist < MinAttackRange)
@@ -1419,6 +1491,10 @@ public partial class Unit : CharacterBody2D
         {
             if (!IsInstanceValid(_attackBuildingTarget) || _attackBuildingTarget.Health <= 0)
             {
+                // E11：击杀建筑获得经验
+                GainExperience(100);
+                if (_abilities.Contains(UnitAbility.Plunder) && GetParent()?.GetParent() is Main bPlunderMain)
+                    bPlunderMain.AwardPlunderGold(TeamId, 10);
                 _attackBuildingTarget = null;
             }
             else
@@ -1427,6 +1503,11 @@ public partial class Unit : CharacterBody2D
                 if (dist <= AttackRange && dist >= MinAttackRange)
                 {
                     _hasMoveTarget = false;
+                    float effectiveCooldown = AttackCooldown;
+                    if (_abilities.Contains(UnitAbility.DoubleShot))
+                        effectiveCooldown *= 0.6f;
+                    if (frenzyActive)
+                        effectiveCooldown *= 0.8f;
                     _attackTimer -= dt;
                     if (_attackTimer <= 0)
                     {
@@ -1434,10 +1515,14 @@ public partial class Unit : CharacterBody2D
                         // E6b：英雄暴击30%概率双倍伤害
                         if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && GD.Randf() < 0.3f)
                             dmgB *= 2f;
+                        if (_abilities.Contains(UnitAbility.ArmorPiercing))
+                            dmgB *= 1.25f;
                         _attackBuildingTarget.TakeDamage(dmgB);
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackBuildingTarget.GlobalPosition);
-                        _attackTimer = AttackCooldown;
+                        _attackTimer = effectiveCooldown;
+                        // E11：造成伤害获得经验
+                        GainExperience(dmgB * 0.5f);
                     }
                 }
                 else
@@ -1655,7 +1740,17 @@ public partial class Unit : CharacterBody2D
 
     public void TakeDamage(float damage)
     {
-        Health -= damage;
+        // E11：烟幕闪避 20%概率
+        if (_abilities.Contains(UnitAbility.SmokeScreen) && GD.Randf() < 0.2f)
+            return;
+        // E11：反应装甲 -20%伤害
+        float actualDmg = damage;
+        if (_abilities.Contains(UnitAbility.ReactiveArmor))
+            actualDmg *= 0.8f;
+        // E11：坚韧——低血+30%防御
+        if (_abilities.Contains(UnitAbility.Tenacity) && Health < MaxHealth * 0.3f)
+            actualDmg *= 0.7f;
+        Health -= actualDmg;
         _hitFlashTimer = 0.08f; // Q5：受击闪白
         if (_healthBar != null)
             _healthBar.Value = Mathf.Max(0, Health);
@@ -1959,4 +2054,91 @@ public partial class Unit : CharacterBody2D
         // 重新生成地面纹理（需要刷新受影响的区域）
         mainNode.RefreshGroundTexture();
     }
+
+    // ======== E11：经验/升级/能力系统 ========
+
+    /// <summary>获得经验值，自动检查升级。</summary>
+    public void GainExperience(float xp)
+    {
+        if (_level >= 4) return; // 已满级
+        _experience += xp;
+        CheckLevelUp();
+    }
+
+    /// <summary>检查是否满足升级条件，满足则升级并抽取随机能力。</summary>
+    private void CheckLevelUp()
+    {
+        while (_level < 4 && _experience >= LevelThresholds[_level])
+        {
+            _level++;
+            var ability = RollRandomAbility();
+            _abilities.Add(ability);
+            // 涡轮引擎立即生效
+            if (ability == UnitAbility.TurboEngine)
+                MoveSpeed *= 1.2f;
+            // 侦察视野立即生效
+            if (ability == UnitAbility.ReconVision)
+                AggroRange *= 1.5f;
+            // 掠夺：需要Main配合（在Die中回调）
+            GD.Print($"[E11] {UnitName} 升级到 Lv{_level}！获得能力: {AbilityName(ability)}");
+        }
+    }
+
+    /// <summary>从未拥有的能力池中随机抽取1个。</summary>
+    private UnitAbility RollRandomAbility()
+    {
+        var pool = new List<UnitAbility>
+        {
+            UnitAbility.ArmorPiercing, UnitAbility.DoubleShot, UnitAbility.Scatter,
+            UnitAbility.ReactiveArmor, UnitAbility.SelfRepair, UnitAbility.SmokeScreen,
+            UnitAbility.TurboEngine,
+            UnitAbility.ReconVision, UnitAbility.BattleFrenzy, UnitAbility.Plunder, UnitAbility.Tenacity
+        };
+        // 移除已拥有的
+        pool.RemoveAll(a => _abilities.Contains(a));
+        if (pool.Count == 0) return UnitAbility.None;
+        return pool[GD.RandRange(0, pool.Count - 1)];
+    }
+
+    /// <summary>判断是否为重甲单位（穿甲弹加成目标）。</summary>
+    private static bool IsHeavyUnit(UnitType type) => type switch
+    {
+        UnitType.HeavyTank or UnitType.MissileTank or UnitType.Destroyer
+        or UnitType.AircraftCarrier or UnitType.Submarine => true,
+        _ => false
+    };
+
+    /// <summary>能力中文名（用于HUD显示）。</summary>
+    public static string AbilityName(UnitAbility a) => a switch
+    {
+        UnitAbility.ArmorPiercing => "穿甲弹",
+        UnitAbility.DoubleShot => "双发",
+        UnitAbility.Scatter => "散射",
+        UnitAbility.ReactiveArmor => "反应装甲",
+        UnitAbility.SelfRepair => "自修复",
+        UnitAbility.SmokeScreen => "烟幕",
+        UnitAbility.TurboEngine => "涡轮",
+        UnitAbility.ReconVision => "侦察",
+        UnitAbility.BattleFrenzy => "狂热",
+        UnitAbility.Plunder => "掠夺",
+        UnitAbility.Tenacity => "坚韧",
+        _ => ""
+    };
+
+    /// <summary>能力简短描述。</summary>
+    public static string AbilityDesc(UnitAbility a) => a switch
+    {
+        UnitAbility.ArmorPiercing => "+25%对重甲伤害",
+        UnitAbility.DoubleShot => "+40%射速",
+        UnitAbility.Scatter => "攻击溅射60px",
+        UnitAbility.ReactiveArmor => "-20%受伤",
+        UnitAbility.SelfRepair => "脱战3s自修1%HP/s",
+        UnitAbility.SmokeScreen => "20%闪避",
+        UnitAbility.TurboEngine => "+20%移速",
+        UnitAbility.ReconVision => "+50%视野",
+        UnitAbility.BattleFrenzy => "近敌+20%攻速",
+        UnitAbility.Plunder => "击杀+$10",
+        UnitAbility.Tenacity => "低血+30%防御",
+        _ => ""
+    };
 }
