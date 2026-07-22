@@ -71,6 +71,10 @@ public partial class Main : Node2D
     private const int FighterCost = 500;
     private const int HelicopterCost = 600;
     private const int RocketInfantryCost = 350;
+    // E8：扩展空军造价
+    private const int BomberCost = 800;
+    private const int ScoutCost = 300;
+    private const int TransportHeliCost = 600;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -857,13 +861,21 @@ public partial class Main : Node2D
         if (Input.IsKeyPressed(Key.U) && !Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.Thief, ThiefCost);
 
-        // E7：空军热键 J(战斗机) / Shift+J(直升机) / R(火箭兵已在维修，改用Shift+R)
+        // E7：空军热键 J(战斗机) / Shift+J(直升机) / Shift+W(火箭兵)
         if (Input.IsKeyPressed(Key.J) && !Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.Fighter, FighterCost);
         if (Input.IsKeyPressed(Key.J) && Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.Helicopter, HelicopterCost);
         if (Input.IsKeyPressed(Key.W) && Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.RocketInfantry, RocketInfantryCost);
+
+        // E8：扩展空军热键 Shift+B(轰炸机) / H(侦察机) / Shift+H(运输直升机)
+        if (Input.IsKeyPressed(Key.B) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Bomber, BomberCost);
+        if (Input.IsKeyPressed(Key.H) && !Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.Scout, ScoutCost);
+        if (Input.IsKeyPressed(Key.H) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.TransportHeli, TransportHeliCost);
 
         // E6：E键运输车下车
         if (Input.IsKeyPressed(Key.E))
@@ -1179,6 +1191,9 @@ public partial class Main : Node2D
             UnitType.Fighter => HasBuilding(teamId, BuildingType.Airfield),      // E7
             UnitType.Helicopter => HasBuilding(teamId, BuildingType.Airfield),   // E7
             UnitType.RocketInfantry => HasBuilding(teamId, BuildingType.Barracks), // E7
+            UnitType.Bomber => HasBuilding(teamId, BuildingType.Airfield),       // E8
+            UnitType.Scout => HasBuilding(teamId, BuildingType.Airfield),        // E8
+            UnitType.TransportHeli => HasBuilding(teamId, BuildingType.Airfield), // E8
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.ChiefEngineer => HasBuilding(teamId, BuildingType.TechCenter),
@@ -1234,6 +1249,9 @@ public partial class Main : Node2D
             UnitType.Fighter => FighterCost,         // E7
             UnitType.Helicopter => HelicopterCost,   // E7
             UnitType.RocketInfantry => RocketInfantryCost, // E7
+            UnitType.Bomber => BomberCost,                 // E8
+            UnitType.Scout => ScoutCost,                   // E8
+            UnitType.TransportHeli => TransportHeliCost,    // E8
             _ => 0
         };
     }
@@ -1822,6 +1840,9 @@ public partial class Main : Node2D
                     types.Add(UnitType.RocketInfantry);   // E7
                     types.Add(UnitType.Fighter);           // E7
                     types.Add(UnitType.Helicopter);        // E7
+                    types.Add(UnitType.Bomber);            // E8
+                    types.Add(UnitType.Scout);             // E8
+                    types.Add(UnitType.TransportHeli);      // E8
                 }
                 if (HasBuilding(teamId, BuildingType.WarFactory))
                 {
@@ -2444,6 +2465,9 @@ public partial class Main : Node2D
             UnitType.Fighter => BuildingType.Airfield,          // E7
             UnitType.Helicopter => BuildingType.Airfield,       // E7
             UnitType.RocketInfantry => BuildingType.Barracks,   // E7
+            UnitType.Bomber => BuildingType.Airfield,            // E8
+            UnitType.Scout => BuildingType.Airfield,             // E8
+            UnitType.TransportHeli => BuildingType.Airfield,     // E8
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -2506,6 +2530,9 @@ public partial class Main : Node2D
         UnitType.Fighter => ProductionType.Fighter,           // E7
         UnitType.Helicopter => ProductionType.Helicopter,     // E7
         UnitType.RocketInfantry => ProductionType.RocketInfantry, // E7
+        UnitType.Bomber => ProductionType.Bomber,                 // E8
+        UnitType.Scout => ProductionType.Scout,                   // E8
+        UnitType.TransportHeli => ProductionType.TransportHeli,  // E8
         _ => ProductionType.LightTank
     };
 
@@ -2529,6 +2556,9 @@ public partial class Main : Node2D
         ProductionType.Fighter => UnitType.Fighter,           // E7
         ProductionType.Helicopter => UnitType.Helicopter,     // E7
         ProductionType.RocketInfantry => UnitType.RocketInfantry, // E7
+        ProductionType.Bomber => UnitType.Bomber,                 // E8
+        ProductionType.Scout => UnitType.Scout,                   // E8
+        ProductionType.TransportHeli => UnitType.TransportHeli,    // E8
         _ => UnitType.Default
     };
 

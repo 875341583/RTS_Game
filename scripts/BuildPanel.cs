@@ -77,6 +77,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iHero, _iSpy, _iThief;
     // E7：空军图标
     private static Texture2D? _iFighter, _iHelicopter, _iRocketInfantry, _iAirfield;
+    // E8：扩展空军图标
+    private static Texture2D? _iBomber, _iScout, _iTransportHeli;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -209,6 +211,10 @@ public partial class BuildPanel : Control
         // E7：空军
         AddItem("战斗机", 500, _iFighter, false, BuildingType.Airfield, UnitType.Fighter,       false, BuildTab.Vehicles);
         AddItem("直升机", 600, _iHelicopter, false, BuildingType.Airfield, UnitType.Helicopter, false, BuildTab.Vehicles);
+        // E8：扩展空军
+        AddItem("轰炸机", 800, _iBomber, false, BuildingType.Airfield, UnitType.Bomber,         false, BuildTab.Vehicles);
+        AddItem("侦察机", 300, _iScout, false, BuildingType.Airfield, UnitType.Scout,           false, BuildTab.Vehicles);
+        AddItem("运直",   600, _iTransportHeli, false, BuildingType.Airfield, UnitType.TransportHeli, false, BuildTab.Vehicles);
     }
 
     private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)
@@ -410,6 +416,9 @@ public partial class BuildPanel : Control
                 break;
             case UnitType.Fighter:          // E7
             case UnitType.Helicopter:       // E7
+            case UnitType.Bomber:           // E8
+            case UnitType.Scout:            // E8
+            case UnitType.TransportHeli:    // E8
                 if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
                 else if (!HasAirfield) { it.IsLocked = true; it.LockReason = "需要机场"; }
                 break;
@@ -526,6 +535,9 @@ public partial class BuildPanel : Control
             UnitType.Fighter => "高速空战，需机场",
             UnitType.Helicopter => "空中火力支援，需机场",
             UnitType.RocketInfantry => "防空火箭步兵，对空专精",
+            UnitType.Bomber => "高空大范围轰炸，溅射100",
+            UnitType.Scout => "超高速侦察，600视野",
+            UnitType.TransportHeli => "空中搭载4名步兵",
             UnitType.RocketLauncher => "溅射伤害，需科技",
             UnitType.MissileTank => "超远程爆发，需科技",
             _ => ""
@@ -570,6 +582,10 @@ public partial class BuildPanel : Control
         _iHelicopter = LoadPng("res://assets/sprites/units/helicopter.png");
         _iRocketInfantry = LoadPng("res://assets/sprites/units/rocket_infantry.png");
         _iAirfield = LoadPng("res://assets/sprites/buildings/airfield.png");
+        // E8：扩展空军图标
+        _iBomber = LoadPng("res://assets/sprites/units/bomber.png");
+        _iScout = LoadPng("res://assets/sprites/units/scout.png");
+        _iTransportHeli = LoadPng("res://assets/sprites/units/transport_heli.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>

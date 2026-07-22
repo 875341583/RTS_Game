@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -41,6 +41,8 @@ public partial class Unit : CharacterBody2D
     public bool IsAirUnit { get; set; } = false;
     /// <summary>是否可以对空攻击（防空车/火箭兵默认对空）。</summary>
     public bool CanAttackAir { get; set; } = false;
+    /// <summary>是否是运输直升机（空中搭载步兵）。</summary>
+    public bool IsTransportHeli => Type == UnitType.TransportHeli;
 
     // 子类可访问的移动状态
     protected Vector2 _moveTarget;
@@ -62,8 +64,8 @@ public partial class Unit : CharacterBody2D
     public List<Unit> Passengers { get; } = new();
     /// <summary>运输车最大搭载人数。</summary>
     public int MaxPassengers { get; set; } = 3;
-    /// <summary>是否是运输车（可搭载步兵）。</summary>
-    public bool IsTransport => Type == UnitType.Transport;
+    /// <summary>是否是运输载具（运输车或运输直升机，可搭载步兵）。</summary>
+    public bool IsTransport => Type == UnitType.Transport || Type == UnitType.TransportHeli;
     /// <summary>合体后的功能类型（空=未合体，或合体后立即变Type）。</summary>
     private UnitType _preMergeType = UnitType.Default;
 
@@ -127,6 +129,8 @@ public partial class Unit : CharacterBody2D
     private static Texture2D? _harvesterHull;
     // 灰底步兵纹理（32x32俯视）
     private static Texture2D? _infantryHull;
+    // E7/E8：空军专用纹理
+    private static Texture2D? _fighterHull, _helicopterHull, _bomberHull, _scoutHull, _transportHeliHull;
     // 灰底炮塔纹理（按兵种）
     private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile, _turretAntiAir;
     // 炮塔精灵
@@ -170,6 +174,13 @@ public partial class Unit : CharacterBody2D
 
         // 矿车（灰底，染色）
         _harvesterHull = LoadUnitTexture("res://assets/sprites/units/harvester.png");
+
+        // E7+E8：空军单位纹理
+        _fighterHull = LoadUnitTexture("res://assets/sprites/units/fighter.png");
+        _helicopterHull = LoadUnitTexture("res://assets/sprites/units/helicopter.png");
+        _bomberHull = LoadUnitTexture("res://assets/sprites/units/bomber.png");
+        _scoutHull = LoadUnitTexture("res://assets/sprites/units/scout.png");
+        _transportHeliHull = LoadUnitTexture("res://assets/sprites/units/transport_heli.png");
 
         // 灰底炮塔（按兵种）
         _turretLight   = LoadUnitTexture("res://assets/sprites/units/turret_light.png");
@@ -226,6 +237,14 @@ public partial class Unit : CharacterBody2D
         UnitType.Sniper => _infantryHull!,          // E6：狙击手复用步兵底盘
         UnitType.FlameInfantry => _infantryHull!,  // E6：喷火兵复用步兵底盘
         UnitType.Transport => _hullLight!,          // E6：运输车复用轻坦底盘
+        // E7：空军底盘
+        UnitType.Fighter => _fighterHull!,
+        UnitType.Helicopter => _helicopterHull!,
+        UnitType.RocketInfantry => _infantryHull!,  // E7：火箭兵复用步兵底盘
+        // E8：扩展空军底盘
+        UnitType.Bomber => _bomberHull!,
+        UnitType.Scout => _scoutHull!,
+        UnitType.TransportHeli => _transportHeliHull!,
         _ => _harvesterHull!
     };
 
@@ -242,6 +261,13 @@ public partial class Unit : CharacterBody2D
         UnitType.Engineer => null!,
         // 步兵无炮塔（身体朝向代替炮塔朝向）
         UnitType.Infantry => null!,
+        // E7/E8：空军单位无独立炮塔
+        UnitType.Fighter => null!,
+        UnitType.Helicopter => null!,
+        UnitType.RocketInfantry => null!,
+        UnitType.Bomber => null!,
+        UnitType.Scout => null!,
+        UnitType.TransportHeli => null!,
         _ => null!
     };
 
@@ -465,6 +491,42 @@ public partial class Unit : CharacterBody2D
                 AggroRange = 250f;
                 CanAttackAir = true;
                 break;
+            // E8：扩展空军
+            case UnitType.Bomber:
+                UnitName = "轰炸机";
+                MaxHealth = 100f;
+                MoveSpeed = 180f;
+                AttackDamage = 50f;
+                AttackRange = 250f;
+                AttackCooldown = 3.0f;
+                SplashRadius = 100f;
+                AggroRange = 320f;
+                AutoDefend = true;
+                IsAirUnit = true;
+                break;
+            case UnitType.Scout:
+                UnitName = "侦察机";
+                MaxHealth = 50f;
+                MoveSpeed = 400f;
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 600f;  // 超大视野侦察
+                AutoDefend = false;
+                IsAirUnit = true;
+                break;
+            case UnitType.TransportHeli:
+                UnitName = "运输直升机";
+                MaxHealth = 180f;
+                MoveSpeed = 200f;
+                AttackDamage = 0f;
+                AttackRange = 0f;
+                AttackCooldown = 0f;
+                AggroRange = 0f;
+                AutoDefend = false;
+                IsAirUnit = true;
+                MaxPassengers = 4;
+                break;
         }
     }
 
@@ -501,8 +563,8 @@ public partial class Unit : CharacterBody2D
 
         GD.Print($"[IFV] {passenger.UnitName} 进入 {UnitName} (搭载 {Passengers.Count}/{MaxPassengers})");
 
-        // 首个乘客决定合体功能
-        if (Passengers.Count == 1)
+        // 首个乘客决定合体功能（运输直升机不做IFV合体，只搭载）
+        if (Passengers.Count == 1 && Type != UnitType.TransportHeli)
         {
             ApplyMergeEffect(passenger.Type);
         }
@@ -675,18 +737,36 @@ public partial class Unit : CharacterBody2D
         }
     }
 
-    /// <summary>恢复运输车基础属性（所有乘客下车后）。</summary>
+    /// <summary>恢复运输载具基础属性（所有乘客下车后）。</summary>
     private void RevertToBaseTransport()
     {
-        UnitName = "运输车";
-        MaxHealth = 150f;
-        AttackDamage = 0f;
-        AttackRange = 0f;
-        AttackCooldown = 0f;
-        MinAttackRange = 0f;
-        SplashRadius = 0f;
-        AggroRange = 0f;
-        AutoDefend = false;
+        if (Type == UnitType.TransportHeli)
+        {
+            // E8：运输直升机恢复
+            UnitName = "运输直升机";
+            MaxHealth = 180f;
+            AttackDamage = 0f;
+            AttackRange = 0f;
+            AttackCooldown = 0f;
+            MinAttackRange = 0f;
+            SplashRadius = 0f;
+            AggroRange = 0f;
+            AutoDefend = false;
+            MoveSpeed = 200f;
+            MaxPassengers = 4;
+        }
+        else
+        {
+            UnitName = "运输车";
+            MaxHealth = 150f;
+            AttackDamage = 0f;
+            AttackRange = 0f;
+            AttackCooldown = 0f;
+            MinAttackRange = 0f;
+            SplashRadius = 0f;
+            AggroRange = 0f;
+            AutoDefend = false;
+        }
         _preMergeType = UnitType.Default;
 
         // 移除炮塔
@@ -1336,6 +1416,13 @@ public partial class Unit : CharacterBody2D
         UnitType.Artillery => TerrainUnitCategory.HeavyVehicle,
         UnitType.RocketLauncher => TerrainUnitCategory.HeavyVehicle,
         UnitType.MissileTank => TerrainUnitCategory.HeavyVehicle,
+        UnitType.RocketInfantry => TerrainUnitCategory.Infantry,
+        // E8：空中单位不会实际调用此处（IsAirUnit跳过地形查询），但给个安全默认值
+        UnitType.Fighter => TerrainUnitCategory.LightVehicle,
+        UnitType.Helicopter => TerrainUnitCategory.LightVehicle,
+        UnitType.Bomber => TerrainUnitCategory.HeavyVehicle,
+        UnitType.Scout => TerrainUnitCategory.LightVehicle,
+        UnitType.TransportHeli => TerrainUnitCategory.LightVehicle,
         _ => TerrainUnitCategory.HeavyVehicle,
     };
 
