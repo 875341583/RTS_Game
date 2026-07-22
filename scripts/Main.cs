@@ -189,6 +189,9 @@ public partial class Main : Node2D
     // ---- 阶段12-C 音效系统 ----
     private AudioManager _audio = null!;
 
+    // ---- E1 地形系统 ----
+    private TerrainGrid _terrain = null!;
+
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -252,7 +255,13 @@ public partial class Main : Node2D
         _strategicPointsNode = new Node2D { Name = "StrategicPoints" };
         AddChild(_strategicPointsNode);
 
-        // Q4：地面纹理（草地+道路+泥地）
+        // Q4：地面纹理（草地+道路+泥地）→ E1：地形系统驱动
+        _terrain = new TerrainGrid();
+        _terrain.GenerateFromSeed(_mapSeed);
+        var stats = _terrain.GetStats();
+        GD.Print("[Terrain] 地形生成统计：");
+        foreach (var kv in stats)
+            GD.Print($"  {kv.Key}: {kv.Value}格");
         CreateGround();
 
         // ---- 初始化 8 阵营 ----
@@ -2285,73 +2294,137 @@ public partial class Main : Node2D
     private static Texture2D? _rockTex;
     private static Texture2D? _wallTex;
 
-    // ========== Q4 地面纹理系统 ==========
+    // ========== E1 地形纹理系统 ==========
 
     // 地面瓦片纹理缓存
     private static Texture2D? _grass1Tex, _grass2Tex, _grass3Tex, _grass4Tex;
     private static Texture2D? _sand1Tex, _sand2Tex, _sand3Tex;
     private static Texture2D? _roadETex, _roadNTex, _roadCrossTex;
+    // E1 新增地形纹理
+    private static Texture2D? _shallow1Tex, _shallow2Tex, _shallow3Tex;
+    private static Texture2D? _deep1Tex, _deep2Tex, _deep3Tex;
+    private static Texture2D? _mountain1Tex, _mountain2Tex, _mountain3Tex;
+    private static Texture2D? _snow1Tex, _snow2Tex, _snow3Tex;
+    private static Texture2D? _city1Tex, _city2Tex;
+    private static Texture2D? _field1Tex, _field2Tex;
+    private static Texture2D? _bridgeTex, _tunnelTex, _cliffTex;
 
     private void CreateGround()
     {
         EnsureGroundTileTextures();
 
-        const int TileSize = 64;
-        const int GridSize = 32; // 32*64=2048 覆盖 2000x2000
-        var rng = _mapRng;  // 阶段12-B：使用地图种子 RNG，保证可复现
+        const int TileSize = TerrainGrid.TileSize;  // 64
+        const int GridSize = TerrainGrid.GridSize;  // 32
 
-        // 瓦片类型网格
-        int[,] tileGrid = new int[GridSize, GridSize];
-        // 沙地区域：用种子随机生成 5 个沙地斑块（位置+大小随机化）
-        int sandPatches = 5;
-        for (int p = 0; p < sandPatches; p++)
-        {
-            int cx = rng.Next(3, GridSize - 3);
-            int cy = rng.Next(3, GridSize - 3);
-            int w = rng.Next(2, 5);
-            int h = rng.Next(2, 5);
-            // 避免覆盖地图正中央（保留中央为草地+道路）
-            float distFromCenter = Mathf.Sqrt((cx - 16f) * (cx - 16f) + (cy - 16f) * (cy - 16f));
-            if (distFromCenter < 3f) continue;
-            for (int ty = cy - h / 2; ty <= cy + h / 2; ty++)
-                for (int tx = cx - w / 2; tx <= cx + w / 2; tx++)
-                    if (tx >= 0 && tx < GridSize && ty >= 0 && ty < GridSize)
-                        tileGrid[tx, ty] = 1;
-        }
-        // 道路：十字主干道 + 对角线道路（保留结构，这是导航骨架）
-        for (int tx = 0; tx < GridSize; tx++) { if (tileGrid[tx, 15] == 0) tileGrid[tx, 15] = 2; if (tileGrid[tx, 16] == 0) tileGrid[tx, 16] = 2; }
-        for (int ty = 0; ty < GridSize; ty++) { if (tileGrid[15, ty] == 0) tileGrid[15, ty] = 3; if (tileGrid[16, ty] == 0) tileGrid[16, ty] = 3; }
-        tileGrid[15, 15] = 4; tileGrid[15, 16] = 4; tileGrid[16, 15] = 4; tileGrid[16, 16] = 4;
-        for (int i = 3; i <= 15; i++) { if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; }
-        for (int i = 16; i <= 28; i++) { if (tileGrid[i, i] == 0) tileGrid[i, i] = 2; }
+        // 从 TerrainGrid 获取数据渲染地面
+        var rng = _mapRng;
 
-        // 拼接为单张大纹理（避免创建 1024 个 Sprite2D 节点）
-        var groundImg = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
-        var grass1Img = _grass1Tex!.GetImage();
-        var grass2Img = _grass2Tex!.GetImage();
-        var grass3Img = _grass3Tex!.GetImage();
-        var grass4Img = _grass4Tex!.GetImage();
-        var sand1Img  = _sand1Tex!.GetImage();
-        var sand2Img  = _sand2Tex!.GetImage();
-        var sand3Img  = _sand3Tex!.GetImage();
+        // 预加载所有 tile Image（仅一次 GetImage）
+        var grassImgs = new[] { _grass1Tex!.GetImage(), _grass2Tex!.GetImage(), _grass3Tex!.GetImage(), _grass4Tex!.GetImage() };
+        var sandImgs  = new[] { _sand1Tex!.GetImage(), _sand2Tex!.GetImage(), _sand3Tex!.GetImage() };
+        var shallowImgs = new[] { _shallow1Tex!.GetImage(), _shallow2Tex!.GetImage(), _shallow3Tex!.GetImage() };
+        var deepImgs  = new[] { _deep1Tex!.GetImage(), _deep2Tex!.GetImage(), _deep3Tex!.GetImage() };
+        var mountainImgs = new[] { _mountain1Tex!.GetImage(), _mountain2Tex!.GetImage(), _mountain3Tex!.GetImage() };
+        var snowImgs  = new[] { _snow1Tex!.GetImage(), _snow2Tex!.GetImage(), _snow3Tex!.GetImage() };
+        var cityImgs  = new[] { _city1Tex!.GetImage(), _city2Tex!.GetImage() };
+        var fieldImgs = new[] { _field1Tex!.GetImage(), _field2Tex!.GetImage() };
         var roadEImg  = _roadETex!.GetImage();
         var roadNImg  = _roadNTex!.GetImage();
         var roadCrossImg = _roadCrossTex!.GetImage();
+        var bridgeImg = _bridgeTex!.GetImage();
+        var tunnelImg = _tunnelTex!.GetImage();
+        var cliffImg  = _cliffTex!.GetImage();
+
+        // 拼接为单张大纹理
+        var groundImg = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
 
         for (int ty = 0; ty < GridSize; ty++)
         {
             for (int tx = 0; tx < GridSize; tx++)
             {
-                Image tileImg = tileGrid[tx, ty] switch
+                var cell = _terrain.GetCell(tx, ty);
+                Image tileImg = cell.Type switch
                 {
-                    1 => (rng.Next(3) switch { 0 => sand1Img, 1 => sand2Img, _ => sand3Img }),
-                    2 => roadEImg,
-                    3 => roadNImg,
-                    4 => roadCrossImg,
-                    _ => (rng.Next(4) switch { 0 => grass1Img, 1 => grass2Img, 2 => grass3Img, _ => grass4Img })
+                    TerrainType.Grass => grassImgs[rng.Next(4)],
+                    TerrainType.Sand  => sandImgs[rng.Next(3)],
+                    TerrainType.ShallowWater => shallowImgs[rng.Next(3)],
+                    TerrainType.DeepWater => deepImgs[rng.Next(3)],
+                    TerrainType.Mountain => mountainImgs[rng.Next(3)],
+                    TerrainType.Snow => snowImgs[rng.Next(3)],
+                    TerrainType.City => cityImgs[rng.Next(2)],
+                    TerrainType.Field => fieldImgs[rng.Next(2)],
+                    TerrainType.Road => (ty > 0 && _terrain.GetCell(tx, ty - 1).Type == TerrainType.Road &&
+                                         tx > 0 && _terrain.GetCell(tx - 1, ty).Type == TerrainType.Road)
+                                        ? roadCrossImg : roadEImg,
+                    TerrainType.Bridge => bridgeImg,
+                    TerrainType.Tunnel => tunnelImg,
+                    TerrainType.Cliff => cliffImg,
+                    _ => grassImgs[0]
                 };
+
+                // 高度视觉偏移：海拔越高亮度越高（模拟2D高度感）
+                if (cell.Elevation > 1 && cell.Type != TerrainType.DeepWater && cell.Type != TerrainType.ShallowWater)
+                {
+                    // 复制一份 tile 图用于亮度调整
+                    var brightImg = Image.CreateEmpty(TileSize, TileSize, false, Image.Format.Rgba8);
+                    brightImg.BlitRect(tileImg, new Rect2I(0, 0, TileSize, TileSize), Vector2I.Zero);
+                    // 高海拔：整体提亮
+                    float brightness = cell.Elevation switch { 2 => 1.08f, 3 => 1.15f, _ => 1.0f };
+                    for (int py = 0; py < TileSize; py++)
+                    {
+                        for (int px = 0; px < TileSize; px++)
+                        {
+                            var c = brightImg.GetPixel(px, py);
+                            if (c.A > 0)
+                            {
+                                brightImg.SetPixel(px, py, new Color(
+                                    Mathf.Min(c.R * brightness, 1.0f),
+                                    Mathf.Min(c.G * brightness, 1.0f),
+                                    Mathf.Min(c.B * brightness, 1.0f),
+                                    c.A));
+                            }
+                        }
+                    }
+                    tileImg = brightImg;
+                }
+
                 groundImg.BlitRect(tileImg, new Rect2I(0, 0, TileSize, TileSize),
                     new Vector2I(tx * TileSize, ty * TileSize));
+            }
+        }
+
+        // 悬崖阴影：在高度差≥2的边界处绘制阴影
+        for (int ty = 0; ty < GridSize; ty++)
+        {
+            for (int tx = 0; tx < GridSize; tx++)
+            {
+                var cell = _terrain.GetCell(tx, ty);
+                if (cell.Elevation <= 1) continue;
+                // 检查四周是否有更低的地块
+                foreach (var (dx, dy) in new[] { (0, 1), (0, -1), (1, 0), (-1, 0) })
+                {
+                    int nx = tx + dx, ny = ty + dy;
+                    if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                    var neighbor = _terrain.GetCell(nx, ny);
+                    if (cell.Elevation - neighbor.Elevation >= 2)
+                    {
+                        // 在低侧绘制阴影条
+                        int sx = nx * TileSize, sy = ny * TileSize;
+                        int shadowW = 4, shadowH = 4;
+                        for (int py = 0; py < TileSize && py < shadowH; py++)
+                        {
+                            for (int px = 0; px < TileSize; px++)
+                            {
+                                int imgX = sx + px, imgY = sy + py;
+                                if (imgX < groundImg.GetWidth() && imgY < groundImg.GetHeight())
+                                {
+                                    var c = groundImg.GetPixel(imgX, imgY);
+                                    groundImg.SetPixel(imgX, imgY, new Color(0, 0, 0, 0.25f) + c * 0.75f);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -2359,6 +2432,9 @@ public partial class Main : Node2D
         _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false, ZIndex = -3, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
         AddChild(_groundSprite);
         MoveChild(_groundSprite, 0); // 最底层
+
+        // 地形高度装饰：在山脉/高海拔处放置 StaticBody2D 碰撞体阻挡地面单位移动
+        // （悬字段段崖碰撞体也在E2中处理，此处仅视觉提示）
     }
 
     private static void EnsureGroundTileTextures()
@@ -2374,6 +2450,26 @@ public partial class Main : Node2D
         _roadETex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadEast.png");
         _roadNTex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadNorth.png");
         _roadCrossTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadCrossing.png");
+        // E1 新增地形
+        _shallow1Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileShallow1.png");
+        _shallow2Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileShallow2.png");
+        _shallow3Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileShallow3.png");
+        _deep1Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileDeep1.png");
+        _deep2Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileDeep2.png");
+        _deep3Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileDeep3.png");
+        _mountain1Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileMountain1.png");
+        _mountain2Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileMountain2.png");
+        _mountain3Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileMountain3.png");
+        _snow1Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSnow1.png");
+        _snow2Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSnow2.png");
+        _snow3Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileSnow3.png");
+        _city1Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileCity1.png");
+        _city2Tex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileCity2.png");
+        _field1Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileField1.png");
+        _field2Tex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileField2.png");
+        _bridgeTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileBridge.png");
+        _tunnelTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileTunnel.png");
+        _cliffTex  = GD.Load<Texture2D>("res://assets/sprites/terrain/tileCliff.png");
     }
 
     private void SpawnObstacle(Vector2 pos, Vector2 size)
