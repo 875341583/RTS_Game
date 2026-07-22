@@ -6,7 +6,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Infantry, Engineer, Sapper, ChiefEngineer, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -53,6 +53,17 @@ public partial class Unit : CharacterBody2D
     private bool _hasAttackMoveTarget;
     private Vector2 _guardPosition;
     private bool _hasGuardPosition;
+
+    // E4：地形改造系统
+    public enum TerrainModType { None, Flatten, Tunnel, Bridge, UnderseaTunnel }
+    private TerrainModType _terrainModType = TerrainModType.None;
+    private Vector2 _terrainModTarget;  // 改造目标世界坐标
+    private float _terrainModTimer;     // 施工倒计时
+    private float _terrainModDuration;  // 施工总时长
+    private int _terrainModCost;        // 施工费用
+    private bool _isConstructing;       // 正在施工中
+    /// <summary>是否是工程单位（工兵/高级工程师/工程车）。</summary>
+    public bool IsEngineerUnit => Type == UnitType.Sapper || Type == UnitType.ChiefEngineer || Type == UnitType.Engineer;
 
     /// <summary>AI保护期剩余时间（秒）。>0时AI单位不主动搜敌进攻，给玩家发展空间。由Main每帧递减。</summary>
     public static float AiGraceRemaining = 0f;
@@ -180,6 +191,8 @@ public partial class Unit : CharacterBody2D
         UnitType.AntiAir => _hullAntiAir!,
         UnitType.Engineer => _hullEngineer!,
         UnitType.Infantry => _infantryHull!,
+        UnitType.Sapper => _infantryHull!,     // 工兵复用步兵底盘
+        UnitType.ChiefEngineer => _infantryHull!, // 高级工程师复用步兵底盘
         _ => _harvesterHull!
     };
 
@@ -281,6 +294,24 @@ public partial class Unit : CharacterBody2D
                 AttackCooldown = 0f;
                 AggroRange = 0f;       // 不主动锁定目标
                 break;
+            case UnitType.Sapper:
+                UnitName = "工兵";
+                MaxHealth = 40f;
+                MoveSpeed = 95f;
+                AttackDamage = 3f;
+                AttackRange = 60f;
+                AttackCooldown = 0.8f;
+                AggroRange = 100f;
+                break;
+            case UnitType.ChiefEngineer:
+                UnitName = "高级工程师";
+                MaxHealth = 60f;
+                MoveSpeed = 100f;
+                AttackDamage = 5f;
+                AttackRange = 80f;
+                AttackCooldown = 0.7f;
+                AggroRange = 120f;
+                break;
         }
     }
 
@@ -304,7 +335,7 @@ public partial class Unit : CharacterBody2D
         _body.Modulate = teamColor;
         _bodyTint = teamColor;
         // 步兵32×32素材按 0.85 缩放，更贴近红警2步兵体里坦克的视觉比例
-        _body.Scale = (Type == UnitType.Infantry) ? new Vector2(0.9f, 0.9f) : Vector2.One;
+        _body.Scale = (Type == UnitType.Infantry || Type == UnitType.Sapper || Type == UnitType.ChiefEngineer) ? new Vector2(0.9f, 0.9f) : Vector2.One;
         // 像素艺术必须用 Nearest 过滤，Linear 会把 14-17 色的底盘细节插值平滑成单色块
         _body.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         _selectionRing.Texture = _ringTex;
@@ -314,7 +345,7 @@ public partial class Unit : CharacterBody2D
         UpdateHealthBarVisibility();
 
         // 炮塔精灵（战斗单位专用，矿车、步兵和工程车不需要）
-        if (this is not Harvester && Type != UnitType.Infantry && Type != UnitType.Engineer)
+        if (this is not Harvester && Type != UnitType.Infantry && Type != UnitType.Engineer && Type != UnitType.Sapper && Type != UnitType.ChiefEngineer)
         {
             _turret = new Sprite2D { Name = "Turret", ZIndex = 1, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
             AddChild(_turret);
@@ -371,6 +402,9 @@ public partial class Unit : CharacterBody2D
 
         // 通用移动
         ProcessMovement(dt);
+
+        // E4：地形改造施工进度
+        ProcessTerrainModification(dt);
 
         // Q3：炮塔朝向目标平滑旋转
         UpdateTurretRotation(dt);
@@ -707,14 +741,16 @@ public partial class Unit : CharacterBody2D
     public virtual TerrainUnitCategory GetTerrainCategory() => Type switch
     {
         UnitType.Infantry => TerrainUnitCategory.Infantry,
-        UnitType.Engineer => TerrainUnitCategory.EngineerVehicle,
+        UnitType.Sapper => TerrainUnitCategory.Engineer,         // 工兵=步兵类工程单位
+        UnitType.ChiefEngineer => TerrainUnitCategory.Engineer,  // 高级工程师=步兵类工程单位
+        UnitType.Engineer => TerrainUnitCategory.EngineerVehicle, // 工程车=载具类工程单位
         UnitType.LightTank => TerrainUnitCategory.LightVehicle,
         UnitType.AntiAir => TerrainUnitCategory.LightVehicle,
         UnitType.HeavyTank => TerrainUnitCategory.HeavyVehicle,
         UnitType.Artillery => TerrainUnitCategory.HeavyVehicle,
         UnitType.RocketLauncher => TerrainUnitCategory.HeavyVehicle,
         UnitType.MissileTank => TerrainUnitCategory.HeavyVehicle,
-        _ => TerrainUnitCategory.HeavyVehicle, // 默认归为重载具
+        _ => TerrainUnitCategory.HeavyVehicle,
     };
 
     // ---- 查询辅助（供子类使用）----
@@ -925,5 +961,214 @@ public partial class Unit : CharacterBody2D
         DrawSetTransform(new Vector2(3f, yOff), 0f, Vector2.One);
         DrawPolygon(pts, new Color[] { _shadowColor });
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+    }
+
+    // ======== E4：地形改造系统 ========
+
+    /// <summary>下达地形改造指令。工程单位移动到目标位置后开始施工。</summary>
+    public void CommandTerrainMod(TerrainModType modType, Vector2 targetWorldPos)
+    {
+        if (!IsEngineerUnit) return;
+        _terrainModType = modType;
+        _terrainModTarget = targetWorldPos;
+        _isConstructing = false;
+        _terrainModTimer = 0f;
+        // 移动到目标
+        MoveTo(targetWorldPos);
+    }
+
+    /// <summary>每帧检查施工进度。由 _Process 调用。</summary>
+    private void ProcessTerrainModification(float dt)
+    {
+        if (_terrainModType == TerrainModType.None) return;
+
+        // 还在移动中，先到达目标
+        if (_hasMoveTarget && !_isConstructing) return;
+
+        // 到达目标后开始施工
+        if (!_isConstructing)
+        {
+            // 检查是否靠近目标
+            float dist = GlobalPosition.DistanceTo(_terrainModTarget);
+            if (dist > TerrainGrid.TileSize * 1.5f)
+            {
+                // 太远，取消改造
+                _terrainModType = TerrainModType.None;
+                return;
+            }
+            _isConstructing = true;
+
+            // 计算费用和时长（基于单位类型和改造类型）
+            if (!CalculateTerrainModCost(out _terrainModCost, out _terrainModDuration))
+            {
+                // 不支持的改造类型，取消
+                _terrainModType = TerrainModType.None;
+                _isConstructing = false;
+                return;
+            }
+
+            // 扣费检查
+            if (GetParent()?.GetParent() is Main mainNode)
+            {
+                if (!mainNode.SpendMoney(TeamId, _terrainModCost))
+                {
+                    // 资金不足
+                    GD.Print($"[TerrainMod] {UnitName} (Team {TeamId}) 资金不足 $_terrainModCost，无法施工");
+                    _terrainModType = TerrainModType.None;
+                    _isConstructing = false;
+                    return;
+                }
+            }
+
+            GD.Print($"[TerrainMod] {UnitName} (Team {TeamId}) 开始{_terrainModType}施工，费用${_terrainModCost}，耗时{_terrainModDuration:F1}s");
+        }
+
+        // 施工倒计时
+        _terrainModTimer += dt;
+        if (_terrainModTimer >= _terrainModDuration)
+        {
+            // 施工完成，执行地形修改
+            ExecuteTerrainMod();
+            _terrainModType = TerrainModType.None;
+            _isConstructing = false;
+        }
+    }
+
+    /// <summary>计算当前改造操作的费用和时长。</summary>
+    private bool CalculateTerrainModCost(out int cost, out float duration)
+    {
+        cost = 0;
+        duration = 0f;
+        if (GetParent()?.GetParent() is not Main mainNode) return false;
+        var terrain = mainNode.GetTerrainGrid();
+        terrain.WorldToGrid(_terrainModTarget.X, _terrainModTarget.Y, out int gx, out int gy);
+        var cell = terrain.GetCell(gx, gy);
+
+        // 编队协同：计算同一目标同时施工的工程单位数
+        int workers = CountWorkersAtTarget();
+        float efficiencyMult = GetTeamEfficiency(workers);
+        float costReduction = GetTeamCostReduction(workers);
+
+        (int baseCost, float baseDuration) = (_terrainModType, cell.Type) switch
+        {
+            (TerrainModType.Flatten, TerrainType.Mountain) => Type switch
+            {
+                UnitType.Sapper => (500, 12f),
+                UnitType.ChiefEngineer => (300, 8f),
+                UnitType.Engineer => (200, 5f),
+                _ => (500, 12f),
+            },
+            (TerrainModType.Tunnel, TerrainType.Mountain) => Type switch
+            {
+                UnitType.Sapper => (800, 15f),
+                UnitType.ChiefEngineer => (500, 10f),
+                UnitType.Engineer => (300, 6f),
+                _ => (800, 15f),
+            },
+            (TerrainModType.Bridge, TerrainType.ShallowWater) => Type switch
+            {
+                UnitType.Sapper => (300, 8f),
+                UnitType.ChiefEngineer => (200, 5f),
+                UnitType.Engineer => (150, 3f),
+                _ => (300, 8f),
+            },
+            (TerrainModType.Bridge, TerrainType.DeepWater) => Type switch
+            {
+                UnitType.Sapper => (500, 10f),   // 河流
+                UnitType.ChiefEngineer => (300, 7f),
+                UnitType.Engineer => (200, 5f),
+                _ => (500, 10f),
+            },
+            (TerrainModType.UnderseaTunnel, TerrainType.DeepWater) => Type switch
+            {
+                UnitType.Sapper => (1500, 30f),
+                UnitType.ChiefEngineer => (1000, 20f),
+                UnitType.Engineer => (800, 15f),
+                _ => (1500, 30f),
+            },
+            _ => (0, 0f),
+        };
+
+        if (baseCost == 0) return false;
+
+        cost = (int)(baseCost * (1.0f - costReduction));
+        duration = baseDuration / efficiencyMult;
+        return true;
+    }
+
+    /// <summary>编队协同：计算同一目标同时施工的工程单位数。</summary>
+    private int CountWorkersAtTarget()
+    {
+        int count = 0;
+        var unitsNode = GetParent();
+        if (unitsNode == null) return 1;
+        foreach (var child in unitsNode.GetChildren())
+        {
+            if (child is Unit u && u != this && u.TeamId == TeamId && u.IsEngineerUnit && u._isConstructing)
+            {
+                if (u._terrainModTarget.DistanceTo(_terrainModTarget) < TerrainGrid.TileSize)
+                    count++;
+            }
+        }
+        return count + 1; // 包括自己
+    }
+
+    /// <summary>编队协同效率倍率（有衰减）。</summary>
+    private static float GetTeamEfficiency(int workers) => workers switch
+    {
+        1 => 1.0f, 2 => 1.7f, 3 => 2.3f, 4 => 2.8f, 5 => 3.2f,
+        _ => 3.5f, // 上限6人
+    };
+
+    /// <summary>编队协同费用节省比例。</summary>
+    private static float GetTeamCostReduction(int workers) => workers switch
+    {
+        1 => 0f, 2 => 0.10f, 3 => 0.15f, 4 => 0.20f, 5 => 0.22f,
+        _ => 0.25f,
+    };
+
+    /// <summary>执行地形修改（施工完成后调用）。</summary>
+    private void ExecuteTerrainMod()
+    {
+        if (GetParent()?.GetParent() is not Main mainNode) return;
+        var terrain = mainNode.GetTerrainGrid();
+        terrain.WorldToGrid(_terrainModTarget.X, _terrainModTarget.Y, out int gx, out int gy);
+        var cell = terrain.GetCell(gx, gy);
+
+        switch (_terrainModType)
+        {
+            case TerrainModType.Flatten:
+                // 削平山脉：Mountain → Grass，Elevation 3 → 1
+                cell.Type = TerrainType.Grass;
+                cell.Elevation = 1;
+                terrain.SetCell(gx, gy, cell);
+                GD.Print($"[TerrainMod] 山脉削平完成 ({gx},{gy})");
+                break;
+
+            case TerrainModType.Tunnel:
+                // 开凿隧道：山脉格子标记HasTunnel
+                cell.HasTunnel = true;
+                terrain.SetCell(gx, gy, cell);
+                GD.Print($"[TerrainMod] 隧道开通完成 ({gx},{gy})");
+                break;
+
+            case TerrainModType.Bridge:
+                // 架桥：水面格子标记HasBridge
+                cell.HasBridge = true;
+                terrain.SetCell(gx, gy, cell);
+                GD.Print($"[TerrainMod] 桥梁架设完成 ({gx},{gy})");
+                break;
+
+            case TerrainModType.UnderseaTunnel:
+                // 海底隧道：深水格子标记HasTunnel
+                cell.HasTunnel = true;
+                cell.Elevation = 1; // 隧道内部按平地高度
+                terrain.SetCell(gx, gy, cell);
+                GD.Print($"[TerrainMod] 海底隧道贯通完成 ({gx},{gy})");
+                break;
+        }
+
+        // 重新生成地面纹理（需要刷新受影响的区域）
+        mainNode.RefreshGroundTexture();
     }
 }

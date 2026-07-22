@@ -55,6 +55,9 @@ public partial class Main : Node2D
     private const int InfantryCost = 100;
     private const int AntiAirCost = 300;
     private const int EngineerCost = 300;
+    // E4：工程单位造价
+    private const int SapperCost = 150;
+    private const int ChiefEngineerCost = 400;
     private const int MaxUnitsPerTeam = 20;
     private const int PowerPlantCost = 300;
     private const int BarracksCost = 400;
@@ -197,6 +200,8 @@ public partial class Main : Node2D
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
+    // E4：键盘防抖
+    private Key _prevKeyState = Key.None;
 
     public override void _Ready()
     {
@@ -396,6 +401,31 @@ public partial class Main : Node2D
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
         GD.Print("========================================");
+    }
+
+    // ======== E4：地形改造支持方法 ========
+
+    /// <summary>扣减指定阵营的金钱。成功返回true，资金不足返回false。</summary>
+    public bool SpendMoney(int teamId, int amount)
+    {
+        if (teamId < 0 || teamId >= TotalTeamCount) return false;
+        if (_money[teamId] < amount) return false;
+        _money[teamId] -= amount;
+        return true;
+    }
+
+    /// <summary>重新生成地面纹理（地形改造后调用）。</summary>
+    public void RefreshGroundTexture()
+    {
+        // 移除旧的地面精灵
+        if (_groundSprite != null)
+        {
+            RemoveChild(_groundSprite);
+            _groundSprite.QueueFree();
+            _groundSprite = null!;
+        }
+        // 重新生成（使用同一TerrainGrid数据，已包含改造后的内容）
+        CreateGround();
     }
 
     /// <summary>P5：应用难度配置到游戏参数。</summary>
@@ -777,6 +807,15 @@ public partial class Main : Node2D
         if (Input.IsActionJustPressed("build_tech")) TryBuildBuilding(BuildingType.TechCenter);
         if (Input.IsActionJustPressed("spawn_rocket")) TrySpawnUnit(UnitType.RocketLauncher, RocketLauncherCost);
         if (Input.IsActionJustPressed("spawn_missile")) TrySpawnUnit(UnitType.MissileTank, MissileTankCost);
+        // E4：工兵(K) / 高级工程师(Shift+K) 生产热键
+        if (Input.IsKeyPressed(Key.K) && _prevKeyState != Key.K)
+        {
+            if (Input.IsKeyPressed(Key.Shift))
+                TrySpawnUnit(UnitType.ChiefEngineer, ChiefEngineerCost);
+            else
+                TrySpawnUnit(UnitType.Sapper, SapperCost);
+        }
+        _prevKeyState = Input.IsKeyPressed(Key.K) ? Key.K : Key.None;
 
         // AI 阵营节奏：仅活跃 AI 阵营（1.._activeAiCount）独立 Tick
         // 休眠AI（_activeAiCount+1..AiTeamCount）既不发展建筑也不造兵进攻，给玩家喘息空间
@@ -1106,6 +1145,8 @@ public partial class Main : Node2D
             UnitType.MissileTank => MissileTankCost,
             UnitType.AntiAir => AntiAirCost,
             UnitType.Engineer => EngineerCost,
+            UnitType.Sapper => SapperCost,
+            UnitType.ChiefEngineer => ChiefEngineerCost,
             _ => 0
         };
     }
@@ -1981,14 +2022,48 @@ public partial class Main : Node2D
         }
         // 普通移动：保持简易队形
         int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(friendlyUnits.Count)));
-        for (int i = 0; i < friendlyUnits.Count; i++)
+        // E4：工程单位右键不可通行地形 → 触发地形改造
+        var terrainCell = _terrain.GetCellAtWorld(worldPos.X, worldPos.Y);
+        Unit.TerrainModType modType = DetectTerrainMod(terrainCell);
+        if (modType != Unit.TerrainModType.None)
         {
-            int col = i % cols;
-            int row = i / cols;
-            friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
+            // 仅工程单位执行地形改造，非工程单位仍正常移动
+            for (int i = 0; i < friendlyUnits.Count; i++)
+            {
+                int col = i % cols;
+                int row = i / cols;
+                if (friendlyUnits[i].IsEngineerUnit)
+                    friendlyUnits[i].CommandTerrainMod(modType, worldPos + new Vector2(col * 40, row * 40));
+                else
+                    friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
+            }
+        }
+        else
+        {
+            for (int i = 0; i < friendlyUnits.Count; i++)
+            {
+                int col = i % cols;
+                int row = i / cols;
+                friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
+            }
         }
         // 阶段12-C：下令移动音效
         _audio?.PlaySfx(AudioManager.Sfx.Move);
+    }
+
+    /// <summary>E4：检测右键位置需要的地形改造类型。</summary>
+    private Unit.TerrainModType DetectTerrainMod(TerrainCell cell)
+    {
+        // 山脉→削平
+        if (cell.Type == TerrainType.Mountain && !cell.HasTunnel)
+            return Unit.TerrainModType.Flatten;
+        // 深水→架桥
+        if (cell.Type == TerrainType.DeepWater && !cell.HasBridge && !cell.HasTunnel)
+            return Unit.TerrainModType.Bridge;
+        // 浅水→架桥
+        if (cell.Type == TerrainType.ShallowWater && !cell.HasBridge)
+            return Unit.TerrainModType.Bridge;
+        return Unit.TerrainModType.None;
     }
 
     // ---------- 选择 ----------
@@ -2147,6 +2222,8 @@ public partial class Main : Node2D
         {
             case UnitType.Infantry:
             case UnitType.Engineer:
+            case UnitType.Sapper:
+            case UnitType.ChiefEngineer:
                 // 步兵用高频muzzle
                 _audio.PlaySfx(AudioManager.Sfx.Muzzle, 1.2f);
                 break;
@@ -2200,6 +2277,8 @@ public partial class Main : Node2D
     {
         UnitType.LightTank => BuildingType.Barracks,
         UnitType.Infantry => BuildingType.Barracks,
+        UnitType.Sapper => BuildingType.Barracks,           // E4：工兵从兵营生产
+        UnitType.ChiefEngineer => BuildingType.TechCenter,  // E4：高级工程师从科技中心生产
         UnitType.HeavyTank => BuildingType.WarFactory,
         UnitType.Artillery => BuildingType.WarFactory,
         UnitType.AntiAir => BuildingType.WarFactory,
