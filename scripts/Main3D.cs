@@ -251,8 +251,33 @@ public partial class Main3D : Node3D
         env.AmbientLightSource = Godot.Environment.AmbientSource.Sky;
         env.AmbientLightColor = new Color(0.6f, 0.65f, 0.7f);
         env.AmbientLightEnergy = 0.6f;
-        env.FogEnabled = false;
+
+        // 色调映射：Filmic 提升中暗部细节
+        env.TonemapMode = Godot.Environment.ToneMapper.Filmic;
+        env.TonemapExposure = 1.0f;
+
+        // 辉光：让炮口/爆炸/灯光有发光效果
+        env.GlowEnabled = true;
+        env.GlowIntensity = 0.8f;
+        env.GlowStrength = 1.0f;
+        env.GlowBloom = 0.2f;
+        env.GlowBlendMode = Godot.Environment.GlowBlendModeEnum.Softlight;
+        env.GlowHdrThreshold = 1.0f;
+
+        // 颜色校正：增加饱和度和对比度
+        env.AdjustmentEnabled = true;
+        env.AdjustmentBrightness = 1.0f;
+        env.AdjustmentContrast = 1.08f;
+        env.AdjustmentSaturation = 1.15f;
+
+        // 雾效（轻量大气雾，不用体积雾以避免OpenGL ES下过暗）
+        env.FogEnabled = true;
+        env.FogLightColor = new Color(0.6f, 0.7f, 0.85f);
+        env.FogLightEnergy = 0.3f;
+        env.FogDensity = 0.003f;
+        env.FogAerialPerspective = 0.3f;
         env.VolumetricFogEnabled = false;
+
         _worldEnv = new WorldEnvironment { Environment = env };
         AddChild(_worldEnv);
 
@@ -260,16 +285,25 @@ public partial class Main3D : Node3D
         _sunLight = new DirectionalLight3D();
         _sunLight.RotationDegrees = new Vector3(-55, 30, 0);
         _sunLight.LightEnergy = 1.2f;
+        _sunLight.LightColor = new Color(1.0f, 0.95f, 0.85f); // 暖色太阳
         _sunLight.ShadowEnabled = true;
-        _sunLight.ShadowOpacity = 0.5f;
+        _sunLight.ShadowOpacity = 0.7f; // 更深的阴影增加立体感
         _sunLight.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
+        _sunLight.DirectionalShadowBlendSplits = true; // 混合分割提升近景阴影质量
+        _sunLight.DirectionalShadowMaxDistance = 80f; // 限制阴影距离提升质量
+        _sunLight.ShadowNormalBias = 1.0f;
+        _sunLight.ShadowBias = 0.02f;
         AddChild(_sunLight);
 
         // 月光（夜间补光）
         _moonLight = new DirectionalLight3D();
         _moonLight.RotationDegrees = new Vector3(-40, 210, 0);
         _moonLight.LightEnergy = 0f;
-        _moonLight.ShadowEnabled = false;
+        _moonLight.LightColor = new Color(0.6f, 0.7f, 0.9f); // 冷色月光
+        _moonLight.ShadowEnabled = true; // 启用月光阴影提升夜间立体感
+        _moonLight.ShadowOpacity = 0.3f;
+        _moonLight.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
+        _moonLight.DirectionalShadowMaxDistance = 60f;
         AddChild(_moonLight);
 
         // 场景容器
@@ -2391,7 +2425,7 @@ public partial class Main3D : Node3D
                 if (_worldEnv?.Environment != null)
                 {
                     _worldEnv.Environment.FogDensity = 0.015f;
-                    _worldEnv.Environment.VolumetricFogDensity = 0.05f;
+                    _worldEnv.Environment.FogLightEnergy = 0.2f;
                 }
                 break;
         }
@@ -2449,7 +2483,7 @@ public partial class Main3D : Node3D
         if (_worldEnv?.Environment != null)
         {
             _worldEnv.Environment.FogDensity = 0.003f;
-            _worldEnv.Environment.VolumetricFogDensity = 0.01f;
+            _worldEnv.Environment.FogLightEnergy = 0.3f;
         }
     }
 
