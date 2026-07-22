@@ -352,6 +352,17 @@ public partial class Unit : CharacterBody2D
         // 阴影始终水平（由_Draw绘制，需要每帧QueueRedraw）
         QueueRedraw();
 
+        // E3：地形高度视觉偏移——高海拔单位的body向上偏移，模拟"站在高处"
+        if (GetParent()?.GetParent() is Main mainNode)
+        {
+            var terrain = mainNode.GetTerrainGrid();
+            terrain.WorldToGrid(GlobalPosition.X, GlobalPosition.Y, out int gx, out int gy);
+            var cell = terrain.GetCell(gx, gy);
+            float yOffset = cell.Elevation switch { 2 => -3f, 3 => -6f, _ => 0f };
+            _body.Position = new Vector2(_body.Position.X, yOffset + (Type == UnitType.Infantry ? 0f : 0f));
+            if (_turret != null) _turret.Position = new Vector2(_turret.Position.X, yOffset);
+        }
+
         // 调度子类自定义 AI（默认是玩家命令 + 攻击逻辑）
         ProcessAI(dt);
 

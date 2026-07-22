@@ -2395,33 +2395,54 @@ public partial class Main : Node2D
             }
         }
 
-        // 悬崖阴影：在高度差≥2的边界处绘制阴影
+        // E3 悬崖侧面渲染：在高度差≥2的边界处绘制悬崖侧面+阴影
         for (int ty = 0; ty < GridSize; ty++)
         {
             for (int tx = 0; tx < GridSize; tx++)
             {
                 var cell = _terrain.GetCell(tx, ty);
                 if (cell.Elevation <= 1) continue;
-                // 检查四周是否有更低的地块
                 foreach (var (dx, dy) in new[] { (0, 1), (0, -1), (1, 0), (-1, 0) })
                 {
                     int nx = tx + dx, ny = ty + dy;
                     if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
                     var neighbor = _terrain.GetCell(nx, ny);
-                    if (cell.Elevation - neighbor.Elevation >= 2)
+                    int elevDiff = cell.Elevation - neighbor.Elevation;
+                    if (elevDiff >= 2)
                     {
-                        // 在低侧绘制阴影条
+                        // 悬崖侧面：在低侧绘制棕色岩石纹理（模拟从上方俯视的侧面）
                         int sx = nx * TileSize, sy = ny * TileSize;
-                        int shadowH = 4;
-                        for (int py = 0; py < TileSize && py < shadowH; py++)
+                        int cliffHeight = Math.Min(elevDiff * 6, 18); // 高度差越大侧面越厚
+                        for (int py = 0; py < TileSize; py++)
                         {
                             for (int px = 0; px < TileSize; px++)
                             {
                                 int imgX = sx + px, imgY = sy + py;
                                 if (imgX < groundImg.GetWidth() && imgY < groundImg.GetHeight())
                                 {
-                                    var c = groundImg.GetPixel(imgX, imgY);
-                                    groundImg.SetPixel(imgX, imgY, new Color(0, 0, 0, 0.25f) + c * 0.75f);
+                                    // 顶部cliffHeight像素画悬崖侧面
+                                    if (py < cliffHeight)
+                                    {
+                                        // 岩石纹理：棕灰色+水平层理线
+                                        float layerPos = (float)py / cliffHeight;
+                                        var cliffColor = new Color(
+                                            0.35f + layerPos * 0.1f,
+                                            0.30f + layerPos * 0.08f,
+                                            0.22f + layerPos * 0.06f,
+                                            1.0f
+                                        );
+                                        // 层理线
+                                        if (py % 3 == 0)
+                                            cliffColor = new Color(cliffColor.R * 0.85f, cliffColor.G * 0.85f, cliffColor.B * 0.85f, 1.0f);
+                                        groundImg.SetPixel(imgX, imgY, cliffColor);
+                                    }
+                                    else if (py < cliffHeight + 4)
+                                    {
+                                        // 过渡阴影
+                                        var c = groundImg.GetPixel(imgX, imgY);
+                                        float shadowFade = 1.0f - (float)(py - cliffHeight) / 4f;
+                                        groundImg.SetPixel(imgX, imgY, new Color(0, 0, 0, 0.2f * shadowFade) + c * (1.0f - 0.2f * shadowFade));
+                                    }
                                 }
                             }
                         }
