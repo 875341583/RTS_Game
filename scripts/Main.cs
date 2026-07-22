@@ -177,6 +177,15 @@ public partial class Main : Node2D
         }
         // 阶段12-A4 闪电柱形状种子（用于绘制随机折线）
         private float _lightningBoltSeed;
+
+    // ---- 阶段12-B 地图系统（文明6式种子制度） ----
+    /// <summary>地图种子。同一种子+难度=完全相同的地图。0=随机生成。</summary>
+    private ulong _mapSeed = 0;
+    /// <summary>地图 RNG（基于种子初始化，所有地图生成共用此实例保证可复现）。</summary>
+    private Random _mapRng = new(42);
+    /// <summary>地图大小常量（像素）。阵营基地分布在 200..(MapSize-200) 范围内。</summary>
+    private const float MapSize = 2000f;
+
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -202,7 +211,22 @@ public partial class Main : Node2D
                     _ => _difficulty
                 };
             }
+            if (a.StartsWith("--seed", StringComparison.OrdinalIgnoreCase))
+            {
+                string val = a.Contains('=') ? a.Split('=')[1] : "";
+                if (ulong.TryParse(val, out var parsedSeed))
+                    _mapSeed = parsedSeed;
+            }
         }
+        // 如果命令行没指定种子，从 GameSession 获取（主菜单输入）
+        if (_mapSeed == 0)
+            _mapSeed = GameSession.MapSeed;
+        // 如果仍然为 0，随机生成一个种子
+        if (_mapSeed == 0)
+            _mapSeed = (ulong)DateTime.Now.Ticks;
+        _mapRng = new Random((int)(_mapSeed & 0x7FFFFFFF));
+        GD.Print($"[Map] 种子 {_mapSeed}（可用 --seed={_mapSeed} 复现本张地图）");
+
         ApplyDifficultyConfig();
 
         _camera = GetNode<RTSCamera>("Camera2D");
@@ -273,40 +297,23 @@ public partial class Main : Node2D
                     GD.Print($"[Difficulty] Team {teamId} 处于休眠状态（不发展不主动进攻）");
             }
 
-            // 每个阵营基地附近自动生成 2 个近矿（800 资源）保证起步经济
-            SpawnOre(basePos + new Vector2(200, 150), 800);
-            SpawnOre(basePos + new Vector2(250, 350), 800);
+            // 每个阵营基地附近自动生成 2 个近矿（位置由种子随机偏移，保证起步经济）
+            float oreAngle1 = (float)(_mapRng.NextDouble() * Mathf.Pi * 2);
+            float oreAngle2 = oreAngle1 + Mathf.Pi * 0.7f + (float)(_mapRng.NextDouble() * 0.5f);
+            float oreDist1 = 180f + (float)(_mapRng.NextDouble() * 60f);
+            float oreDist2 = 240f + (float)(_mapRng.NextDouble() * 80f);
+            SpawnOre(basePos + new Vector2(Mathf.Cos(oreAngle1) * oreDist1, Mathf.Sin(oreAngle1) * oreDist1), 800);
+            SpawnOre(basePos + new Vector2(Mathf.Cos(oreAngle2) * oreDist2, Mathf.Sin(oreAngle2) * oreDist2), 800);
         }
 
-        // 散布中场争夺矿 + 中央高价值矿（保留原地图设计）
-        // 中场争夺矿
-        SpawnOre(new Vector2(700, 1100), 1200);
-        SpawnOre(new Vector2(1300, 900), 1200);
-        SpawnOre(new Vector2(900, 400), 1200);
-        SpawnOre(new Vector2(1100, 1600), 1200);
-        // 中央高价值矿（高风险高回报）
-        SpawnOre(new Vector2(1000, 1000), 2000);
-        SpawnOre(new Vector2(850, 1150), 1500);
-        SpawnOre(new Vector2(1150, 850), 1500);
+        // 中场争夺矿 + 中央高价值矿（位置由种子随机化，但保持围绕地图中央分布）
+        GenerateRandomOreDeposits();
 
-        // ---- 地形障碍物 ----
-        // 中央墙体（形成天然屏障和狭窄通道）
-        SpawnObstacle(new Vector2(1000, 700), new Vector2(120, 30));
-        SpawnObstacle(new Vector2(1000, 1300), new Vector2(120, 30));
-        SpawnObstacle(new Vector2(700, 1000), new Vector2(30, 120));
-        SpawnObstacle(new Vector2(1300, 1000), new Vector2(30, 120));
-        // 散布岩石
-        SpawnObstacle(new Vector2(600, 800), new Vector2(50, 50));
-        SpawnObstacle(new Vector2(1400, 1200), new Vector2(50, 50));
-        SpawnObstacle(new Vector2(800, 1300), new Vector2(40, 40));
-        SpawnObstacle(new Vector2(1200, 700), new Vector2(40, 40));
-        SpawnObstacle(new Vector2(500, 1200), new Vector2(45, 45));
-        SpawnObstacle(new Vector2(1500, 800), new Vector2(45, 45));
+        // ---- 地形障碍物（种子驱动） ----
+        GenerateRandomObstacles();
 
-        // ---- 战略要地 ----
-        SpawnStrategicPoint(new Vector2(1000, 1000));   // 地图正中央
-        SpawnStrategicPoint(new Vector2(700, 700));     // 蓝方侧中场
-        SpawnStrategicPoint(new Vector2(1300, 1300));   // 红方侧中场
+        // ---- 战略要地（中央固定 + 侧翼种子偏移） ----
+        GenerateStrategicPoints();
 
         // Q1：侧边栏建造面板
         _buildPanel = new BuildPanel();
@@ -344,7 +351,8 @@ public partial class Main : Node2D
                    "★ 选中单位右键点敌方建筑/单位攻击\n" +
                    "★ 选中建筑右键设集结点 | R维修 | V出售\n" +
                    "★ ☢ 建造科技中心后按 Z 可发射核弹（5分钟冷却）\n" +
-                   "★ ⚡ 按 C 释放闪电风暴（持续5秒范围伤害/4分钟冷却）",
+                   "★ ⚡ 按 C 释放闪电风暴（持续5秒范围伤害/4分钟冷却）\n" +
+                   $"★ 地图种子: {_mapSeed}（--seed={_mapSeed} 可复现本张地图）",
         };
         _startOverlay.HorizontalAlignment = HorizontalAlignment.Center;
         _startOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
@@ -2214,17 +2222,27 @@ public partial class Main : Node2D
 
         const int TileSize = 64;
         const int GridSize = 32; // 32*64=2048 覆盖 2000x2000
-        var rng = new Random(42);
+        var rng = _mapRng;  // 阶段12-B：使用地图种子 RNG，保证可复现
 
         // 瓦片类型网格
         int[,] tileGrid = new int[GridSize, GridSize];
-        // 沙地区域
-        for (int ty = 2; ty <= 5; ty++) for (int tx = 2; tx <= 5; tx++) tileGrid[tx, ty] = 1;
-        for (int ty = 27; ty <= 30; ty++) for (int tx = 27; tx <= 30; tx++) tileGrid[tx, ty] = 1;
-        for (int ty = 15; ty <= 16; ty++) for (int tx = 15; tx <= 16; tx++) tileGrid[tx, ty] = 1;
-        for (int ty = 10; ty <= 12; ty++) for (int tx = 10; tx <= 12; tx++) tileGrid[tx, ty] = 1;
-        for (int ty = 20; ty <= 21; ty++) for (int tx = 20; tx <= 21; tx++) tileGrid[tx, ty] = 1;
-        // 道路
+        // 沙地区域：用种子随机生成 5 个沙地斑块（位置+大小随机化）
+        int sandPatches = 5;
+        for (int p = 0; p < sandPatches; p++)
+        {
+            int cx = rng.Next(3, GridSize - 3);
+            int cy = rng.Next(3, GridSize - 3);
+            int w = rng.Next(2, 5);
+            int h = rng.Next(2, 5);
+            // 避免覆盖地图正中央（保留中央为草地+道路）
+            float distFromCenter = Mathf.Sqrt((cx - 16f) * (cx - 16f) + (cy - 16f) * (cy - 16f));
+            if (distFromCenter < 3f) continue;
+            for (int ty = cy - h / 2; ty <= cy + h / 2; ty++)
+                for (int tx = cx - w / 2; tx <= cx + w / 2; tx++)
+                    if (tx >= 0 && tx < GridSize && ty >= 0 && ty < GridSize)
+                        tileGrid[tx, ty] = 1;
+        }
+        // 道路：十字主干道 + 对角线道路（保留结构，这是导航骨架）
         for (int tx = 0; tx < GridSize; tx++) { if (tileGrid[tx, 15] == 0) tileGrid[tx, 15] = 2; if (tileGrid[tx, 16] == 0) tileGrid[tx, 16] = 2; }
         for (int ty = 0; ty < GridSize; ty++) { if (tileGrid[15, ty] == 0) tileGrid[15, ty] = 3; if (tileGrid[16, ty] == 0) tileGrid[16, ty] = 3; }
         tileGrid[15, 15] = 4; tileGrid[15, 16] = 4; tileGrid[16, 15] = 4; tileGrid[16, 16] = 4;
@@ -2335,6 +2353,118 @@ public partial class Main : Node2D
         var sp = new StrategicPoint();
         sp.GlobalPosition = pos;
         _strategicPointsNode.AddChild(sp);
+    }
+
+    // ========== 阶段12-B 种子驱动地图生成 ==========
+
+    /// <summary>种子驱动生成中场争夺矿 + 中央高价值矿。位置围绕地图中央随机散布。</summary>
+    private void GenerateRandomOreDeposits()
+    {
+        var center = new Vector2(MapSize * 0.5f, MapSize * 0.5f);
+
+        // 4 个中场争夺矿（1200 资源）：在距中央 350-550px 的环形带上随机分布
+        for (int i = 0; i < 4; i++)
+        {
+            float angle = (float)(_mapRng.NextDouble() * Mathf.Pi * 2);
+            float dist = 350f + (float)(_mapRng.NextDouble() * 200f);
+            var pos = center + new Vector2(Mathf.Cos(angle) * dist, Mathf.Sin(angle) * dist);
+            pos = ClampToMap(pos, 100f);
+            SpawnOre(pos, 1200);
+        }
+
+        // 中央高价值矿（2000 资源）：在地图正中央附近小幅偏移
+        float centralOffsetX = (float)(_mapRng.NextDouble() - 0.5) * 80f;
+        float centralOffsetY = (float)(_mapRng.NextDouble() - 0.5) * 80f;
+        SpawnOre(center + new Vector2(centralOffsetX, centralOffsetY), 2000);
+
+        // 2 个中央外围矿（1500 资源）
+        for (int i = 0; i < 2; i++)
+        {
+            float angle = (float)(_mapRng.NextDouble() * Mathf.Pi * 2);
+            float dist = 120f + (float)(_mapRng.NextDouble() * 60f);
+            var pos = center + new Vector2(Mathf.Cos(angle) * dist, Mathf.Sin(angle) * dist);
+            SpawnOre(pos, 1500);
+        }
+
+        GD.Print($"[Map] 矿点生成完毕（种子 {_mapSeed}）");
+    }
+
+    /// <summary>种子驱动生成障碍物：中央保留 4 面墙 + 随机散布 6-10 个岩石。</summary>
+    private void GenerateRandomObstacles()
+    {
+        var center = new Vector2(MapSize * 0.5f, MapSize * 0.5f);
+
+        // 中央墙体（保留固定结构，形成战略通道）
+        float wallOffset = 300f;
+        SpawnObstacle(center + new Vector2(0, -wallOffset), new Vector2(120, 30));
+        SpawnObstacle(center + new Vector2(0, wallOffset), new Vector2(120, 30));
+        SpawnObstacle(center + new Vector2(-wallOffset, 0), new Vector2(30, 120));
+        SpawnObstacle(center + new Vector2(wallOffset, 0), new Vector2(30, 120));
+
+        // 随机散布岩石：6-10 个，位置避开基地（距任何基地 ≥250px）和中央墙
+        int rockCount = _mapRng.Next(6, 11);
+        int placed = 0;
+        int attempts = 0;
+        while (placed < rockCount && attempts < 50)
+        {
+            attempts++;
+            float x = 300f + (float)(_mapRng.NextDouble() * (MapSize - 600f));
+            float y = 300f + (float)(_mapRng.NextDouble() * (MapSize - 600f));
+            var pos = new Vector2(x, y);
+
+            // 避开基地附近（8 个基地位置）
+            bool tooCloseToBase = false;
+            var basePositions = new Vector2[]
+            {
+                new(200, 200), new(1800, 1800), new(1800, 200), new(200, 1800),
+                new(1000, 200), new(1000, 1800), new(200, 1000), new(1800, 1000),
+            };
+            foreach (var bp in basePositions)
+            {
+                if (pos.DistanceTo(bp) < 250f) { tooCloseToBase = true; break; }
+            }
+            if (tooCloseToBase) continue;
+
+            // 避开中央墙附近
+            if (pos.DistanceTo(center) < 200f) continue;
+
+            float size = 35f + (float)(_mapRng.NextDouble() * 25f);
+            SpawnObstacle(pos, new Vector2(size, size));
+            placed++;
+        }
+
+        GD.Print($"[Map] 障碍物生成完毕：4 墙 + {placed} 岩石（种子 {_mapSeed}）");
+    }
+
+    /// <summary>种子驱动生成战略要地：中央固定 + 2 个侧翼随机偏移。</summary>
+    private void GenerateStrategicPoints()
+    {
+        var center = new Vector2(MapSize * 0.5f, MapSize * 0.5f);
+
+        // 中央战略点固定
+        SpawnStrategicPoint(center);
+
+        // 两个侧翼战略点：在距中央 350-450px 处随机分布（对角线两侧）
+        float angle1 = (float)(_mapRng.NextDouble() * Mathf.Pi * 2);
+        float dist1 = 350f + (float)(_mapRng.NextDouble() * 100f);
+        var pos1 = center + new Vector2(Mathf.Cos(angle1) * dist1, Mathf.Sin(angle1) * dist1);
+        SpawnStrategicPoint(ClampToMap(pos1, 100f));
+
+        // 第二个战略点在第一个的对角线方向
+        float angle2 = angle1 + Mathf.Pi;
+        float dist2 = 350f + (float)(_mapRng.NextDouble() * 100f);
+        var pos2 = center + new Vector2(Mathf.Cos(angle2) * dist2, Mathf.Sin(angle2) * dist2);
+        SpawnStrategicPoint(ClampToMap(pos2, 100f));
+
+        GD.Print($"[Map] 战略点生成完毕：1 中央 + 2 侧翼（种子 {_mapSeed}）");
+    }
+
+    /// <summary>将坐标限制在地图范围内（距边缘至少 margin 像素）。</summary>
+    private static Vector2 ClampToMap(Vector2 pos, float margin)
+    {
+        return new Vector2(
+            Mathf.Clamp(pos.X, margin, MapSize - margin),
+            Mathf.Clamp(pos.Y, margin, MapSize - margin));
     }
 
     // ---------- 拾取/查询 ----------

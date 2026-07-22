@@ -8,11 +8,14 @@ namespace RTSGame;
 /// </summary>
 public partial class MainMenu : Control
 {
+    private LineEdit _seedInput = null!;
+
     public override void _Ready()
     {
         // 有 --difficulty 参数时直接进入游戏（headless 自动化测试 + 可视化验收通用）
         {
             var args = OS.GetCmdlineArgs();
+            bool hasDifficulty = false;
             for (int i = 0; i < args.Length; i++)
             {
                 string a = args[i];
@@ -27,10 +30,20 @@ public partial class MainMenu : Control
                         "brutal" or "3" => Main.Difficulty.Brutal,
                         _ => Main.Difficulty.Normal
                     };
-                    GD.Print($"[MainMenu] 自动进入游戏 (难度 {GameSession.SelectedDifficulty}, mode={DisplayServer.GetName()})");
-                    CallDeferred(nameof(ChangeToGameScene));
-                    return;
+                    hasDifficulty = true;
                 }
+                if (a.StartsWith("--seed", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    string val = a.Contains('=') ? a.Split('=')[1] : "";
+                    if (ulong.TryParse(val, out var s))
+                        GameSession.MapSeed = s;
+                }
+            }
+            if (hasDifficulty)
+            {
+                GD.Print($"[MainMenu] 自动进入游戏 (难度 {GameSession.SelectedDifficulty}, 种子 {GameSession.MapSeed}, mode={DisplayServer.GetName()})");
+                CallDeferred(nameof(ChangeToGameScene));
+                return;
             }
         }
 
@@ -80,6 +93,26 @@ public partial class MainMenu : Control
 
         var spacer2 = new Control { CustomMinimumSize = new Vector2(0, 20) };
         vbox.AddChild(spacer2);
+
+        // 种子输入框（文明6式：可输入种子复现地图，留空=随机）
+        var seedRow = new HBoxContainer();
+        seedRow.AddThemeConstantOverride("separation", 8);
+        var seedLabel = MakeLabel("地图种子:", 14, new Color(0.6f, 0.65f, 0.6f));
+        seedRow.AddChild(seedLabel);
+        var seedInput = new LineEdit();
+        _seedInput = seedInput;
+        seedInput.CustomMinimumSize = new Vector2(200, 30);
+        seedInput.PlaceholderText = "留空=随机种子";
+        seedInput.AddThemeFontSizeOverride("font_size", 14);
+        seedRow.AddChild(seedInput);
+        vbox.AddChild(seedRow);
+
+        var seedHint = MakeLabel("输入相同种子可复现同一张地图（类似文明6）", 11, new Color(0.45f, 0.5f, 0.45f));
+        seedHint.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(seedHint);
+
+        var spacer2b = new Control { CustomMinimumSize = new Vector2(0, 12) };
+        vbox.AddChild(spacer2b);
 
         // 操作说明
         var hint = MakeLabel(
@@ -132,7 +165,13 @@ public partial class MainMenu : Control
             if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
             {
                 GameSession.SelectedDifficulty = diff;
-                GD.Print($"[MainMenu] 选择难度: {diff}，进入游戏");
+                // 读取种子输入框
+                string seedText = _seedInput.Text.Trim();
+                if (!string.IsNullOrEmpty(seedText) && ulong.TryParse(seedText, out var parsedSeed))
+                    GameSession.MapSeed = parsedSeed;
+                else
+                    GameSession.MapSeed = 0; // 0=随机
+                GD.Print($"[MainMenu] 选择难度: {diff}，种子: {GameSession.MapSeed}，进入游戏");
                 CallDeferred(nameof(ChangeToGameScene));
             }
         };
