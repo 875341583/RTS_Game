@@ -326,18 +326,24 @@ public partial class Unit3D : CharacterBody3D
         return mi;
     }
 
-    /// <summary>创建坦克模型：底盘+履带+轮子+炮塔+炮管</summary>
+    /// <summary>创建坦克模型：底盘+履带+轮子+炮塔+炮管+排气管+天线+工具箱+备用履带板</summary>
     protected void BuildTankModel(Color bodyColor, Color darkColor, float width, float length, float hullHeight)
     {
         var bodyMat = MakeTankMat(bodyColor);
         var darkMat = MakeArmorMat(darkColor);
         var trackMat = MakeMat(new Color(0.12f, 0.12f, 0.12f), 0.9f, 0f);
         var metalMat = MakeMat(new Color(0.35f, 0.35f, 0.38f), 0.3f, 0.8f);
+        var toolMat = MakeMat(new Color(0.25f, 0.2f, 0.15f), 0.8f, 0.1f);
 
         // 底盘
         AddBox(_modelRoot, new Vector3(width, hullHeight, length), new Vector3(0, hullHeight * 0.5f + 0.2f, 0), bodyMat);
         // 前装甲斜面
         AddBox(_modelRoot, new Vector3(width * 0.88f, hullHeight * 0.75f, length * 0.18f), new Vector3(0, hullHeight * 0.4f + 0.2f, length * 0.52f), bodyMat);
+        // 后装甲斜面
+        AddBox(_modelRoot, new Vector3(width * 0.85f, hullHeight * 0.7f, length * 0.15f), new Vector3(0, hullHeight * 0.4f + 0.2f, -length * 0.5f), bodyMat);
+        // 侧裙板
+        AddBox(_modelRoot, new Vector3(0.06f, hullHeight * 0.6f, length * 0.9f), new Vector3(-width * 0.5f - 0.03f, hullHeight * 0.35f + 0.2f, 0), darkMat);
+        AddBox(_modelRoot, new Vector3(0.06f, hullHeight * 0.6f, length * 0.9f), new Vector3(width * 0.5f + 0.03f, hullHeight * 0.35f + 0.2f, 0), darkMat);
 
         // 左右履带
         float trackOffset = width * 0.5f + 0.1f;
@@ -353,12 +359,30 @@ public partial class Unit3D : CharacterBody3D
             AddCylinder(_modelRoot, 0.22f, 0.22f, 0.3f, new Vector3(-trackOffset, 0.15f, z), new Vector3(0, 0, 90), metalMat);
             AddCylinder(_modelRoot, 0.22f, 0.22f, 0.3f, new Vector3(trackOffset, 0.15f, z), new Vector3(0, 0, 90), metalMat);
         }
+        // 前后诱导轮（稍大）
+        AddCylinder(_modelRoot, 0.28f, 0.28f, 0.3f, new Vector3(-trackOffset, 0.2f, length * 0.5f), new Vector3(0, 0, 90), metalMat);
+        AddCylinder(_modelRoot, 0.28f, 0.28f, 0.3f, new Vector3(trackOffset, 0.2f, length * 0.5f), new Vector3(0, 0, 90), metalMat);
+        AddCylinder(_modelRoot, 0.28f, 0.28f, 0.3f, new Vector3(-trackOffset, 0.2f, -length * 0.5f), new Vector3(0, 0, 90), metalMat);
+        AddCylinder(_modelRoot, 0.28f, 0.28f, 0.3f, new Vector3(trackOffset, 0.2f, -length * 0.5f), new Vector3(0, 0, 90), metalMat);
+
+        // 排气管（右后侧）
+        AddCylinder(_modelRoot, 0.06f, 0.08f, 0.4f, new Vector3(width * 0.35f, hullHeight * 0.6f + 0.2f, -length * 0.4f), new Vector3(90, 0, 0), metalMat);
+        AddCylinder(_modelRoot, 0.08f, 0.10f, 0.15f, new Vector3(width * 0.35f, hullHeight * 0.6f + 0.2f, -length * 0.52f), new Vector3(90, 0, 0), darkMat);
+
+        // 工具箱（左后侧上方）
+        AddBox(_modelRoot, new Vector3(0.3f, 0.2f, 0.4f), new Vector3(-width * 0.4f, hullHeight + 0.35f, -length * 0.3f), toolMat);
+
+        // 备用履带板（炮塔侧面挂载）
+        AddBox(_modelRoot, new Vector3(0.04f, 0.3f, 0.5f), new Vector3(-width * 0.4f, hullHeight + 0.35f, length * 0.2f), trackMat);
+        AddBox(_modelRoot, new Vector3(0.04f, 0.3f, 0.5f), new Vector3(width * 0.4f, hullHeight + 0.35f, length * 0.2f), trackMat);
 
         // 炮塔位置
         _turretNode.Position = new Vector3(0, hullHeight + 0.3f, -0.1f);
 
         // 炮塔主体
         AddBox(_turretNode, new Vector3(width * 0.65f, 0.45f, width * 0.65f), new Vector3(0, 0.1f, 0), bodyMat);
+        // 炮塔前装甲楔形
+        AddBox(_turretNode, new Vector3(width * 0.5f, 0.4f, 0.15f), new Vector3(0, 0.1f, width * 0.35f), bodyMat);
         // 炮塔顶部圆柱
         AddCylinder(_turretNode, 0.35f, 0.45f, 0.3f, new Vector3(0, 0.45f, 0), new Vector3(0, 0, 0), bodyMat);
 
@@ -368,8 +392,26 @@ public partial class Unit3D : CharacterBody3D
         // 炮口制动器
         AddCylinder(_turretNode, 0.12f, 0.13f, 0.3f, new Vector3(0, 0.1f, barrelLen + 0.3f), new Vector3(90, 0, 0), darkMat);
 
-        // 舱门
+        // 指挥官舱口
         AddCylinder(_turretNode, 0.18f, 0.2f, 0.1f, new Vector3(0, 0.65f, -0.15f), new Vector3(0, 0, 0), darkMat);
+        // 潜望镜（舱口前方小圆柱）
+        AddCylinder(_turretNode, 0.04f, 0.05f, 0.15f, new Vector3(0, 0.78f, 0.02f), new Vector3(0, 0, 0), metalMat);
+
+        // 天线（炮塔后部）
+        AddCylinder(_turretNode, 0.015f, 0.02f, 1.2f, new Vector3(-width * 0.2f, 0.5f, -width * 0.3f), new Vector3(15, 0, 0), metalMat);
+        // 天线顶端小球
+        AddSphere(_turretNode, 0.025f, new Vector3(-width * 0.2f, 1.1f, -width * 0.32f), metalMat);
+
+        // 机枪（炮塔顶部副武器）
+        AddCylinder(_turretNode, 0.025f, 0.03f, 0.5f, new Vector3(width * 0.15f, 0.55f, 0.1f), new Vector3(90, 0, 0), metalMat);
+
+        // 前大灯（底盘前部两侧）
+        AddSphere(_modelRoot, 0.06f, new Vector3(-width * 0.35f, hullHeight * 0.4f + 0.2f, length * 0.55f), MakeMat(new Color(0.9f, 0.85f, 0.5f), 0.2f, 0.6f));
+        AddSphere(_modelRoot, 0.06f, new Vector3(width * 0.35f, hullHeight * 0.4f + 0.2f, length * 0.55f), MakeMat(new Color(0.9f, 0.85f, 0.5f), 0.2f, 0.6f));
+
+        // 标识旗（炮塔后方小旗杆）
+        AddCylinder(_turretNode, 0.012f, 0.015f, 0.5f, new Vector3(width * 0.2f, 0.5f, -width * 0.25f), new Vector3(0, 0, 0), metalMat);
+        AddBox(_turretNode, new Vector3(0.15f, 0.1f, 0.01f), new Vector3(width * 0.27f, 0.72f, -width * 0.25f), bodyMat);
     }
 
     protected void BuildArtilleryModel(Color bodyColor, Color darkColor)
@@ -487,16 +529,31 @@ public partial class Unit3D : CharacterBody3D
         var darkMat = MakeMat(darkColor, 0.7f, 0.2f);
         var skinMat = MakeMat(new Color(0.8f, 0.65f, 0.5f), 0.8f, 0f);
         var metalMat = MakeMat(new Color(0.2f, 0.2f, 0.2f), 0.5f, 0.5f);
+        var packMat = MakeMat(new Color(0.35f, 0.3f, 0.2f), 0.9f, 0f);
 
-        // 身体
-        AddBox(_modelRoot, new Vector3(0.4f, 0.6f, 0.3f), new Vector3(0, 0.6f, 0), bodyMat);
-        // 头
-        AddSphere(_modelRoot, 0.18f, new Vector3(0, 1.1f, 0), skinMat);
-        // 腿
-        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.15f), new Vector3(-0.1f, 0.2f, 0), darkMat);
-        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.15f), new Vector3(0.1f, 0.2f, 0), darkMat);
-        // 武器
-        AddBox(_modelRoot, new Vector3(0.06f, 0.06f, 0.6f), new Vector3(0.25f, 0.7f, 0.2f), metalMat);
+        // 头盔（半圆，比头部稍大）
+        AddSphere(_modelRoot, 0.2f, new Vector3(0, 1.15f, 0), darkMat);
+        // 头部
+        AddSphere(_modelRoot, 0.16f, new Vector3(0, 1.1f, 0.02f), skinMat);
+        // 身体（稍微倾斜，带领部）
+        AddBox(_modelRoot, new Vector3(0.42f, 0.55f, 0.3f), new Vector3(0, 0.6f, 0), bodyMat);
+        // 背包
+        AddBox(_modelRoot, new Vector3(0.35f, 0.35f, 0.15f), new Vector3(0, 0.65f, -0.2f), packMat);
+        // 左臂
+        AddBox(_modelRoot, new Vector3(0.12f, 0.45f, 0.12f), new Vector3(-0.28f, 0.6f, 0.05f), bodyMat);
+        // 右臂（持枪前伸）
+        AddBox(_modelRoot, new Vector3(0.12f, 0.45f, 0.12f), new Vector3(0.28f, 0.6f, 0.15f), bodyMat);
+        // 左腿
+        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.18f), new Vector3(-0.1f, 0.2f, 0), darkMat);
+        // 右腿
+        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.18f), new Vector3(0.1f, 0.2f, 0), darkMat);
+        // 军靴
+        AddBox(_modelRoot, new Vector3(0.17f, 0.08f, 0.25f), new Vector3(-0.1f, 0.04f, 0.02f), metalMat);
+        AddBox(_modelRoot, new Vector3(0.17f, 0.08f, 0.25f), new Vector3(0.1f, 0.04f, 0.02f), metalMat);
+        // 步枪
+        AddBox(_modelRoot, new Vector3(0.06f, 0.06f, 0.7f), new Vector3(0.25f, 0.7f, 0.25f), metalMat);
+        // 弹匣
+        AddBox(_modelRoot, new Vector3(0.05f, 0.12f, 0.06f), new Vector3(0.25f, 0.55f, 0.15f), darkMat);
 
         // 步兵没有炮塔旋转
         _turretNode.Visible = false;
@@ -506,15 +563,43 @@ public partial class Unit3D : CharacterBody3D
     {
         var bodyMat = MakeMat(bodyColor, 0.7f, 0f);
         var darkMat = MakeMat(darkColor, 0.7f, 0.2f);
-        var toolMat = MakeMat(new Color(0.8f, 0.6f, 0.2f), 0.5f, 0.5f);
+        var skinMat = MakeMat(new Color(0.8f, 0.65f, 0.5f), 0.8f, 0f);
+        var metalMat = MakeMat(new Color(0.2f, 0.2f, 0.2f), 0.5f, 0.5f);
+        var toolMat = MakeMat(new Color(0.8f, 0.6f, 0.2f), 0.5f, 0.5f); // 黄色工具背心
+        var packMat = MakeMat(new Color(0.35f, 0.3f, 0.2f), 0.9f, 0f);
 
-        // 身体（工兵穿不同颜色的背心）
-        AddBox(_modelRoot, new Vector3(0.4f, 0.6f, 0.3f), new Vector3(0, 0.6f, 0), bodyMat);
-        AddSphere(_modelRoot, 0.18f, new Vector3(0, 1.1f, 0), MakeMat(new Color(0.8f, 0.65f, 0.5f), 0.8f, 0f));
-        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.15f), new Vector3(-0.1f, 0.2f, 0), darkMat);
-        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.15f), new Vector3(0.1f, 0.2f, 0), darkMat);
-        // 工具箱
-        AddBox(_modelRoot, new Vector3(0.3f, 0.2f, 0.2f), new Vector3(0, 0.4f, 0.25f), toolMat);
+        // 工程师头盔（半球形，亮色便于识别）
+        AddSphere(_modelRoot, 0.21f, new Vector3(0, 1.16f, 0), toolMat);
+        // 头部
+        AddSphere(_modelRoot, 0.16f, new Vector3(0, 1.1f, 0.02f), skinMat);
+        // 身体（穿黄色工程背心）
+        AddBox(_modelRoot, new Vector3(0.42f, 0.55f, 0.3f), new Vector3(0, 0.6f, 0), toolMat);
+        // 背包（工程背包，更大）
+        AddBox(_modelRoot, new Vector3(0.38f, 0.4f, 0.18f), new Vector3(0, 0.65f, -0.22f), packMat);
+        // 左臂
+        AddBox(_modelRoot, new Vector3(0.12f, 0.45f, 0.12f), new Vector3(-0.28f, 0.6f, 0.05f), bodyMat);
+        // 右臂（持工具前伸）
+        AddBox(_modelRoot, new Vector3(0.12f, 0.45f, 0.12f), new Vector3(0.28f, 0.6f, 0.15f), bodyMat);
+        // 左腿
+        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.18f), new Vector3(-0.1f, 0.2f, 0), darkMat);
+        // 右腿
+        AddBox(_modelRoot, new Vector3(0.15f, 0.4f, 0.18f), new Vector3(0.1f, 0.2f, 0), darkMat);
+        // 军靴
+        AddBox(_modelRoot, new Vector3(0.17f, 0.08f, 0.25f), new Vector3(-0.1f, 0.04f, 0.02f), metalMat);
+        AddBox(_modelRoot, new Vector3(0.17f, 0.08f, 0.25f), new Vector3(0.1f, 0.04f, 0.02f), metalMat);
+
+        // 扳手（右手持握，斜向前）
+        AddBox(_modelRoot, new Vector3(0.04f, 0.04f, 0.5f), new Vector3(0.28f, 0.65f, 0.3f), metalMat);
+        // 扳手头（Y形）
+        AddBox(_modelRoot, new Vector3(0.12f, 0.04f, 0.04f), new Vector3(0.28f, 0.7f, 0.55f), metalMat);
+
+        // 工具箱（腰间左侧）
+        AddBox(_modelRoot, new Vector3(0.25f, 0.18f, 0.15f), new Vector3(-0.28f, 0.45f, 0.02f), packMat);
+        // 工具箱扣（金属色装饰）
+        AddBox(_modelRoot, new Vector3(0.04f, 0.04f, 0.16f), new Vector3(-0.28f, 0.5f, 0.02f), metalMat);
+
+        // 安全灯（头盔前部小灯）
+        AddSphere(_modelRoot, 0.04f, new Vector3(0, 1.2f, 0.18f), MakeMat(new Color(1f, 0.9f, 0.3f), 0.1f, 0.3f));
 
         _turretNode.Visible = false;
     }
@@ -524,17 +609,69 @@ public partial class Unit3D : CharacterBody3D
         var bodyMat = MakeMat(bodyColor, 0.5f, 0.4f);
         var darkMat = MakeMat(darkColor, 0.7f, 0.2f);
         var skinMat = MakeMat(new Color(0.8f, 0.65f, 0.5f), 0.8f, 0f);
-        var metalMat = MakeMat(new Color(0.9f, 0.8f, 0.2f), 0.2f, 0.9f);
+        var metalMat = MakeMat(new Color(0.9f, 0.8f, 0.2f), 0.2f, 0.9f); // 金色武器和护甲
+        var armorMat = MakeMat(new Color(0.5f, 0.5f, 0.55f), 0.3f, 0.7f); // 银色护甲
+        var packMat = MakeMat(new Color(0.35f, 0.3f, 0.2f), 0.9f, 0f);
 
-        // 更大的身体
-        AddBox(_modelRoot, new Vector3(0.5f, 0.75f, 0.35f), new Vector3(0, 0.7f, 0), bodyMat);
-        AddSphere(_modelRoot, 0.22f, new Vector3(0, 1.3f, 0), skinMat);
-        AddBox(_modelRoot, new Vector3(0.18f, 0.5f, 0.18f), new Vector3(-0.12f, 0.25f, 0), darkMat);
-        AddBox(_modelRoot, new Vector3(0.18f, 0.5f, 0.18f), new Vector3(0.12f, 0.25f, 0), darkMat);
-        // 大型武器
-        AddBox(_modelRoot, new Vector3(0.08f, 0.08f, 0.9f), new Vector3(0.3f, 0.8f, 0.3f), metalMat);
-        // 披风
-        AddBox(_modelRoot, new Vector3(0.5f, 0.7f, 0.05f), new Vector3(0, 0.7f, -0.2f), bodyMat);
+        // 英雄头盔（带冠状装饰）
+        AddSphere(_modelRoot, 0.24f, new Vector3(0, 1.35f, 0), armorMat);
+        // 头盔顶冠（金色脊）
+        AddBox(_modelRoot, new Vector3(0.06f, 0.15f, 0.3f), new Vector3(0, 1.55f, 0), metalMat);
+        // 面部（露出来的肤色）
+        AddSphere(_modelRoot, 0.18f, new Vector3(0, 1.3f, 0.05f), skinMat);
+        // 脖子
+        AddBox(_modelRoot, new Vector3(0.12f, 0.1f, 0.12f), new Vector3(0, 1.1f, 0), skinMat);
+
+        // 身体（更大更壮，金属盔甲感）
+        AddBox(_modelRoot, new Vector3(0.55f, 0.7f, 0.35f), new Vector3(0, 0.7f, 0), bodyMat);
+        // 胸甲板（银色前胸装甲）
+        AddBox(_modelRoot, new Vector3(0.45f, 0.5f, 0.06f), new Vector3(0, 0.75f, 0.15f), armorMat);
+        // 胸甲纹章（金色装饰）
+        AddBox(_modelRoot, new Vector3(0.12f, 0.12f, 0.04f), new Vector3(0, 0.8f, 0.2f), metalMat);
+
+        // 左肩护甲（球形肩甲）
+        AddSphere(_modelRoot, 0.18f, new Vector3(-0.35f, 1.0f, 0), armorMat);
+        // 右肩护甲
+        AddSphere(_modelRoot, 0.18f, new Vector3(0.35f, 1.0f, 0), armorMat);
+        // 左臂
+        AddBox(_modelRoot, new Vector3(0.14f, 0.5f, 0.14f), new Vector3(-0.33f, 0.65f, 0.05f), bodyMat);
+        // 右臂
+        AddBox(_modelRoot, new Vector3(0.14f, 0.5f, 0.14f), new Vector3(0.33f, 0.65f, 0.15f), bodyMat);
+        // 左手护腕（金属）
+        AddBox(_modelRoot, new Vector3(0.15f, 0.1f, 0.15f), new Vector3(-0.33f, 0.38f, 0.05f), armorMat);
+        // 右手护腕
+        AddBox(_modelRoot, new Vector3(0.15f, 0.1f, 0.15f), new Vector3(0.33f, 0.38f, 0.15f), armorMat);
+
+        // 左腿
+        AddBox(_modelRoot, new Vector3(0.18f, 0.5f, 0.2f), new Vector3(-0.13f, 0.25f, 0), darkMat);
+        // 右腿
+        AddBox(_modelRoot, new Vector3(0.18f, 0.5f, 0.2f), new Vector3(0.13f, 0.25f, 0), darkMat);
+        // 左腿护胫（金属）
+        AddBox(_modelRoot, new Vector3(0.19f, 0.3f, 0.05f), new Vector3(-0.13f, 0.25f, 0.08f), armorMat);
+        // 右腿护胫
+        AddBox(_modelRoot, new Vector3(0.19f, 0.3f, 0.05f), new Vector3(0.13f, 0.25f, 0.08f), armorMat);
+        // 军靴（更大更厚重）
+        AddBox(_modelRoot, new Vector3(0.2f, 0.1f, 0.28f), new Vector3(-0.13f, 0.05f, 0.02f), metalMat);
+        AddBox(_modelRoot, new Vector3(0.2f, 0.1f, 0.28f), new Vector3(0.13f, 0.05f, 0.02f), metalMat);
+
+        // 腰带（金色腰封）
+        AddBox(_modelRoot, new Vector3(0.5f, 0.08f, 0.36f), new Vector3(0, 0.42f, 0), metalMat);
+        // 腰带扣
+        AddBox(_modelRoot, new Vector3(0.1f, 0.1f, 0.04f), new Vector3(0, 0.42f, 0.17f), armorMat);
+
+        // 大型武器（双手握持的重型步枪/能量武器）
+        AddBox(_modelRoot, new Vector3(0.08f, 0.08f, 1.0f), new Vector3(0.0f, 0.75f, 0.35f), metalMat);
+        // 武器枪管（金色发光）
+        AddCylinder(_modelRoot, 0.04f, 0.05f, 0.3f, new Vector3(0.0f, 0.75f, 0.85f), new Vector3(90, 0, 0), metalMat);
+        // 武器弹匣
+        AddBox(_modelRoot, new Vector3(0.06f, 0.15f, 0.06f), new Vector3(0.0f, 0.6f, 0.25f), darkMat);
+        // 武器瞄准镜
+        AddCylinder(_modelRoot, 0.05f, 0.05f, 0.18f, new Vector3(0.0f, 0.88f, 0.35f), new Vector3(90, 0, 0), armorMat);
+
+        // 披风（更大的披风）
+        AddBox(_modelRoot, new Vector3(0.55f, 0.85f, 0.05f), new Vector3(0, 0.8f, -0.22f), bodyMat);
+        // 披风顶部领肩（金色）
+        AddBox(_modelRoot, new Vector3(0.5f, 0.08f, 0.06f), new Vector3(0, 1.1f, -0.18f), metalMat);
 
         _turretNode.Visible = false;
     }
