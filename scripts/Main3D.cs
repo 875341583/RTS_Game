@@ -97,11 +97,11 @@ public partial class Main3D : Node3D
 
     // 昼夜系统
     private float _timeOfDay = 8f; // 0-24小时
-    private const float DayLength = 180f; // 一天=180秒
+    private const float DayLength = 90f; // 一天=90秒（加速让昼夜变化更快可见）
     private float _sunRotation;
 
     // 灾害系统
-    private float _disasterTimer = 60f; // 60秒后第一次灾害
+    private float _disasterTimer = 30f; // 30秒后第一次灾害（加速验证）
     private string _currentDisaster = "";
     private float _disasterDuration;
     private float _disasterAge;
@@ -321,6 +321,11 @@ public partial class Main3D : Node3D
 
         // 玩家初始矿车
         SpawnUnit(UnitType.Harvester, PlayerTeamId, playerBasePos + new Vector3(0, 0, -TerrainGrid3D.CellSize * 2));
+        // 玩家初始作战单位
+        SpawnUnit(UnitType.LightTank, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
+        SpawnUnit(UnitType.LightTank, PlayerTeamId, playerBasePos + new Vector3(-TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
+        SpawnUnit(UnitType.Infantry, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize * 2, 0, -TerrainGrid3D.CellSize));
+        SpawnUnit(UnitType.Infantry, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize * 2));
 
         // AI基地（围成半圆分布）
         for (int i = 1; i <= AiTeamCount; i++)
@@ -951,29 +956,181 @@ public partial class Main3D : Node3D
         _uiLayer.AddChild(_startOverlay);
         _startOverlayAge = 0;
 
+        // 建造面板
+        SetupBuildPanel();
+
         // 小地图
         SetupMinimap();
     }
 
+    private void SetupBuildPanel()
+    {
+        // 左下角建造面板 — 建筑/步兵/车辆三栏垂直列表
+        _buildPanel = new Control
+        {
+            Position = new Vector2(5, 420),
+            Size = new Vector2(200, 290),
+        };
+        _uiLayer.AddChild(_buildPanel);
+
+        // 背景
+        var bg = new ColorRect
+        {
+            Position = Vector2.Zero,
+            Size = new Vector2(200, 290),
+            Color = new Color(0.08f, 0.1f, 0.09f, 0.85f),
+        };
+        _buildPanel.AddChild(bg);
+
+        var titleLbl = new Label
+        {
+            Text = "建造 (点击放置)",
+            Position = new Vector2(10, 4),
+            Size = new Vector2(180, 20),
+        };
+        titleLbl.AddThemeFontSizeOverride("font_size", 13);
+        titleLbl.AddThemeColorOverride("font_color", Colors.White);
+        _buildPanel.AddChild(titleLbl);
+
+        // 建筑按钮列表
+        var buildButtons = new (string name, Building3D.BuildingType type)[]
+        {
+            ("电站 $400 [P]", Building3D.BuildingType.PowerPlant),
+            ("兵营 $500 [O]", Building3D.BuildingType.Barracks),
+            ("车厂 $800 [I]", Building3D.BuildingType.WarFactory),
+            ("科技 $1500 [T]", Building3D.BuildingType.TechCenter),
+            ("机枪塔 $300", Building3D.BuildingType.Turret),
+            ("防空炮 $400", Building3D.BuildingType.AntiAirTurret),
+            ("维修厂 $600", Building3D.BuildingType.RepairPad),
+            ("核弹井 $2500", Building3D.BuildingType.NukeSilo),
+            ("闪电塔 $2000", Building3D.BuildingType.LightningTower),
+        };
+
+        int yOff = 24;
+        foreach (var (name, type) in buildButtons)
+        {
+            var btn = new Button
+            {
+                Text = name,
+                Position = new Vector2(5, yOff),
+                Size = new Vector2(190, 22),
+            };
+            btn.AddThemeFontSizeOverride("font_size", 10);
+            var capturedType = type;
+            btn.Pressed += () => StartPlacement(capturedType);
+            _buildPanel.AddChild(btn);
+            yOff += 24;
+        }
+
+        // 单位热键提示 — 右上角
+        var unitLabel = new Label
+        {
+            Text = "单位: B轻坦 N重坦 M炮兵 H矿车 G步兵\n命令: Q攻击移动 X停止 R维修 V出售\n超武: Z核弹 C闪电",
+            Position = new Vector2(1080, 390),
+            Size = new Vector2(190, 60),
+        };
+        unitLabel.AddThemeFontSizeOverride("font_size", 10);
+        unitLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.7f, 0.9f));
+        _uiLayer.AddChild(unitLabel);
+    }
+
+    // 小地图配置
+    private const float MinimapSize = 180f;
+    private const float MinimapX = 1080f;
+    private const float MinimapY = 200f;
+
     private void SetupMinimap()
     {
-        _minimapRect = new TextureRect
+        // 背景
+        var bg = new ColorRect
         {
-            Position = new Vector2(1080, 10),
-            Size = new Vector2(180, 180),
+            Position = new Vector2(MinimapX - 2, MinimapY - 2),
+            Size = new Vector2(MinimapSize + 4, MinimapSize + 4),
+            Color = new Color(0.15f, 0.15f, 0.15f, 0.9f),
         };
-        _uiLayer.AddChild(_minimapRect);
+        _uiLayer.AddChild(bg);
 
-        // 小地图边框
-        var border = new ColorRect
+        // 使用自定义Control的_draw来绘制小地图
+        var minimapCanvas = new MinimapCanvas(this)
         {
-            Position = new Vector2(1078, 8),
-            Size = new Vector2(184, 184),
-            Color = new Color(0.2f, 0.2f, 0.2f, 0.8f),
+            Position = new Vector2(MinimapX, MinimapY),
+            Size = new Vector2(MinimapSize, MinimapSize),
         };
-        _uiLayer.AddChild(border);
-        // 将边框移到小地图下方
-        _uiLayer.MoveChild(border, _uiLayer.GetChildCount() - 2);
+        minimapCanvas.Name = "MinimapCanvas";
+        _uiLayer.AddChild(minimapCanvas);
+    }
+
+    /// <summary>供MinimapCanvas调用的绘制方法</summary>
+    public void DrawMinimap(CanvasItem canvas)
+    {
+        float mapSize = TerrainGrid3D.MapWorldSize;
+        float scale = MinimapSize / mapSize;
+
+        // 背景
+        canvas.DrawRect(new Rect2(0, 0, MinimapSize, MinimapSize),
+            new Color(0.08f, 0.12f, 0.08f), true);
+
+        // 地形概览（简化：根据TerrainType画色块）
+        int gridSize = TerrainGrid3D.GridSize;
+        float cellPx = MinimapSize / gridSize;
+        for (int x = 0; x < gridSize; x++)
+        {
+            for (int y = 0; y < gridSize; y++)
+            {
+                var cell = _terrain.GetCell(x, y);
+                Color c = cell.Type switch
+                {
+                    TerrainType.DeepWater => new Color(0.05f, 0.1f, 0.25f),
+                    TerrainType.ShallowWater => new Color(0.1f, 0.2f, 0.35f),
+                    TerrainType.Mountain => new Color(0.3f, 0.25f, 0.2f),
+                    TerrainType.Cliff => new Color(0.25f, 0.22f, 0.18f),
+                    TerrainType.Grass => new Color(0.12f, 0.2f, 0.1f),
+                    TerrainType.Sand => new Color(0.35f, 0.3f, 0.15f),
+                    TerrainType.Road => new Color(0.2f, 0.2f, 0.2f),
+                    TerrainType.Snow => new Color(0.7f, 0.7f, 0.75f),
+                    TerrainType.City => new Color(0.25f, 0.23f, 0.2f),
+                    TerrainType.Field => new Color(0.15f, 0.18f, 0.08f),
+                    TerrainType.Bridge => new Color(0.4f, 0.3f, 0.15f),
+                    TerrainType.Tunnel => new Color(0.15f, 0.12f, 0.1f),
+                    _ => new Color(0.1f, 0.15f, 0.1f),
+                };
+                canvas.DrawRect(new Rect2(x * cellPx, y * cellPx, cellPx + 1, cellPx + 1), c, true);
+            }
+        }
+
+        // 建筑
+        foreach (var b in GetAllBuildings())
+        {
+            if (b._isDead) continue;
+            var px = b.GlobalPosition.X * scale;
+            var py = b.GlobalPosition.Z * scale;
+            Color c = Unit3D.GetTeamColor(b.TeamId);
+            float r = b.Type == Building3D.BuildingType.Base ? 4f : 2.5f;
+            canvas.DrawCircle(new Vector2(px, py), r, c);
+        }
+
+        // 单位
+        foreach (var u in GetAllUnits())
+        {
+            if (u._isDead) continue;
+            var px = u.GlobalPosition.X * scale;
+            var py = u.GlobalPosition.Z * scale;
+            Color c = Unit3D.GetTeamColor(u.TeamId);
+            canvas.DrawRect(new Rect2(px - 1.5f, py - 1.5f, 3f, 3f), c, true);
+        }
+
+        // 边框
+        canvas.DrawRect(new Rect2(0, 0, MinimapSize, MinimapSize),
+            new Color(0.5f, 0.5f, 0.5f, 0.8f), false, 2f);
+
+        // 相机视野框
+        var camPos = _camera.Position;
+        var camPx = camPos.X * scale;
+        var camPy = camPos.Z * scale;
+        float viewW = 40f * scale;
+        float viewH = 30f * scale;
+        canvas.DrawRect(new Rect2(camPx - viewW * 0.5f, camPy - viewH * 0.5f, viewW, viewH),
+            new Color(1f, 1f, 1f, 0.5f), false, 1f);
     }
 
     private void ShowToast(string message)
@@ -1751,10 +1908,26 @@ public partial class Main3D : Node3D
     }
 
     // ======== _Process ========
-
+ 
+    private float _autoShotTimer;
+    private int _autoShotIndex;
+ 
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+
+        // 自动截图（15秒、45秒两个时间点）
+        _autoShotTimer += dt;
+        if (_autoShotIndex == 0 && _autoShotTimer >= 15f)
+        {
+            _autoShotIndex++;
+            CallDeferred(nameof(TakeScreenshot));
+        }
+        else if (_autoShotIndex == 1 && _autoShotTimer >= 45f)
+        {
+            _autoShotIndex++;
+            CallDeferred(nameof(TakeScreenshot));
+        }
 
         // 相机
         ProcessCamera(dt);
