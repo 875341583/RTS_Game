@@ -179,6 +179,12 @@ public partial class Main3D : Node3D
 
         ApplyDifficultyConfig();
 
+        // 音频管理器
+        var audioMgr = new AudioManager();
+        AddChild(audioMgr);
+        // 延迟1帧启动BGM（等AudioManager._Ready完成）
+        CallDeferred(nameof(StartGameBgm));
+
         // 创建3D场景结构
         Setup3DScene();
 
@@ -199,6 +205,11 @@ public partial class Main3D : Node3D
         ApplyAiGracePeriod();
 
         GD.Print($"[Main3D] Game started — Difficulty: {_difficulty}, Seed: {_mapSeed}");
+    }
+
+    private void StartGameBgm()
+    {
+        AudioManager.Instance?.StartBgm();
     }
 
     private void Setup3DScene()
@@ -404,6 +415,10 @@ public partial class Main3D : Node3D
 
         var unit = SpawnUnit(unitType, producer.TeamId, exitPos);
 
+        // 音效：单位出厂（仅玩家方）
+        if (producer.TeamId == PlayerTeamId)
+            AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.UiUnitReady);
+
         // 集结点
         if (producer.RallyPoint.HasValue)
         {
@@ -578,6 +593,7 @@ public partial class Main3D : Node3D
         }
         _nukeEffects.Add(new NukeEffect { Pos = pos, Age = 0, Lifetime = 4f });
         SpawnExplosion(pos, 15f);
+        AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.Nuke);
         ShowToast("核弹打击！");
     }
 
@@ -591,6 +607,7 @@ public partial class Main3D : Node3D
             Lifetime = 5f,
             DamageTimer = 0,
         });
+        AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.Lightning);
         ShowToast("闪电风暴来袭！");
     }
 
@@ -650,6 +667,9 @@ public partial class Main3D : Node3D
     public void SpawnMuzzleFlash(Vector3 from, Vector3 to)
     {
         if (_activeFx.Count >= MaxActiveFx) return;
+
+        // 音效：炮口闪光
+        AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Muzzle);
 
         var dir = (to - from).Normalized();
         var flashPos = from + dir * 2f + new Vector3(0, 0.5f, 0);
@@ -776,6 +796,12 @@ public partial class Main3D : Node3D
     /// </summary>
     public void SpawnExplosion(Vector3 pos, float scale)
     {
+        // 音效：爆炸（大爆炸用BigExplosion，小爆炸用Explosion）
+        if (scale > 2f)
+            AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.BigExplosion);
+        else
+            AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Explosion);
+
         var center = pos + new Vector3(0, scale * 0.3f, 0);
 
         // 1) 爆炸点光源 — 强光短暂照明周围
@@ -1686,6 +1712,7 @@ public partial class Main3D : Node3D
             {
                 _selected.Add(closestUnit);
                 closestUnit.SetSelected(true);
+                AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Select);
             }
             return;
         }
@@ -1701,6 +1728,8 @@ public partial class Main3D : Node3D
                 u.SetSelected(true);
             }
         }
+        if (_selected.Count > 0)
+            AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Select);
     }
 
     private void ClearSelection()
@@ -1783,6 +1812,8 @@ public partial class Main3D : Node3D
                         (row - count * 0.5f / cols) * spacing);
                     units[i].CommandMove(worldPos + offset);
                 }
+                // 移动音效
+                AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Move);
             }
         }
     }
@@ -2038,6 +2069,7 @@ public partial class Main3D : Node3D
 
         _placementType = type;
         _isPlacing = true;
+        AudioManager.Instance?.PlaySfx(AudioManager.Sfx.UiClick);
         ShowToast($"放置 {type}（点击放置）");
     }
 
@@ -2074,6 +2106,7 @@ public partial class Main3D : Node3D
 
         CreateBuilding(_placementType, PlayerTeamId, pos);
         _isPlacing = false; // 放完自动退出（红警2风格）
+        AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.UiPlace);
     }
 
     // ======== 相机控制 ========
