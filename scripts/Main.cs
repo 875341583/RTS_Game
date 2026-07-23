@@ -309,19 +309,22 @@ public partial class Main : Node2D
         CreateGround();
 
         // ---- 初始化 8 阵营 ----
-        // 阵营起始位置：玩家=Team0 在地图左上角；7 个 AI 围绕地图边缘均匀分布
-        // 地图 2000×2000，各基地放在距边缘 200 的位置
-        var teamStartPositions = new Vector2[TotalTeamCount]
+        // 阵营起始位置：等距坐标下的网格位置 → 等距屏幕坐标
+        // 网格坐标系仍是32×32，转为等距屏幕坐标后视觉上呈菱形分布
+        var teamGridPositions = new (int gx, int gy)[TotalTeamCount]
         {
-            new(200, 200),     // 0 玩家（左上角）
-            new(1800, 1800),   // 1 AI（右下角，原红方位）
-            new(1800, 200),    // 2 AI（右上角）
-            new(200, 1800),    // 3 AI（左下角）
-            new(1000, 200),    // 4 AI（顶部中央）
-            new(1000, 1800),   // 5 AI（底部中央）
-            new(200, 1000),    // 6 AI（左侧中央）
-            new(1800, 1000),   // 7 AI（右侧中央）
+            (1, 1),         // 0 玩家（左上角）
+            (30, 30),       // 1 AI（右下角）
+            (30, 1),        // 2 AI（右上角）
+            (1, 30),        // 3 AI（左下角）
+            (16, 1),        // 4 AI（顶部中央）
+            (16, 30),       // 5 AI（底部中央）
+            (1, 16),        // 6 AI（左侧中央）
+            (30, 16),       // 7 AI（右侧中央）
         };
+        var teamStartPositions = new Vector2[TotalTeamCount];
+        for (int i = 0; i < TotalTeamCount; i++)
+            teamStartPositions[i] = IsoCoords.GridToScreen(teamGridPositions[i].gx, teamGridPositions[i].gy);
 
         for (int teamId = 0; teamId < TotalTeamCount; teamId++)
         {
@@ -1453,7 +1456,10 @@ public partial class Main : Node2D
 
     private bool CanPlaceBuilding(Vector2 pos)
     {
-        if (pos.X < 60 || pos.X > 1940 || pos.Y < 60 || pos.Y > 1940) return false;
+        // 等距坐标边界检查
+        var grid = IsoCoords.ScreenToGridF(pos.X, pos.Y);
+        if (grid.X < 0 || grid.X >= TerrainGrid.GridSize || grid.Y < 0 || grid.Y >= TerrainGrid.GridSize)
+            return false;
         foreach (var c in _buildingsNode.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.GlobalPosition.DistanceTo(pos) < 90f)
@@ -1467,7 +1473,13 @@ public partial class Main : Node2D
         var type = _placementMode!.Value;
         int cost = GetBuildingCost(type);
         var pos = _camera.GetGlobalMousePosition();
-        pos = new Vector2(Mathf.Clamp(pos.X, 80f, 1920f), Mathf.Clamp(pos.Y, 80f, 1920f));
+        // 等距坐标边界检查+钳制
+        var grid = IsoCoords.ScreenToGridF(pos.X, pos.Y);
+        grid = new Vector2(
+            Mathf.Clamp(grid.X, 1f, TerrainGrid.GridSize - 2f),
+            Mathf.Clamp(grid.Y, 1f, TerrainGrid.GridSize - 2f)
+        );
+        pos = IsoCoords.GridToScreenF(grid.X, grid.Y);
         if (_money[0] < cost) { GD.Print("[放置] 资金不足"); CancelPlacement(); return; }
         if (!CanPlaceBuilding(pos)) { GD.Print("[放置] 位置被占用"); return; }
         _money[0] -= cost;
@@ -1573,46 +1585,40 @@ public partial class Main : Node2D
             DrawCircle(mousePos, 4f, new Color(0.7f, 0.95f, 1f, 0.95f));
         }
 
-        // ---- Q1 建筑放置预览（仅在放置模式） ----
+        // ---- Q1 建筑放置预览（等距菱形预览） ----
         if (_placementMode == null) return;
         var pos = _camera.GetGlobalMousePosition();
-        pos = new Vector2(Mathf.Clamp(pos.X, 80f, 1920f), Mathf.Clamp(pos.Y, 80f, 1920f));
+        // 钳制到地图范围内
+        var posGrid = IsoCoords.ScreenToGridF(pos.X, pos.Y);
+        posGrid = new Vector2(
+            Mathf.Clamp(posGrid.X, 1f, TerrainGrid.GridSize - 2f),
+            Mathf.Clamp(posGrid.Y, 1f, TerrainGrid.GridSize - 2f)
+        );
+        pos = IsoCoords.GridToScreenF(posGrid.X, posGrid.Y);
         bool ok = CanPlaceBuilding(pos) && _money[0] >= GetBuildingCost(_placementMode.Value);
 
-        // ---- 红警2风格网格建造预览 ----
-        // 建筑占位：以 pos 为中心的 2x2 方格（每格45px）
-        const float CellSize = 45f;
+        // 等距菱形预览：在鼠标位置画菱形
         var buildingColor = ok ? new Color(0.2f, 0.9f, 0.2f, 0.35f) : new Color(0.9f, 0.2f, 0.2f, 0.35f);
         var buildingBorder = ok ? new Color(0.3f, 1f, 0.3f, 0.8f) : new Color(1f, 0.3f, 0.3f, 0.8f);
 
-        // 建筑占位填充 + 边框
-        DrawRect(new Rect2(pos - new Vector2(CellSize, CellSize), CellSize * 2, CellSize * 2), buildingColor, true);
-        DrawRect(new Rect2(pos - new Vector2(CellSize, CellSize), CellSize * 2, CellSize * 2), buildingBorder, false, 2.0f);
+        // 画菱形（建筑占位）
+        var diamond = new Vector2[]
+        {
+            pos + new Vector2(0, -IsoCoords.HalfH),
+            pos + new Vector2(IsoCoords.HalfW, 0),
+            pos + new Vector2(0, IsoCoords.HalfH),
+            pos + new Vector2(-IsoCoords.HalfW, 0),
+        };
+        // 填充
+        DrawPolygon(diamond, new[] { buildingColor });
+        // 边框
+        for (int i = 0; i < 4; i++)
+            DrawLine(diamond[i], diamond[(i + 1) % 4], buildingBorder, 2f);
 
         // 中心十字准线
         var crossCol = ok ? new Color(0.3f, 1f, 0.3f, 0.5f) : new Color(1f, 0.3f, 0.3f, 0.5f);
-        DrawLine(pos - new Vector2(CellSize, 0), pos + new Vector2(CellSize, 0), crossCol, 1.0f);
-        DrawLine(pos - new Vector2(0, CellSize), pos + new Vector2(0, CellSize), crossCol, 1.0f);
-
-        // 周围可达范围网格线（5x5 区域）
-        const int GridRadius = 2; // ±2 格
-        var gridLine = ok ? new Color(0.3f, 1f, 0.3f, 0.25f) : new Color(1f, 0.3f, 0.3f, 0.25f);
-        for (int i = -GridRadius; i <= GridRadius; i++)
-        {
-            // 垂直网格线
-            float x = pos.X + i * CellSize;
-            DrawLine(new Vector2(x, pos.Y - GridRadius * CellSize),
-                     new Vector2(x, pos.Y + GridRadius * CellSize), gridLine, 1.0f);
-            // 水平网格线
-            float y = pos.Y + i * CellSize;
-            DrawLine(new Vector2(pos.X - GridRadius * CellSize, y),
-                     new Vector2(pos.X + GridRadius * CellSize, y), gridLine, 1.0f);
-        }
-
-        // 2x2 建筑格交叉线加重
-        var heavyLine = ok ? new Color(0.3f, 1f, 0.3f, 0.6f) : new Color(1f, 0.3f, 0.3f, 0.6f);
-        DrawLine(new Vector2(pos.X, pos.Y - CellSize), new Vector2(pos.X, pos.Y + CellSize), heavyLine, 1.5f);
-        DrawLine(new Vector2(pos.X - CellSize, pos.Y), new Vector2(pos.X + CellSize, pos.Y), heavyLine, 1.5f);
+        DrawLine(pos - new Vector2(IsoCoords.HalfW, 0), pos + new Vector2(IsoCoords.HalfW, 0), crossCol, 1.0f);
+        DrawLine(pos - new Vector2(0, IsoCoords.HalfH), pos + new Vector2(0, IsoCoords.HalfH), crossCol, 1.0f);
     }
 
     /// <summary>阶段12-A4：绘制程序化闪电柱折线（白蓝色，从地面向上抖动）。基于 seed 生成确定形状避免每帧变化太剧烈。</summary>
@@ -2867,151 +2873,28 @@ public partial class Main : Node2D
 
     private void CreateGround()
     {
-        EnsureGroundTileTextures();
+        // 等距地形渲染（路线C：菱形顶面 + 高度侧面 + 悬崖）
+        var isoImg = IsoTerrainRenderer.RenderTerrain(_terrain, _mapRng);
+        var (offX, offY) = IsoTerrainRenderer.GetRenderOffset();
 
-        const int TileSize = TerrainGrid.TileSize;  // 64
-        const int GridSize = TerrainGrid.GridSize;  // 32
-
-        // 从 TerrainGrid 获取数据渲染地面
-        var rng = _mapRng;
-
-        // 预加载所有 tile Image（仅一次 GetImage）
-        var grassImgs = new[] { _grass1Tex!.GetImage(), _grass2Tex!.GetImage(), _grass3Tex!.GetImage(), _grass4Tex!.GetImage() };
-        var sandImgs  = new[] { _sand1Tex!.GetImage(), _sand2Tex!.GetImage(), _sand3Tex!.GetImage() };
-        var shallowImgs = new[] { _shallow1Tex!.GetImage(), _shallow2Tex!.GetImage(), _shallow3Tex!.GetImage() };
-        var deepImgs  = new[] { _deep1Tex!.GetImage(), _deep2Tex!.GetImage(), _deep3Tex!.GetImage() };
-        var mountainImgs = new[] { _mountain1Tex!.GetImage(), _mountain2Tex!.GetImage(), _mountain3Tex!.GetImage() };
-        var snowImgs  = new[] { _snow1Tex!.GetImage(), _snow2Tex!.GetImage(), _snow3Tex!.GetImage() };
-        var cityImgs  = new[] { _city1Tex!.GetImage(), _city2Tex!.GetImage() };
-        var fieldImgs = new[] { _field1Tex!.GetImage(), _field2Tex!.GetImage() };
-        var roadEImg  = _roadETex!.GetImage();
-        var roadNImg  = _roadNTex!.GetImage();
-        var roadCrossImg = _roadCrossTex!.GetImage();
-        var bridgeImg = _bridgeTex!.GetImage();
-        var tunnelImg = _tunnelTex!.GetImage();
-        var cliffImg  = _cliffTex!.GetImage();
-
-        // 拼接为单张大纹理
-        var groundImg = Image.CreateEmpty(GridSize * TileSize, GridSize * TileSize, false, Image.Format.Rgba8);
-
-        for (int ty = 0; ty < GridSize; ty++)
+        var groundTex = ImageTexture.CreateFromImage(isoImg);
+        _groundSprite = new Sprite2D
         {
-            for (int tx = 0; tx < GridSize; tx++)
-            {
-                var cell = _terrain.GetCell(tx, ty);
-                Image tileImg = cell.Type switch
-                {
-                    TerrainType.Grass => grassImgs[rng.Next(4)],
-                    TerrainType.Sand  => sandImgs[rng.Next(3)],
-                    TerrainType.ShallowWater => shallowImgs[rng.Next(3)],
-                    TerrainType.DeepWater => deepImgs[rng.Next(3)],
-                    TerrainType.Mountain => mountainImgs[rng.Next(3)],
-                    TerrainType.Snow => snowImgs[rng.Next(3)],
-                    TerrainType.City => cityImgs[rng.Next(2)],
-                    TerrainType.Field => fieldImgs[rng.Next(2)],
-                    TerrainType.Road => (ty > 0 && _terrain.GetCell(tx, ty - 1).Type == TerrainType.Road &&
-                                         tx > 0 && _terrain.GetCell(tx - 1, ty).Type == TerrainType.Road)
-                                        ? roadCrossImg : roadEImg,
-                    TerrainType.Bridge => bridgeImg,
-                    TerrainType.Tunnel => tunnelImg,
-                    TerrainType.Cliff => cliffImg,
-                    _ => grassImgs[0]
-                };
-
-                // 高度视觉偏移：海拔越高亮度越高（模拟2D高度感）
-                if (cell.Elevation > 1 && cell.Type != TerrainType.DeepWater && cell.Type != TerrainType.ShallowWater)
-                {
-                    // 复制一份 tile 图用于亮度调整
-                    var brightImg = Image.CreateEmpty(TileSize, TileSize, false, Image.Format.Rgba8);
-                    brightImg.BlitRect(tileImg, new Rect2I(0, 0, TileSize, TileSize), Vector2I.Zero);
-                    // 高海拔：整体提亮
-                    float brightness = cell.Elevation switch { 2 => 1.08f, 3 => 1.15f, _ => 1.0f };
-                    for (int py = 0; py < TileSize; py++)
-                    {
-                        for (int px = 0; px < TileSize; px++)
-                        {
-                            var c = brightImg.GetPixel(px, py);
-                            if (c.A > 0)
-                            {
-                                brightImg.SetPixel(px, py, new Color(
-                                    Mathf.Min(c.R * brightness, 1.0f),
-                                    Mathf.Min(c.G * brightness, 1.0f),
-                                    Mathf.Min(c.B * brightness, 1.0f),
-                                    c.A));
-                            }
-                        }
-                    }
-                    tileImg = brightImg;
-                }
-
-                groundImg.BlitRect(tileImg, new Rect2I(0, 0, TileSize, TileSize),
-                    new Vector2I(tx * TileSize, ty * TileSize));
-            }
-        }
-
-        // E3 悬崖侧面渲染：在高度差≥2的边界处绘制悬崖侧面+阴影
-        for (int ty = 0; ty < GridSize; ty++)
-        {
-            for (int tx = 0; tx < GridSize; tx++)
-            {
-                var cell = _terrain.GetCell(tx, ty);
-                if (cell.Elevation <= 1) continue;
-                foreach (var (dx, dy) in new[] { (0, 1), (0, -1), (1, 0), (-1, 0) })
-                {
-                    int nx = tx + dx, ny = ty + dy;
-                    if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
-                    var neighbor = _terrain.GetCell(nx, ny);
-                    int elevDiff = cell.Elevation - neighbor.Elevation;
-                    if (elevDiff >= 2)
-                    {
-                        // 悬崖侧面：在低侧绘制棕色岩石纹理（模拟从上方俯视的侧面）
-                        int sx = nx * TileSize, sy = ny * TileSize;
-                        int cliffHeight = Math.Min(elevDiff * 6, 18); // 高度差越大侧面越厚
-                        for (int py = 0; py < TileSize; py++)
-                        {
-                            for (int px = 0; px < TileSize; px++)
-                            {
-                                int imgX = sx + px, imgY = sy + py;
-                                if (imgX < groundImg.GetWidth() && imgY < groundImg.GetHeight())
-                                {
-                                    // 顶部cliffHeight像素画悬崖侧面
-                                    if (py < cliffHeight)
-                                    {
-                                        // 岩石纹理：棕灰色+水平层理线
-                                        float layerPos = (float)py / cliffHeight;
-                                        var cliffColor = new Color(
-                                            0.35f + layerPos * 0.1f,
-                                            0.30f + layerPos * 0.08f,
-                                            0.22f + layerPos * 0.06f,
-                                            1.0f
-                                        );
-                                        // 层理线
-                                        if (py % 3 == 0)
-                                            cliffColor = new Color(cliffColor.R * 0.85f, cliffColor.G * 0.85f, cliffColor.B * 0.85f, 1.0f);
-                                        groundImg.SetPixel(imgX, imgY, cliffColor);
-                                    }
-                                    else if (py < cliffHeight + 4)
-                                    {
-                                        // 过渡阴影
-                                        var c = groundImg.GetPixel(imgX, imgY);
-                                        float shadowFade = 1.0f - (float)(py - cliffHeight) / 4f;
-                                        groundImg.SetPixel(imgX, imgY, new Color(0, 0, 0, 0.2f * shadowFade) + c * (1.0f - 0.2f * shadowFade));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        var groundTex = ImageTexture.CreateFromImage(groundImg);
-        _groundSprite = new Sprite2D { Name = "Ground", Texture = groundTex, Centered = false, ZIndex = -3, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
+            Name = "Ground",
+            Texture = groundTex,
+            Centered = false,
+            ZIndex = -3,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest
+        };
+        // 等距地图偏移：菱形地图原点在 (offX, offY)，.Sprite2D的OffsetLeft需要设置为使得
+        // 网格(0,0)的等距屏幕坐标对应到世界坐标(0,0)
+        // 等距地图左上角 = grid(0,0) 的屏幕坐标 = (0*HalfW, 0*HalfH) = (0, 0)
+        // 但渲染时偏移了 offX = gs*HalfW，所以Sprite2D需要左移 offX
+        _groundSprite.Position = new Vector2(-offX, offY);
         AddChild(_groundSprite);
         MoveChild(_groundSprite, 0); // 最底层
 
-        // 地形高度装饰：在山脉/高海拔处放置 StaticBody2D 碰撞体阻挡地面单位移动
-        // （悬字段段崖碰撞体也在E2中处理，此处仅视觉提示）
+        GD.Print($"[IsoTerrain] 等距地形渲染完成，图尺寸: {isoImg.GetWidth()}x{isoImg.GetHeight()}，偏移: ({offX}, {offY})");
     }
 
     private static void EnsureGroundTileTextures()

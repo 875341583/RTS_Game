@@ -109,7 +109,15 @@ public class TerrainGrid
             _cells[gx, gy] = cell;
     }
 
-    /// <summary>通过世界坐标获取格子索引。</summary>
+    /// <summary>通过等距屏幕坐标获取格子索引。</summary>
+    public void IsoScreenToGrid(float screenX, float screenY, out int gx, out int gy)
+    {
+        var grid = IsoCoords.ScreenToGridF(screenX, screenY);
+        gx = Math.Clamp((int)Math.Floor(grid.X), 0, GridSize - 1);
+        gy = Math.Clamp((int)Math.Floor(grid.Y), 0, GridSize - 1);
+    }
+
+    /// <summary>通过旧版正交世界坐标获取格子索引（兼容旧代码）。</summary>
     public void WorldToGrid(float worldX, float worldY, out int gx, out int gy)
     {
         gx = (int)(worldX / TileSize);
@@ -117,6 +125,12 @@ public class TerrainGrid
         gx = Math.Clamp(gx, 0, GridSize - 1);
         gy = Math.Clamp(gy, 0, GridSize - 1);
     }
+
+    /// <summary>网格坐标 → 等距屏幕坐标。</summary>
+    public Vector2 GridToIsoScreen(int gx, int gy) => IsoCoords.GridToScreen(gx, gy);
+
+    /// <summary>网格坐标(浮点) → 等距屏幕坐标（用于单位平滑移动）。</summary>
+    public Vector2 GridToIsoScreenF(float gx, float gy) => IsoCoords.GridToScreenF(gx, gy);
 
     /// <summary>通过世界坐标获取地形格子。</summary>
     public TerrainCell GetCellAtWorld(float worldX, float worldY)
