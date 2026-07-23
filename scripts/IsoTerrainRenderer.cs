@@ -83,11 +83,15 @@ public static class IsoTerrainRenderer
                 // 先画侧面（在顶面下方）
                 if (sidePx > 0)
                 {
-                    DrawDiamondSide(img, cx, cy, sidePx, cell);
+                    DrawDiamondSide(img, cx, cy, sidePx, cell, rng);
                 }
 
                 // 画顶面（菱形裁剪）
-                DrawDiamondTop(img, cx, cy, topImg, cell);
+                DrawDiamondTop(img, cx, cy, topImg, cell, rng);
+
+                // 画水面波纹（仅水面类型）
+                if (cell.Type == TerrainType.ShallowWater || cell.Type == TerrainType.DeepWater)
+                    DrawWaterRipples(img, cx, cy, cell, rng);
 
                 // 画悬崖（高差≥2的边缘画深色陡崖）
                 DrawCliffEdges(img, cx, cy, cell, terrain, gx, gy);
@@ -106,7 +110,7 @@ public static class IsoTerrainRenderer
 
     // ======== 内部渲染方法 ========
 
-    private static void DrawDiamondTop(Image img, int cx, int cy, Image tileImg, TerrainCell cell)
+    private static void DrawDiamondTop(Image img, int cx, int cy, Image tileImg, TerrainCell cell, Random rng)
     {
         if (tileImg == null) return;
 
@@ -152,71 +156,89 @@ public static class IsoTerrainRenderer
                     );
                 }
 
-                // 水面半透明
+                // 水面处理
                 if (cell.Type == TerrainType.ShallowWater)
-                    c = new Color(c.R, c.G, c.B, 0.85f);
+                    c = new Color(c.R * 0.85f, c.G * 0.9f, c.B * 1.0f, 0.88f);
+                else if (cell.Type == TerrainType.DeepWater)
+                    c = new Color(c.R * 0.7f, c.G * 0.75f, c.B * 0.95f, 0.92f);
 
                 img.SetPixel(imgX, imgY, c);
             }
         }
     }
 
-    private static void DrawDiamondSide(Image img, int cx, int cy, int sidePx, TerrainCell cell)
+    private static void DrawDiamondSide(Image img, int cx, int cy, int sidePx, TerrainCell cell, Random rng)
     {
-        // 悬崖用棕灰色，普通高地用地形暗色
-        Color sideColor = cell.Type switch
+        if (sidePx <= 0) return;
+
+        // 侧面颜色按地形类型
+        Color baseColor = cell.Type switch
         {
-            TerrainType.Mountain => new Color(0.38f, 0.32f, 0.24f, 1f),
-            TerrainType.Snow => new Color(0.55f, 0.55f, 0.60f, 1f),
-            TerrainType.Sand => new Color(0.45f, 0.38f, 0.25f, 1f),
-            _ => new Color(0.32f, 0.28f, 0.20f, 1f),
+            TerrainType.Mountain => new Color(0.42f, 0.35f, 0.26f, 1f),
+            TerrainType.Snow => new Color(0.58f, 0.58f, 0.63f, 1f),
+            TerrainType.Sand => new Color(0.50f, 0.42f, 0.28f, 1f),
+            TerrainType.Grass => new Color(0.36f, 0.30f, 0.20f, 1f),
+            _ => new Color(0.34f, 0.28f, 0.20f, 1f),
         };
 
-        // 画侧面：菱形下方延伸 sidePx 像素
-        // 左下→右下两条边可见（等距视角下方两条边）
+        // 左面（南西）比右面（南东）暗一些，模拟光源来自右上方
+        float leftShade = 0.75f;
+        float rightShade = 1.0f;
+
+        // 等距侧面正确形状：
+        // 菱形下半部分的两条边（左下边+右下边）向下延伸 sidePx 像素
+        // 左面平行四边形：顶点 (-HalfW,0)→(0,HalfH)→(0,HalfH+sidePx)→(-HalfW,sidePx)
+        // 右面平行四边形：顶点 (HalfW,0)→(0,HalfH)→(0,HalfH+sidePx)→(HalfW,sidePx)
+        // 可见区域：y 从 HalfH 到 HalfH+sidePx
+        //   - 当 HalfH+py < sidePx 时：全宽（-HalfW 到 HalfW）
+        //   - 当 HalfH+py >= sidePx 时：宽度逐渐收窄到底部尖角
+
+        int halfW = (int)IsoCoords.HalfW;
+        int halfH = (int)IsoCoords.HalfH;
+
         for (int py = 0; py < sidePx; py++)
         {
-            float t = (float)py / sidePx; // 0=顶部(接近顶面)，1=底部
-            // 亮度渐变：顶部亮→底部暗
-            float dim = 1f - t * 0.35f;
-            Color c = new Color(sideColor.R * dim, sideColor.G * dim, sideColor.B * dim, 1f);
+            int y = cy + halfH + py;
+            if (y < 0 || y >= img.GetHeight()) continue;
 
-            // 当前行的宽度：从菱形底部宽度渐变到底部（宽度不变，因为是垂直侧面）
-            // 菱形底部的左右点：(-HalfW, 0) 和 (HalfW, 0)，py=0时
-            // 但侧面只显示下半部分（左下和右下边）
-            // 左下边：从 (-HalfW, 0) 到 (0, HalfH)
-            // 右下边：从 (HalfW, 0) 到 (0, HalfH)
-            // 侧面区域的宽度等于菱形在该行y=HalfH处的宽度，但向四周收窄
+            float t = (float)py / sidePx; // 0=顶部，1=底部
+            float dim = 1f - t * 0.3f; // 亮度渐变
 
-            int y = cy + (int)IsoCoords.HalfH + py;
+            // 计算当前行的左右边界
+            int leftBound, rightBound;
+            if (halfH + py < sidePx)
+            {
+                // 宽行：左/右墙壁竖直部分
+                leftBound = -halfW;
+                rightBound = halfW;
+            }
+            else
+            {
+                // 收窄行：沿底部V形边收窄
+                float vt = (float)(halfH + py - sidePx) / halfH;
+                leftBound = -(int)(halfW * (1f - vt));
+                rightBound = (int)(halfW * (1f - vt));
+            }
 
-            // 左下边和右下边之间的区域
-            for (int px = -(int)IsoCoords.HalfW; px <= (int)IsoCoords.HalfW; px++)
+            for (int px = leftBound; px <= rightBound; px++)
             {
                 int imgX = cx + px;
-                if (imgX < 0 || imgX >= img.GetWidth() || y < 0 || y >= img.GetHeight())
-                    continue;
+                if (imgX < 0 || imgX >= img.GetWidth()) continue;
 
-                // 检查这个点是否在菱形下半部分的外侧（即侧面区域）
-                // 菱形在 y=HalfH 处宽度为0（底部尖端）
-                // 侧面应该覆盖菱形下半部分投影下的区域
-                float halfWAtY = IsoCoords.HalfW * (1f - (float)py / IsoCoords.HalfH);
-                if (py < IsoCoords.HalfH)
-                {
-                    halfWAtY = IsoCoords.HalfW * ((float)py / IsoCoords.HalfH);
-                }
-                else
-                {
-                    halfWAtY = IsoCoords.HalfW;
-                }
+                // 左面/右面着色（以x=0为分界线）
+                float faceShade = px < 0 ? leftShade : rightShade;
 
-                // 简化：侧面直接画完整宽度
-                // 层理线
-                Color finalC = c;
-                if (py % 4 == 0)
-                    finalC = new Color(c.R * 0.88f, c.G * 0.88f, c.B * 0.88f, 1f);
+                // 程序化噪声（基于位置的确定性噪声）
+                float noise = ((px * 37 + py * 53 + cx * 7) % 23) / 23f * 0.15f - 0.075f;
 
-                img.SetPixel(imgX, y, finalC);
+                // 层理线（每4像素一条暗线）
+                float layerLine = (py % 4 == 0) ? 0.88f : 1.0f;
+
+                float r = Math.Clamp(baseColor.R * dim * faceShade * layerLine + noise, 0f, 1f);
+                float g = Math.Clamp(baseColor.G * dim * faceShade * layerLine + noise, 0f, 1f);
+                float b = Math.Clamp(baseColor.B * dim * faceShade * layerLine + noise, 0f, 1f);
+
+                img.SetPixel(imgX, y, new Color(r, g, b, 1f));
             }
         }
     }
@@ -293,6 +315,47 @@ public static class IsoTerrainRenderer
                 if (sy >= img.GetHeight()) break;
                 float fade = 1f - (float)s / sidePx * 0.3f;
                 img.SetPixel(imgX, sy, new Color(cliffColor.R * fade, cliffColor.G * fade, cliffColor.B * fade, 0.8f));
+            }
+        }
+    }
+
+    // ======== 水面波纹 ========
+
+    private static void DrawWaterRipples(Image img, int cx, int cy, TerrainCell cell, Random rng)
+    {
+        // 在水面菱形上画几条随机的波纹线
+        Color rippleColor = cell.Type == TerrainType.DeepWater
+            ? new Color(0.5f, 0.6f, 0.8f, 0.35f)
+            : new Color(0.6f, 0.7f, 0.85f, 0.4f);
+
+        int halfH = (int)IsoCoords.HalfH;
+        int halfW = (int)IsoCoords.HalfW;
+
+        // 2-3条波纹
+        int rippleCount = 2 + rng.Next(2);
+        for (int i = 0; i < rippleCount; i++)
+        {
+            int ry = rng.Next(-halfH + 2, halfH - 1);
+            int rw = (int)(halfW * (1f - Math.Abs(ry) / (float)halfW)) - 2;
+            if (rw <= 0) continue;
+            int startX = rng.Next(-rw, rw - 3);
+            int len = rng.Next(3, Math.Min(8, rw * 2));
+
+            for (int dx = 0; dx < len && startX + dx < rw; dx++)
+            {
+                int px = startX + dx;
+                int imgX = cx + px;
+                int imgY = cy + ry;
+                if (imgX >= 0 && imgX < img.GetWidth() && imgY >= 0 && imgY < img.GetHeight())
+                {
+                    var existing = img.GetPixel(imgX, imgY);
+                    if (existing.A > 0.5f)
+                        img.SetPixel(imgX, imgY, new Color(
+                            Math.Min(existing.R + rippleColor.R * 0.3f, 1f),
+                            Math.Min(existing.G + rippleColor.G * 0.3f, 1f),
+                            Math.Min(existing.B + rippleColor.B * 0.3f, 1f),
+                            existing.A));
+                }
             }
         }
     }
