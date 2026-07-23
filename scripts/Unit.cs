@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 
@@ -161,6 +162,11 @@ public partial class Unit : CharacterBody2D
     private static Texture2D? _destroyerHull, _submarineHull, _carrierHull, _landingCraftHull;
     // 灰底炮塔纹理（按兵种）
     private static Texture2D? _turretLight, _turretHeavy, _turretArty, _turretRocket, _turretMissile, _turretAntiAir;
+
+    // R3: 等距8方向精灵图缓存 [unitName][direction] 
+    private static readonly Dictionary<string, Texture2D?[]> _isoSprites = new();
+    private static readonly string[] IsoDirNames = { "E", "SE", "S", "SW", "W", "NW", "N", "NE" };
+    private int _lastDirIndex = -1;  // 上次方向，避免每帧换贴图
     // 炮塔精灵
     protected Sprite2D _turret = null!;
     // 新素材朝右（RIGHT=0°），无需额外旋转偏移
@@ -238,6 +244,89 @@ public partial class Unit : CharacterBody2D
             }
         }
         _ringTex = ImageTexture.CreateFromImage(ring);
+
+        // R3: 预加载等距8方向精灵图
+        EnsureIsoSprites();
+    }
+
+    /// <summary>R3: 获取UnitType对应的等距精灵图名称。</summary>
+    private static string GetIsoSpriteName(UnitType type) => type switch
+    {
+        UnitType.LightTank => "light_tank",
+        UnitType.HeavyTank => "heavy_tank",
+        UnitType.Artillery => "artillery",
+        UnitType.RocketLauncher => "rocket_launcher",
+        UnitType.MissileTank => "missile_launcher",
+        UnitType.AntiAir => "anti_air",
+        UnitType.Harvester => "harvester",
+        UnitType.Infantry => "infantry",
+        UnitType.Sapper => "sapper",
+        UnitType.ChiefEngineer => "sapper",
+        UnitType.Grenadier => "grenadier",
+        UnitType.Sniper => "sniper",
+        UnitType.FlameInfantry => "flame_infantry",
+        UnitType.Hero => "hero",
+        UnitType.Spy => "spy",
+        UnitType.Thief => "thief",
+        UnitType.Fighter => "fighter",
+        UnitType.Helicopter => "helicopter",
+        UnitType.RocketInfantry => "rocket_soldier",
+        UnitType.Bomber => "bomber",
+        UnitType.Scout => "scout",
+        UnitType.TransportHeli => "transport_heli",
+        UnitType.Destroyer => "destroyer",
+        UnitType.Submarine => "submarine",
+        UnitType.AircraftCarrier => "carrier",
+        UnitType.LandingCraft => "landing_craft",
+        UnitType.Transport => "transport_vehicle",
+        UnitType.Engineer => "engineer_vehicle",
+        _ => "infantry"
+    };
+
+    /// <summary>R3: 预加载所有兵种的8方向等距精灵图。</summary>
+    private static void EnsureIsoSprites()
+    {
+        if (_isoSprites.Count > 0) return;
+        foreach (UnitType t in Enum.GetValues<UnitType>())
+        {
+            if (t == UnitType.Hero) continue; // skip if not in sprite set
+            string name = GetIsoSpriteName(t);
+            if (_isoSprites.ContainsKey(name)) continue;
+            var arr = new Texture2D?[8];
+            bool anyLoaded = false;
+            for (int d = 0; d < 8; d++)
+            {
+                string path = $"res://assets/sprites/units_iso/unit_{name}_{IsoDirNames[d]}.png";
+                arr[d] = GD.Load<Texture2D>(path);
+                if (arr[d] != null) anyLoaded = true;
+            }
+            if (anyLoaded)
+                _isoSprites[name] = arr;
+        }
+        GD.Print($"[R3] 等距精灵图加载完成: {_isoSprites.Count} 种兵种");
+    }
+
+    /// <summary>R3: 根据移动方向更新等距精灵图。</summary>
+    private void UpdateIsoSprite(Vector2 moveDir)
+    {
+        if (moveDir.LengthSquared() < 0.01f) return;
+        string name = GetIsoSpriteName(Type);
+        if (!_isoSprites.TryGetValue(name, out var arr) || arr == null) return;
+
+        int dirIdx = IsoCoords.GetDirectionIndex(moveDir);
+        if (dirIdx < 0 || dirIdx >= 8) return;
+        if (dirIdx == _lastDirIndex) return; // 方向没变不换贴图
+        _lastDirIndex = dirIdx;
+
+        var tex = arr[dirIdx];
+        if (tex != null)
+        {
+            _body.Texture = tex;
+            _body.Rotation = 0f; // 等距精灵不需要旋转
+            _body.Modulate = Colors.White; // 等距精灵已含队伍色
+            _body.Scale = Vector2.One;
+            if (_turret != null) _turret.Visible = false; // 等距精灵已含炮塔
+        }
     }
 
     private static Texture2D LoadUnitTexture(string path)
@@ -1566,7 +1655,13 @@ public partial class Unit : CharacterBody2D
                 Velocity = direction * MoveSpeed * speedMult;
                 MoveAndSlide();
                 if (direction != Vector2.Zero)
-                    _body.Rotation = direction.Angle() + SpriteRotationOffset;
+                {
+                    // R3: 等距精灵方向切换（优先于旋转）
+                    UpdateIsoSprite(direction);
+                    // 如果没有等距精灵，回退到旋转
+                    if (_lastDirIndex < 0)
+                        _body.Rotation = direction.Angle() + SpriteRotationOffset;
+                }
             }
             else
             {
