@@ -655,7 +655,14 @@ public partial class Building : Area2D
         }
 
         if (!_currentProduction.HasValue) { QueueRedraw(); return; }
-        _productionTimer -= dt;
+        // G4: 电网分区 — 离线建筑生产减速
+        float effectiveDt = dt;
+        if (GetParent()?.GetParent() is Main mainNode)
+        {
+            bool powered = mainNode.IsBuildingPowered(this);
+            if (!powered) effectiveDt = dt * PowerGrid.OfflineProduceMul;
+        }
+        _productionTimer -= effectiveDt;
         if (_productionTimer <= 0f)
         {
             var type = _currentProduction.Value;

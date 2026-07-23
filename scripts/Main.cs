@@ -262,6 +262,11 @@ public partial class Main : Node2D
     private Label _cardLabel = null!;
     private Label _cardStatusLabel = null!;
 
+    // G4: 电网分区
+    private bool _powerGridPanelVisible = false;
+    private Label _powerGridLabel = null!;
+    private float _powerGridRefreshTimer = 0f;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -513,13 +518,25 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_cardStatusLabel);
         GD.Print("[G3] 战术卡系统初始化完成 — 游戏开始5秒后选择战术卡");
 
+        // G4: 初始化电网分区面板
+        _powerGridLabel = new Label();
+        _powerGridLabel.Name = "PowerGridLabel";
+        _powerGridLabel.Position = new Vector2(180, 80);
+        _powerGridLabel.Size = new Vector2(580, 350);
+        _powerGridLabel.Modulate = new Color(0.9f, 1f, 0.9f, 0.95f);
+        _powerGridLabel.AddThemeFontSizeOverride("font_size", 13);
+        _powerGridLabel.Visible = false;
+        _powerGridLabel.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_powerGridLabel);
+        GD.Print("[G4] 电网分区系统初始化完成 — 按G查看电网分布");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
-        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡");
+        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区");
         GD.Print("========================================");
     }
 
@@ -711,6 +728,15 @@ public partial class Main : Node2D
         if (kc == Key.T)
         {
             ShowCardStatus();
+            return;
+        }
+
+        // G4: G键查看电网分布
+        if (kc == Key.G)
+        {
+            _powerGridPanelVisible = !_powerGridPanelVisible;
+            _powerGridLabel.Visible = _powerGridPanelVisible;
+            if (_powerGridPanelVisible) UpdatePowerGridPanel();
             return;
         }
 
@@ -1603,6 +1629,78 @@ public partial class Main : Node2D
         return TacticalCards.GetResearchSpeedMul(card);
     }
 
+    // ======== G4: 电网分区系统方法 ========
+
+    /// <summary>获取某阵营所有建筑列表。</summary>
+    private List<Building> GetTeamBuildings(int teamId)
+    {
+        var result = new List<Building>();
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
+                result.Add(b);
+        }
+        return result;
+    }
+
+    /// <summary>检查指定建筑是否在电网供电范围内。</summary>
+    public bool IsBuildingPowered(Building target)
+    {
+        if (target.Type == BuildingType.PowerPlant || target.Type == BuildingType.Base)
+            return true; // 电站和基地自给自足
+        return PowerGrid.IsInRange(target, GetTeamBuildings(target.TeamId));
+    }
+
+    /// <summary>获取建筑的生产速度乘数（G4电网分区 + G3战术卡）。</summary>
+    public float GetBuildingProduceMul(Building b)
+    {
+        float mul = 1f;
+        // G3: 战术卡生产速度加成
+        var card = b.TeamId == 0 ? _playerCard : _aiCards[b.TeamId - 1];
+        mul *= TacticalCards.GetProduceTimeMul(card); // 越小越快
+        // 转换为速度乘数（除法取倒数）
+        float cardSpeedMul = card.HasValue && TacticalCards.GetProduceTimeMul(card) < 1f
+            ? 1f / TacticalCards.GetProduceTimeMul(card) : 1f;
+
+        // G4: 电网离线减速
+        float gridMul = IsBuildingPowered(b) ? 1f : PowerGrid.OfflineProduceMul;
+        return cardSpeedMul * gridMul;
+    }
+
+    /// <summary>更新电网分布面板。</summary>
+    private void UpdatePowerGridPanel()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══════════ 电网分区 ═══════════ (G关闭)");
+        sb.AppendLine($"电站供电半径: {PowerGrid.PowerRadius}px  基地自供电: {PowerGrid.BasePowerRadius}px");
+        sb.AppendLine($"离线建筑生产速度: {PowerGrid.OfflineProduceMul*100:F0}%");
+        sb.AppendLine();
+
+        var buildings = GetTeamBuildings(0);
+        int powerPlants = 0;
+        int powered = 0;
+        int offline = 0;
+        int totalSupply = 0;
+        int totalDemand = 0;
+
+        sb.AppendLine("【玩家方建筑供电状态】");
+        foreach (var b in buildings)
+        {
+            bool isOnline = IsBuildingPowered(b);
+            string status = b.Type == BuildingType.PowerPlant || b.Type == BuildingType.Base
+                ? "供电源" : isOnline ? "在线" : "离线!";
+            if (b.Type == BuildingType.PowerPlant) { powerPlants++; totalSupply += b.PowerProvided; }
+            if (b.PowerConsumed > 0) { totalDemand += b.PowerConsumed; if (isOnline) powered++; else offline++; }
+            sb.AppendLine($"  {b.BuildingName} [{status}] 供{b.PowerProvided} 耗{b.PowerConsumed}");
+        }
+        sb.AppendLine();
+        sb.AppendLine($"电站: {powerPlants}  在线耗电建筑: {powered}  离线: {offline}");
+        sb.AppendLine($"总供电: {totalSupply}  总需求: {totalDemand}");
+        if (offline > 0)
+            sb.AppendLine($"⚠ {offline}个建筑离线！建造电站靠近它们");
+        _powerGridLabel.Text = sb.ToString();
+    }
+
     private void SaveSquad(int idx)
     {
         _squads[idx] = GetSelectedFriendlyUnits();
@@ -2032,6 +2130,17 @@ public partial class Main : Node2D
             }
         }
         _techAutoRepairTimer -= dt;
+
+        // G4: 刷新电网面板（如果可见，每0.5秒刷新一次）
+        if (_powerGridPanelVisible)
+        {
+            _powerGridRefreshTimer -= dt;
+            if (_powerGridRefreshTimer <= 0f)
+            {
+                _powerGridRefreshTimer = 0.5f;
+                UpdatePowerGridPanel();
+            }
+        }
 
         // Q1 刷新侧边栏建造面板
         if (_buildPanel != null)
@@ -4526,7 +4635,8 @@ public partial class Main : Node2D
                           "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)\n" +
                           "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)\n" +
                           "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)\n" +
-                          "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)";
+                          "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)\n" +
+                          "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
