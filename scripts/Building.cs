@@ -463,6 +463,10 @@ public partial class Building : Area2D
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+
+        // R5: 等距Y-Sort深度排序 — Y越大越靠前
+        ZIndex = (int)(GlobalPosition.Y / 2f) + 1000;
+
         // Q5：受击闪白效果
         if (_hitFlashTimer > 0)
         {

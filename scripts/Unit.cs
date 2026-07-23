@@ -960,6 +960,9 @@ public partial class Unit : CharacterBody2D
         // 阴影始终水平（由_Draw绘制，需要每帧QueueRedraw）
         QueueRedraw();
 
+        // R5: 等距Y-Sort深度排序 — Y越大越靠前（画在越上面）
+        ZIndex = (int)(GlobalPosition.Y / 2f) + 1000;
+
         // E3：地形高度视觉偏移——高海拔单位的body向上偏移，模拟"站在高处"
         if (GetParent()?.GetParent() is Main mainNode)
         {
