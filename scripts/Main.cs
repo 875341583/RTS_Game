@@ -253,6 +253,15 @@ public partial class Main : Node2D
     private Label _eraLabel = null!;
     private float _aiEraTimer = 0f;
 
+    // G3: 战术卡系统
+    private TacticalCards.CardId? _playerCard = null;
+    private readonly TacticalCards.CardId?[] _aiCards = new TacticalCards.CardId?[7];
+    private bool _cardSelectionPending = true;
+    private float _cardSelectionTimer = 5f; // 游戏开始5秒后弹出
+    private TacticalCards.CardId[] _cardChoices = System.Array.Empty<TacticalCards.CardId>();
+    private Label _cardLabel = null!;
+    private Label _cardStatusLabel = null!;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -483,13 +492,34 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_eraLabel);
         GD.Print("[G2] 时代系统初始化完成 — 按Y打开时代面板");
 
+        // G3: 初始化战术卡面板
+        _cardLabel = new Label();
+        _cardLabel.Name = "CardLabel";
+        _cardLabel.Position = new Vector2(180, 100);
+        _cardLabel.Size = new Vector2(580, 350);
+        _cardLabel.Modulate = new Color(1f, 0.95f, 0.8f, 0.97f);
+        _cardLabel.AddThemeFontSizeOverride("font_size", 14);
+        _cardLabel.Visible = false;
+        _cardLabel.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_cardLabel);
+
+        _cardStatusLabel = new Label();
+        _cardStatusLabel.Name = "CardStatusLabel";
+        _cardStatusLabel.Position = new Vector2(770, 70);
+        _cardStatusLabel.Size = new Vector2(200, 60);
+        _cardStatusLabel.Modulate = new Color(1f, 0.9f, 0.5f, 0.9f);
+        _cardStatusLabel.AddThemeFontSizeOverride("font_size", 12);
+        _cardStatusLabel.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_cardStatusLabel);
+        GD.Print("[G3] 战术卡系统初始化完成 — 游戏开始5秒后选择战术卡");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
-        GD.Print("★ Tab科技树 | Y时代升级");
+        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡");
         GD.Print("========================================");
     }
 
@@ -675,6 +705,28 @@ public partial class Main : Node2D
             TryAdvanceEra();
             UpdateEraPanel();
             return;
+        }
+
+        // G3: T键查看当前战术卡
+        if (kc == Key.T)
+        {
+            ShowCardStatus();
+            return;
+        }
+
+        // G3: 战术卡选择面板可见时，1/2/3选择对应卡
+        if (_cardLabel.Visible && _cardChoices.Length > 0)
+        {
+            int cardIdx = kc switch
+            {
+                Key.Key1 => 0, Key.Key2 => 1, Key.Key3 => 2,
+                _ => -1
+            };
+            if (cardIdx >= 0 && cardIdx < _cardChoices.Length)
+            {
+                SelectPlayerCard(_cardChoices[cardIdx]);
+                return;
+            }
         }
 
         // G1: 科技面板可见时，数字键1-9研究对应行科技
@@ -950,8 +1002,10 @@ public partial class Main : Node2D
     /// <summary>G1: 更新所有阵营的科技研究进度（每帧调用）。</summary>
     private void UpdateTechResearch(float dt)
     {
+        // G3: 战术卡研究速度加成
+        float playerResearchMul = GetCardResearchSpeedMul(0);
         // 玩家阵营
-        var completed = _techProgress[0].UpdateResearch(dt);
+        var completed = _techProgress[0].UpdateResearch(dt * playerResearchMul);
         if (completed.HasValue)
         {
             var node = TechTree.Nodes[completed.Value];
@@ -1004,7 +1058,8 @@ public partial class Main : Node2D
         // AI研究完成处理
         for (int team = 1; team < TotalTeamCount; team++)
         {
-            var aiCompleted = _techProgress[team].UpdateResearch(dt);
+            float aiResearchMul = GetCardResearchSpeedMul(team);
+            var aiCompleted = _techProgress[team].UpdateResearch(dt * aiResearchMul);
             if (aiCompleted.HasValue)
             {
                 var node = TechTree.Nodes[aiCompleted.Value];
@@ -1029,6 +1084,43 @@ public partial class Main : Node2D
         {
             if (c is not Building b || b.TeamId != teamId || !IsInstanceValid(b)) continue;
             ApplyTechToBuilding(b, tp.Completed);
+        }
+    }
+
+    /// <summary>合并应用G1科技+G2时代+G3战术卡的所有效果到单个新单位。</summary>
+    private void ApplyAllModifiersToUnit(Unit u, int teamId)
+    {
+        // G1: 科技效果
+        var tp = _techProgress[teamId];
+        if (tp != null) ApplyTechToUnit(u, tp.Completed);
+
+        // G2: 时代效果
+        var ep = _eraProgress[teamId];
+        if (ep != null)
+        {
+            float healthMul = EraSystem.GetHealthMultiplier(ep.CurrentEra);
+            float damageMul = EraSystem.GetDamageMultiplier(ep.CurrentEra);
+            if (healthMul != 1f) u.ApplyTechHealthMultiplier(healthMul);
+            if (damageMul != 1f) u.ApplyTechDamageMultiplier(damageMul);
+        }
+
+        // G3: 战术卡效果
+        TacticalCards.CardId? card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        if (card.HasValue)
+        {
+            float allHealth = TacticalCards.GetAllHealthMul(card);
+            float allDamage = TacticalCards.GetAllDamageMul(card);
+            if (IsTankType(u.Type))
+            {
+                allHealth *= TacticalCards.GetTankHealthMul(card);
+                allDamage *= TacticalCards.GetTankDamageMul(card);
+            }
+            if (IsInfantryType(u.Type))
+            {
+                allHealth *= TacticalCards.GetInfantryHealthMul(card);
+            }
+            if (allHealth != 1f) u.ApplyTechHealthMultiplier(allHealth);
+            if (allDamage != 1f) u.ApplyTechDamageMultiplier(allDamage);
         }
     }
 
@@ -1202,7 +1294,8 @@ public partial class Main : Node2D
     {
         // 玩家阵营
         var ep = _eraProgress[0];
-        if (ep.UpdateUpgrade(dt))
+        float eraUpgradeMul = TacticalCards.GetEraUpgradeSpeedMul(_playerCard);
+        if (ep.UpdateUpgrade(dt * eraUpgradeMul))
         {
             var eraInfo = EraSystem.Eras[(int)ep.CurrentEra];
             GD.Print($"[G2] 时代升级完成: {eraInfo.Name} — {eraInfo.Description}");
@@ -1243,7 +1336,8 @@ public partial class Main : Node2D
         for (int team = 1; team < TotalTeamCount; team++)
         {
             var aiEp = _eraProgress[team];
-            if (aiEp.UpdateUpgrade(dt))
+            float aiEraMul = TacticalCards.GetEraUpgradeSpeedMul(_aiCards[team - 1]);
+            if (aiEp.UpdateUpgrade(dt * aiEraMul))
             {
                 var eraInfo = EraSystem.Eras[(int)aiEp.CurrentEra];
                 GD.Print($"[G2] AI Team {team} 进入{eraInfo.Name}");
@@ -1301,6 +1395,212 @@ public partial class Main : Node2D
         var ep = _eraProgress[teamId];
         if (ep == null) return true;
         return EraSystem.CanProduceUnit(ep.CurrentEra, type);
+    }
+
+    // ======== G3: 战术卡系统方法 ========
+
+    /// <summary>显示战术卡选择面板。</summary>
+    private void ShowCardSelection()
+    {
+        _cardSelectionPending = false;
+        var rng = new RandomNumberGenerator();
+        rng.Randomize();
+        _cardChoices = TacticalCards.DrawRandom(3, rng);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══════════ 战术卡选择 ═══════════");
+        sb.AppendLine("开局战略卡 — 选择1张影响整局走向！");
+        sb.AppendLine();
+        for (int i = 0; i < _cardChoices.Length; i++)
+        {
+            var card = TacticalCards.Cards[_cardChoices[i]];
+            sb.AppendLine($"  ({i + 1}) {card.Icon} {card.Name}");
+            sb.AppendLine($"       {card.Description}");
+            sb.AppendLine();
+        }
+        sb.AppendLine("按 1/2/3 键选择对应战术卡");
+        _cardLabel.Text = sb.ToString();
+        _cardLabel.Visible = true;
+        GD.Print("[G3] 战术卡选择面板已弹出 — 按1/2/3选择");
+    }
+
+    /// <summary>玩家选择战术卡后应用效果。</summary>
+    private void SelectPlayerCard(TacticalCards.CardId card)
+    {
+        _playerCard = card;
+        _cardLabel.Visible = false;
+        var info = TacticalCards.Cards[card];
+        GD.Print($"[G3] 玩家选择战术卡: {info.Name} — {info.Description}");
+        ShowToast($"战术卡: {info.Name}");
+
+        // 应用即时效果
+        // 闪电经济：起始资金+50%（额外加钱）
+        if (card == TacticalCards.CardId.BlitzEconomy)
+        {
+            int bonus = (int)(_blueStartMoney * 0.5f);
+            _money[0] += bonus;
+            GD.Print($"[G3] 闪电经济: +${bonus} 起始资金");
+        }
+
+        // 快速部署：单位上限+10
+        // （GetUnitCapBonus方法中处理）
+
+        // 应用被动效果到现有单位
+        ApplyCardEffectsToUnits(0);
+
+        // AI随机选卡
+        var rng = new RandomNumberGenerator();
+        rng.Randomize();
+        for (int team = 1; team < TotalTeamCount; team++)
+        {
+            var aiPick = TacticalCards.DrawRandom(1, rng)[0];
+            _aiCards[team - 1] = aiPick;
+            GD.Print($"[G3] AI Team {team} 战术卡: {TacticalCards.Cards[aiPick].Name}");
+            // AI闪电经济即时效果
+            if (aiPick == TacticalCards.CardId.BlitzEconomy)
+            {
+                int aiBonus = (int)(_aiStartMoney * 0.5f);
+                _money[team] += aiBonus;
+            }
+            ApplyCardEffectsToUnits(team);
+        }
+
+        ShowCardStatus();
+    }
+
+    /// <summary>将战术卡效果应用到阵营现有单位。</summary>
+    private void ApplyCardEffectsToUnits(int teamId)
+    {
+        TacticalCards.CardId? card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        if (card == null) return;
+
+        float allHealthMul = TacticalCards.GetAllHealthMul(card);
+        float allDamageMul = TacticalCards.GetAllDamageMul(card);
+        float tankHealthMul = TacticalCards.GetTankHealthMul(card);
+        float tankDamageMul = TacticalCards.GetTankDamageMul(card);
+        float infHealthMul = TacticalCards.GetInfantryHealthMul(card);
+
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is not Unit u || u.TeamId != teamId || !IsInstanceValid(u)) continue;
+            float healthMul = allHealthMul;
+            float damageMul = allDamageMul;
+            if (IsTankType(u.Type))
+            {
+                healthMul *= tankHealthMul;
+                damageMul *= tankDamageMul;
+            }
+            if (IsInfantryType(u.Type))
+            {
+                healthMul *= infHealthMul;
+            }
+            if (healthMul != 1f)
+            {
+                float ratio = u.Health / u.MaxHealth;
+                u.ApplyTechHealthMultiplier(healthMul);
+                u.SetHealth(u.MaxHealth * ratio);
+            }
+            if (damageMul != 1f)
+            {
+                u.ApplyTechDamageMultiplier(damageMul);
+            }
+        }
+
+        // 要塞防御：建筑血量+30%
+        float bldHealthMul = TacticalCards.GetBuildingHealthMul(card);
+        if (bldHealthMul != 1f)
+        {
+            foreach (var c in _buildingsNode.GetChildren())
+            {
+                if (c is not Building b || b.TeamId != teamId || !IsInstanceValid(b)) continue;
+                float ratio = b.Health / b.MaxHealth;
+                b.ApplyTechHealthMultiplier(bldHealthMul);
+                b.SetHealth(b.MaxHealth * ratio);
+            }
+        }
+    }
+
+    /// <summary>判断是否为步兵类单位。</summary>
+    private static bool IsInfantryType(UnitType type) => type switch
+    {
+        UnitType.Infantry or UnitType.Sapper or UnitType.Grenadier
+        or UnitType.Sniper or UnitType.FlameInfantry or UnitType.RocketInfantry
+        or UnitType.Hero or UnitType.Spy or UnitType.Thief => true,
+        _ => false,
+    };
+
+    /// <summary>显示当前战术卡状态（T键）。</summary>
+    private void ShowCardStatus()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("════ 战术卡 ════ (T关闭)");
+        if (_playerCard.HasValue)
+        {
+            var card = TacticalCards.Cards[_playerCard.Value];
+            sb.AppendLine($"你的卡: {card.Icon} {card.Name}");
+            sb.AppendLine($"  {card.Description}");
+        }
+        else if (_cardSelectionPending)
+        {
+            sb.AppendLine("战术卡选择即将开始...");
+        }
+        else if (_cardLabel.Visible)
+        {
+            sb.AppendLine("请选择战术卡！(1/2/3)");
+        }
+        else
+        {
+            sb.AppendLine("未选择战术卡");
+        }
+        sb.AppendLine();
+        sb.AppendLine("AI战术卡:");
+        for (int i = 1; i <= 7; i++)
+        {
+            var aiCard = _aiCards[i - 1];
+            if (aiCard.HasValue)
+                sb.AppendLine($"  Team{i}: {TacticalCards.Cards[aiCard.Value].Name}");
+        }
+        _cardStatusLabel.Text = sb.ToString();
+        _cardStatusLabel.Visible = true;
+
+        // 3秒后自动隐藏
+        if (!_cardLabel.Visible) // 选择面板不显示时才自动隐藏
+        {
+            _cardStatusHideTimer = 3f;
+        }
+    }
+
+    private float _cardStatusHideTimer = 0f;
+
+    /// <summary>获取玩家战术卡。</summary>
+    public TacticalCards.CardId? GetPlayerCard() => _playerCard;
+
+    /// <summary>获取AI战术卡。</summary>
+    public TacticalCards.CardId? GetAiCard(int teamId)
+    {
+        if (teamId < 1 || teamId > 7) return null;
+        return _aiCards[teamId - 1];
+    }
+
+    /// <summary>获取阵营战术卡的单位上限加成。</summary>
+    public int GetCardUnitCapBonus(int teamId)
+    {
+        var card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        return TacticalCards.GetUnitCapBonus(card);
+    }
+
+    /// <summary>获取阵营战术卡的矿车收益乘数。</summary>
+    public float GetCardMiningMul(int teamId)
+    {
+        var card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        return TacticalCards.GetMiningMul(card);
+    }
+
+    /// <summary>获取阵营战术卡的研究速度乘数。</summary>
+    public float GetCardResearchSpeedMul(int teamId)
+    {
+        var card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        return TacticalCards.GetResearchSpeedMul(card);
     }
 
     private void SaveSquad(int idx)
@@ -1699,6 +1999,24 @@ public partial class Main : Node2D
         // G2: 更新时代升级进度
         UpdateEraProgress(dt);
 
+        // G3: 战术卡选择计时
+        if (_cardSelectionPending)
+        {
+            _cardSelectionTimer -= dt;
+            if (_cardSelectionTimer <= 0f)
+            {
+                ShowCardSelection();
+            }
+        }
+
+        // G3: 战术卡状态自动隐藏
+        if (_cardStatusHideTimer > 0f)
+        {
+            _cardStatusHideTimer -= dt;
+            if (_cardStatusHideTimer <= 0f && _cardStatusLabel.Visible)
+                _cardStatusLabel.Visible = false;
+        }
+
         // G1: 建筑自动维修科技效果
         if (_techAutoRepairTimer <= 0f)
         {
@@ -1775,8 +2093,8 @@ public partial class Main : Node2D
                 break;
             }
 
-            // G2：单位上限检查（活跃单位 + 队列中）+ G1科技上限加成
-            int effectiveCap = _unitCap + GetTechUnitCapBonus(0);
+            // G2：单位上限检查（活跃单位 + 队列中）+ G1科技上限加成 + G3战术卡加成
+            int effectiveCap = _unitCap + GetTechUnitCapBonus(0) + GetCardUnitCapBonus(0);
             int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
             if (total >= effectiveCap)
             {
@@ -3168,6 +3486,8 @@ public partial class Main : Node2D
             // 玩家(0)保留手动操控；任何 AI 阵营(1..7)都开放 AutoAI
             bool autoAI = teamId != PlayerTeamId;
             var unit = SpawnUnit(unitType, spawnPos + offset, teamId, autoAI);
+            // G1+G2+G3: 新单位立即应用科技/时代/战术卡效果
+            ApplyAllModifiersToUnit(unit, teamId);
             // G2：集结点 —— 新单位自动移动过去
             if (producer.RallyPoint.HasValue)
             {
@@ -4186,7 +4506,8 @@ public partial class Main : Node2D
         string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
         string eraName = EraSystem.Eras[(int)_eraProgress[0].CurrentEra].Name;
         string eraUpgradeStr = _eraProgress[0].IsUpgrading ? $" (升级中{_eraProgress[0].Progress*100:F0}%)" : "";
-        _uiLabel.Text = $"难度: {_difficulty} [时代: {eraName}{eraUpgradeStr}] (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}    [{QualitySettings.LevelName}]\n" +
+        string cardStr = _playerCard.HasValue ? $" | 卡:{TacticalCards.Cards[_playerCard.Value].Name}" : "";
+        _uiLabel.Text = $"难度: {_difficulty} [时代: {eraName}{eraUpgradeStr}]{cardStr} (科技Lv{_playerTechLevel} | 上限{_unitCap + GetTechUnitCapBonus(0) + GetCardUnitCapBonus(0)})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}    [{QualitySettings.LevelName}]\n" +
                         $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
                         $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
                         $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
@@ -4204,7 +4525,8 @@ public partial class Main : Node2D
                           "Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)\n" +
                           "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)\n" +
                           "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)\n" +
-                          "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)";
+                          "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)\n" +
+                          "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
