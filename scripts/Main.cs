@@ -242,6 +242,9 @@ public partial class Main : Node2D
 
     public override void _Ready()
     {
+        // R7: 画质分级 — 自动检测GPU并设置渲染参数
+        QualitySettings.AutoDetect();
+
         // P5：解析难度参数（--difficulty=easy/normal/hard/brutal）
         // 优先命令行参数（headless 测试用），否则用菜单选择（GameSession）
         _difficulty = GameSession.SelectedDifficulty;
@@ -3613,7 +3616,7 @@ public partial class Main : Node2D
         string missileLine = $" | 🚀 导弹: {missileStatus}";
 
         string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
-        _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}\n" +
+        _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}    [{QualitySettings.LevelName}]\n" +
                         $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
                         $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
                         $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
