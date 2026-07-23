@@ -117,13 +117,13 @@ public class TerrainGrid
         gy = Math.Clamp((int)Math.Floor(grid.Y), 0, GridSize - 1);
     }
 
-    /// <summary>通过旧版正交世界坐标获取格子索引（兼容旧代码）。</summary>
+    /// <summary>通过世界坐标（等距屏幕坐标）获取格子索引。
+    /// R6: 已改为等距坐标转换，兼容所有旧调用方。</summary>
     public void WorldToGrid(float worldX, float worldY, out int gx, out int gy)
     {
-        gx = (int)(worldX / TileSize);
-        gy = (int)(worldY / TileSize);
-        gx = Math.Clamp(gx, 0, GridSize - 1);
-        gy = Math.Clamp(gy, 0, GridSize - 1);
+        var grid = IsoCoords.ScreenToGridF(worldX, worldY);
+        gx = Math.Clamp((int)Math.Floor(grid.X), 0, GridSize - 1);
+        gy = Math.Clamp((int)Math.Floor(grid.Y), 0, GridSize - 1);
     }
 
     /// <summary>网格坐标 → 等距屏幕坐标。</summary>
