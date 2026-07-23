@@ -119,7 +119,14 @@ public partial class Harvester : Unit
                 {
                     // E5：收益受资源类型倍率影响（稀有矿×2，陆地矿脉×0.6，普通×1）
                     float yieldMultiplier = _targetMine.YieldMultiplier;
-                    int baseYield = Mathf.Min(MineYieldPerCycle, _targetMine.Amount);
+                    // G1+G2: 科技采矿速度+时代采矿速度加成
+                    float mineMul = 1f;
+                    if (GetParent()?.GetParent() is Main main)
+                    {
+                        mineMul *= main.GetTechMiningMultiplier(TeamId);
+                        mineMul *= main.GetEraMiningMultiplier(TeamId);
+                    }
+                    int baseYield = Mathf.Min((int)(MineYieldPerCycle * mineMul), _targetMine.Amount);
                     int harvested = _targetMine.Harvest((int)(baseYield * yieldMultiplier));
                     _cargo += harvested;
                     if (_cargo >= CargoCapacity || _targetMine.IsDepleted)

@@ -247,6 +247,12 @@ public partial class Main : Node2D
     private float _aiTechTimer = 0f;
     private float _techAutoRepairTimer = 0f;
 
+    // G2: 时代系统
+    private readonly EraProgress[] _eraProgress = new EraProgress[8]; // 每阵营一个
+    private bool _eraPanelVisible = false;
+    private Label _eraLabel = null!;
+    private float _aiEraTimer = 0f;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -464,12 +470,26 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_techTreeLabel);
         GD.Print("[G1] 科技树系统初始化完成 — 按Tab打开科技面板");
 
+        // G2: 初始化时代系统进度 + 时代面板
+        for (int i = 0; i < 8; i++) _eraProgress[i] = new EraProgress();
+        _eraLabel = new Label();
+        _eraLabel.Name = "EraLabel";
+        _eraLabel.Position = new Vector2(180, 80);
+        _eraLabel.Size = new Vector2(580, 300);
+        _eraLabel.Modulate = new Color(0.95f, 0.9f, 1f, 0.95f);
+        _eraLabel.AddThemeFontSizeOverride("font_size", 14);
+        _eraLabel.Visible = false;
+        _eraLabel.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_eraLabel);
+        GD.Print("[G2] 时代系统初始化完成 — 按Y打开时代面板");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
+        GD.Print("★ Tab科技树 | Y时代升级");
         GD.Print("========================================");
     }
 
@@ -637,6 +657,23 @@ public partial class Main : Node2D
             _techTreePanelVisible = !_techTreePanelVisible;
             _techTreeLabel.Visible = _techTreePanelVisible;
             if (_techTreePanelVisible) UpdateTechTreePanel();
+            return;
+        }
+
+        // G2: Y键打开/关闭时代面板
+        if (kc == Key.Y)
+        {
+            _eraPanelVisible = !_eraPanelVisible;
+            _eraLabel.Visible = _eraPanelVisible;
+            if (_eraPanelVisible) UpdateEraPanel();
+            return;
+        }
+
+        // G2: 时代面板可见时，按U键升级时代
+        if (_eraPanelVisible && kc == Key.U)
+        {
+            TryAdvanceEra();
+            UpdateEraPanel();
             return;
         }
 
@@ -1086,6 +1123,186 @@ public partial class Main : Node2D
         return tp != null && tp.Completed.Contains(TechTree.TechId.Def_AdvancedTurrets);
     }
 
+    // ======== G2: 时代系统方法 ========
+
+    /// <summary>玩家尝试升级时代。</summary>
+    private void TryAdvanceEra()
+    {
+        var ep = _eraProgress[0];
+        if (ep.IsUpgrading)
+        {
+            GD.Print($"[G2] 时代升级进行中... {ep.Progress*100:F0}%");
+            return;
+        }
+        var next = EraSystem.GetNextEra(ep.CurrentEra);
+        if (next == null)
+        {
+            GD.Print("[G2] 已达到最高时代（信息时代）");
+            return;
+        }
+        if (!EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(0, t), _money[0]))
+        {
+            if (_money[0] < next.UpgradeCost)
+                GD.Print($"[G2] 资金不足：升级到{next.Name}需要${next.UpgradeCost}，当前${_money[0]}");
+            else
+            {
+                string missing = "";
+                foreach (var req in next.RequiredBuildings)
+                    if (!HasBuilding(0, req)) missing += $" {req}";
+                GD.Print($"[G2] 缺少前置建筑：{missing}");
+            }
+            return;
+        }
+        _money[0] -= next.UpgradeCost;
+        ep.StartUpgrade();
+        GD.Print($"[G2] 开始时代升级：{EraSystem.Eras[(int)ep.CurrentEra].Name} → {next.Name} (成本${next.UpgradeCost}，{next.UpgradeTime:F0}秒)");
+        ShowToast($"时代升级中: → {next.Name}");
+    }
+
+    /// <summary>更新时代面板显示。</summary>
+    private void UpdateEraPanel()
+    {
+        var ep = _eraProgress[0];
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══════════ 时代系统 ═══════════ (Y关闭)");
+        sb.AppendLine($"当前时代: {EraSystem.Eras[(int)ep.CurrentEra].Name}  资金: ${_money[0]}");
+        if (ep.IsUpgrading)
+        {
+            var next = EraSystem.GetNextEra(ep.CurrentEra);
+            sb.AppendLine($"升级中: → {next?.Name} ({ep.Progress*100:F0}%)");
+        }
+        sb.AppendLine();
+
+        for (int i = 0; i < EraSystem.Eras.Length; i++)
+        {
+            var era = EraSystem.Eras[i];
+            string marker = era.Id == ep.CurrentEra ? "▶" : (int)era.Id < (int)ep.CurrentEra ? "✓" : " ";
+            string status = era.Id == ep.CurrentEra ? "[当前]" : (int)era.Id < (int)ep.CurrentEra ? "[已完成]" : "";
+            sb.AppendLine($"{marker} {era.Name} {status}");
+            sb.AppendLine($"  {era.Description}");
+            if ((int)era.Id == (int)ep.CurrentEra + 1 && !ep.IsUpgrading)
+            {
+                bool canAdv = EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(0, t), _money[0]);
+                string reqStr = era.RequiredBuildings.Length > 0
+                    ? string.Join("/", System.Array.ConvertAll(era.RequiredBuildings, b => b.ToString()))
+                    : "无";
+                sb.AppendLine($"  升级条件: ${era.UpgradeCost} + {reqStr} + {era.UpgradeTime:F0}秒");
+                sb.AppendLine($"  状态: {(canAdv ? "[可升级] 按U键升级" : "[条件不足]")}");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("时代加成: 每时代 +5%攻击/+5%血量/+10%采矿/+10%建造");
+        sb.AppendLine("按U键升级时代");
+        _eraLabel.Text = sb.ToString();
+    }
+
+    /// <summary>G2: 更新所有阵营的时代升级进度（每帧调用）。</summary>
+    private void UpdateEraProgress(float dt)
+    {
+        // 玩家阵营
+        var ep = _eraProgress[0];
+        if (ep.UpdateUpgrade(dt))
+        {
+            var eraInfo = EraSystem.Eras[(int)ep.CurrentEra];
+            GD.Print($"[G2] 时代升级完成: {eraInfo.Name} — {eraInfo.Description}");
+            ShowToast($"进入{eraInfo.Name}!");
+            ApplyEraEffects(0);
+            if (_eraPanelVisible) UpdateEraPanel();
+        }
+
+        // AI阵营：自动升级
+        _aiEraTimer -= dt;
+        if (_aiEraTimer <= 0f)
+        {
+            _aiEraTimer = 8f; // 每8秒AI检查一次
+            for (int team = 1; team < TotalTeamCount; team++)
+            {
+                if (team > _activeAiCount) break;
+                var aiEp = _eraProgress[team];
+                if (aiEp.IsUpgrading) continue;
+                var next = EraSystem.GetNextEra(aiEp.CurrentEra);
+                if (next == null) continue;
+                // AI保留2倍资金用于造兵
+                if (_money[team] >= next.UpgradeCost * 2)
+                {
+                    bool reqOk = true;
+                    foreach (var req in next.RequiredBuildings)
+                        if (!HasBuilding(team, req)) { reqOk = false; break; }
+                    if (reqOk)
+                    {
+                        _money[team] -= next.UpgradeCost;
+                        aiEp.StartUpgrade();
+                        GD.Print($"[G2] AI Team {team} 开始时代升级: → {next.Name}");
+                    }
+                }
+            }
+        }
+
+        // AI时代升级完成处理
+        for (int team = 1; team < TotalTeamCount; team++)
+        {
+            var aiEp = _eraProgress[team];
+            if (aiEp.UpdateUpgrade(dt))
+            {
+                var eraInfo = EraSystem.Eras[(int)aiEp.CurrentEra];
+                GD.Print($"[G2] AI Team {team} 进入{eraInfo.Name}");
+                ApplyEraEffects(team);
+            }
+        }
+    }
+
+    /// <summary>应用时代效果到指定阵营所有单位/建筑（时代升级完成时调用）。</summary>
+    private void ApplyEraEffects(int teamId)
+    {
+        var ep = _eraProgress[teamId];
+        float healthMul = EraSystem.GetHealthMultiplier(ep.CurrentEra);
+        float damageMul = EraSystem.GetDamageMultiplier(ep.CurrentEra);
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is not Unit u || u.TeamId != teamId || !IsInstanceValid(u)) continue;
+            u.ApplyTechHealthMultiplier(healthMul);
+            u.ApplyTechDamageMultiplier(damageMul);
+        }
+    }
+
+    /// <summary>获取阵营当前时代。</summary>
+    public EraSystem.Era GetTeamEra(int teamId)
+    {
+        if (teamId < 0 || teamId >= _eraProgress.Length) return EraSystem.Era.Stone;
+        return _eraProgress[teamId].CurrentEra;
+    }
+
+    /// <summary>获取时代的矿车采集速度乘数（G1科技+G2时代叠加）。</summary>
+    public float GetEraMiningMultiplier(int teamId)
+    {
+        var ep = _eraProgress[teamId];
+        return ep != null ? EraSystem.GetMiningMultiplier(ep.CurrentEra) : 1f;
+    }
+
+    /// <summary>获取时代的建造速度乘数。</summary>
+    public float GetEraBuildSpeedMultiplier(int teamId)
+    {
+        var ep = _eraProgress[teamId];
+        return ep != null ? EraSystem.GetBuildSpeedMultiplier(ep.CurrentEra) : 1f;
+    }
+
+    /// <summary>检查指定建筑类型在某阵营当前时代是否可建造。</summary>
+    public bool IsBuildingUnlockedByEra(int teamId, BuildingType type)
+    {
+        var ep = _eraProgress[teamId];
+        if (ep == null) return true; // 时代系统未初始化时不限制
+        return EraSystem.CanBuildBuilding(ep.CurrentEra, type);
+    }
+
+    /// <summary>检查指定单位类型在某阵营当前时代是否可生产。</summary>
+    public bool IsUnitUnlockedByEra(int teamId, UnitType type)
+    {
+        var ep = _eraProgress[teamId];
+        if (ep == null) return true;
+        return EraSystem.CanProduceUnit(ep.CurrentEra, type);
+    }
+
     private void SaveSquad(int idx)
     {
         _squads[idx] = GetSelectedFriendlyUnits();
@@ -1479,6 +1696,9 @@ public partial class Main : Node2D
         // G1: 更新科技研究进度
         UpdateTechResearch(dt);
 
+        // G2: 更新时代升级进度
+        UpdateEraProgress(dt);
+
         // G1: 建筑自动维修科技效果
         if (_techAutoRepairTimer <= 0f)
         {
@@ -1605,6 +1825,8 @@ public partial class Main : Node2D
     // ---------- 建造系统 ----------
     private bool CanProduceUnit(int teamId, UnitType unitType)
     {
+        // G2: 时代限制检查
+        if (!IsUnitUnlockedByEra(teamId, unitType)) return false;
         return unitType switch
         {
             UnitType.LightTank => HasBuilding(teamId, BuildingType.Barracks),
@@ -1741,6 +1963,14 @@ public partial class Main : Node2D
         if (type == BuildingType.TechCenter && _playerTechLevel < 3) { GD.Print("[难度限制] 当前难度未解锁科技中心！"); return; }
         if (type == BuildingType.AntiAirTurret && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁防空炮！"); return; }
         if (type == BuildingType.RepairPad && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁维修厂！"); return; }
+
+        // G2: 时代限制检查
+        if (!IsBuildingUnlockedByEra(0, type))
+        {
+            var ep = _eraProgress[0];
+            GD.Print($"[G2] {type} 需要{EraSystem.GetNextEra(ep.CurrentEra)?.Name ?? "更高时代"}才能建造！当前：{EraSystem.Eras[(int)ep.CurrentEra].Name}");
+            return;
+        }
 
         // 电力检查（电站本身不受电力限制）
         if (type != BuildingType.PowerPlant && GetTeamPower(0) < 0)
@@ -2044,7 +2274,8 @@ public partial class Main : Node2D
         }
 
         // 优先级4：建战车工厂
-        if (hasBarracks && !hasWarFactory && _money[teamId] >= WarFactoryCost)
+        if (hasBarracks && !hasWarFactory && _money[teamId] >= WarFactoryCost
+            && IsBuildingUnlockedByEra(teamId, BuildingType.WarFactory))
         {
             _money[teamId] -= WarFactoryCost;
             SpawnBuilding(BuildingType.WarFactory, GetBuildPosition(teamId), teamId);
@@ -2053,7 +2284,8 @@ public partial class Main : Node2D
         }
 
         // 优先级5：建科技中心（解锁高级兵种）
-        if (_aiUsesTech && hasWarFactory && !hasTechCenter && _money[teamId] >= TechCenterCost && power >= 0)
+        if (_aiUsesTech && hasWarFactory && !hasTechCenter && _money[teamId] >= TechCenterCost && power >= 0
+            && IsBuildingUnlockedByEra(teamId, BuildingType.TechCenter))
         {
             _money[teamId] -= TechCenterCost;
             SpawnBuilding(BuildingType.TechCenter, GetBuildPosition(teamId), teamId);
@@ -2073,7 +2305,8 @@ public partial class Main : Node2D
         // ---- 阶段12-A1+A2：防御建筑与维修厂 ----
         // 优先级7：建造维修厂（已建车厂且无维修厂且资金充裕）
         if (hasWarFactory && !HasBuilding(teamId, BuildingType.RepairPad)
-            && _money[teamId] >= RepairPadCost + 200 && power >= 0)
+            && _money[teamId] >= RepairPadCost + 200 && power >= 0
+            && IsBuildingUnlockedByEra(teamId, BuildingType.RepairPad))
         {
             _money[teamId] -= RepairPadCost;
             SpawnBuilding(BuildingType.RepairPad, GetBuildPosition(teamId), teamId);
@@ -2084,7 +2317,8 @@ public partial class Main : Node2D
         // 优先级8：建造机枪塔（已建兵营，每阵营最多2座，资金充裕）
         int turretCount = CountBuildingOfType(teamId, BuildingType.Turret);
         if (hasBarracks && turretCount < 2
-            && _money[teamId] >= TurretCost + 300 && power >= 0)
+            && _money[teamId] >= TurretCost + 300 && power >= 0
+            && IsBuildingUnlockedByEra(teamId, BuildingType.Turret))
         {
             _money[teamId] -= TurretCost;
             SpawnBuilding(BuildingType.Turret, GetBuildPosition(teamId), teamId);
@@ -2095,7 +2329,8 @@ public partial class Main : Node2D
         // 优先级9：建造防空炮（已建车厂，每阵营最多2座）
         int aaCount = CountBuildingOfType(teamId, BuildingType.AntiAirTurret);
         if (hasWarFactory && aaCount < 2
-            && _money[teamId] >= AntiAirTurretCost + 300 && power >= 0)
+            && _money[teamId] >= AntiAirTurretCost + 300 && power >= 0
+            && IsBuildingUnlockedByEra(teamId, BuildingType.AntiAirTurret))
         {
             _money[teamId] -= AntiAirTurretCost;
             SpawnBuilding(BuildingType.AntiAirTurret, GetBuildPosition(teamId), teamId);
@@ -2105,7 +2340,8 @@ public partial class Main : Node2D
 
         // E7：优先级10：建造机场（已建科技中心，每阵营最多1座）
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.Airfield)
-            && _money[teamId] >= AirfieldCost + 300 && power >= 0)
+            && _money[teamId] >= AirfieldCost + 300 && power >= 0
+            && IsBuildingUnlockedByEra(teamId, BuildingType.Airfield))
         {
             _money[teamId] -= AirfieldCost;
             SpawnBuilding(BuildingType.Airfield, GetBuildPosition(teamId), teamId);
@@ -2114,7 +2350,8 @@ public partial class Main : Node2D
         }
         // E9：优先级11：建造船厂（已建科技中心，每阵营最多1座）
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.Shipyard)
-            && _money[teamId] >= ShipyardCost + 300 && power >= 0)
+            && _money[teamId] >= ShipyardCost + 300 && power >= 0
+            && IsBuildingUnlockedByEra(teamId, BuildingType.Shipyard))
         {
             _money[teamId] -= ShipyardCost;
             SpawnBuilding(BuildingType.Shipyard, GetBuildPosition(teamId), teamId);
@@ -3947,7 +4184,9 @@ public partial class Main : Node2D
         string missileLine = $" | 🚀 导弹: {missileStatus}";
 
         string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
-        _uiLabel.Text = $"难度: {_difficulty} (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}    [{QualitySettings.LevelName}]\n" +
+        string eraName = EraSystem.Eras[(int)_eraProgress[0].CurrentEra].Name;
+        string eraUpgradeStr = _eraProgress[0].IsUpgrading ? $" (升级中{_eraProgress[0].Progress*100:F0}%)" : "";
+        _uiLabel.Text = $"难度: {_difficulty} [时代: {eraName}{eraUpgradeStr}] (科技Lv{_playerTechLevel} | 上限{_unitCap})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}    [{QualitySettings.LevelName}]\n" +
                         $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
                         $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
                         $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
@@ -3964,7 +4203,8 @@ public partial class Main : Node2D
                           " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)\n" +
                           "Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)\n" +
                           "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)\n" +
-                          "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)";
+                          "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)\n" +
+                          "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
