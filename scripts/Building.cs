@@ -94,6 +94,10 @@ public partial class Building : Area2D
     private static Texture2D? _buildingRingTex;
     private Color _teamTint = Colors.White;
 
+    // R4: 等距建筑精灵图缓存
+    private static readonly Dictionary<BuildingType, Texture2D?> _isoBuildingSprites = new();
+    private static bool _isoBuildingsLoaded = false;
+
     // ---- 工程车占领系统 ----
     /// <summary>占领进度 0~1（1=占领完成）。</summary>
     public float CaptureProgress { get; private set; } = 0f;
@@ -197,22 +201,36 @@ public partial class Building : Area2D
         _healthBar = GetNode<ProgressBar>("HealthBar");
 
         EnsureTextures();
-        _body.Texture = Type switch
+        EnsureIsoBuildingTextures();
+
+        // R4: 优先使用等距建筑精灵图，无则回退到旧PNG
+        if (_isoBuildingSprites.TryGetValue(Type, out var isoTex) && isoTex != null)
         {
-            BuildingType.PowerPlant => _powerTex!,
-            BuildingType.Barracks => _barracksTex!,
-            BuildingType.WarFactory => _warTex!,
-            BuildingType.TechCenter => _techTex!,
-            BuildingType.Turret => _turretTex!,
-            BuildingType.AntiAirTurret => _antiAirTurretTex!,
-            BuildingType.RepairPad => _repairPadTex!,
-            BuildingType.Airfield => _airfieldTex!,  // E7
-            BuildingType.Shipyard => _shipyardTex!,  // E9
-            BuildingType.NukeSilo => _nukeSiloTex!,       // E10
-            BuildingType.LightningTower => _lightningTowerTex!, // E10
-            BuildingType.MissileSilo => _missileSiloTex!,     // E10
-            _ => _baseTex!
-        };
+            _body.Texture = isoTex;
+            _body.Scale = new Vector2(1.0f, 1.0f); // 等距精灵图128x128不需要额外放大
+            _body.Modulate = _teamTint; // 仍用队伍色染色
+        }
+        else
+        {
+            _body.Texture = Type switch
+            {
+                BuildingType.PowerPlant => _powerTex!,
+                BuildingType.Barracks => _barracksTex!,
+                BuildingType.WarFactory => _warTex!,
+                BuildingType.TechCenter => _techTex!,
+                BuildingType.Turret => _turretTex!,
+                BuildingType.AntiAirTurret => _antiAirTurretTex!,
+                BuildingType.RepairPad => _repairPadTex!,
+                BuildingType.Airfield => _airfieldTex!,  // E7
+                BuildingType.Shipyard => _shipyardTex!,  // E9
+                BuildingType.NukeSilo => _nukeSiloTex!,       // E10
+                BuildingType.LightningTower => _lightningTowerTex!, // E10
+                BuildingType.MissileSilo => _missileSiloTex!,     // E10
+                _ => _baseTex!
+            };
+            _body.Scale = new Vector2(1.4f, 1.4f);
+            _body.Modulate = _teamTint;
+        }
         _selectionRing.Texture = _buildingRingTex;
         _selectionRing.Visible = false;
         _healthBar.MaxValue = MaxHealth;
@@ -221,11 +239,7 @@ public partial class Building : Area2D
 
         // 8阵营色染色：向白色混合30%，让阵营色占主体（75%），8色强烈区分同时保留建筑手绘明暗细节
         _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
-        _body.Modulate = _teamTint;
 
-        // v3 放大显示尺寸：PNG 128x128 在 zoom=1.0 下视觉太小看不清砖缝/铆钉/五星等细节
-        // 1.4x 让建筑显示为 ~180px，纹理清晰可辨；cell 90x90 间距足够不严重重叠
-        _body.Scale = new Vector2(1.4f, 1.4f);
         // 像素艺术必须用 Nearest 过滤，Linear 会让 50+ 色的 PNG 被插值平滑成单色块
         _body.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         // 选取圈同步放大
@@ -266,6 +280,43 @@ public partial class Building : Area2D
             }
         }
         _buildingRingTex = ImageTexture.CreateFromImage(ring);
+    }
+
+    /// <summary>R4: 获取BuildingType对应的等距精灵图文件名。</summary>
+    private static string GetIsoBuildingSpriteName(BuildingType type) => type switch
+    {
+        BuildingType.Base => "base",
+        BuildingType.PowerPlant => "powerplant",
+        BuildingType.Barracks => "barracks",
+        BuildingType.WarFactory => "warfactory",
+        BuildingType.TechCenter => "techcenter",
+        BuildingType.Turret => "turret",
+        BuildingType.AntiAirTurret => "antiair",
+        BuildingType.RepairPad => "repairpad",
+        BuildingType.Airfield => "airfield",
+        BuildingType.Shipyard => "shipyard",
+        BuildingType.NukeSilo => "nuke_silo",
+        BuildingType.LightningTower => "lightning_tower",
+        BuildingType.MissileSilo => "missile_silo",
+        _ => "base"
+    };
+
+    /// <summary>R4: 预加载13种等距建筑精灵图。</summary>
+    private static void EnsureIsoBuildingTextures()
+    {
+        if (_isoBuildingsLoaded) return;
+        _isoBuildingsLoaded = true;
+        foreach (BuildingType t in System.Enum.GetValues(typeof(BuildingType)))
+        {
+            string name = GetIsoBuildingSpriteName(t);
+            string path = $"res://assets/sprites/buildings_iso/building_{name}.png";
+            var tex = GD.Load<Texture2D>(path);
+            if (tex != null)
+                _isoBuildingSprites[t] = tex;
+            else
+                GD.PrintErr($"[R4] Failed to load building sprite: {path}");
+        }
+        GD.Print($"[R4] 等距建筑精灵图加载完成: {_isoBuildingSprites.Count}/{13} 种建筑");
     }
 
     private static Texture2D LoadTexture(string path)
