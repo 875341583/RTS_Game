@@ -23,6 +23,9 @@ public partial class Building : Area2D
     [Export] public string BuildingName { get; set; } = "建造厂";
 
     public float Health { get; private set; }
+
+    /// <summary>G1: 设置当前血量（科技效果用）。</summary>
+    public void SetHealth(float value) { Health = Mathf.Clamp(value, 0f, MaxHealth); }
     public bool IsSelected { get; private set; }
     public int TeamId { get; set; } = 0;
     public BuildingType Type { get; set; } = BuildingType.Base;
@@ -491,6 +494,25 @@ public partial class Building : Area2D
             _healthBar.Value = Health;
             _healthBar.Visible = true;
         }
+    }
+
+    // G1: 科技效果方法
+    private float _techHealthMul = 1f;
+    private float _techPowerMul = 1f;
+
+    /// <summary>G1: 应用科技生命值乘数。</summary>
+    public void ApplyTechHealthMultiplier(float mul)
+    {
+        float baseMax = MaxHealth / _techHealthMul;
+        _techHealthMul *= mul;
+        MaxHealth = baseMax * _techHealthMul;
+    }
+
+    /// <summary>G1: 应用科技发电量乘数。</summary>
+    public void ApplyTechPowerMultiplier(float mul)
+    {
+        _techPowerMul *= mul;
+        PowerProvided = (int)(PowerProvided * mul);
     }
 
     /// <summary>工程车推进占领进度（5秒完成一次占领）。占领完成后建筑阵营转换。</summary>

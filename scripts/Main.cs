@@ -240,6 +240,13 @@ public partial class Main : Node2D
     // E4：键盘防抖
     private Key _prevKeyState = Key.None;
 
+    // G1: 科技分支树
+    private readonly TechProgress[] _techProgress = new TechProgress[8]; // 每阵营一个
+    private bool _techTreePanelVisible = false;
+    private Label _techTreeLabel = null!;
+    private float _aiTechTimer = 0f;
+    private float _techAutoRepairTimer = 0f;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -444,6 +451,19 @@ public partial class Main : Node2D
         _toastContainer.OffsetRight = 200f;
         GetNode<CanvasLayer>("UI").AddChild(_toastContainer);
 
+        // G1: 初始化科技树进度 + 科技树UI面板
+        for (int i = 0; i < 8; i++) _techProgress[i] = new TechProgress();
+        _techTreeLabel = new Label();
+        _techTreeLabel.Name = "TechTreeLabel";
+        _techTreeLabel.Position = new Vector2(180, 80);
+        _techTreeLabel.Size = new Vector2(580, 380);
+        _techTreeLabel.Modulate = new Color(0.9f, 0.95f, 1f, 0.95f);
+        _techTreeLabel.AddThemeFontSizeOverride("font_size", 13);
+        _techTreeLabel.Visible = false;
+        _techTreeLabel.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_techTreeLabel);
+        GD.Print("[G1] 科技树系统初始化完成 — 按Tab打开科技面板");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
@@ -611,6 +631,34 @@ public partial class Main : Node2D
         var kc = key.Keycode;
         bool ctrl = Input.IsKeyPressed(Key.Ctrl);
 
+        // G1: Tab键打开/关闭科技树面板
+        if (kc == Key.Tab)
+        {
+            _techTreePanelVisible = !_techTreePanelVisible;
+            _techTreeLabel.Visible = _techTreePanelVisible;
+            if (_techTreePanelVisible) UpdateTechTreePanel();
+            return;
+        }
+
+        // G1: 科技面板可见时，数字键1-9研究对应行科技
+        if (_techTreePanelVisible)
+        {
+            int techNum = kc switch
+            {
+                Key.Key1 => 0, Key.Key2 => 1, Key.Key3 => 2,
+                Key.Key4 => 3, Key.Key5 => 4, Key.Key6 => 5,
+                Key.Key7 => 6, Key.Key8 => 7, Key.Key9 => 8,
+                Key.Key0 => 9, Key.Minus => 10, Key.Equal => 11,
+                _ => -1
+            };
+            if (techNum >= 0)
+            {
+                TryResearchTech(techNum);
+                UpdateTechTreePanel();
+                return;
+            }
+        }
+
         // 编队：Ctrl+1~9 储存，1~9 取出
         int idx = SquadIndexFromKey(kc);
         if (idx >= 0)
@@ -776,6 +824,266 @@ public partial class Main : Node2D
     {
         int v = (int)kc, a = (int)Key.Key1, b = (int)Key.Key9;
         return (v >= a && v <= b) ? v - a : -1;
+    }
+
+    // ======== G1: 科技分支树方法 ========
+
+    /// <summary>科技节点顺序列表（用于数字键索引）。</summary>
+    private static readonly TechTree.TechId[] TechOrder = new TechTree.TechId[]
+    {
+        TechTree.TechId.Mil_ArmorUpgrade,
+        TechTree.TechId.Mil_AmmoUpgrade,
+        TechTree.TechId.Mil_AdvancedTactics,
+        TechTree.TechId.Mil_HeroTraining,
+        TechTree.TechId.Eco_MiningEfficiency,
+        TechTree.TechId.Eco_MassProduction,
+        TechTree.TechId.Eco_ResourceNetwork,
+        TechTree.TechId.Eco_AdvancedLogistics,
+        TechTree.TechId.Def_Fortification,
+        TechTree.TechId.Def_PowerGrid,
+        TechTree.TechId.Def_AdvancedTurrets,
+        TechTree.TechId.Def_RepairSystems,
+    };
+
+    /// <summary>玩家尝试研究指定索引的科技。</summary>
+    private void TryResearchTech(int techNum)
+    {
+        if (techNum >= TechOrder.Length) return;
+        var techId = TechOrder[techNum];
+        var tp = _techProgress[0]; // 玩家阵营
+        var node = TechTree.Nodes[techId];
+        bool hasTech = HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter;
+
+        if (tp.Completed.Contains(techId))
+        {
+            GD.Print($"[G1] {node.Name} 已研究完成");
+            return;
+        }
+        if (tp.CurrentlyResearching.HasValue)
+        {
+            GD.Print($"[G1] 正在研究中: {TechTree.Nodes[tp.CurrentlyResearching.Value].Name} ({tp.Progress*100:F0}%)");
+            return;
+        }
+        if (!TechTree.CanResearch(tp.Completed, techId, hasTech, _money[0]))
+        {
+            if (!hasTech) GD.Print($"[G1] {node.Name} 需要科技中心");
+            else if (_money[0] < node.Cost) GD.Print($"[G1] 资金不足: {node.Name} 需要${node.Cost}，当前${_money[0]}");
+            else GD.Print($"[G1] {node.Name} 需要前置科技");
+            return;
+        }
+        _money[0] -= node.Cost;
+        tp.StartResearch(techId);
+        GD.Print($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[0]}");
+        ShowToast($"开始研究: {node.Name}");
+    }
+
+    /// <summary>更新科技树面板显示文本。</summary>
+    private void UpdateTechTreePanel()
+    {
+        var tp = _techProgress[0];
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══════════ 科技树 ═══════════ (Tab关闭)");
+        sb.AppendLine($"资金: ${_money[0]}  科技中心: {(HasBuilding(0, BuildingType.TechCenter) ? "有" : "无")}  研究中: {(tp.CurrentlyResearching.HasValue ? $"{TechTree.Nodes[tp.CurrentlyResearching.Value].Name} {tp.Progress*100:F0}%" : "无")}");
+        sb.AppendLine();
+
+        string[] branches = { "军事", "经济", "防御" };
+        int techIdx = 0;
+        foreach (var branch in branches)
+        {
+            sb.AppendLine($"【{branch}分支】");
+            for (int tier = 1; tier <= 4; tier++)
+            {
+                var node = TechTree.GetByBranchTier(branch, tier);
+                if (node == null) continue;
+                bool done = tp.Completed.Contains(node.Id);
+                bool researching = tp.CurrentlyResearching == node.Id;
+                bool available = TechTree.CanResearch(tp.Completed, node.Id, HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter, _money[0]);
+                string status = done ? "[已完成]" : researching ? $"[研究中{tp.Progress*100:F0}%]" : available ? "[可研究]" : "[锁定]";
+                string keyHint = done ? "  " : $"({techIdx})";
+                sb.AppendLine($"  {keyHint} T{tier} {node.Name} {status} — ${node.Cost} / {node.ResearchTime:F0}s");
+                sb.AppendLine($"       {node.Description}");
+                techIdx++;
+            }
+            sb.AppendLine();
+        }
+        sb.AppendLine("按数字键0-9/-= 研究对应科技");
+        _techTreeLabel.Text = sb.ToString();
+    }
+
+    /// <summary>G1: 更新所有阵营的科技研究进度（每帧调用）。</summary>
+    private void UpdateTechResearch(float dt)
+    {
+        // 玩家阵营
+        var completed = _techProgress[0].UpdateResearch(dt);
+        if (completed.HasValue)
+        {
+            var node = TechTree.Nodes[completed.Value];
+            GD.Print($"[G1] 科技研究完成: {node.Name} — {node.Description}");
+            ShowToast($"科技完成: {node.Name}");
+            ApplyTechEffects(0);
+            if (_techTreePanelVisible) UpdateTechTreePanel();
+        }
+
+        // AI阵营：自动研究逻辑
+        _aiTechTimer -= dt;
+        if (_aiTechTimer <= 0f)
+        {
+            _aiTechTimer = 5f; // 每5秒AI检查一次
+            for (int team = 1; team < TotalTeamCount; team++)
+            {
+                if (team > _activeAiCount) break; // 休眠AI不研究
+                var aiTp = _techProgress[team];
+                if (aiTp.CurrentlyResearching.HasValue) continue;
+                bool aiHasTech = HasBuilding(team, BuildingType.TechCenter);
+                // AI优先经济分支第一层（不需要科技中心）
+                var target = TechTree.TechId.Eco_MiningEfficiency;
+                if (aiTp.Completed.Contains(TechTree.TechId.Eco_MiningEfficiency))
+                    target = TechTree.TechId.Def_Fortification;
+                if (aiTp.Completed.Contains(TechTree.TechId.Def_Fortification))
+                    target = TechTree.TechId.Mil_ArmorUpgrade;
+                if (aiTp.Completed.Contains(TechTree.TechId.Mil_ArmorUpgrade) && aiHasTech)
+                    target = TechTree.TechId.Eco_MassProduction;
+                if (aiTp.Completed.Contains(TechTree.TechId.Eco_MassProduction))
+                    target = TechTree.TechId.Mil_AmmoUpgrade;
+
+                var node = TechTree.Nodes[target];
+                if (aiTp.Completed.Contains(target)) continue;
+                bool hasReq = aiHasTech || !node.RequiresTechCenter;
+                if (!hasReq) continue;
+                // 检查前置
+                bool preOk = true;
+                foreach (var pre in node.Prerequisites)
+                    if (!aiTp.Completed.Contains(pre)) { preOk = false; break; }
+                if (!preOk) continue;
+                if (_money[team] >= node.Cost * 2) // AI保留一倍资金用于造兵
+                {
+                    _money[team] -= node.Cost;
+                    aiTp.StartResearch(target);
+                    GD.Print($"[G1] AI Team {team} 开始研究: {node.Name}");
+                }
+            }
+        }
+
+        // AI研究完成处理
+        for (int team = 1; team < TotalTeamCount; team++)
+        {
+            var aiCompleted = _techProgress[team].UpdateResearch(dt);
+            if (aiCompleted.HasValue)
+            {
+                var node = TechTree.Nodes[aiCompleted.Value];
+                GD.Print($"[G1] AI Team {team} 科技完成: {node.Name}");
+                ApplyTechEffects(team);
+            }
+        }
+    }
+
+    /// <summary>应用科技效果到指定阵营（研究完成时调用）。</summary>
+    private void ApplyTechEffects(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        // 应用效果到现有单位
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is not Unit u || u.TeamId != teamId || !IsInstanceValid(u)) continue;
+            ApplyTechToUnit(u, tp.Completed);
+        }
+        // 应用效果到现有建筑
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is not Building b || b.TeamId != teamId || !IsInstanceValid(b)) continue;
+            ApplyTechToBuilding(b, tp.Completed);
+        }
+    }
+
+    /// <summary>将科技效果应用到单个单位。</summary>
+    private void ApplyTechToUnit(Unit u, HashSet<TechTree.TechId> tech)
+    {
+        // Mil_ArmorUpgrade: 坦克血量+15%
+        if (tech.Contains(TechTree.TechId.Mil_ArmorUpgrade) && IsTankType(u.Type))
+        {
+            // 通过MaxHealth倍率临时增加，使用比例方式
+            float ratio = u.Health / u.MaxHealth;
+            u.ApplyTechHealthMultiplier(1.15f);
+            u.SetHealth(u.MaxHealth * ratio);
+        }
+        // Mil_AmmoUpgrade: 攻击力+15%
+        if (tech.Contains(TechTree.TechId.Mil_AmmoUpgrade))
+        {
+            u.ApplyTechDamageMultiplier(1.15f);
+        }
+        // Mil_HeroTraining: 英雄成本-30%（通过成本折扣处理，这里不做运行时修改）
+    }
+
+    /// <summary>将科技效果应用到单个建筑。</summary>
+    private void ApplyTechToBuilding(Building b, HashSet<TechTree.TechId> tech)
+    {
+        // Def_Fortification: 建筑血量+25%
+        if (tech.Contains(TechTree.TechId.Def_Fortification))
+        {
+            float ratio = b.Health / b.MaxHealth;
+            b.ApplyTechHealthMultiplier(1.25f);
+            b.SetHealth(b.MaxHealth * ratio);
+        }
+        // Def_PowerGrid: 电站+50%发电
+        if (tech.Contains(TechTree.TechId.Def_PowerGrid) && b.Type == BuildingType.PowerPlant)
+        {
+            b.ApplyTechPowerMultiplier(1.5f);
+        }
+    }
+
+    /// <summary>判断单位是否为坦克类。</summary>
+    private static bool IsTankType(UnitType type) => type switch
+    {
+        UnitType.LightTank or UnitType.HeavyTank or UnitType.Artillery
+        or UnitType.RocketLauncher or UnitType.MissileTank or UnitType.AntiAir
+        or UnitType.Harvester or UnitType.Engineer or UnitType.Transport => true,
+        _ => false,
+    };
+
+    /// <summary>获取科技带来的单位成本折扣（0~1，1=无折扣）。</summary>
+    public float GetTechCostMultiplier(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 1f;
+        return tp.Completed.Contains(TechTree.TechId.Eco_MassProduction) ? 0.85f : 1f;
+    }
+
+    /// <summary>获取科技带来的矿车采集速度乘数。</summary>
+    public float GetTechMiningMultiplier(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 1f;
+        return tp.Completed.Contains(TechTree.TechId.Eco_MiningEfficiency) ? 1.3f : 1f;
+    }
+
+    /// <summary>获取科技带来的单位上限加成。</summary>
+    public int GetTechUnitCapBonus(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 0;
+        return tp.Completed.Contains(TechTree.TechId.Eco_AdvancedLogistics) ? 8 : 0;
+    }
+
+    /// <summary>获取科技带来的战略点收入乘数。</summary>
+    public float GetTechStratPointMultiplier(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 1f;
+        return tp.Completed.Contains(TechTree.TechId.Eco_ResourceNetwork) ? 2f : 1f;
+    }
+
+    /// <summary>建筑是否有自动维修科技。</summary>
+    public bool HasTechAutoRepair(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        return tp != null && tp.Completed.Contains(TechTree.TechId.Def_RepairSystems);
+    }
+
+    /// <summary>防御建筑是否有高级炮塔科技加成。</summary>
+    public bool HasTechAdvancedTurrets(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        return tp != null && tp.Completed.Contains(TechTree.TechId.Def_AdvancedTurrets);
     }
 
     private void SaveSquad(int idx)
@@ -1168,6 +1476,25 @@ public partial class Main : Node2D
 
         UpdateUI();
 
+        // G1: 更新科技研究进度
+        UpdateTechResearch(dt);
+
+        // G1: 建筑自动维修科技效果
+        if (_techAutoRepairTimer <= 0f)
+        {
+            _techAutoRepairTimer = 1f; // 每秒检查一次
+            for (int team = 0; team < TotalTeamCount; team++)
+            {
+                if (!HasTechAutoRepair(team)) continue;
+                foreach (var c in _buildingsNode.GetChildren())
+                {
+                    if (c is Building b && b.TeamId == team && IsInstanceValid(b) && b.Health < b.MaxHealth && b.Health > 0f)
+                        b.RepairByEngineer(b.MaxHealth * 0.02f);
+                }
+            }
+        }
+        _techAutoRepairTimer -= dt;
+
         // Q1 刷新侧边栏建造面板
         if (_buildPanel != null)
         {
@@ -1206,6 +1533,9 @@ public partial class Main : Node2D
     // ---------- 制造 ----------
     private void TrySpawnUnit(UnitType type, int cost)
     {
+        // G1: 科技批量生产折扣
+        cost = Mathf.Max(1, (int)(cost * GetTechCostMultiplier(0)));
+
         // 建筑前置检查
         if (!CanProduceUnit(0, type))
         {
@@ -1225,11 +1555,12 @@ public partial class Main : Node2D
                 break;
             }
 
-            // G2：单位上限检查（活跃单位 + 队列中）
+            // G2：单位上限检查（活跃单位 + 队列中）+ G1科技上限加成
+            int effectiveCap = _unitCap + GetTechUnitCapBonus(0);
             int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
-            if (total >= _unitCap)
+            if (total >= effectiveCap)
             {
-                GD.Print($"[警告] 达到单位上限 {_unitCap}！");
+                GD.Print($"[警告] 达到单位上限 {effectiveCap}！");
                 break;
             }
 
@@ -3632,7 +3963,8 @@ public partial class Main : Node2D
                           "P 电站$" + PowerPlantCost + " | O 兵营$" + BarracksCost +
                           " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)\n" +
                           "Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)\n" +
-                          "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)";
+                          "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)\n" +
+                          "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)

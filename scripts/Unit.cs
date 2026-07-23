@@ -30,6 +30,9 @@ public partial class Unit : CharacterBody2D
     public float SplashRadius { get; set; } = 0f;
 
     public float Health { get; protected set; }
+
+    /// <summary>G1: 设置当前血量（科技效果用）。</summary>
+    public void SetHealth(float value) => Health = Mathf.Clamp(value, 0f, MaxHealth);
     public bool IsSelected { get; protected set; }
     public int TeamId { get; set; } = 0;
     /// <summary>红方自动战斗 AI 开关。开启后主动全图搜索敌人攻击。</summary>
@@ -1867,6 +1870,28 @@ public partial class Unit : CharacterBody2D
             UpdateHealthBarVisibility();
         }
     }
+
+    // G1: 科技效果方法
+    private float _techHealthMul = 1f;
+    private float _techDamageMul = 1f;
+
+    /// <summary>G1: 应用科技生命值乘数（叠乘方式，已有乘数会叠加）。</summary>
+    public void ApplyTechHealthMultiplier(float mul)
+    {
+        float baseMax = MaxHealth / _techHealthMul; // 恢复到基础值
+        _techHealthMul *= mul;
+        MaxHealth = baseMax * _techHealthMul;
+    }
+
+    /// <summary>G1: 应用科技攻击力乘数。</summary>
+    public void ApplyTechDamageMultiplier(float mul)
+    {
+        _techDamageMul *= mul;
+        AttackDamage *= mul;
+    }
+
+    /// <summary>G1: 获取科技攻击力乘数。</summary>
+    public float TechDamageMultiplier => _techDamageMul;
 
     protected void MoveTo(Vector2 target) { _moveTarget = target; _hasMoveTarget = true; }
     protected void StopMove() { _hasMoveTarget = false; Velocity = Vector2.Zero; }
