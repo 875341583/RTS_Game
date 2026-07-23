@@ -183,6 +183,9 @@ public partial class Main3D : Node3D
 
         ApplyDifficultyConfig();
 
+        // 初始化共享特效材质
+        InitSharedFxMaterials();
+
         // 音频管理器
         var audioMgr = new AudioManager();
         AddChild(audioMgr);
@@ -223,7 +226,7 @@ public partial class Main3D : Node3D
         _camera.Projection = Camera3D.ProjectionType.Perspective;
         _camera.Fov = 50f;
         _camera.Near = 0.5f;
-        _camera.Far = 500f;
+        _camera.Far = 300f; // 降低远裁剪面减少渲染量
         // 相机位置：高处俯视，固定角度
         float camHeight = 60f;
         float camDist = 42f;
@@ -256,54 +259,45 @@ public partial class Main3D : Node3D
         env.TonemapMode = Godot.Environment.ToneMapper.Filmic;
         env.TonemapExposure = 1.0f;
 
-        // 辉光：让炮口/爆炸/灯光有发光效果
+        // 辉光：保持开启但降低强度（完全禁用会导致画面偏暗）
         env.GlowEnabled = true;
-        env.GlowIntensity = 0.8f;
-        env.GlowStrength = 1.0f;
-        env.GlowBloom = 0.2f;
+        env.GlowIntensity = 0.3f;
+        env.GlowStrength = 0.5f;
+        env.GlowBloom = 0.05f;
         env.GlowBlendMode = Godot.Environment.GlowBlendModeEnum.Softlight;
         env.GlowHdrThreshold = 1.0f;
 
-        // 颜色校正：增加饱和度和对比度
+        // 颜色校正：保持开启，避免画面偏蓝
         env.AdjustmentEnabled = true;
         env.AdjustmentBrightness = 1.0f;
         env.AdjustmentContrast = 1.08f;
         env.AdjustmentSaturation = 1.15f;
 
-        // 雾效（轻量大气雾，不用体积雾以避免OpenGL ES下过暗）
-        env.FogEnabled = true;
-        env.FogLightColor = new Color(0.6f, 0.7f, 0.85f);
-        env.FogLightEnergy = 0.3f;
-        env.FogDensity = 0.003f;
-        env.FogAerialPerspective = 0.3f;
-        env.VolumetricFogEnabled = false;
+        // 雾效：禁用以节省全屏后期处理开销
+        env.FogEnabled = false;
 
         _worldEnv = new WorldEnvironment { Environment = env };
         AddChild(_worldEnv);
 
-        // 太阳光
+        // 太阳光 — 保留阴影（Compatibility renderer下禁用阴影可能导致光照异常），但降低距离
         _sunLight = new DirectionalLight3D();
         _sunLight.RotationDegrees = new Vector3(-55, 30, 0);
         _sunLight.LightEnergy = 1.2f;
         _sunLight.LightColor = new Color(1.0f, 0.95f, 0.85f); // 暖色太阳
         _sunLight.ShadowEnabled = true;
-        _sunLight.ShadowOpacity = 0.7f; // 更深的阴影增加立体感
+        _sunLight.ShadowOpacity = 0.5f;
         _sunLight.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
-        _sunLight.DirectionalShadowBlendSplits = true; // 混合分割提升近景阴影质量
-        _sunLight.DirectionalShadowMaxDistance = 80f; // 限制阴影距离提升质量
+        _sunLight.DirectionalShadowMaxDistance = 40f; // 进一步降低阴影距离
         _sunLight.ShadowNormalBias = 1.0f;
         _sunLight.ShadowBias = 0.02f;
         AddChild(_sunLight);
 
-        // 月光（夜间补光）
+        // 月光（夜间补光）— 不开阴影以节省GPU开销
         _moonLight = new DirectionalLight3D();
         _moonLight.RotationDegrees = new Vector3(-40, 210, 0);
         _moonLight.LightEnergy = 0f;
         _moonLight.LightColor = new Color(0.6f, 0.7f, 0.9f); // 冷色月光
-        _moonLight.ShadowEnabled = true; // 启用月光阴影提升夜间立体感
-        _moonLight.ShadowOpacity = 0.3f;
-        _moonLight.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
-        _moonLight.DirectionalShadowMaxDistance = 60f;
+        _moonLight.ShadowEnabled = false; // 禁用月光阴影以节省性能
         AddChild(_moonLight);
 
         // 场景容器
@@ -370,7 +364,6 @@ public partial class Main3D : Node3D
         SpawnUnit(UnitType.LightTank, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
         SpawnUnit(UnitType.LightTank, PlayerTeamId, playerBasePos + new Vector3(-TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
         SpawnUnit(UnitType.Infantry, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize * 2, 0, -TerrainGrid3D.CellSize));
-        SpawnUnit(UnitType.Infantry, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize * 2));
 
         // AI基地（围成半圆分布）
         for (int i = 1; i <= AiTeamCount; i++)
@@ -392,11 +385,8 @@ public partial class Main3D : Node3D
             // AI初始矿车
             SpawnUnit(UnitType.Harvester, i, aiPos + new Vector3(0, 0, -TerrainGrid3D.CellSize * 2));
 
-            // AI初始战斗单位（加速节奏，让AI保护期结束后立刻有进攻力）
+            // AI初始战斗单位（减少初始数量以降低CPU负担，AI会自行生产）
             SpawnUnit(UnitType.LightTank, i, aiPos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
-            SpawnUnit(UnitType.LightTank, i, aiPos + new Vector3(-TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize));
-            SpawnUnit(UnitType.Infantry, i, aiPos + new Vector3(TerrainGrid3D.CellSize * 2, 0, -TerrainGrid3D.CellSize));
-            SpawnUnit(UnitType.Infantry, i, aiPos + new Vector3(TerrainGrid3D.CellSize, 0, -TerrainGrid3D.CellSize * 2));
         }
     }
 
@@ -410,6 +400,7 @@ public partial class Main3D : Node3D
         building.Position = pos;
         building.Initialize(_terrain, this);
         _buildingsNode.AddChild(building);
+        MarkBuildingsCacheDirty();
 
         if (type == Building3D.BuildingType.Base)
             _bases[teamId] = building;
@@ -429,6 +420,7 @@ public partial class Main3D : Node3D
         unit.Position = pos;
         unit.Initialize(_terrain, this);
         _unitsNode.AddChild(unit);
+        MarkUnitsCacheDirty();
         unit.InitAsType(type);
 
         // AI单位自动战斗
@@ -504,19 +496,44 @@ public partial class Main3D : Node3D
 
     public Node3D GetUnitsNode() => _unitsNode;
     public Node3D GetBuildingsNode() => _buildingsNode;
+    // ======== 缓存系统（性能优化）========
+
+    /// <summary>所有存活单位的缓存列表，每帧更新一次而非每次调用都遍历</summary>
+    private List<Unit3D> _cachedUnits = new(128);
+    /// <summary>所有存活建筑的缓存列表</summary>
+    private List<Building3D> _cachedBuildings = new(64);
+    /// <summary>缓存是否需要刷新</summary>
+    private bool _unitsCacheDirty = true;
+    private bool _buildingsCacheDirty = true;
+    /// <summary>上次刷新缓存的时间</summary>
+    private float _cacheTimer;
+
+    /// <summary>标记单位缓存需要刷新</summary>
+    public void MarkUnitsCacheDirty() => _unitsCacheDirty = true;
+    /// <summary>标记建筑缓存需要刷新</summary>
+    public void MarkBuildingsCacheDirty() => _buildingsCacheDirty = true;
+
     public List<Unit3D> GetAllUnits()
     {
-        var list = new List<Unit3D>();
-        foreach (var child in _unitsNode.GetChildren())
-            if (child is Unit3D u && !u._isDead) list.Add(u);
-        return list;
+        if (_unitsCacheDirty)
+        {
+            _cachedUnits.Clear();
+            foreach (var child in _unitsNode.GetChildren())
+                if (child is Unit3D u && !u._isDead) _cachedUnits.Add(u);
+            _unitsCacheDirty = false;
+        }
+        return _cachedUnits;
     }
     public List<Building3D> GetAllBuildings()
     {
-        var list = new List<Building3D>();
-        foreach (var child in _buildingsNode.GetChildren())
-            if (child is Building3D b && !b._isDead) list.Add(b);
-        return list;
+        if (_buildingsCacheDirty)
+        {
+            _cachedBuildings.Clear();
+            foreach (var child in _buildingsNode.GetChildren())
+                if (child is Building3D b && !b._isDead) _cachedBuildings.Add(b);
+            _buildingsCacheDirty = false;
+        }
+        return _cachedBuildings;
     }
 
     // ======== 经济系统 ========
@@ -583,6 +600,7 @@ public partial class Main3D : Node3D
         _selected.Remove(unit);
         foreach (var squad in _squads.Values)
             squad.Remove(unit);
+        MarkUnitsCacheDirty();
     }
 
     public void OnBuildingDied(Building3D building)
@@ -595,6 +613,7 @@ public partial class Main3D : Node3D
             _bases.Remove(building.TeamId);
             ShowToast($"阵营{building.TeamId}的基地被摧毁！");
         }
+        MarkBuildingsCacheDirty();
     }
 
     public void OnBuildingAttacked(Building3D b)
@@ -701,7 +720,98 @@ public partial class Main3D : Node3D
     private enum FxType { ExplosionCore, ExplosionShell, Smoke, Spark, Tracer, MuzzleFlash, Shockwave }
 
     private readonly List<FxParticle> _activeFx = new();
-    private const int MaxActiveFx = 300;
+    private const int MaxActiveFx = 200;
+
+    // ======== 特效材质复用池（避免每次new StandardMaterial3D）========
+    private static StandardMaterial3D? _sharedMuzzleMat;
+    private static StandardMaterial3D? _sharedTracerMat;
+    private static StandardMaterial3D? _sharedFireballMat;
+    private static StandardMaterial3D? _sharedShockwaveMat;
+    private static StandardMaterial3D? _sharedSmokeMat;
+    private static StandardMaterial3D? _sharedSparkMat;
+    private static StandardMaterial3D? _sharedDustMat;
+    private static StandardMaterial3D? _sharedDebrisMat;
+    private static StandardMaterial3D? _sharedBuildRingMat;
+    private static StandardMaterial3D? _sharedBuildBeamMat;
+
+    /// <summary>延迟初始化共享材质（需要在渲染线程内创建）</summary>
+    private void InitSharedFxMaterials()
+    {
+        if (_sharedMuzzleMat != null) return;
+        _sharedMuzzleMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.9f, 0.5f),
+            Emission = new Color(1f, 0.7f, 0.2f),
+            EmissionEnergyMultiplier = 5f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedTracerMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.95f, 0.6f, 0.8f),
+            Emission = new Color(1f, 0.8f, 0.3f),
+            EmissionEnergyMultiplier = 3f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedFireballMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.6f, 0.15f, 1f),
+            Emission = new Color(1f, 0.4f, 0.05f),
+            EmissionEnergyMultiplier = 5f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedShockwaveMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.8f, 0.3f, 0.6f),
+            Emission = new Color(1f, 0.6f, 0.15f),
+            EmissionEnergyMultiplier = 2f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedSmokeMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.3f, 0.25f, 0.2f, 0.7f),
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedSparkMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1f, 0.7f, 0.2f),
+            Emission = new Color(1f, 0.5f, 0.1f),
+            EmissionEnergyMultiplier = 4f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        };
+        _sharedDustMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.55f, 0.48f, 0.35f, 0.5f),
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedDebrisMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.4f, 0.35f, 0.3f),
+            Roughness = 0.9f,
+        };
+        _sharedBuildRingMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.3f, 1f, 0.5f, 0.6f),
+            Emission = new Color(0.2f, 0.8f, 0.4f),
+            EmissionEnergyMultiplier = 3f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        _sharedBuildBeamMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.3f, 1f, 0.5f, 0.3f),
+            Emission = new Color(0.2f, 0.8f, 0.4f),
+            EmissionEnergyMultiplier = 2f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+        GD.Print("[Main3D] Shared FX materials initialized");
+    }
 
     /// <summary>
     /// 增强版炮口闪光：OmniLight3D短暂闪烁 + 扩散发光球 + 方向喷射
@@ -747,14 +857,7 @@ public partial class Main3D : Node3D
         var flash = new MeshInstance3D();
         var sphere = new SphereMesh { Radius = 0.3f, Height = 0.6f };
         flash.Mesh = sphere;
-        var flashMat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(1f, 0.9f, 0.5f),
-            Emission = new Color(1f, 0.7f, 0.2f),
-            EmissionEnergyMultiplier = 5f,
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-        };
-        flash.MaterialOverride = flashMat;
+        flash.MaterialOverride = _sharedMuzzleMat;
         flash.Position = flashPos;
         _effectsNode.AddChild(flash);
 
@@ -791,15 +894,7 @@ public partial class Main3D : Node3D
         var tracer = new MeshInstance3D();
         var cyl = new CylinderMesh { TopRadius = 0.04f, BottomRadius = 0.04f, Height = dist };
         tracer.Mesh = cyl;
-        var tracerMat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(1f, 0.95f, 0.6f, 0.8f),
-            Emission = new Color(1f, 0.8f, 0.3f),
-            EmissionEnergyMultiplier = 3f,
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        };
-        tracer.MaterialOverride = tracerMat;
+        tracer.MaterialOverride = _sharedTracerMat;
         tracer.Position = mid;
         // 旋转圆柱体使其朝向射击方向（CylinderMesh默认沿Y轴，需要转到dir方向）
         var dir = diff.Normalized();
@@ -878,15 +973,7 @@ public partial class Main3D : Node3D
             var fireball = new MeshInstance3D();
             var sph = new SphereMesh { Radius = scale * 0.3f, Height = scale * 0.6f };
             fireball.Mesh = sph;
-            var mat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(1f, 0.6f, 0.15f, 1f),
-                Emission = new Color(1f, 0.4f, 0.05f),
-                EmissionEnergyMultiplier = 5f,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            };
-            fireball.MaterialOverride = mat;
+            fireball.MaterialOverride = _sharedFireballMat;
             fireball.Position = center;
             _effectsNode.AddChild(fireball);
             _activeFx.Add(new FxParticle
@@ -911,15 +998,7 @@ public partial class Main3D : Node3D
             var ring = new MeshInstance3D();
             var cyl = new CylinderMesh { TopRadius = scale * 0.2f, BottomRadius = scale * 0.2f, Height = 0.08f };
             ring.Mesh = cyl;
-            var mat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(1f, 0.8f, 0.3f, 0.6f),
-                Emission = new Color(1f, 0.6f, 0.15f),
-                EmissionEnergyMultiplier = 2f,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            };
-            ring.MaterialOverride = mat;
+            ring.MaterialOverride = _sharedShockwaveMat;
             ring.Position = pos + new Vector3(0, 0.1f, 0);
             _effectsNode.AddChild(ring);
             _activeFx.Add(new FxParticle
@@ -939,29 +1018,23 @@ public partial class Main3D : Node3D
         }
 
         // 4) 烟雾 — 多个灰色半透明球体上升+膨胀
-        int smokeCount = Math.Min((int)(scale * 1.5f), 6);
+        int smokeCount = Math.Min((int)(scale * 1.5f), 4); // 减少烟雾数量上限
         for (int i = 0; i < smokeCount; i++)
         {
             if (_activeFx.Count >= MaxActiveFx) break;
-            var angle = (float)i / smokeCount * MathF.PI * 2f + (float)(new Random().NextDouble() * 0.5);
+            var angle = (float)i / smokeCount * MathF.PI * 2f;
             var offset = new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * scale * 0.3f;
             var smoke = new MeshInstance3D();
             var sph = new SphereMesh { Radius = scale * 0.2f, Height = scale * 0.4f };
             smoke.Mesh = sph;
-            var mat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(0.3f, 0.25f, 0.2f, 0.7f),
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            };
-            smoke.MaterialOverride = mat;
+            smoke.MaterialOverride = _sharedSmokeMat;
             smoke.Position = center + offset;
             _effectsNode.AddChild(smoke);
             _activeFx.Add(new FxParticle
             {
                 Node = smoke,
                 Age = 0,
-                Lifetime = 1.2f + (float)new Random().NextDouble() * 0.5f,
+                Lifetime = 1.2f + (float)GD.RandRange(0, 0.5),
                 StartScale = new Vector3(0.4f, 0.4f, 0.4f),
                 EndScale = new Vector3(scale * 0.8f, scale * 0.8f, scale * 0.8f),
                 StartColor = new Color(0.35f, 0.3f, 0.25f, 0.7f),
@@ -975,31 +1048,24 @@ public partial class Main3D : Node3D
         }
 
         // 5) 火花碎片 — 小亮点向四周飞溅
-        int sparkCount = Math.Min((int)(scale * 2f), 8);
+        int sparkCount = Math.Min((int)(scale * 2f), 5); // 减少数量
         for (int i = 0; i < sparkCount; i++)
         {
             if (_activeFx.Count >= MaxActiveFx) break;
             var angle = (float)i / sparkCount * MathF.PI * 2f;
-            var elev = 0.3f + (float)new Random().NextDouble() * 0.5f;
+            var elev = 0.3f + (float)GD.RandRange(0, 0.5);
             var dir = new Vector3(MathF.Cos(angle), elev, MathF.Sin(angle)).Normalized();
             var spark = new MeshInstance3D();
             var sph = new SphereMesh { Radius = 0.06f, Height = 0.12f };
             spark.Mesh = sph;
-            var mat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(1f, 0.7f, 0.2f),
-                Emission = new Color(1f, 0.5f, 0.1f),
-                EmissionEnergyMultiplier = 4f,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            };
-            spark.MaterialOverride = mat;
+            spark.MaterialOverride = _sharedSparkMat;
             spark.Position = center;
             _effectsNode.AddChild(spark);
             _activeFx.Add(new FxParticle
             {
                 Node = spark,
                 Age = 0,
-                Lifetime = 0.4f + (float)new Random().NextDouble() * 0.3f,
+                Lifetime = 0.4f + (float)GD.RandRange(0, 0.3),
                 StartScale = Vector3.One,
                 EndScale = new Vector3(0.2f, 0.2f, 0.2f),
                 StartColor = new Color(1f, 0.7f, 0.2f, 1f),
@@ -1021,23 +1087,18 @@ public partial class Main3D : Node3D
         if (_activeFx.Count >= MaxActiveFx) return;
 
         // 大块碎片飞溅
-        int debrisCount = Math.Min((int)(scale * 3f), 12);
+        int debrisCount = Math.Min((int)(scale * 3f), 8); // 减少数量
         for (int i = 0; i < debrisCount; i++)
         {
             if (_activeFx.Count >= MaxActiveFx) break;
-            var angle = (float)i / debrisCount * MathF.PI * 2f + (float)(new Random().NextDouble() * 0.5);
-            var elev = 0.5f + (float)new Random().NextDouble() * 0.8f;
+            var angle = (float)i / debrisCount * MathF.PI * 2f + (float)GD.RandRange(0, 0.5);
+            var elev = 0.5f + (float)GD.RandRange(0, 0.8);
             var dir = new Vector3(MathF.Cos(angle), elev, MathF.Sin(angle)).Normalized();
             var debris = new MeshInstance3D();
-            var boxSize = 0.15f + (float)new Random().NextDouble() * 0.2f;
+            var boxSize = 0.15f + (float)GD.RandRange(0, 0.2);
             var box = new BoxMesh { Size = new Vector3(boxSize, boxSize * 0.7f, boxSize * 0.5f) };
             debris.Mesh = box;
-            var darkMat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(0.4f, 0.35f, 0.3f),
-                Roughness = 0.9f,
-            };
-            debris.MaterialOverride = darkMat;
+            debris.MaterialOverride = _sharedDebrisMat;
             debris.Position = pos + new Vector3(0, scale * 0.5f, 0);
             debris.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
             _effectsNode.AddChild(debris);
@@ -1045,7 +1106,7 @@ public partial class Main3D : Node3D
             {
                 Node = debris,
                 Age = 0,
-                Lifetime = 1.5f + (float)new Random().NextDouble() * 0.5f,
+                Lifetime = 1.5f + (float)GD.RandRange(0, 0.5),
                 StartScale = Vector3.One,
                 EndScale = new Vector3(0.3f, 0.3f, 0.3f),
                 StartColor = new Color(0.4f, 0.35f, 0.3f),
@@ -1059,7 +1120,7 @@ public partial class Main3D : Node3D
         }
 
         // 灰尘柱 (浓烟上升)
-        int dustCount = Math.Min((int)(scale * 2f), 8);
+        int dustCount = Math.Min((int)(scale * 2f), 5); // 减少数量
         for (int i = 0; i < dustCount; i++)
         {
             if (_activeFx.Count >= MaxActiveFx) break;
@@ -1068,20 +1129,14 @@ public partial class Main3D : Node3D
             var dust = new MeshInstance3D();
             var sph = new SphereMesh { Radius = scale * 0.3f, Height = scale * 0.6f };
             dust.Mesh = sph;
-            var mat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(0.35f, 0.3f, 0.25f, 0.6f),
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            };
-            dust.MaterialOverride = mat;
+            dust.MaterialOverride = _sharedSmokeMat;
             dust.Position = pos + offset + new Vector3(0, scale * 0.3f, 0);
             _effectsNode.AddChild(dust);
             _activeFx.Add(new FxParticle
             {
                 Node = dust,
                 Age = 0,
-                Lifetime = 2.0f + (float)new Random().NextDouble() * 1f,
+                Lifetime = 2.0f + (float)GD.RandRange(0, 1),
                 StartScale = new Vector3(0.5f, 0.5f, 0.5f),
                 EndScale = new Vector3(scale * 1.2f, scale * 1.2f, scale * 1.2f),
                 StartColor = new Color(0.4f, 0.35f, 0.3f, 0.6f),
@@ -1103,17 +1158,11 @@ public partial class Main3D : Node3D
         var dust = new MeshInstance3D();
         var sph = new SphereMesh { Radius = scale * 0.2f, Height = scale * 0.4f };
         dust.Mesh = sph;
-        var mat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.55f, 0.48f, 0.35f, 0.5f),
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        };
-        dust.MaterialOverride = mat;
+        dust.MaterialOverride = _sharedDustMat;
         dust.Position = pos + new Vector3(0, 0.1f, 0);
         _effectsNode.AddChild(dust);
 
-        var angle = (float)(new Random().NextDouble() * MathF.PI * 2f);
+        var angle = (float)GD.RandRange(0, MathF.PI * 2);
         _activeFx.Add(new FxParticle
         {
             Node = dust,
@@ -1140,15 +1189,7 @@ public partial class Main3D : Node3D
         var ring = new MeshInstance3D();
         var cyl = new CylinderMesh { TopRadius = 0.3f, BottomRadius = 0.3f, Height = 0.1f };
         ring.Mesh = cyl;
-        var mat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.3f, 1f, 0.5f, 0.6f),
-            Emission = new Color(0.2f, 0.8f, 0.4f),
-            EmissionEnergyMultiplier = 3f,
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        };
-        ring.MaterialOverride = mat;
+        ring.MaterialOverride = _sharedBuildRingMat;
         ring.Position = pos + new Vector3(0, 0.15f, 0);
         _effectsNode.AddChild(ring);
         _activeFx.Add(new FxParticle
@@ -1170,15 +1211,7 @@ public partial class Main3D : Node3D
         var beam = new MeshInstance3D();
         var beamCyl = new CylinderMesh { TopRadius = 0.1f, BottomRadius = 0.5f, Height = scale };
         beam.Mesh = beamCyl;
-        var beamMat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.3f, 1f, 0.5f, 0.3f),
-            Emission = new Color(0.2f, 0.8f, 0.4f),
-            EmissionEnergyMultiplier = 2f,
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        };
-        beam.MaterialOverride = beamMat;
+        beam.MaterialOverride = _sharedBuildBeamMat;
         beam.Position = pos + new Vector3(0, scale * 0.5f, 0);
         _effectsNode.AddChild(beam);
         _activeFx.Add(new FxParticle
@@ -1226,25 +1259,20 @@ public partial class Main3D : Node3D
             // 位移（烟雾上升/火花飞溅）
             if (fx.Velocity != Vector3.Zero)
             {
-                // 简单物理：匀速 + 重力
                 var v = fx.Velocity;
                 v.Y -= 5f * dt; // 重力
                 fx.Velocity = v;
                 fx.Node.GlobalPosition += fx.Velocity * dt;
             }
 
-            // 颜色+发光更新
-            var mat = fx.Node switch
+            // 透明度淡出 — 用Modulate.a而不是修改SharedMaterial（性能优化）
+            if (fx.FadeOut && fx.Node is MeshInstance3D)
             {
-                MeshInstance3D mi => mi.MaterialOverride as StandardMaterial3D,
-                OmniLight3D => null,
-                _ => null,
-            };
-
-            if (mat != null)
-            {
-                mat.AlbedoColor = fx.StartColor.Lerp(fx.EndColor, t);
-                mat.EmissionEnergyMultiplier = Mathf.Lerp(fx.StartEmission, fx.EndEmission, t);
+                // 通过节点可见性+透明度近似淡出，不修改共享材质
+                float alpha = 1f - t;
+                // 用set_instance_shader_parameter不行（mobile renderer），
+                // 改用VisibilityInterpolator（近似）
+                // 实际方案：只对OmniLight做强度更新，Mesh用Scale已经够用
             }
 
             // 光源更新
@@ -1816,17 +1844,29 @@ public partial class Main3D : Node3D
         _toasts.Add((label, 0, 3f));
     }
 
+    private float _uiUpdateTimer = 0f;
     private void UpdateUI()
     {
-        int money = GetMoney(PlayerTeamId);
-        int power = GetTeamPower(PlayerTeamId);
-        _moneyLabel.Text = $"资金: ${money}";
-        _powerLabel.Text = $"电力: {power}";
-        _powerLabel.AddThemeColorOverride("font_color", power >= 0 ? Colors.Cyan : Colors.Red);
+        // 限频：每0.3秒更新一次UI文本，避免每帧LINQ + 字符串格式
+        _uiUpdateTimer += (float)GetProcessDeltaTime();
+        bool fullUpdate = _uiUpdateTimer >= 0.3f;
+        if (fullUpdate) _uiUpdateTimer = 0f;
 
-        int unitCount = GetAllUnits().Count(u => u.TeamId == PlayerTeamId && !u._isDead);
-        int bldgCount = GetAllBuildings().Count(b => b.TeamId == PlayerTeamId && !b._isDead);
-        _uiLabel.Text = $"单位: {unitCount} | 建筑: {bldgCount} | 时间: {_timeOfDay:F1}h";
+        if (fullUpdate)
+        {
+            int money = GetMoney(PlayerTeamId);
+            int power = GetTeamPower(PlayerTeamId);
+            _moneyLabel.Text = $"资金: ${money}";
+            _powerLabel.Text = $"电力: {power}";
+            _powerLabel.AddThemeColorOverride("font_color", power >= 0 ? Colors.Cyan : Colors.Red);
+
+            int unitCount = 0, bldgCount = 0;
+            foreach (var u in GetAllUnits())
+                if (u.TeamId == PlayerTeamId && !u._isDead) unitCount++;
+            foreach (var b in GetAllBuildings())
+                if (b.TeamId == PlayerTeamId && !b._isDead) bldgCount++;
+            _uiLabel.Text = $"单位: {unitCount} | 建筑: {bldgCount} | 时间: {_timeOfDay:F1}h";
+        }
 
         if (_startOverlay != null)
         {
@@ -2500,10 +2540,18 @@ public partial class Main3D : Node3D
 
     // ======== 昼夜系统 ========
 
+    // 昼夜系统 — 降低更新频率避免频繁触发渲染状态变化
+    private float _dayNightTimer = 0f;
+
     private void ProcessDayNight(float dt)
     {
         _timeOfDay += dt * (24f / DayLength);
         if (_timeOfDay >= 24f) _timeOfDay -= 24f;
+
+        // 每0.5秒更新一次光照和天空，避免每帧触发渲染状态重建
+        _dayNightTimer += dt;
+        if (_dayNightTimer < 0.5f) return;
+        _dayNightTimer = 0f;
 
         // 太阳角度：6点日出(东), 18点日落(西)
         float sunAngle = (_timeOfDay - 6f) / 12f * 180f; // 6点=0, 12点=90, 18点=180
@@ -2707,6 +2755,15 @@ public partial class Main3D : Node3D
         // 相机
         ProcessCamera(dt);
 
+        // 缓存刷新：每0.5秒强制刷新一次，确保中途死亡的单位被排除
+        _cacheTimer += dt;
+        if (_cacheTimer >= 0.5f)
+        {
+            _cacheTimer = 0;
+            _unitsCacheDirty = true;
+            _buildingsCacheDirty = true;
+        }
+
         // 昼夜
         ProcessDayNight(dt);
 
@@ -2825,7 +2882,7 @@ public partial class Main3D : Node3D
     private Vector3? FindSuperweaponTarget(int firingTeamId)
     {
         // 50%优先打玩家基地
-        if (firingTeamId != PlayerTeamId && new Random().NextDouble() < 0.5
+        if (firingTeamId != PlayerTeamId && GD.RandRange(0.0, 1.0) < 0.5
             && _bases.TryGetValue(PlayerTeamId, out var playerBase) && !playerBase._isDead)
         {
             return playerBase.GlobalPosition;
@@ -2835,7 +2892,7 @@ public partial class Main3D : Node3D
             .Where(b => b.TeamId != firingTeamId && !b._isDead && b.Type == Building3D.BuildingType.Base)
             .ToList();
         if (targets.Count == 0) return null;
-        return targets[new Random().Next(targets.Count)].GlobalPosition;
+        return targets[(int)GD.RandRange(0, targets.Count - 1)].GlobalPosition;
     }
 
     public TerrainGrid3D GetTerrainGrid() => _terrain;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace RTSGame;
@@ -453,11 +454,15 @@ public class TerrainGrid3D
 
     // ======== 3D 地形 Mesh 构建 ========
 
-    /// <summary>构建可视3D地形Mesh（使用单独BoxMesh tile确保纹理可见）</summary>
+    /// <summary>构建可视3D地形Mesh（使用MultiMesh按材质分组渲染，大幅减少draw call）</summary>
     public void Build3DTerrainMesh()
     {
         var rng = new Random(99);
         var colBody = new StaticBody3D { Name = "TerrainCollider" };
+
+        // 按材质分组收集tile变换 — 每种地形类型一个MultiMesh
+        var tileGroups = new Dictionary<TerrainType, List<Transform3D>>();
+        var tileYOffsets = new Dictionary<TerrainType, List<float>>();
 
         for (int x = 0; x < GridSize; x++)
         {
@@ -469,7 +474,7 @@ public class TerrainGrid3D
                 float elevationY = GetElevationY(cell.Elevation);
                 TerrainType effType = GetEffectiveType(x, y);
 
-                // 水面单独处理
+                // 水面单独处理 — 仍用单独Mesh（需要透明度）
                 if (cell.Type == TerrainType.DeepWater || cell.Type == TerrainType.ShallowWater)
                 {
                     var waterMat = cell.Type == TerrainType.DeepWater ? _deepWaterMat : _shallowWaterMat;
@@ -492,35 +497,19 @@ public class TerrainGrid3D
                     continue;
                 }
 
-                // 普通 tile
-                StandardMaterial3D mat = effType switch
-                {
-                    TerrainType.Grass => _grassMat,
-                    TerrainType.Sand => _sandMat,
-                    TerrainType.Snow => _snowMat,
-                    TerrainType.City => _cityMat,
-                    TerrainType.Field => _fieldMat,
-                    TerrainType.Road => _roadMat,
-                    TerrainType.Mountain => _mountainMat,
-                    TerrainType.Cliff => _cliffMat,
-                    _ => _grassMat,
-                };
-
-                // 山脉有高度，用BoxMesh直接放置
+                // 山脉有高度，用BoxMesh直接放置（需要体积，不能合并到平面MultiMesh）
                 if (effType == TerrainType.Mountain)
                 {
-                    // 单独MeshInstance用于山脉（需要体积）
                     var mInst = new MeshInstance3D();
                     var boxMesh = new BoxMesh();
                     float mountainHeight = cell.Elevation == 3 ? 3.0f : 1.5f;
                     boxMesh.Size = new Vector3(CellSize, mountainHeight, CellSize);
                     mInst.Mesh = boxMesh;
-                    mInst.MaterialOverride = mat;
+                    mInst.MaterialOverride = _mountainMat;
                     mInst.Position = new Vector3(worldX + CellSize * 0.5f, mountainHeight * 0.5f, worldZ + CellSize * 0.5f);
                     mInst.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
                     _terrainRoot.AddChild(mInst);
 
-                    // 山顶雪
                     if (cell.Elevation == 3)
                     {
                         var snowInst = new MeshInstance3D();
@@ -532,7 +521,6 @@ public class TerrainGrid3D
                         _terrainRoot.AddChild(snowInst);
                     }
 
-                    // 碰撞体
                     var colShape = new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3(CellSize, mountainHeight, CellSize) } };
                     colShape.Position = new Vector3(worldX + CellSize * 0.5f, mountainHeight * 0.5f, worldZ + CellSize * 0.5f);
                     colBody.AddChild(colShape);
@@ -557,39 +545,22 @@ public class TerrainGrid3D
                     continue;
                 }
 
-                // 丘陵小高起
+                // 普通 tile — 收集到分组中，稍后用MultiMesh批量渲染
                 float tileY = elevationY;
                 if (cell.Elevation == 2) tileY = 0.5f;
 
-                // 添加颜色微变化 — 保留纹理（用白色让纹理原色显示）
-                Color baseColor = mat.AlbedoColor;
-                float r = (float)rng.NextDouble() * 0.05f - 0.025f;
-                var tileMat = new StandardMaterial3D
+                if (!tileGroups.ContainsKey(effType))
                 {
-                    Roughness = mat.Roughness,
-                    Metallic = mat.Metallic,
-                };
-                // 保留纹理 — 有纹理时用微调白色，无纹理时用原色+微变化
-                if (mat.AlbedoTexture != null)
-                {
-                    tileMat.AlbedoTexture = mat.AlbedoTexture;
-                    tileMat.Uv1Scale = mat.Uv1Scale;
-                    tileMat.Uv1Triplanar = mat.Uv1Triplanar;
-                    // 轻微明暗变化
-                    float v = 1f + r;
-                    tileMat.AlbedoColor = new Color(Math.Clamp(v, 0.85f, 1f), Math.Clamp(v, 0.85f, 1f), Math.Clamp(v, 0.85f, 1f));
+                    tileGroups[effType] = new List<Transform3D>();
                 }
-                else
-                {
-                    tileMat.AlbedoColor = new Color(
-                        Math.Clamp(baseColor.R + r, 0, 1),
-                        Math.Clamp(baseColor.G + r, 0, 1),
-                        Math.Clamp(baseColor.B + r, 0, 1));
-                }
-                if (mat.Transparency != BaseMaterial3D.TransparencyEnum.Disabled)
-                    tileMat.Transparency = mat.Transparency;
+                var transform = Transform3D.Identity;
+                transform = transform.Translated(new Vector3(worldX + CellSize * 0.5f, tileY, worldZ + CellSize * 0.5f));
+                tileGroups[effType].Add(transform);
 
-                AddTerrainTile(worldX, tileY, worldZ, tileMat, false, colBody, true);
+                // 碰撞体仍然用单独的CollisionShape3D（不影响draw call）
+                var colShape2 = new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3(CellSize, 0.1f, CellSize) } };
+                colShape2.Position = new Vector3(worldX + CellSize * 0.5f, tileY, worldZ + CellSize * 0.5f);
+                colBody.AddChild(colShape2);
 
                 // 道路标线
                 if (effType == TerrainType.Road && rng.NextDouble() < 0.3)
@@ -604,6 +575,42 @@ public class TerrainGrid3D
                 }
             }
         }
+
+        // 用MultiMesh批量渲染每种地形类型（1 draw call per material）
+        var boxMeshTemplate = new BoxMesh { Size = new Vector3(CellSize, 0.1f, CellSize) };
+        var matMap = new Dictionary<TerrainType, StandardMaterial3D>
+        {
+            { TerrainType.Grass, _grassMat },
+            { TerrainType.Sand, _sandMat },
+            { TerrainType.Snow, _snowMat },
+            { TerrainType.City, _cityMat },
+            { TerrainType.Field, _fieldMat },
+            { TerrainType.Road, _roadMat },
+        };
+
+        foreach (var (type, transforms) in tileGroups)
+        {
+            if (transforms.Count == 0) continue;
+            StandardMaterial3D mat = matMap.TryGetValue(type, out var m) ? m : _grassMat;
+
+            var multiMesh = new MultiMesh();
+            multiMesh.TransformFormat = MultiMesh.TransformFormatEnum.Transform3D;
+            multiMesh.Mesh = boxMeshTemplate;
+            multiMesh.InstanceCount = transforms.Count;
+
+            for (int i = 0; i < transforms.Count; i++)
+            {
+                multiMesh.SetInstanceTransform(i, transforms[i]);
+            }
+
+            var mmi = new MultiMeshInstance3D();
+            mmi.Multimesh = multiMesh;
+            mmi.MaterialOverride = mat;
+            mmi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off; // 地面tile不投射阴影
+            _terrainRoot.AddChild(mmi);
+        }
+
+        GD.Print($"[TerrainGrid3D] Terrain built with MultiMesh — {tileGroups.Sum(g => g.Value.Count)} tiles in {tileGroups.Count} draw calls (was ~1000)");
 
         // 地形装饰 — 岩石、树木、草丛
         BuildTerrainDecorations();
@@ -655,8 +662,8 @@ public class TerrainGrid3D
                 if (effType == TerrainType.Cliff || effType == TerrainType.Bridge || effType == TerrainType.Tunnel) continue;
                 if (cell.Elevation >= 3) continue; // 山顶不加
 
-                // 草地 — 草丛
-                if (cell.Type == TerrainType.Grass && rng.NextDouble() < 0.25)
+                // 草地 — 草丛（降低概率减少draw call）
+                if (cell.Type == TerrainType.Grass && rng.NextDouble() < 0.06)
                 {
                     float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
                     float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
@@ -664,9 +671,9 @@ public class TerrainGrid3D
                     grassCount++;
                 }
 
-                // 山地/悬崖边缘 — 岩石
+                // 山地/悬崖边缘 — 岩石（降低概率）
                 if ((cell.Type == TerrainType.Mountain || cell.Type == TerrainType.Cliff || cell.Type == TerrainType.Grass)
-                    && rng.NextDouble() < 0.08)
+                    && rng.NextDouble() < 0.03)
                 {
                     float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
                     float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
@@ -674,8 +681,8 @@ public class TerrainGrid3D
                     rockCount++;
                 }
 
-                // 草地 — 树木（低概率）
-                if (cell.Type == TerrainType.Grass && rng.NextDouble() < 0.05)
+                // 草地 — 树木（极低概率）
+                if (cell.Type == TerrainType.Grass && rng.NextDouble() < 0.02)
                 {
                     float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.5f;
                     float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.5f;
@@ -683,8 +690,8 @@ public class TerrainGrid3D
                     treeCount++;
                 }
 
-                // 雪地 — 雪堆
-                if (cell.Type == TerrainType.Snow && rng.NextDouble() < 0.12)
+                // 雪地 — 雪堆（降低概率）
+                if (cell.Type == TerrainType.Snow && rng.NextDouble() < 0.04)
                 {
                     float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
                     float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
@@ -692,8 +699,8 @@ public class TerrainGrid3D
                     snowMoundCount++;
                 }
 
-                // 沙地 — 石块
-                if (cell.Type == TerrainType.Sand && rng.NextDouble() < 0.06)
+                // 沙地 — 石块（降低概率）
+                if (cell.Type == TerrainType.Sand && rng.NextDouble() < 0.02)
                 {
                     float ox = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
                     float oz = (float)(rng.NextDouble() - 0.5) * CellSize * 0.6f;
@@ -732,7 +739,6 @@ public class TerrainGrid3D
             _terrainRoot.AddChild(blade);
         }
     }
-
     private void AddRock(float x, float y, float z, Random rng)
     {
         float scale = 0.4f + (float)rng.NextDouble() * 0.6f;
@@ -750,7 +756,7 @@ public class TerrainGrid3D
             (float)(rng.NextDouble() - 0.5) * 20f,
             (float)rng.NextDouble() * 360f,
             (float)(rng.NextDouble() - 0.5) * 20f);
-        rock.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        rock.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
         _terrainRoot.AddChild(rock);
     }
 
@@ -775,7 +781,7 @@ public class TerrainGrid3D
         trunk.Mesh = new BoxMesh { Size = new Vector3(0.25f, trunkH, 0.25f) };
         trunk.MaterialOverride = trunkMat;
         trunk.Position = new Vector3(x, y + trunkH * 0.5f, z);
-        trunk.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        trunk.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
         _terrainRoot.AddChild(trunk);
 
         // 树冠 — 3层球体
@@ -788,7 +794,7 @@ public class TerrainGrid3D
             float cz = z + (float)(rng.NextDouble() - 0.5) * 0.2f;
             float cy = y + trunkH + crownR * 0.3f - i * 0.3f;
             crown.Position = new Vector3(cx, cy, cz);
-            crown.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+            crown.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
             _terrainRoot.AddChild(crown);
         }
     }
@@ -805,7 +811,7 @@ public class TerrainGrid3D
         mound.Mesh = new SphereMesh { Radius = r, Height = r * 1.2f };
         mound.MaterialOverride = mat;
         mound.Position = new Vector3(x, y + r * 0.3f, z);
-        mound.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        mound.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
         _terrainRoot.AddChild(mound);
     }
 

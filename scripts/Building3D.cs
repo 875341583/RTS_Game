@@ -249,7 +249,7 @@ public partial class Building3D : Area3D
         return MakeTexturedMat("res://textures/roof.png", tintColor, 0.8f, 0f);
     }
 
-    protected MeshInstance3D AddBox(Node3D parent, Vector3 size, Vector3 pos, StandardMaterial3D mat, bool shadow = true)
+    protected MeshInstance3D AddBox(Node3D parent, Vector3 size, Vector3 pos, StandardMaterial3D mat, bool shadow = false)
     {
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = size };
@@ -260,7 +260,7 @@ public partial class Building3D : Area3D
         return mi;
     }
 
-    protected MeshInstance3D AddCylinder(Node3D parent, float topR, float bottomR, float h, Vector3 pos, Vector3 rotDeg, StandardMaterial3D mat, bool shadow = true)
+    protected MeshInstance3D AddCylinder(Node3D parent, float topR, float bottomR, float h, Vector3 pos, Vector3 rotDeg, StandardMaterial3D mat, bool shadow = false)
     {
         var mi = new MeshInstance3D();
         mi.Mesh = new CylinderMesh { TopRadius = topR, BottomRadius = bottomR, Height = h };
@@ -272,7 +272,7 @@ public partial class Building3D : Area3D
         return mi;
     }
 
-    protected MeshInstance3D AddSphere(Node3D parent, float radius, Vector3 pos, StandardMaterial3D mat, bool shadow = true)
+    protected MeshInstance3D AddSphere(Node3D parent, float radius, Vector3 pos, StandardMaterial3D mat, bool shadow = false)
     {
         var mi = new MeshInstance3D();
         mi.Mesh = new SphereMesh { Radius = radius, Height = radius * 2f };

@@ -107,6 +107,10 @@ public partial class Unit3D : CharacterBody3D
     private float _turretAngle;
     private float _bodyAngle;
 
+    /// <summary>缓存所有MeshInstance3D引用，避免FlashModel每帧遍历节点树</summary>
+    private List<MeshInstance3D>? _cachedMeshes;
+    private List<MeshInstance3D>? _cachedTurretMeshes;
+
     // 地形引用
     private TerrainGrid3D _terrain;
     private Main3D _game;
@@ -290,7 +294,7 @@ public partial class Unit3D : CharacterBody3D
         return MakeTexturedMat("res://textures/metal_panel.png", teamColor, 0.4f, 0.5f);
     }
 
-    protected MeshInstance3D AddBox(Node3D parent, Vector3 size, Vector3 pos, StandardMaterial3D mat, bool shadow = true)
+    protected MeshInstance3D AddBox(Node3D parent, Vector3 size, Vector3 pos, StandardMaterial3D mat, bool shadow = false)
     {
         var mi = new MeshInstance3D();
         var mesh = new BoxMesh { Size = size };
@@ -302,7 +306,7 @@ public partial class Unit3D : CharacterBody3D
         return mi;
     }
 
-    protected MeshInstance3D AddCylinder(Node3D parent, float topR, float bottomR, float height, Vector3 pos, Vector3 rotDeg, StandardMaterial3D mat, bool shadow = true)
+    protected MeshInstance3D AddCylinder(Node3D parent, float topR, float bottomR, float height, Vector3 pos, Vector3 rotDeg, StandardMaterial3D mat, bool shadow = false)
     {
         var mi = new MeshInstance3D();
         var mesh = new CylinderMesh { TopRadius = topR, BottomRadius = bottomR, Height = height };
@@ -315,7 +319,7 @@ public partial class Unit3D : CharacterBody3D
         return mi;
     }
 
-    protected MeshInstance3D AddSphere(Node3D parent, float radius, Vector3 pos, StandardMaterial3D mat, bool shadow = true)
+    protected MeshInstance3D AddSphere(Node3D parent, float radius, Vector3 pos, StandardMaterial3D mat, bool shadow = false)
     {
         var mi = new MeshInstance3D();
         var mesh = new SphereMesh { Radius = radius, Height = radius * 2f };
@@ -1141,11 +1145,13 @@ public partial class Unit3D : CharacterBody3D
             Health = Math.Min(Health + MaxHealth * 0.01f * dt, MaxHealth);
         }
 
-        // AI
+        // AI — 根据情况降低思考频率以节省CPU
         _aiThinkTimer -= dt;
         if (_aiThinkTimer <= 0)
         {
-            _aiThinkTimer = 0.2f;
+            // 非战斗单位降低思考频率
+            bool inCombat = _attackUnitTarget != null || _attackBuildingTarget != null;
+            _aiThinkTimer = inCombat ? 0.3f : 0.5f;
             ProcessAI(dt);
         }
 
@@ -1179,67 +1185,69 @@ public partial class Unit3D : CharacterBody3D
     private void FlashModel(bool flash)
     {
         if (_modelRoot == null) return;
-        // 遍历_modelRoot下所有MeshInstance3D，切换emission实现受击闪白
-        foreach (var child in _modelRoot.GetChildren())
+
+        // 延迟初始化Mesh缓存
+        if (_cachedMeshes == null)
         {
-            if (child is MeshInstance3D mi)
+            _cachedMeshes = new List<MeshInstance3D>();
+            CollectMeshes(_modelRoot, _cachedMeshes, skipTurret: true);
+        }
+        if (_turretNode != null && _cachedTurretMeshes == null)
+        {
+            _cachedTurretMeshes = new List<MeshInstance3D>();
+            CollectMeshes(_turretNode, _cachedTurretMeshes, skipTurret: false);
+        }
+
+        if (flash)
+        {
+            foreach (var mi in _cachedMeshes)
             {
                 var mat = mi.MaterialOverride as StandardMaterial3D;
                 if (mat == null) continue;
-                if (flash)
-                {
-                    // 受击闪白：增强emission到白色
-                    mat.Emission = new Color(1f, 0.3f, 0.3f);
-                    mat.EmissionEnergyMultiplier = 3f;
-                }
-                else
-                {
-                    // 恢复：低emission
-                    mat.EmissionEnergyMultiplier = 0f;
-                }
+                mat.Emission = new Color(1f, 0.3f, 0.3f);
+                mat.EmissionEnergyMultiplier = 3f;
             }
-            else if (child is Node3D sub && sub != _turretNode)
+            if (_cachedTurretMeshes != null)
             {
-                // 也检查子节点的子节点（炮塔上的barrel等在_turretNode下）
-                foreach (var sub2 in sub.GetChildren())
-                {
-                    if (sub2 is MeshInstance3D mi2)
-                    {
-                        var mat = mi2.MaterialOverride as StandardMaterial3D;
-                        if (mat == null) continue;
-                        if (flash)
-                        {
-                            mat.Emission = new Color(1f, 0.3f, 0.3f);
-                            mat.EmissionEnergyMultiplier = 3f;
-                        }
-                        else
-                        {
-                            mat.EmissionEnergyMultiplier = 0f;
-                        }
-                    }
-                }
-            }
-        }
-        // 炮塔下的网格也要闪
-        if (_turretNode != null)
-        {
-            foreach (var child in _turretNode.GetChildren())
-            {
-                if (child is MeshInstance3D mi)
+                foreach (var mi in _cachedTurretMeshes)
                 {
                     var mat = mi.MaterialOverride as StandardMaterial3D;
                     if (mat == null) continue;
-                    if (flash)
-                    {
-                        mat.Emission = new Color(1f, 0.3f, 0.3f);
-                        mat.EmissionEnergyMultiplier = 3f;
-                    }
-                    else
-                    {
-                        mat.EmissionEnergyMultiplier = 0f;
-                    }
+                    mat.Emission = new Color(1f, 0.3f, 0.3f);
+                    mat.EmissionEnergyMultiplier = 3f;
                 }
             }
+        }
+        else
+        {
+            foreach (var mi in _cachedMeshes)
+            {
+                var mat = mi.MaterialOverride as StandardMaterial3D;
+                if (mat == null) continue;
+                mat.EmissionEnergyMultiplier = 0f;
+            }
+            if (_cachedTurretMeshes != null)
+            {
+                foreach (var mi in _cachedTurretMeshes)
+                {
+                    var mat = mi.MaterialOverride as StandardMaterial3D;
+                    if (mat == null) continue;
+                    mat.EmissionEnergyMultiplier = 0f;
+                }
+            }
+        }
+    }
+
+    /// <summary>递归收集所有MeshInstance3D到缓存列表</summary>
+    private void CollectMeshes(Node3D root, List<MeshInstance3D> list, bool skipTurret)
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (skipTurret && child == _turretNode) continue;
+            if (child is MeshInstance3D mi)
+                list.Add(mi);
+            else if (child is Node3D sub)
+                CollectMeshes(sub, list, skipTurret);
         }
     }
 
@@ -1485,7 +1493,7 @@ public partial class Unit3D : CharacterBody3D
             && Type != UnitType.ChiefEngineer && Type != UnitType.Spy
             && Type != UnitType.Thief && Type != UnitType.Hero)
         {
-            _dustTimer = 0.15f; // 每0.15秒一团尘
+            _dustTimer = 0.3f; // 每0.3秒一团尘（降低频率减少特效创建）
             _game?.SpawnMoveDust(GlobalPosition, 0.6f);
         }
 
@@ -1530,15 +1538,29 @@ public partial class Unit3D : CharacterBody3D
         }
     }
 
+    private float _lastHealthPercent = -1f;
+    private float _healthLabelUpdateTimer;
+
     private void UpdateHealthLabel()
     {
         if (_healthLabel == null) return;
+
+        // 限频：每0.2秒更新一次，而非每帧
+        _healthLabelUpdateTimer -= 0.016f; // 近似每帧减
+        float currentPct = Health / MaxHealth;
+        bool pctChanged = Math.Abs(currentPct - _lastHealthPercent) > 0.01f;
+
         if (Health < MaxHealth || IsSelected)
         {
             _healthLabel.Visible = true;
-            float pct = Health / MaxHealth;
-            _healthLabel.Text = $"{(int)Health}/{(int)MaxHealth}";
-            _healthLabel.Modulate = pct > 0.5f ? Colors.Green : pct > 0.25f ? Colors.Yellow : Colors.Red;
+            // 只在血量有变化时才重设文本（避免每帧字符串格式化）
+            if (pctChanged || _healthLabelUpdateTimer <= 0)
+            {
+                _healthLabel.Text = $"{(int)Health}/{(int)MaxHealth}";
+                _healthLabel.Modulate = currentPct > 0.5f ? Colors.Green : currentPct > 0.25f ? Colors.Yellow : Colors.Red;
+                _lastHealthPercent = currentPct;
+                _healthLabelUpdateTimer = 0.2f;
+            }
         }
         else
         {
