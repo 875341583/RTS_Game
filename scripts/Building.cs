@@ -327,21 +327,56 @@ public partial class Building : Area2D
 
     // ---- G2 生产系统方法 ----
 
-    /// <summary>排入生产订单。若生产空闲则立即开始，否则加入等待队列。</summary>
-    public void EnqueueProduction(ProductionType type)
+    /// <summary>排入生产订单。若生产空闲则立即开始，否则加入等待队列。
+    /// U2: 支持Shift批量加入（count>1时连续排入）。</summary>
+    public void EnqueueProduction(ProductionType type, int count = 1)
     {
-        if (!_currentProduction.HasValue)
+        for (int i = 0; i < count; i++)
         {
-            _currentProduction = type;
-            _productionDuration = GetProductionTime(type);
-            _productionTimer = _productionDuration;
-            QueueRedraw();
+            if (!_currentProduction.HasValue)
+            {
+                _currentProduction = type;
+                _productionDuration = GetProductionTime(type);
+                _productionTimer = _productionDuration;
+                QueueRedraw();
+            }
+            else if (_productionQueue.Count < MaxQueueSize - 1)
+            {
+                _productionQueue.Enqueue(type);
+                QueueRedraw();
+            }
+            else
+            {
+                break; // 队列满了
+            }
         }
-        else if (_productionQueue.Count < MaxQueueSize - 1)
+    }
+
+    /// <summary>U1: 取消最后一个排队中的生产订单。返回取消的类型，无则返回null。</summary>
+    public ProductionType? CancelLastProduction()
+    {
+        if (_productionQueue.Count > 0)
         {
-            _productionQueue.Enqueue(type);
+            // 取出队列中最后一个
+            var list = _productionQueue.ToList();
+            var last = list[^1];
+            list.RemoveAt(list.Count - 1);
+            _productionQueue.Clear();
+            foreach (var item in list)
+                _productionQueue.Enqueue(item);
             QueueRedraw();
+            return last;
         }
+        else if (_currentProduction.HasValue)
+        {
+            // 取消当前正在生产的
+            var cancelled = _currentProduction.Value;
+            _currentProduction = null;
+            _productionTimer = 0f;
+            QueueRedraw();
+            return cancelled;
+        }
+        return null;
     }
 
     /// <summary>设置集结点。</summary>

@@ -1210,39 +1210,45 @@ public partial class Main : Node2D
             return;
         }
 
-        // 电力检查
-        if (GetTeamPower(0) < 0)
-        {
-            GD.Print($"[警告] 电力不足，无法生产单位！当前电力: {GetTeamPower(0)}");
-            return;
-        }
+        // U2: Shift批量加入队列（最多5个）
+        int batchCount = Input.IsKeyPressed(Key.Shift) ? 5 : 1;
 
-        // G2：单位上限检查（活跃单位 + 队列中）
-        int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
-        if (total >= _unitCap)
+        for (int i = 0; i < batchCount; i++)
         {
-            GD.Print($"[警告] 达到单位上限 {_unitCap}！");
-            return;
-        }
+            // 电力检查
+            if (GetTeamPower(0) < 0)
+            {
+                GD.Print($"[警告] 电力不足，无法生产单位！当前电力: {GetTeamPower(0)}");
+                break;
+            }
 
-        // G2：找生产建筑（队列最短的同类建筑，实现多建筑并行）
-        var producer = FindProducerForUnit(type, 0);
-        if (producer == null)
-        {
-            GD.Print($"[警告] 没有可用的{GetProducerForUnit(type)}！");
-            return;
-        }
+            // G2：单位上限检查（活跃单位 + 队列中）
+            int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
+            if (total >= _unitCap)
+            {
+                GD.Print($"[警告] 达到单位上限 {_unitCap}！");
+                break;
+            }
 
-        if (_money[0] < cost)
-        {
-            GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}");
-            _audio?.PlaySfx(AudioManager.Sfx.UiError);
-            return;
-        }
+            // G2：找生产建筑（队列最短的同类建筑，实现多建筑并行）
+            var producer = FindProducerForUnit(type, 0);
+            if (producer == null)
+            {
+                GD.Print($"[警告] 没有可用的{GetProducerForUnit(type)}！");
+                break;
+            }
 
-        _money[0] -= cost;
-        producer.EnqueueProduction(UnitTypeToProductionType(type));
-        GD.Print($"蓝方排产{type}，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+            if (_money[0] < cost)
+            {
+                GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}");
+                _audio?.PlaySfx(AudioManager.Sfx.UiError);
+                break;
+            }
+
+            _money[0] -= cost;
+            producer.EnqueueProduction(UnitTypeToProductionType(type));
+            GD.Print($"蓝方排产{type}(批量{i+1}/{batchCount})，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+        }
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
     }
 
@@ -2356,6 +2362,19 @@ public partial class Main : Node2D
             var producer = GetSelectedFriendlyProducerBuilding();
             if (producer != null)
             {
+                // U1: 右键点在建筑自身上 → 取消队列中最后一个生产订单
+                var clickedBuilding = PickBuildingAt(worldPos, requireEnemy: false);
+                if (clickedBuilding == producer)
+                {
+                    var cancelled = producer.CancelLastProduction();
+                    if (cancelled.HasValue)
+                    {
+                        GD.Print($"[取消生产] {producer.BuildingName} 取消: {cancelled.Value}");
+                        _audio?.PlaySfx(AudioManager.Sfx.UiClick);
+                    }
+                    return;
+                }
+                // 否则设集结点
                 producer.SetRallyPoint(worldPos);
                 GD.Print($"[集结点] {producer.BuildingName} 集结点 -> {worldPos}");
                 return;
