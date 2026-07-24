@@ -1972,6 +1972,7 @@ public partial class Unit : CharacterBody2D
     // G1: 科技效果方法
     private float _techHealthMul = 1f;
     private float _techDamageMul = 1f;
+    private float _techMoveSpeedMul = 1f; // G3: 战术卡移速乘数追踪，防止重复叠加
 
     /// <summary>G1: 应用科技生命值乘数（叠乘方式，已有乘数会叠加）。</summary>
     public void ApplyTechHealthMultiplier(float mul)
@@ -1986,6 +1987,14 @@ public partial class Unit : CharacterBody2D
     {
         _techDamageMul *= mul;
         AttackDamage *= mul;
+    }
+
+    /// <summary>G1/G3: 应用科技移动速度乘数（叠乘方式，已有乘数会叠加）。</summary>
+    public void ApplyTechMoveSpeedMultiplier(float mul)
+    {
+        float baseSpeed = MoveSpeed / _techMoveSpeedMul; // 恢复到基础值
+        _techMoveSpeedMul *= mul;
+        MoveSpeed = baseSpeed * _techMoveSpeedMul;
     }
 
     /// <summary>G1: 获取科技攻击力乘数。</summary>

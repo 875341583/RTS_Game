@@ -760,15 +760,17 @@ public partial class Building : Area2D
         }
 
         if (!_currentProduction.HasValue) { QueueRedraw(); return; }
-        // G4+G6+G8: 电网分区离线减速 + 邻接加成生产速度 + 缴获加速
+        // G3+G4+G6+G8: 战术卡生产加速 + 电网分区离线减速 + 邻接加成生产速度 + 缴获加速
         float effectiveDt = dt;
         if (GetParent()?.GetParent() is Main mainNode)
         {
-            bool powered = mainNode.IsBuildingPowered(this);
-            if (!powered) effectiveDt = dt * PowerGrid.OfflineProduceMul;
+            // S1修复: G3战术卡生产速度加成（闪击战术+17.6%速度, 快速部署+25%速度）
+            effectiveDt *= mainNode.GetCardProduceSpeedMul(TeamId);
+            // G4: 电网分区离线减速
+            if (!mainNode.IsBuildingPowered(this))
+                effectiveDt *= PowerGrid.OfflineProduceMul;
             // G6: 邻接加成 — 兵营/车厂相邻时生产速度提升
-            float adjProduceMul = mainNode.GetAdjacencyProduceMul(this);
-            effectiveDt *= adjProduceMul;
+            effectiveDt *= mainNode.GetAdjacencyProduceMul(this);
         }
         // G8: 缴获生产加速（占领后60秒+30%生产速度）
         if (IsCapturedProduceBoost)

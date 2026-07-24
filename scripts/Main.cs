@@ -286,6 +286,14 @@ public partial class Main : Node2D
     private Label _captureLabel = null!;
     private bool _capturePanelVisible = false;
 
+    /// <summary>L1修复: 检查是否有任何信息面板处于打开状态（面板打开时禁用生产热键避免冲突）。</summary>
+    private bool AnyPanelOpen()
+    {
+        return _techTreePanelVisible || _eraPanelVisible || _powerGridPanelVisible
+            || _adjacencyPanelVisible || _spyMissionPanelVisible || _capturePanelVisible
+            || _eurekaLabel.Visible || _cardLabel.Visible;
+    }
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -1246,6 +1254,9 @@ public partial class Main : Node2D
             }
             if (allHealth != 1f) u.ApplyTechHealthMultiplier(allHealth);
             if (allDamage != 1f) u.ApplyTechDamageMultiplier(allDamage);
+            // S2修复: G3战术卡移动速度加成（闪击战术+15%移速）
+            float moveSpeedMul = TacticalCards.GetMoveSpeedMul(card);
+            if (moveSpeedMul != 1f) u.ApplyTechMoveSpeedMultiplier(moveSpeedMul);
         }
     }
 
@@ -1285,12 +1296,11 @@ public partial class Main : Node2D
         }
     }
 
-    /// <summary>判断单位是否为坦克类。</summary>
+    /// <summary>判断单位是否为坦克类（M1修复: 排除非战斗车辆）。</summary>
     private static bool IsTankType(UnitType type) => type switch
     {
         UnitType.LightTank or UnitType.HeavyTank or UnitType.Artillery
-        or UnitType.RocketLauncher or UnitType.MissileTank or UnitType.AntiAir
-        or UnitType.Harvester or UnitType.Engineer or UnitType.Transport => true,
+        or UnitType.RocketLauncher or UnitType.MissileTank or UnitType.AntiAir => true,
         _ => false,
     };
 
@@ -1629,6 +1639,12 @@ public partial class Main : Node2D
             {
                 u.ApplyTechDamageMultiplier(damageMul);
             }
+            // S2修复: 战术卡移动速度加成应用到已有单位
+            float moveSpeedMul = TacticalCards.GetMoveSpeedMul(card);
+            if (moveSpeedMul != 1f)
+            {
+                u.ApplyTechMoveSpeedMultiplier(moveSpeedMul);
+            }
         }
 
         // 要塞防御：建筑血量+30%
@@ -1643,6 +1659,15 @@ public partial class Main : Node2D
                 b.SetHealth(b.MaxHealth * ratio);
             }
         }
+    }
+
+    /// <summary>S1修复: 获取G3战术卡的生产速度乘数（转换为速度乘数，越大越快）。</summary>
+    public float GetCardProduceSpeedMul(int teamId)
+    {
+        TacticalCards.CardId? card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        if (!card.HasValue) return 1f;
+        float timeMul = TacticalCards.GetProduceTimeMul(card); // <1表示生产时间缩短=速度提升
+        return timeMul < 1f ? 1f / timeMul : 1f;
     }
 
     /// <summary>判断是否为步兵类单位。</summary>
@@ -1748,22 +1773,6 @@ public partial class Main : Node2D
         if (target.Type == BuildingType.PowerPlant || target.Type == BuildingType.Base)
             return true; // 电站和基地自给自足
         return PowerGrid.IsInRange(target, GetTeamBuildings(target.TeamId));
-    }
-
-    /// <summary>获取建筑的生产速度乘数（G4电网分区 + G3战术卡）。</summary>
-    public float GetBuildingProduceMul(Building b)
-    {
-        float mul = 1f;
-        // G3: 战术卡生产速度加成
-        var card = b.TeamId == 0 ? _playerCard : _aiCards[b.TeamId - 1];
-        mul *= TacticalCards.GetProduceTimeMul(card); // 越小越快
-        // 转换为速度乘数（除法取倒数）
-        float cardSpeedMul = card.HasValue && TacticalCards.GetProduceTimeMul(card) < 1f
-            ? 1f / TacticalCards.GetProduceTimeMul(card) : 1f;
-
-        // G4: 电网离线减速
-        float gridMul = IsBuildingPowered(b) ? 1f : PowerGrid.OfflineProduceMul;
-        return cardSpeedMul * gridMul;
     }
 
     /// <summary>更新电网分布面板。</summary>
@@ -1918,6 +1927,9 @@ public partial class Main : Node2D
         if (Input.IsActionJustPressed("build_tech")) TryBuildBuilding(BuildingType.TechCenter);
         if (Input.IsActionJustPressed("spawn_rocket")) TrySpawnUnit(UnitType.RocketLauncher, RocketLauncherCost);
         if (Input.IsActionJustPressed("spawn_missile")) TrySpawnUnit(UnitType.MissileTank, MissileTankCost);
+        // L1修复: 以下生产热键与面板键冲突(N/K/G/H/T/J/Y)，面板打开时禁用生产热键
+        if (!AnyPanelOpen())
+        {
         // E4：工兵(K) / 高级工程师(Shift+K) 生产热键
         if (Input.IsKeyPressed(Key.K) && _prevKeyState != Key.K)
         {
@@ -1961,6 +1973,7 @@ public partial class Main : Node2D
             TrySpawnUnit(UnitType.Scout, ScoutCost);
         if (Input.IsKeyPressed(Key.H) && Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.TransportHeli, TransportHeliCost);
+        } // end if (!AnyPanelOpen())
 
         // E9：海军热键 Shift+1(驱逐舰) / Shift+2(潜艇) / Shift+3(航母) / Shift+4(登陆艇)
         if (Input.IsKeyPressed(Key.Key1) && Input.IsKeyPressed(Key.Shift))
@@ -2474,6 +2487,82 @@ public partial class Main : Node2D
         return baseBuilding.GlobalPosition + offset;
     }
 
+    /// <summary>
+    /// M2+M4修复: AI智能建造布局 — 同类建筑簇状排列获G6邻接加成，电站紧邻已有建筑确保G4供电覆盖。
+    /// 策略：电站/兵营/车厂优先放在同类型旁边（160px内），其他建筑放在已有建筑附近确保供电覆盖（280px内）。
+    /// </summary>
+    private Vector2 GetAIBuildPosition(int teamId, BuildingType type)
+    {
+        if (!_bases.TryGetValue(teamId, out var baseB) || baseB == null || !IsInstanceValid(baseB))
+            return new Vector2(500, 500);
+
+        var teamBuildings = GetTeamBuildings(teamId);
+        if (teamBuildings.Count == 0)
+            return baseB.GlobalPosition + new Vector2(100, 0);
+
+        // 同类建筑簇状布局：寻找同类型建筑，紧邻建造获G6邻接加成
+        bool sameTypeCluster = type == BuildingType.PowerPlant || type == BuildingType.Barracks
+            || type == BuildingType.WarFactory || type == BuildingType.TechCenter;
+        if (sameTypeCluster)
+        {
+            foreach (var b in teamBuildings)
+            {
+                if (!IsInstanceValid(b) || b.Type != type) continue;
+                // 在同类型建筑旁边找个位置（160px内=邻接加成范围）
+                float[] angles = { 0, Mathf.Pi / 2, Mathf.Pi, Mathf.Pi * 1.5f };
+                foreach (float a in angles)
+                {
+                    Vector2 pos = b.GlobalPosition + new Vector2(Mathf.Cos(a) * 110, Mathf.Sin(a) * 110);
+                    if (!IsPositionOccupied(pos, teamId))
+                        return pos;
+                }
+            }
+        }
+
+        // 非同类建筑：找供电覆盖范围内（280px）的位置
+        foreach (var b in teamBuildings)
+        {
+            if (!IsInstanceValid(b)) continue;
+            // 基地/电站周围找位置
+            if (b.Type == BuildingType.PowerPlant || b.Type == BuildingType.Base)
+            {
+                float[] angles = { 0.4f, 1.2f, 2.0f, 2.8f, 3.6f, 5.0f, 5.8f };
+                foreach (float a in angles)
+                {
+                    Vector2 pos = b.GlobalPosition + new Vector2(Mathf.Cos(a) * 130, Mathf.Sin(a) * 130);
+                    if (!IsPositionOccupied(pos, teamId))
+                        return pos;
+                }
+            }
+        }
+
+        // 兜底：环形布局
+        if (!_buildIndices.TryGetValue(teamId, out int idx)) idx = 0;
+        _buildIndices[teamId] = idx + 1;
+        int ring = idx / 4;
+        int side = idx % 4;
+        float radius = 120 + ring * 90;
+        Vector2 offset = side switch
+        {
+            0 => new Vector2(-radius, 0),
+            1 => new Vector2(0, -radius),
+            2 => new Vector2(radius, 0),
+            _ => new Vector2(0, radius)
+        };
+        return baseB.GlobalPosition + offset;
+    }
+
+    /// <summary>M2修复辅助: 检查位置是否已被其他建筑占据。</summary>
+    private bool IsPositionOccupied(Vector2 pos, int teamId)
+    {
+        foreach (var b in GetTeamBuildings(teamId))
+        {
+            if (IsInstanceValid(b) && b.GlobalPosition.DistanceTo(pos) < 80)
+                return true;
+        }
+        return false;
+    }
+
     private void TryBuildBuilding(BuildingType type)
     {
         // 前置建筑检查
@@ -2778,7 +2867,7 @@ public partial class Main : Node2D
         if (!hasPower && _money[teamId] >= PowerPlantCost)
         {
             _money[teamId] -= PowerPlantCost;
-            SpawnBuilding(BuildingType.PowerPlant, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant, ${_money[teamId]} left");
             return;
         }
@@ -2787,7 +2876,7 @@ public partial class Main : Node2D
         if (hasPower && power < 30 && _money[teamId] >= PowerPlantCost)
         {
             _money[teamId] -= PowerPlantCost;
-            SpawnBuilding(BuildingType.PowerPlant, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant (low power), ${_money[teamId]} left");
             return;
         }
@@ -2796,7 +2885,7 @@ public partial class Main : Node2D
         if (hasPower && !hasBarracks && _money[teamId] >= BarracksCost)
         {
             _money[teamId] -= BarracksCost;
-            SpawnBuilding(BuildingType.Barracks, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.Barracks, GetAIBuildPosition(teamId, BuildingType.Barracks), teamId);
             GD.Print($"[AI] Team {teamId} built Barracks, ${_money[teamId]} left");
             return;
         }
@@ -2806,7 +2895,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.WarFactory))
         {
             _money[teamId] -= WarFactoryCost;
-            SpawnBuilding(BuildingType.WarFactory, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.WarFactory, GetAIBuildPosition(teamId, BuildingType.WarFactory), teamId);
             GD.Print($"[AI] Team {teamId} built WarFactory, ${_money[teamId]} left");
             return;
         }
@@ -2816,7 +2905,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.TechCenter))
         {
             _money[teamId] -= TechCenterCost;
-            SpawnBuilding(BuildingType.TechCenter, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.TechCenter, GetAIBuildPosition(teamId, BuildingType.TechCenter), teamId);
             GD.Print($"[AI] Team {teamId} built TechCenter, ${_money[teamId]} left");
             return;
         }
@@ -2825,7 +2914,7 @@ public partial class Main : Node2D
         if (hasTechCenter && power < 50 && _money[teamId] >= PowerPlantCost)
         {
             _money[teamId] -= PowerPlantCost;
-            SpawnBuilding(BuildingType.PowerPlant, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant (for tech center), ${_money[teamId]} left");
             return;
         }
@@ -2837,7 +2926,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.RepairPad))
         {
             _money[teamId] -= RepairPadCost;
-            SpawnBuilding(BuildingType.RepairPad, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.RepairPad, GetAIBuildPosition(teamId, BuildingType.RepairPad), teamId);
             GD.Print($"[AI] Team {teamId} built RepairPad, ${_money[teamId]} left");
             return;
         }
@@ -2849,7 +2938,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.Turret))
         {
             _money[teamId] -= TurretCost;
-            SpawnBuilding(BuildingType.Turret, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.Turret, GetAIBuildPosition(teamId, BuildingType.Turret), teamId);
             GD.Print($"[AI] Team {teamId} built Turret #{turretCount + 1}, ${_money[teamId]} left");
             return;
         }
@@ -2861,7 +2950,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.AntiAirTurret))
         {
             _money[teamId] -= AntiAirTurretCost;
-            SpawnBuilding(BuildingType.AntiAirTurret, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.AntiAirTurret, GetAIBuildPosition(teamId, BuildingType.AntiAirTurret), teamId);
             GD.Print($"[AI] Team {teamId} built AntiAirTurret #{aaCount + 1}, ${_money[teamId]} left");
             return;
         }
@@ -2872,7 +2961,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.Airfield))
         {
             _money[teamId] -= AirfieldCost;
-            SpawnBuilding(BuildingType.Airfield, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.Airfield, GetAIBuildPosition(teamId, BuildingType.Airfield), teamId);
             GD.Print($"[AI] Team {teamId} built Airfield, ${_money[teamId]} left");
             return;
         }
@@ -2882,7 +2971,7 @@ public partial class Main : Node2D
             && IsBuildingUnlockedByEra(teamId, BuildingType.Shipyard))
         {
             _money[teamId] -= ShipyardCost;
-            SpawnBuilding(BuildingType.Shipyard, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.Shipyard, GetAIBuildPosition(teamId, BuildingType.Shipyard), teamId);
             GD.Print($"[AI] Team {teamId} built Shipyard, ${_money[teamId]} left");
             return;
         }
@@ -2891,7 +2980,7 @@ public partial class Main : Node2D
             && _money[teamId] >= NukeSiloCost + 300 && power >= 0)
         {
             _money[teamId] -= NukeSiloCost;
-            SpawnBuilding(BuildingType.NukeSilo, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.NukeSilo, GetAIBuildPosition(teamId, BuildingType.NukeSilo), teamId);
             GD.Print($"[AI] Team {teamId} built NukeSilo, ${_money[teamId]} left");
             return;
         }
@@ -2899,7 +2988,7 @@ public partial class Main : Node2D
             && _money[teamId] >= LightningTowerCost + 300 && power >= 0)
         {
             _money[teamId] -= LightningTowerCost;
-            SpawnBuilding(BuildingType.LightningTower, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.LightningTower, GetAIBuildPosition(teamId, BuildingType.LightningTower), teamId);
             GD.Print($"[AI] Team {teamId} built LightningTower, ${_money[teamId]} left");
             return;
         }
@@ -2907,7 +2996,7 @@ public partial class Main : Node2D
             && _money[teamId] >= MissileSiloCost + 300 && power >= 0)
         {
             _money[teamId] -= MissileSiloCost;
-            SpawnBuilding(BuildingType.MissileSilo, GetBuildPosition(teamId), teamId);
+            SpawnBuilding(BuildingType.MissileSilo, GetAIBuildPosition(teamId, BuildingType.MissileSilo), teamId);
             GD.Print($"[AI] Team {teamId} built MissileSilo, ${_money[teamId]} left");
             return;
         }
@@ -3411,11 +3500,40 @@ public partial class Main : Node2D
     /// <summary>AI 占领战略点：派最近的己方战斗单位去最近的非己方战略点。</summary>
     private void AITryCaptureStrategicPoint(int teamId)
     {
+        // M3修复: AI优先占领己方已控制战略点附近的目标，触发G8连锁占领+50%加速
+        // 收集己方已占领的战略点位置
+        var ownedPositions = new System.Collections.Generic.List<Vector2>();
+        foreach (var child in _strategicPointsNode.GetChildren())
+        {
+            if (child is StrategicPoint sp0 && IsInstanceValid(sp0) && sp0.OwningTeam == teamId)
+                ownedPositions.Add(sp0.GlobalPosition);
+        }
+
+        // 对所有未占领的战略点排序：靠近己方已占领点的优先（连锁加成）
+        var targets = new System.Collections.Generic.List<(StrategicPoint sp, float priority)>();
         foreach (var child in _strategicPointsNode.GetChildren())
         {
             if (child is not StrategicPoint sp || !IsInstanceValid(sp)) continue;
             if (sp.OwningTeam == teamId) continue;
 
+            // 优先级计算：有己方占领点在80px内=最高优先级（连锁加成）
+            float priority = 0f;
+            foreach (var pos in ownedPositions)
+            {
+                float d = sp.GlobalPosition.DistanceTo(pos);
+                if (d < CaptureBonus.ChainRange)
+                    priority += 1000f; // 连锁范围内，大幅提升优先级
+                else
+                    priority += 500f / (d + 1f); // 距离越近优先级越高
+            }
+            if (priority == 0f) priority = 1f; // 无己方占领点时按默认顺序
+            targets.Add((sp, priority));
+        }
+        // 按优先级降序排序
+        targets.Sort((a, b) => b.priority.CompareTo(a.priority));
+
+        foreach (var (sp, _) in targets)
+        {
             Unit? nearest = null;
             float nearestDist = float.MaxValue;
             foreach (var uc in _unitsNode.GetChildren())
