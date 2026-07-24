@@ -109,6 +109,18 @@ public partial class Building : Area2D
     private int _capturingTeamId = -1;
     private bool _captureTickThisFrame = false;
 
+    // ---- G8: 占领强化系统 ----
+    /// <summary>原阵营ID（占领前），-1=未被占领过或已被同化。</summary>
+    public int _originalTeamId = -1;
+    /// <summary>缴获生产加速剩余时间（秒）。</summary>
+    public float _capturedProduceTimer = 0f;
+    /// <summary>叛变风险倒计时（秒），0=无风险。</summary>
+    public float _defectionTimer = 0f;
+    /// <summary>是否处于缴获加速期。</summary>
+    public bool IsCapturedProduceBoost => _capturedProduceTimer > 0f;
+    /// <summary>是否处于叛变风险期。</summary>
+    public bool IsDefectionRisk => _defectionTimer > 0f;
+
     /// <summary>按建筑类型初始化属性。必须在 _Ready 之前调用。</summary>
     public void InitAsType(BuildingType type)
     {
@@ -521,15 +533,36 @@ public partial class Building : Area2D
         PowerProvided = (int)(PowerProvided * mul);
     }
 
-    /// <summary>工程车推进占领进度（5秒完成一次占领）。占领完成后建筑阵营转换。</summary>
+    /// <summary>工程车推进占领进度（5秒完成一次占领）。占领完成后建筑阵营转换。
+    /// G8: 连锁占领速度加成 + 占领即获资源 + 缴获加速 + 叛变风险。</summary>
     public void CaptureTick(float dt, int capturingTeamId)
     {
         if (Health <= 0f) return;
         _captureTickThisFrame = true;
         _capturingTeamId = capturingTeamId;
-        CaptureProgress += dt / 5f;
+
+        // G8: 连锁占领速度加成 — 80px内有己方已占领建筑时+50%
+        float captureSpeed = 1f;
+        if (GetParent()?.GetParent() is Main mainNode)
+        {
+            var buildings = mainNode.GetTeamBuildings(capturingTeamId);
+            foreach (var b in buildings)
+            {
+                if (b != this && b._originalTeamId >= 0
+                    && GlobalPosition.DistanceTo(b.GlobalPosition) <= CaptureBonus.ChainRange)
+                {
+                    captureSpeed = CaptureBonus.ChainCaptureSpeedMul;
+                    break;
+                }
+            }
+        }
+
+        CaptureProgress += dt * captureSpeed / 5f;
         if (CaptureProgress >= 1f)
         {
+            // G8: 保存原阵营
+            _originalTeamId = TeamId;
+
             // 占领完成：转换阵营
             TeamId = capturingTeamId;
             CaptureProgress = 0f;
@@ -537,6 +570,22 @@ public partial class Building : Area2D
             _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
             _body.Modulate = _teamTint;
             GD.Print($"{BuildingName} 被 Team {capturingTeamId} 占领!");
+
+            // G8: 占领即获资源
+            if (GetParent()?.GetParent() is Main capturedMain)
+            {
+                capturedMain.AddResourceForTeam(capturingTeamId, CaptureBonus.CaptureMoneyReward);
+                GD.Print($"[G8] 占领奖励: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
+                capturedMain.ShowToast(capturingTeamId == 0
+                    ? $"占领{BuildingName}! +${CaptureBonus.CaptureMoneyReward}"
+                    : "");
+            }
+
+            // G8: 缴获生产加速（60秒）
+            _capturedProduceTimer = CaptureBonus.CapturedProduceDuration;
+
+            // G8: 叛变风险（30秒）
+            _defectionTimer = CaptureBonus.DefectionRiskDuration;
         }
         QueueRedraw();
     }
@@ -603,6 +652,43 @@ public partial class Building : Area2D
             }
         }
         _captureTickThisFrame = false; // 重置标志
+
+        // G8: 占领强化计时
+        if (_capturedProduceTimer > 0f)
+        {
+            _capturedProduceTimer -= dt;
+            if (_capturedProduceTimer < 0f) _capturedProduceTimer = 0f;
+        }
+        if (_defectionTimer > 0f)
+        {
+            _defectionTimer -= dt;
+            if (_defectionTimer <= 0f)
+            {
+                _defectionTimer = 0f;
+                // G8: 叛变风险结束，安全
+            }
+            else
+            {
+                // G8: 叛变检查 — 每秒15%概率
+                if (GD.Randf() < CaptureBonus.DefectionChance * dt)
+                {
+                    if (_originalTeamId >= 0 && _originalTeamId != TeamId)
+                    {
+                        GD.Print($"[G8] 叛变! {BuildingName} 从 Team {TeamId} 叛变回 Team {_originalTeamId}!");
+                        if (GetParent()?.GetParent() is Main capMain)
+                            capMain.ShowToast(TeamId == 0
+                                ? $"{BuildingName}叛变! 被Team {_originalTeamId}夺回"
+                                : "");
+                        TeamId = _originalTeamId;
+                        _originalTeamId = -1;
+                        _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
+                        _body.Modulate = _teamTint;
+                        _capturedProduceTimer = 0f;
+                        _defectionTimer = 0f;
+                    }
+                }
+            }
+        }
 
         // ---- 阶段12-A1 防御建筑攻击逻辑 ----
         if (IsDefensive && AttackDamage > 0f && Health > 0f)
@@ -674,7 +760,7 @@ public partial class Building : Area2D
         }
 
         if (!_currentProduction.HasValue) { QueueRedraw(); return; }
-        // G4+G6: 电网分区离线减速 + 邻接加成生产速度
+        // G4+G6+G8: 电网分区离线减速 + 邻接加成生产速度 + 缴获加速
         float effectiveDt = dt;
         if (GetParent()?.GetParent() is Main mainNode)
         {
@@ -684,6 +770,9 @@ public partial class Building : Area2D
             float adjProduceMul = mainNode.GetAdjacencyProduceMul(this);
             effectiveDt *= adjProduceMul;
         }
+        // G8: 缴获生产加速（占领后60秒+30%生产速度）
+        if (IsCapturedProduceBoost)
+            effectiveDt *= CaptureBonus.CapturedProduceSpeedMul;
         _productionTimer -= effectiveDt;
         if (_productionTimer <= 0f)
         {

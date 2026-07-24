@@ -282,6 +282,10 @@ public partial class Main : Node2D
     private Label _spyMissionLabel = null!;
     private bool _spyMissionPanelVisible = false;
 
+    // G8: 占领面板
+    private Label _captureLabel = null!;
+    private bool _capturePanelVisible = false;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -579,13 +583,24 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_spyMissionLabel);
         GD.Print("[G7] 间谍任务系统初始化完成 — 按N查看间谍任务");
 
+        // G8: 初始化占领强化面板
+        _captureLabel = new Label();
+        _captureLabel.Name = "CaptureLabel";
+        _captureLabel.Position = new Vector2(250, 400);
+        _captureLabel.Size = new Vector2(250, 200);
+        _captureLabel.Modulate = new Color(0.5f, 1f, 0.7f, 0.9f);
+        _captureLabel.AddThemeFontSizeOverride("font_size", 11);
+        _captureLabel.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_captureLabel);
+        GD.Print("[G8] 占领强化系统初始化完成 — 按K查看占领状态");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
-        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成 | N间谍任务");
+        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成 | N间谍 | K占领");
         GD.Print("========================================");
     }
 
@@ -812,6 +827,15 @@ public partial class Main : Node2D
             _spyMissionPanelVisible = !_spyMissionPanelVisible;
             _spyMissionLabel.Visible = _spyMissionPanelVisible;
             if (_spyMissionPanelVisible) UpdateSpyMissionPanel();
+            return;
+        }
+
+        // G8: K键查看占领状态
+        if (kc == Key.K)
+        {
+            _capturePanelVisible = !_capturePanelVisible;
+            _captureLabel.Visible = _capturePanelVisible;
+            if (_capturePanelVisible) UpdateCapturePanel();
             return;
         }
 
@@ -1707,7 +1731,7 @@ public partial class Main : Node2D
     // ======== G4: 电网分区系统方法 ========
 
     /// <summary>获取某阵营所有建筑列表。</summary>
-    private List<Building> GetTeamBuildings(int teamId)
+    public List<Building> GetTeamBuildings(int teamId)
     {
         var result = new List<Building>();
         foreach (var c in _buildingsNode.GetChildren())
@@ -4924,6 +4948,36 @@ public partial class Main : Node2D
         _spyMissionLabel.Text = sb.ToString();
     }
 
+    /// <summary>G8: 更新占领面板（K键）。</summary>
+    private void UpdateCapturePanel()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("════ 占领强化 ════ (K关闭)");
+        sb.AppendLine($"占领奖励: +${CaptureBonus.CaptureMoneyReward}");
+        sb.AppendLine($"缴获加速: +30%生产/{(int)CaptureBonus.CapturedProduceDuration}秒");
+        sb.AppendLine($"连锁范围: {CaptureBonus.ChainRange}px (+50%占领速)");
+        sb.AppendLine($"叛变风险: {(int)(CaptureBonus.DefectionChance * 100)}%持续{(int)CaptureBonus.DefectionRiskDuration}秒");
+        sb.AppendLine();
+
+        // 显示被占领建筑状态
+        sb.AppendLine("【被占领建筑状态】");
+        bool any = false;
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is Building b && b._originalTeamId >= 0 && IsInstanceValid(b))
+            {
+                any = true;
+                string status = "";
+                if (b.IsCapturedProduceBoost) status += " 缴获加速";
+                if (b.IsDefectionRisk) status += $" 叛变风险{(int)b._defectionTimer}s";
+                sb.AppendLine($"  {b.BuildingName}(T{b.TeamId}) 原:T{b._originalTeamId}{status}");
+            }
+        }
+        if (!any) sb.AppendLine("  (无被占领建筑)");
+
+        _captureLabel.Text = sb.ToString();
+    }
+
     // ======== G5: 尤里卡时刻方法 ========
 
     /// <summary>击杀单位触发尤里卡（军事分支）。</summary>
@@ -5159,7 +5213,8 @@ public partial class Main : Node2D
                           "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率\n" +
                           "G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技\n" +
                           "G6: J 查看邻接加成 | 同类建筑紧邻建造获得加成\n" +
-                          "G7: N 查看间谍任务 | 选中间谍右键敌方建筑执行任务";
+                          "G7: N 查看间谍任务 | 选中间谍右键敌方建筑执行任务\n" +
+                          "G8: K 查看占领状态 | 占领获$300+缴获加速+连锁+叛变风险";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
