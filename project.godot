@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="红警复刻 RTS"
-config/description="红警2灵感RTS — 等距2.5D渲染 + 文明6风格游戏性，15分钟一局"
+config/name="铁幕突袭"
+config/description="铁幕突袭 — 等距2.5D军事工业风RTS，文明6风格游戏性，15分钟一局"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.7", ".NET", "C#", "Forward Plus")
 config/version="1.0.0"

@@ -74,7 +74,7 @@ public partial class MainMenu : Control
         center.AddChild(vbox);
 
         // 主标题
-        var title = MakeLabel("RTS 红警复刻", 36, Colors.White);
+        var title = MakeLabel("铁幕突袭", 36, Colors.White);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(title);
 
