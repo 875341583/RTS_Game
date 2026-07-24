@@ -10,10 +10,11 @@ config_version=5
 
 [application]
 
-config/name="RTS_Game"
-config/description="Red Alert 2 inspired RTS prototype - 15 min session game"
+config/name="红警复刻 RTS"
+config/description="红警2灵感RTS — 等距2.5D渲染 + 文明6风格游戏性，15分钟一局"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.7", ".NET", "C#", "Forward Plus")
+config/version="1.0.0"
 config/icon="res://icon.svg"
 
 [autoload]

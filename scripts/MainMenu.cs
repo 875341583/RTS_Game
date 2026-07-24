@@ -165,7 +165,7 @@ public partial class MainMenu : Control
 
     private void ChangeToGameScene()
     {
-        GetTree().ChangeSceneToFile("res://scenes/Main3D.tscn");
+        GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
     }
 
     private void AddDifficultyButton(Container parent, string title, string desc,
