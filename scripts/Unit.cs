@@ -95,6 +95,16 @@ public partial class Unit : CharacterBody2D
     /// <summary>窃贼偷钱冷却。</summary>
     private float _thiefStealCooldown;
 
+    // ======== G7: 间谍任务系统 ========
+    /// <summary>当前间谍任务类型（null=无任务）。</summary>
+    public SpyMission.MissionType? _spyMission = null;
+    /// <summary>间谍任务目标建筑。</summary>
+    public Building? _spyTargetBuilding = null;
+    /// <summary>间谍任务倒计时（秒）。</summary>
+    public float _spyMissionTimer = 0f;
+    /// <summary>间谍是否正在执行任务（不可移动）。</summary>
+    public bool IsSpyOnMission => _spyMission.HasValue && _spyTargetBuilding != null;
+
     // ======== E11：单位升级制度 ========
     /// <summary>单位随机能力类型（4大类11种）。</summary>
     public enum UnitAbility { None,
@@ -1215,12 +1225,77 @@ public partial class Unit : CharacterBody2D
         }
     }
 
-    // ======== E6b：间谍渗透 ========
+    // ======== E6b + G7：间谍渗透 ========
     private void ProcessSpyInfiltrate(float dt)
     {
         if (Type != UnitType.Spy) return;
 
-        // 间谍伪装：接近敌方建筑时自动伪装成敌方阵营颜色
+        // G7: 如果有间谍任务，处理任务倒计时
+        if (_spyMission.HasValue && _spyTargetBuilding != null)
+        {
+            // 检查目标建筑是否还存在
+            if (!IsInstanceValid(_spyTargetBuilding) || _spyTargetBuilding.Health <= 0)
+            {
+                GD.Print("[G7] 间谍任务取消：目标建筑已不存在");
+                _spyMission = null;
+                _spyTargetBuilding = null;
+                _spyMissionTimer = 0f;
+                return;
+            }
+
+            // 检查距离：间谍必须接近目标建筑
+            float dist = GlobalPosition.DistanceTo(_spyTargetBuilding.GlobalPosition);
+            if (dist > 80f)
+            {
+                // 太远了，取消任务
+                GD.Print($"[G7] 间谍任务取消：距离目标过远 ({(int)dist}px)");
+                _spyMission = null;
+                _spyTargetBuilding = null;
+                _spyMissionTimer = 0f;
+                return;
+            }
+
+            _spyMissionTimer -= dt;
+            if (_spyMissionTimer <= 0f)
+            {
+                // 任务完成：判定成功/失败
+                bool success = GD.Randf() < SpyMission.SuccessRate;
+                var missionType = _spyMission.Value;
+                var target = _spyTargetBuilding;
+                int teamId = TeamId;
+
+                if (success)
+                {
+                    GD.Print($"[G7] 间谍任务成功: {SpyMission.MissionName(missionType)} → {target.BuildingName} (Team {target.TeamId})");
+                    // 通知Main执行任务效果
+                    if (GetParent()?.GetParent() is Main mainNode)
+                    {
+                        mainNode.ExecuteSpyMission(missionType, target, teamId);
+                    }
+                }
+                else
+                {
+                    GD.Print($"[G7] 间谍任务失败: {SpyMission.MissionName(missionType)} — 间谍被击毙！");
+                    // 间谍死亡
+                    TakeDamage(MaxHealth + 1f); // 确保死亡
+                }
+
+                _spyMission = null;
+                _spyTargetBuilding = null;
+                _spyMissionTimer = 0f;
+                return;
+            }
+
+            // 伪装：执行任务时自动伪装成敌方颜色
+            if (_spyDisguiseTeam == -1)
+            {
+                _spyDisguiseTeam = _spyTargetBuilding.TeamId;
+                _body.Modulate = GetTeamColor(_spyDisguiseTeam);
+            }
+            return; // 正在执行任务，不执行旧逻辑
+        }
+
+        // 旧E6b逻辑：间谍接近敌方建筑时自动伪装
         var main = GetParent()?.GetParent();
         if (main == null) return;
         var bnode = main.GetNodeOrNull<Node>("Buildings");
@@ -1234,17 +1309,12 @@ public partial class Unit : CharacterBody2D
             {
                 nearEnemy = true;
 
-                // 渗透倒计时
+                // 旧渗透倒计时（简化版，仅偷$200，G7任务是主系统）
                 _spyInfiltrateTimer += dt;
                 if (_spyInfiltrateTimer >= 4f)
                 {
                     _spyInfiltrateTimer = 0f;
-                    // 渗透效果：让敌方建筑停电5秒 + 偷取科技
-                    GD.Print($"[E6b] 间谍成功渗透 {b.BuildingName} (Team {b.TeamId})！");
-                    b.PowerConsumed += 100; // 紧急停电
-                    // 5秒后恢复
-                    DelayedRestorePower(b, 5f);
-                    // 偷取$200
+                    // 偷取$200（旧逻辑保留兼容）
                     if (main is Main mainNode)
                     {
                         int stolen = Mathf.Min(200, mainNode.GetMoney(b.TeamId));
@@ -1253,7 +1323,7 @@ public partial class Unit : CharacterBody2D
                         GD.Print($"[E6b] 间谍偷取 ${stolen} (Team {b.TeamId} → Team {TeamId})");
                     }
                 }
-                break; // 只渗透最近的一个建筑
+                break;
             }
         }
 
@@ -1637,6 +1707,13 @@ public partial class Unit : CharacterBody2D
 
     protected virtual void ProcessMovement(float dt)
     {
+        // G7: 间谍执行任务期间不可移动
+        if (IsSpyOnMission)
+        {
+            Velocity = Vector2.Zero;
+            return;
+        }
+
         if (_hasMoveTarget)
         {
             var direction = (_moveTarget - GlobalPosition);
@@ -1843,6 +1920,21 @@ public partial class Unit : CharacterBody2D
     {
         _attackBuildingTarget = target;
         _attackUnitTarget = null;
+    }
+
+    /// <summary>G7: 间谍执行任务 — 移动到目标建筑附近后开始渗透倒计时。</summary>
+    public void CommandSpyMission(Building target, SpyMission.MissionType mission)
+    {
+        if (Type != UnitType.Spy) return;
+        _spyMission = mission;
+        _spyTargetBuilding = target;
+        _spyMissionTimer = SpyMission.InfiltrateTime;
+        // 先移动到目标建筑附近
+        _moveTarget = target.GlobalPosition;
+        _hasMoveTarget = true;
+        _attackUnitTarget = null;
+        _attackBuildingTarget = null;
+        GD.Print($"[G7] 间谍开始任务: {SpyMission.MissionName(mission)} → {target.BuildingName}");
     }
 
     public void TakeDamage(float damage)

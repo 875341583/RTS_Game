@@ -206,6 +206,9 @@ public partial class Main : Node2D
     private float _playerMissileCooldown = 0f;
     private bool _missileTargetMode = false;
     private readonly Dictionary<int, float> _aiMissileCooldowns = new();
+
+    // G7: AI间谍任务冷却（tick计数）
+    private readonly Dictionary<int, int> _aiSpyCooldowns = new();
         private struct LightningVisual
         {
             public Vector2 Position;
@@ -274,6 +277,10 @@ public partial class Main : Node2D
     // G6: 邻接加成
     private Label _adjacencyLabel = null!;
     private bool _adjacencyPanelVisible = false;
+
+    // G7: 间谍任务面板
+    private Label _spyMissionLabel = null!;
+    private bool _spyMissionPanelVisible = false;
 
     public override void _Ready()
     {
@@ -561,13 +568,24 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_adjacencyLabel);
         GD.Print("[G6] 邻接加成系统初始化完成 — 按J查看邻接加成");
 
+        // G7: 初始化间谍任务面板
+        _spyMissionLabel = new Label();
+        _spyMissionLabel.Name = "SpyMissionLabel";
+        _spyMissionLabel.Position = new Vector2(770, 130);
+        _spyMissionLabel.Size = new Vector2(200, 180);
+        _spyMissionLabel.Modulate = new Color(0.85f, 0.7f, 1f, 0.9f);
+        _spyMissionLabel.AddThemeFontSizeOverride("font_size", 11);
+        _spyMissionLabel.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_spyMissionLabel);
+        GD.Print("[G7] 间谍任务系统初始化完成 — 按N查看间谍任务");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
-        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成");
+        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成 | N间谍任务");
         GD.Print("========================================");
     }
 
@@ -785,6 +803,15 @@ public partial class Main : Node2D
             _adjacencyPanelVisible = !_adjacencyPanelVisible;
             _adjacencyLabel.Visible = _adjacencyPanelVisible;
             if (_adjacencyPanelVisible) UpdateAdjacencyPanel();
+            return;
+        }
+
+        // G7: N键查看间谍任务
+        if (kc == Key.N)
+        {
+            _spyMissionPanelVisible = !_spyMissionPanelVisible;
+            _spyMissionLabel.Visible = _spyMissionPanelVisible;
+            if (_spyMissionPanelVisible) UpdateSpyMissionPanel();
             return;
         }
 
@@ -3123,8 +3150,18 @@ public partial class Main : Node2D
                                 producer.EnqueueProduction(UnitTypeToProductionType(t));
                                 GD.Print($"[AI] Team {teamId} queued {t}, ${_money[teamId]} left, {producer.BuildingName}队列{producer.QueueCount}");
                                 break;
-                            }
-                        }
+        }
+
+        // 5. G7: AI间谍任务 — 每20秒尝试一次
+        if (!_aiSpyCooldowns.TryGetValue(teamId, out int spyCd))
+            _aiSpyCooldowns[teamId] = 0;
+        _aiSpyCooldowns[teamId]--;
+        if (_aiSpyCooldowns[teamId] <= 0)
+        {
+            _aiSpyCooldowns[teamId] = 20;
+            AISpyMission(teamId);
+        }
+        }
                     }
                 }
             }
@@ -3440,12 +3477,25 @@ public partial class Main : Node2D
                 unit.CommandAttack(enemyUnit);
             return;
         }
-        // 点击敌方建筑 → 攻击建筑
+        // 点击敌方建筑 → 攻击建筑（G7: 间谍则执行间谍任务）
         var enemyBuilding = PickBuildingAt(worldPos, requireEnemy: true);
         if (enemyBuilding != null)
         {
-            foreach (var unit in friendlyUnits)
+            // G7: 间谍右键敌方建筑 → 触发间谍任务
+            var spyUnits = friendlyUnits.Where(u => u.Type == UnitType.Spy).ToList();
+            var nonSpyUnits = friendlyUnits.Where(u => u.Type != UnitType.Spy).ToList();
+
+            // 非间谍单位正常攻击建筑
+            foreach (var unit in nonSpyUnits)
                 unit.CommandAttackBuilding(enemyBuilding);
+
+            // 间谍执行任务
+            foreach (var spy in spyUnits)
+            {
+                if (spy.IsSpyOnMission) continue; // 已在执行任务
+                var mission = SpyMission.ChooseMission(enemyBuilding.Type);
+                spy.CommandSpyMission(enemyBuilding, mission);
+            }
             return;
         }
 
@@ -4673,6 +4723,207 @@ public partial class Main : Node2D
         _adjacencyLabel.Text = sb.ToString();
     }
 
+    // ======== G7: 间谍任务系统方法 ========
+
+    /// <summary>G7: 执行间谍任务效果（成功时由Unit.ProcessSpyInfiltrate调用）。</summary>
+    public void ExecuteSpyMission(SpyMission.MissionType mission, Building target, int spyTeamId)
+    {
+        switch (mission)
+        {
+            case SpyMission.MissionType.StealTech:
+                // 窃取科技：从敌方已研究中找一个己方未研究的，免费完成
+                var enemyTeam = target.TeamId;
+                if (_techProgress.Length > enemyTeam && _techProgress.Length > spyTeamId)
+                {
+                    var enemyCompleted = _techProgress[enemyTeam].Completed;
+                    var myCompleted = _techProgress[spyTeamId].Completed;
+                    TechTree.TechId? stolenTech = null;
+                    foreach (var tid in enemyCompleted)
+                    {
+                        if (!myCompleted.Contains(tid))
+                        {
+                            stolenTech = tid;
+                            break;
+                        }
+                    }
+                    if (stolenTech.HasValue)
+                    {
+                        _techProgress[spyTeamId].ForceComplete(stolenTech.Value);
+                        ApplyTechEffects(spyTeamId);
+                        var nodeName = TechTree.Nodes[stolenTech.Value];
+                        GD.Print($"[G7] 间谍窃取科技成功: {nodeName.Name} (Team {spyTeamId})");
+                        ShowToast(spyTeamId == 0 ? $"间谍窃取: {nodeName.Name}" : $"AI Team {spyTeamId} 间谍窃取科技");
+                    }
+                    else
+                    {
+                        // 敌方无可窃取科技，补偿$300
+                        AddResourceForTeam(spyTeamId, 300);
+                        GD.Print($"[G7] 间谍无可窃取科技，获得$300补偿 (Team {spyTeamId})");
+                        ShowToast(spyTeamId == 0 ? "间谍: 无可窃取科技, $300补偿" : "");
+                    }
+                }
+                break;
+
+            case SpyMission.MissionType.SabotagePower:
+                // 破坏电网：电站断电8秒
+                if (IsInstanceValid(target))
+                {
+                    target.PowerConsumed += 200;
+                    GD.Print($"[G7] 间谍破坏电网: {target.BuildingName} 断电{(int)SpyMission.SabotagePowerDuration}秒 (Team {target.TeamId})");
+                    ShowToast(spyTeamId == 0 ? $"间谍破坏: {target.BuildingName}断电" : "");
+                    // 延迟恢复
+                    DelayedRestoreSpySabotage(target, SpyMission.SabotagePowerDuration, 200);
+                }
+                break;
+
+            case SpyMission.MissionType.StealMoney:
+                // 窃取资金
+                int stolen = Mathf.Min(SpyMission.StealMoneyAmount, GetMoney(target.TeamId));
+                if (stolen > 0)
+                {
+                    SpendMoney(target.TeamId, stolen);
+                    AddResourceForTeam(spyTeamId, stolen);
+                    GD.Print($"[G7] 间谍窃取${stolen} (Team {target.TeamId} → Team {spyTeamId})");
+                    ShowToast(spyTeamId == 0 ? $"间谍窃取: ${stolen}" : "");
+                }
+                break;
+
+            case SpyMission.MissionType.SabotageProd:
+                // 瘫痪生产：兵营/车厂暂停生产10秒
+                if (IsInstanceValid(target))
+                {
+                    // 通过大幅增加PowerConsumed使建筑离线
+                    target.PowerConsumed += 500;
+                    GD.Print($"[G7] 间谍瘫痪生产: {target.BuildingName} 暂停{(int)SpyMission.SabotageProdDuration}秒");
+                    ShowToast(spyTeamId == 0 ? $"间谍瘫痪: {target.BuildingName}停工" : "");
+                    DelayedRestoreSpySabotage(target, SpyMission.SabotageProdDuration, 500);
+                }
+                break;
+
+            case SpyMission.MissionType.Recon:
+                // 侦察：揭示敌方建筑/单位信息（通过Toast通知）
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"侦察: {target.BuildingName} (Team {target.TeamId})");
+                sb.AppendLine($"  血量: {(int)target.Health}/{(int)target.MaxHealth}");
+                sb.AppendLine($"  电力: +{target.PowerProvided}/-{target.PowerConsumed}");
+                // 统计附近敌方单位
+                int nearbyEnemies = 0;
+                foreach (var c in _unitsNode.GetChildren())
+                {
+                    if (c is Unit u && u.TeamId == target.TeamId && IsInstanceValid(u)
+                        && u.GlobalPosition.DistanceTo(target.GlobalPosition) < 300f)
+                        nearbyEnemies++;
+                }
+                sb.AppendLine($"  附近敌方单位: {nearbyEnemies}");
+                GD.Print($"[G7] 间谍侦察: {sb.ToString().Trim()}");
+                if (spyTeamId == 0) ShowToast(sb.ToString().Trim());
+                break;
+        }
+    }
+
+    /// <summary>G7: AI间谍任务 — 派空闲间谍渗透最近的敌方高价值建筑。</summary>
+    private void AISpyMission(int teamId)
+    {
+        // 找到空闲间谍
+        Unit? idleSpy = null;
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is Unit u && u.TeamId == teamId && u.Type == UnitType.Spy && IsInstanceValid(u) && !u.IsSpyOnMission)
+            {
+                idleSpy = u;
+                break;
+            }
+        }
+        if (idleSpy == null) return;
+
+        // 找最近的敌方高价值建筑（优先科技中心 > 基地 > 电站 > 兵营/车厂）
+        Building? target = null;
+        float bestDist = float.MaxValue;
+        BuildingType[] priority = { BuildingType.TechCenter, BuildingType.Base, BuildingType.PowerPlant, BuildingType.Barracks, BuildingType.WarFactory };
+        foreach (var c in _buildingsNode.GetChildren())
+        {
+            if (c is Building b && b.TeamId != teamId && IsInstanceValid(b))
+            {
+                // 只选我们优先列表中的类型
+                bool isPriority = false;
+                foreach (var pt in priority)
+                {
+                    if (b.Type == pt) { isPriority = true; break; }
+                }
+                if (!isPriority) continue;
+
+                float dist = idleSpy.GlobalPosition.DistanceTo(b.GlobalPosition);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    target = b;
+                }
+            }
+        }
+
+        if (target != null)
+        {
+            var mission = SpyMission.ChooseMission(target.Type);
+            idleSpy.CommandSpyMission(target, mission);
+            GD.Print($"[G7] AI Team {teamId} 派间谍执行 {SpyMission.MissionName(mission)} → {target.BuildingName}");
+        }
+    }
+
+    /// <summary>G7: 延迟恢复间谍破坏（电站/生产恢复）。</summary>
+    private async void DelayedRestoreSpySabotage(Building b, float delay, int powerRestore)
+    {
+        await ToSignal(GetTree().CreateTimer(delay), "timeout");
+        if (IsInstanceValid(b))
+        {
+            b.PowerConsumed -= powerRestore;
+            if (b.PowerConsumed < 0) b.PowerConsumed = 0;
+            GD.Print($"[G7] 间谍破坏效果恢复: {b.BuildingName}");
+        }
+    }
+
+    /// <summary>G7: 更新间谍任务面板（N键）。</summary>
+    private void UpdateSpyMissionPanel()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══ 间谍任务 ═══ (N关闭)");
+        sb.AppendLine($"成功率: {(int)(SpyMission.SuccessRate * 100)}% | 渗透: {(int)SpyMission.InfiltrateTime}秒");
+        sb.AppendLine();
+        sb.AppendLine("任务类型:");
+        sb.AppendLine("  窃取科技 → 科技中心");
+        sb.AppendLine("  破坏电网 → 电站");
+        sb.AppendLine("  窃取资金 → 基地");
+        sb.AppendLine("  瘫痪生产 → 兵营/车厂");
+        sb.AppendLine("  侦察 → 任意建筑");
+        sb.AppendLine();
+        sb.AppendLine("操作: 选中间谍 + 右键敌方建筑");
+        sb.AppendLine();
+
+        // 显示玩家方间谍状态
+        sb.AppendLine("【玩家方间谍状态】");
+        bool anySpy = false;
+        foreach (var c in _unitsNode.GetChildren())
+        {
+            if (c is Unit u && u.TeamId == 0 && u.Type == UnitType.Spy && IsInstanceValid(u))
+            {
+                anySpy = true;
+                if (u.IsSpyOnMission)
+                {
+                    string mName = u._spyMission.HasValue ? SpyMission.MissionName(u._spyMission.Value) : "无";
+                    string target = u._spyTargetBuilding != null && IsInstanceValid(u._spyTargetBuilding)
+                        ? u._spyTargetBuilding.BuildingName : "?";
+                    sb.AppendLine($"  间谍 → {mName}({target}) 剩余{u._spyMissionTimer:F1}秒");
+                }
+                else
+                {
+                    sb.AppendLine($"  间谍 → 待命");
+                }
+            }
+        }
+        if (!anySpy) sb.AppendLine("  (无间谍单位)");
+
+        _spyMissionLabel.Text = sb.ToString();
+    }
+
     // ======== G5: 尤里卡时刻方法 ========
 
     /// <summary>击杀单位触发尤里卡（军事分支）。</summary>
@@ -4907,7 +5158,8 @@ public partial class Main : Node2D
                           "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)\n" +
                           "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率\n" +
                           "G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技\n" +
-                          "G6: J 查看邻接加成 | 同类建筑紧邻建造获得加成";
+                          "G6: J 查看邻接加成 | 同类建筑紧邻建造获得加成\n" +
+                          "G7: N 查看间谍任务 | 选中间谍右键敌方建筑执行任务";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
