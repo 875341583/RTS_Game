@@ -610,7 +610,14 @@ public partial class Building : Area2D
             _turretAttackTimer -= dt;
             if (_turretAttackTimer <= 0f)
             {
-                var target = FindNearestEnemyUnitInRange(AttackRange);
+                // G6: 邻接加成 — 防御塔射程乘数
+                float effectiveRange = AttackRange;
+                if (GetParent()?.GetParent() is Main turMain)
+                {
+                    float rangeMul = turMain.GetAdjacencyRangeMul(this);
+                    effectiveRange = AttackRange * rangeMul;
+                }
+                var target = FindNearestEnemyUnitInRange(effectiveRange);
                 if (target != null)
                 {
                     _turretAttackTimer = AttackCooldown;
@@ -638,6 +645,10 @@ public partial class Building : Area2D
         // ---- 阶段12-A2 维修厂自动维修 ----
         if (IsRepairStation && Health > 0f)
         {
+            // G6: 邻接加成 — 维修厂+车厂相邻时维修速度提升
+            float repairMul = 1f;
+            if (GetParent()?.GetParent() is Main repMain)
+                repairMul = repMain.GetAdjacencyRepairMul(this);
             _repairTimer -= dt;
             if (_repairTimer <= 0f)
             {
@@ -652,7 +663,7 @@ public partial class Building : Area2D
                             && GlobalPosition.DistanceTo(u.GlobalPosition) <= RepairRadius
                             && u.Health < u.MaxHealth)
                         {
-                            u.RepairByRepairPad(RepairPerTick);
+                            u.RepairByRepairPad(RepairPerTick * repairMul);
                             repaired++;
                         }
                     }
@@ -663,12 +674,15 @@ public partial class Building : Area2D
         }
 
         if (!_currentProduction.HasValue) { QueueRedraw(); return; }
-        // G4: 电网分区 — 离线建筑生产减速
+        // G4+G6: 电网分区离线减速 + 邻接加成生产速度
         float effectiveDt = dt;
         if (GetParent()?.GetParent() is Main mainNode)
         {
             bool powered = mainNode.IsBuildingPowered(this);
             if (!powered) effectiveDt = dt * PowerGrid.OfflineProduceMul;
+            // G6: 邻接加成 — 兵营/车厂相邻时生产速度提升
+            float adjProduceMul = mainNode.GetAdjacencyProduceMul(this);
+            effectiveDt *= adjProduceMul;
         }
         _productionTimer -= effectiveDt;
         if (_productionTimer <= 0f)

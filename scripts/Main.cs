@@ -271,6 +271,10 @@ public partial class Main : Node2D
     private readonly EurekaSystem.TeamEureka[] _eureka = new EurekaSystem.TeamEureka[8];
     private Label _eurekaLabel = null!;
 
+    // G6: 邻接加成
+    private Label _adjacencyLabel = null!;
+    private bool _adjacencyPanelVisible = false;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -546,13 +550,24 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_eurekaLabel);
         GD.Print("[G5] 尤里卡系统初始化完成 — 按H查看尤里卡进度");
 
+        // G6: 初始化邻接加成面板
+        _adjacencyLabel = new Label();
+        _adjacencyLabel.Name = "AdjacencyLabel";
+        _adjacencyLabel.Position = new Vector2(250, 130);
+        _adjacencyLabel.Size = new Vector2(280, 250);
+        _adjacencyLabel.Modulate = new Color(1f, 0.85f, 0.5f, 0.9f);
+        _adjacencyLabel.AddThemeFontSizeOverride("font_size", 11);
+        _adjacencyLabel.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_adjacencyLabel);
+        GD.Print("[G6] 邻接加成系统初始化完成 — 按J查看邻接加成");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
         GD.Print("★ 建造建议：电站→兵营→车厂→科技中心");
         GD.Print("★ 选中单位右键点敌方建筑/单位攻击");
         GD.Print("★ 选中建筑右键设集结点 | R维修 | V出售");
-        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区");
+        GD.Print("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成");
         GD.Print("========================================");
     }
 
@@ -761,6 +776,15 @@ public partial class Main : Node2D
         {
             _eurekaLabel.Visible = !_eurekaLabel.Visible;
             if (_eurekaLabel.Visible) UpdateEurekaPanel();
+            return;
+        }
+
+        // G6: J键查看邻接加成
+        if (kc == Key.J)
+        {
+            _adjacencyPanelVisible = !_adjacencyPanelVisible;
+            _adjacencyLabel.Visible = _adjacencyPanelVisible;
+            if (_adjacencyPanelVisible) UpdateAdjacencyPanel();
             return;
         }
 
@@ -1052,8 +1076,8 @@ public partial class Main : Node2D
     /// <summary>G1: 更新所有阵营的科技研究进度（每帧调用）。</summary>
     private void UpdateTechResearch(float dt)
     {
-        // G3: 战术卡研究速度加成
-        float playerResearchMul = GetCardResearchSpeedMul(0);
+        // G3: 战术卡研究速度加成 + G6: 邻接加成研究速度
+        float playerResearchMul = GetCardResearchSpeedMul(0) * GetAdjacencyResearchMul(0);
         // 玩家阵营
         var completed = _techProgress[0].UpdateResearch(dt * playerResearchMul);
         if (completed.HasValue)
@@ -1108,7 +1132,7 @@ public partial class Main : Node2D
         // AI研究完成处理
         for (int team = 1; team < TotalTeamCount; team++)
         {
-            float aiResearchMul = GetCardResearchSpeedMul(team);
+            float aiResearchMul = GetCardResearchSpeedMul(team) * GetAdjacencyResearchMul(team);
             var aiCompleted = _techProgress[team].UpdateResearch(dt * aiResearchMul);
             if (aiCompleted.HasValue)
             {
@@ -2319,7 +2343,9 @@ public partial class Main : Node2D
         {
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
             {
-                produced += b.PowerProvided;
+                // G6: 邻接加成 — 电站叠放/靠基地时发电量提升
+                float powMul = GetAdjacencyPowerMul(b);
+                produced += (int)(b.PowerProvided * powMul);
                 consumed += b.PowerConsumed;
             }
         }
@@ -4529,6 +4555,124 @@ public partial class Main : Node2D
             _money[teamId] += amount;
     }
 
+    // ======== G6: 邻接加成方法 ========
+
+    /// <summary>获取建筑的生产速度乘数（G4电网 + G6邻接）。</summary>
+    public float GetAdjacencyProduceMul(Building b)
+    {
+        var buildings = GetTeamBuildings(b.TeamId);
+        float adjMul = AdjacencyBonus.GetProduceSpeedMultiplier(buildings, b);
+        return adjMul;
+    }
+
+    /// <summary>获取建筑的发电量加成乘数（G6邻接）。</summary>
+    public float GetAdjacencyPowerMul(Building b)
+    {
+        if (b.Type != BuildingType.PowerPlant) return 1f;
+        var buildings = GetTeamBuildings(b.TeamId);
+        return AdjacencyBonus.GetPowerMultiplier(buildings, b);
+    }
+
+    /// <summary>获取防御塔的射程加成乘数（G6邻接）。</summary>
+    public float GetAdjacencyRangeMul(Building b)
+    {
+        if (!b.IsDefensive) return 1f;
+        var buildings = GetTeamBuildings(b.TeamId);
+        return AdjacencyBonus.GetAttackRangeMultiplier(buildings, b);
+    }
+
+    /// <summary>获取维修厂的维修速度加成乘数（G6邻接）。</summary>
+    public float GetAdjacencyRepairMul(Building b)
+    {
+        if (!b.IsRepairStation) return 1f;
+        var buildings = GetTeamBuildings(b.TeamId);
+        return AdjacencyBonus.GetRepairSpeedMultiplier(buildings, b);
+    }
+
+    /// <summary>获取阵营的研究速度加成乘数（G6邻接：科技中心靠电站）。</summary>
+    public float GetAdjacencyResearchMul(int teamId)
+    {
+        var buildings = GetTeamBuildings(teamId);
+        return AdjacencyBonus.GetResearchMultiplier(buildings, teamId);
+    }
+
+    /// <summary>更新邻接加成面板（J键）。</summary>
+    private void UpdateAdjacencyPanel()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══════════ 邻接加成 ═══════════ (J关闭)");
+        sb.AppendLine($"邻接范围: {AdjacencyBonus.AdjacencyRange}px");
+        sb.AppendLine();
+        sb.AppendLine("加成规则:");
+        sb.AppendLine("  电站+电站 → +15%发电/座");
+        sb.AppendLine("  电站+基地 → +10%发电");
+        sb.AppendLine("  兵营+兵营 → +10%生产/座");
+        sb.AppendLine("  车厂+车厂 → +10%生产/座");
+        sb.AppendLine("  炮塔+兵营 → +15%射程");
+        sb.AppendLine("  维修厂+车厂 → +25%维修速度");
+        sb.AppendLine("  科技+电站 → +15%研究速度");
+        sb.AppendLine();
+
+        var buildings = GetTeamBuildings(0);
+        sb.AppendLine("【玩家方建筑邻接状态】");
+        bool anyBonus = false;
+        foreach (var b in buildings)
+        {
+            if (!IsInstanceValid(b)) continue;
+            var bonuses = new List<string>();
+
+            if (b.Type == BuildingType.PowerPlant)
+            {
+                float powMul = AdjacencyBonus.GetPowerMultiplier(buildings, b);
+                if (powMul > 1f)
+                {
+                    bonuses.Add($"+{(powMul - 1f) * 100:F0}%发电");
+                    anyBonus = true;
+                }
+            }
+            if (b.Type == BuildingType.Barracks || b.Type == BuildingType.WarFactory)
+            {
+                float prodMul = AdjacencyBonus.GetProduceSpeedMultiplier(buildings, b);
+                if (prodMul > 1f)
+                {
+                    bonuses.Add($"+{(prodMul - 1f) * 100:F0}%生产");
+                    anyBonus = true;
+                }
+            }
+            if (b.IsDefensive)
+            {
+                float rangeMul = AdjacencyBonus.GetAttackRangeMultiplier(buildings, b);
+                if (rangeMul > 1f)
+                {
+                    bonuses.Add($"+{(rangeMul - 1f) * 100:F0}%射程");
+                    anyBonus = true;
+                }
+            }
+            if (b.IsRepairStation)
+            {
+                float repMul = AdjacencyBonus.GetRepairSpeedMultiplier(buildings, b);
+                if (repMul > 1f)
+                {
+                    bonuses.Add($"+{(repMul - 1f) * 100:F0}%维修");
+                    anyBonus = true;
+                }
+            }
+
+            string bonusStr = bonuses.Count > 0 ? string.Join(" ", bonuses) : "无加成";
+            sb.AppendLine($"  {b.BuildingName} [{bonusStr}]");
+        }
+
+        if (!anyBonus)
+            sb.AppendLine("\n提示: 将同类型建筑建在一起获得加成！");
+
+        // 研究速度加成
+        float resMul = AdjacencyBonus.GetResearchMultiplier(buildings, 0);
+        if (resMul > 1f)
+            sb.AppendLine($"\n研究速度加成: +{(resMul - 1f) * 100:F0}% (科技中心靠近电站)");
+
+        _adjacencyLabel.Text = sb.ToString();
+    }
+
     // ======== G5: 尤里卡时刻方法 ========
 
     /// <summary>击杀单位触发尤里卡（军事分支）。</summary>
@@ -4762,7 +4906,8 @@ public partial class Main : Node2D
                           "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)\n" +
                           "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)\n" +
                           "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率\n" +
-                          "G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技";
+                          "G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技\n" +
+                          "G6: J 查看邻接加成 | 同类建筑紧邻建造获得加成";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)
