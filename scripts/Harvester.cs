@@ -189,6 +189,9 @@ public partial class Harvester : Unit
                             }
                         }
                         HomeBase.Deposit(deposit);
+                        // G5: 采集触发尤里卡
+                        if (GetParent()?.GetParent() is Main harvMain)
+                            harvMain.OnEurekaMoney(TeamId, (int)deposit);
                     }
                     _cargo = 0f;
                     _state = HState.Idle;

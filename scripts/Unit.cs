@@ -59,6 +59,8 @@ public partial class Unit : CharacterBody2D
     protected bool _isDead;
     /// <summary>单位是否已死亡（公开只读访问）。</summary>
     public bool IsDead => _isDead;
+    /// <summary>G5: 最后攻击方阵营（尤里卡用）。</summary>
+    public int _lastAttackerTeam = -1;
     private float _hitFlashTimer;
     private Color _bodyTint = Colors.White;
     private Color _turretTint = Colors.White;
@@ -1535,6 +1537,8 @@ public partial class Unit : CharacterBody2D
                         // E11：穿甲弹 +25%对重甲单位
                         if (_abilities.Contains(UnitAbility.ArmorPiercing) && IsHeavyUnit(_attackUnitTarget.Type))
                             dmg *= 1.25f;
+                        // G5: 记录攻击者阵营（尤里卡用）
+                        _attackUnitTarget._lastAttackerTeam = TeamId;
                         _attackUnitTarget.TakeDamage(dmg);
                         // E11：散射能力——额外溅射60px范围
                         if (_abilities.Contains(UnitAbility.Scatter) && GetParent() is Node2D sp)
@@ -1612,6 +1616,8 @@ public partial class Unit : CharacterBody2D
                             dmgB *= 2f;
                         if (_abilities.Contains(UnitAbility.ArmorPiercing))
                             dmgB *= 1.25f;
+                        // G5: 记录攻击者阵营（尤里卡用）
+                        _attackBuildingTarget._lastAttackerTeam = TeamId;
                         _attackBuildingTarget.TakeDamage(dmgB);
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackBuildingTarget.GlobalPosition);
@@ -1937,6 +1943,10 @@ public partial class Unit : CharacterBody2D
         // 阶段12-C：单位死亡音效
         if (GetParent()?.GetParent() is Main mainNode)
             mainNode.PlayUnitDeathSfx(Type);
+
+        // G5: 尤里卡 — 击杀者获得尤里卡进度
+        if (GetParent()?.GetParent() is Main eurekaMain && _lastAttackerTeam >= 0)
+            eurekaMain.OnEurekaKill(_lastAttackerTeam);
 
         QueueFree();
     }

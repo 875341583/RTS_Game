@@ -205,4 +205,22 @@ public class TechProgress
     public float Progress => CurrentlyResearching.HasValue && TechTree.Nodes[CurrentlyResearching.Value].ResearchTime > 0f
         ? Mathf.Clamp(1f - ResearchTimer / TechTree.Nodes[CurrentlyResearching.Value].ResearchTime, 0f, 1f)
         : 0f;
+
+    /// <summary>G5: 尤里卡强制完成当前研究（清空状态，不加到Completed）。</summary>
+    public void ForceClearResearch()
+    {
+        CurrentlyResearching = null;
+        ResearchTimer = 0f;
+    }
+
+    /// <summary>G5: 尤里卡强制完成指定科技（加入Completed，不影响当前研究）。</summary>
+    public void ForceComplete(TechTree.TechId id)
+    {
+        if (CurrentlyResearching == id)
+        {
+            CurrentlyResearching = null;
+            ResearchTimer = 0f;
+        }
+        Completed.Add(id);
+    }
 }

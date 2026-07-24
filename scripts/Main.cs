@@ -267,6 +267,10 @@ public partial class Main : Node2D
     private Label _powerGridLabel = null!;
     private float _powerGridRefreshTimer = 0f;
 
+    // G5: 尤里卡时刻
+    private readonly EurekaSystem.TeamEureka[] _eureka = new EurekaSystem.TeamEureka[8];
+    private Label _eurekaLabel = null!;
+
     public override void _Ready()
     {
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
@@ -530,6 +534,18 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_powerGridLabel);
         GD.Print("[G4] 电网分区系统初始化完成 — 按G查看电网分布");
 
+        // G5: 初始化尤里卡系统
+        for (int i = 0; i < 8; i++) _eureka[i] = new EurekaSystem.TeamEureka();
+        _eurekaLabel = new Label();
+        _eurekaLabel.Name = "EurekaLabel";
+        _eurekaLabel.Position = new Vector2(770, 130);
+        _eurekaLabel.Size = new Vector2(200, 100);
+        _eurekaLabel.Modulate = new Color(0.7f, 1f, 0.7f, 0.9f);
+        _eurekaLabel.AddThemeFontSizeOverride("font_size", 11);
+        _eurekaLabel.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_eurekaLabel);
+        GD.Print("[G5] 尤里卡系统初始化完成 — 按H查看尤里卡进度");
+
         // 开局目标提示（控制台）
         GD.Print("========================================");
         GD.Print("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
@@ -737,6 +753,14 @@ public partial class Main : Node2D
             _powerGridPanelVisible = !_powerGridPanelVisible;
             _powerGridLabel.Visible = _powerGridPanelVisible;
             if (_powerGridPanelVisible) UpdatePowerGridPanel();
+            return;
+        }
+
+        // G5: H键查看尤里卡进度
+        if (kc == Key.H)
+        {
+            _eurekaLabel.Visible = !_eurekaLabel.Visible;
+            if (_eurekaLabel.Visible) UpdateEurekaPanel();
             return;
         }
 
@@ -3565,6 +3589,8 @@ public partial class Main : Node2D
         b.GlobalPosition = pos;
         b.TeamId = teamId;
         _buildingsNode.AddChild(b);
+        // G5: 建造触发尤里卡
+        OnEurekaBuild(teamId);
         return b;
     }
 
@@ -4503,6 +4529,105 @@ public partial class Main : Node2D
             _money[teamId] += amount;
     }
 
+    // ======== G5: 尤里卡时刻方法 ========
+
+    /// <summary>击杀单位触发尤里卡（军事分支）。</summary>
+    public void OnEurekaKill(int teamId)
+    {
+        if (teamId < 0 || teamId >= _eureka.Length) return;
+        if (!_eureka[teamId].OnKill()) return;
+        TriggerEureka(teamId, "军事", "击杀尤里卡");
+    }
+
+    /// <summary>建造建筑触发尤里卡（防御分支）。</summary>
+    public void OnEurekaBuild(int teamId)
+    {
+        if (teamId < 0 || teamId >= _eureka.Length) return;
+        if (!_eureka[teamId].OnBuild()) return;
+        TriggerEureka(teamId, "防御", "建造尤里卡");
+    }
+
+    /// <summary>采集资金触发尤里卡（经济分支）。</summary>
+    public void OnEurekaMoney(int teamId, int amount)
+    {
+        if (teamId < 0 || teamId >= _eureka.Length) return;
+        int triggers = _eureka[teamId].OnMoneyGained(amount);
+        for (int i = 0; i < triggers; i++)
+            TriggerEureka(teamId, "经济", "采集尤里卡");
+    }
+
+    /// <summary>击毁敌方建筑触发尤里卡（随机分支）。</summary>
+    public void OnEurekaDestroy(int teamId)
+    {
+        if (teamId < 0 || teamId >= _eureka.Length) return;
+        if (!_eureka[teamId].OnDestroy()) return;
+        // 击毁建筑触发随机分支尤里卡
+        string[] branches = { "军事", "经济", "防御" };
+        TriggerEureka(teamId, branches[GD.RandRange(0, 2)], "摧毁尤里卡");
+    }
+
+    /// <summary>执行尤里卡：找到该分支未研究的科技并直接完成。</summary>
+    private void TriggerEureka(int teamId, string branch, string reason)
+    {
+        if (teamId < 0 || teamId >= _techProgress.Length) return;
+        var tp = _techProgress[teamId];
+        if (tp == null) return;
+
+        var techId = EurekaSystem.GetUnresearchedInBranch(tp.Completed, tp.CurrentlyResearching, branch);
+        if (techId == null)
+        {
+            // 该分支已全部研究完成 → 资金补偿
+            int compensation = 200;
+            _money[teamId] += compensation;
+            if (teamId == 0)
+                ShowToast($"★ {reason}: {branch}分支已毕业！+${compensation}补偿", new Color(1f, 0.85f, 0.3f));
+            GD.Print($"[G5] Team {teamId} {reason}({branch}) — 分支已毕业，+${compensation}补偿");
+            return;
+        }
+
+        var tid = techId.Value;
+        var node = TechTree.Nodes[tid];
+
+        // 尤里卡强制完成该科技
+        tp.ForceComplete(tid);
+
+        ApplyTechEffects(teamId);
+
+        if (teamId == 0)
+            ShowToast($"★ {reason}！免费获得科技: {node.Name}", new Color(0.7f, 1f, 0.7f));
+        GD.Print($"[G5] Team {teamId} {reason} — 免费获得{branch}科技: {node.Name}");
+
+        // 刷新UI
+        if (_eurekaLabel.Visible) UpdateEurekaPanel();
+        if (_techTreePanelVisible) UpdateTechTreePanel();
+    }
+
+    /// <summary>更新尤里卡进度面板（H键）。</summary>
+    private void UpdateEurekaPanel()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("═══════════ 尤里卡时刻 ═══════════ (H关闭)");
+        sb.AppendLine($"击杀{EurekaSystem.KillThreshold}单位→军事 | 采集${EurekaSystem.MoneyThreshold}→经济");
+        sb.AppendLine($"建造{EurekaSystem.BuildThreshold}建筑→防御 | 摧毁{EurekaSystem.DestroyThreshold}建筑→随机");
+        sb.AppendLine();
+
+        // 玩家方
+        var p = _eureka[0];
+        sb.AppendLine("【玩家方】");
+        sb.AppendLine($"  击杀: {p.KillCounter}/{EurekaSystem.KillThreshold}  采集: ${p.MoneyAccumulated}/{EurekaSystem.MoneyThreshold}");
+        sb.AppendLine($"  建造: {p.BuildCounter}/{EurekaSystem.BuildThreshold}  摧毁: {p.DestroyCounter}/{EurekaSystem.DestroyThreshold}");
+        sb.AppendLine();
+
+        // AI方（活跃阵营）
+        for (int t = 1; t <= _activeAiCount; t++)
+        {
+            var a = _eureka[t];
+            sb.AppendLine($"【AI Team {t}】 杀{a.KillCounter}/{EurekaSystem.KillThreshold} 钱${a.MoneyAccumulated}/{EurekaSystem.MoneyThreshold} 建造{a.BuildCounter}/{EurekaSystem.BuildThreshold} 摧毁{a.DestroyCounter}/{EurekaSystem.DestroyThreshold}");
+        }
+
+        _eurekaLabel.Text = sb.ToString();
+    }
+
     /// <summary>获取指定阵营当前资金。</summary>
     public int GetMoney(int teamId)
     {
@@ -4636,7 +4761,8 @@ public partial class Main : Node2D
                           "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)\n" +
                           "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)\n" +
                           "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)\n" +
-                          "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率";
+                          "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率\n" +
+                          "G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技";
         if (_attackMoveMode)
             _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
         if (_nukeTargetMode)

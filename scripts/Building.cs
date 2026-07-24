@@ -28,6 +28,8 @@ public partial class Building : Area2D
     public void SetHealth(float value) { Health = Mathf.Clamp(value, 0f, MaxHealth); }
     public bool IsSelected { get; private set; }
     public int TeamId { get; set; } = 0;
+    /// <summary>G5: 最后攻击方阵营（尤里卡用）。</summary>
+    public int _lastAttackerTeam = -1;
     public BuildingType Type { get; set; } = BuildingType.Base;
     public int PowerProvided { get; set; } = 0;
     public int PowerConsumed { get; set; } = 0;
@@ -347,6 +349,7 @@ public partial class Building : Area2D
 
     public void TakeDamage(float damage)
     {
+        // G5: 接收Unit攻击代码传入的攻击者阵营
         Health -= damage;
         _hitFlashTimer = 0.1f; // Q5：受击闪白
         if (_healthBar != null)
@@ -366,6 +369,9 @@ public partial class Building : Area2D
             // 阶段12-C：建筑被毁音效
             if (GetParent()?.GetParent() is Main mainNode)
                 mainNode.PlayBuildingDestroyedSfx();
+            // G5: 尤里卡 — 击毁者获得尤里卡进度
+            if (GetParent()?.GetParent() is Main eurekaMain && _lastAttackerTeam >= 0)
+                eurekaMain.OnEurekaDestroy(_lastAttackerTeam);
             QueueFree();
         }
     }
@@ -608,6 +614,8 @@ public partial class Building : Area2D
                 if (target != null)
                 {
                     _turretAttackTimer = AttackCooldown;
+                    // G5: 记录攻击者阵营（尤里卡用）
+                    target._lastAttackerTeam = TeamId;
                     target.TakeDamage(AttackDamage);
                     // 视觉效果：炮口闪光 + 拖尾弹道（挂在 effects/Units 父节点上）
                     if (GetParent() is Node2D parentNode)
