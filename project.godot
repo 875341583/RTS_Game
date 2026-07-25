@@ -1,4 +1,4 @@
-; Engine configuration file.
+﻿; Engine configuration file.
 ; It's best edited using the editor UI and not directly,
 ; since the parameters that go here are not all obvious.
 ;
@@ -115,13 +115,13 @@ spawn_missile={
 
 [rendering]
 
-renderer/rendering_method="mobile"
+renderer/rendering_method="gl_compatibility"
 anti_aliasing/quality/msaa_2d="disabled"
 anti_aliasing/quality/msaa_3d="disabled"
 lights_and_shadows/directional_shadow/size=1024
 lights_and_shadows/positional_shadow/atlas_size=1024
 mesh_lod/lod_change/threshold_pixels=8.0
-occlusion_culling/use_occlusion_culling=true
+occlusion_culling/use_occlusion_culling=false
 
 [dotnet]
 

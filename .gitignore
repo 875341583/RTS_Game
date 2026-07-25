@@ -39,3 +39,7 @@ export/
 
 # Learnings
 .learnings/
+
+# Export v2.1 build output
+export_v21/
+
