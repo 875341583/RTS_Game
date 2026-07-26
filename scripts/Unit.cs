@@ -193,6 +193,12 @@ public partial class Unit : CharacterBody2D
     // 新素材朝右（RIGHT=0°），无需额外旋转偏移
     private const float SpriteRotationOffset = 0f;
 
+    // ---- P1-4: 多帧动画系统 ----
+    /// <summary>单位动画播放器（若该兵种有动画素材则激活，否则回退单帧）。</summary>
+    private UnitAnimationPlayer? _animPlayer = null;
+    /// <summary>是否在攻击中（用于动画状态机）。</summary>
+    private bool _isAttackingAnim = false;
+
     // ---- 8阵营色调色板（灰底素材用 Modulate 染色）----
     /// <summary>8阵营色（基于红警2原版8色，明度/色相优化辨识度）。索引=TeamId。超出范围取模。</summary>
     private static readonly Color[] TeamPalette =
@@ -271,7 +277,7 @@ public partial class Unit : CharacterBody2D
     }
 
     /// <summary>R3: 获取UnitType对应的等距精灵图名称。</summary>
-    private static string GetIsoSpriteName(UnitType type) => type switch
+    public static string GetIsoSpriteName(UnitType type) => type switch
     {
         UnitType.LightTank => "light_tank",
         UnitType.HeavyTank => "heavy_tank",
@@ -347,6 +353,26 @@ public partial class Unit : CharacterBody2D
             _body.Modulate = Colors.White; // 等距精灵已含队伍色
             _body.Scale = Vector2.One;
             if (_turret != null) _turret.Visible = false; // 等距精灵已含炮塔
+        }
+    }
+
+    /// <summary>P1-4: 由动画播放器调用，设置当前帧纹理。</summary>
+    public void SetAnimationFrame(Texture2D tex)
+    {
+        _body.Texture = tex;
+        _body.Rotation = 0f;
+        _body.Modulate = Colors.White; // 动画帧已含队伍色
+        _body.Scale = Vector2.One;
+        if (_turret != null) _turret.Visible = false; // 动画帧已含炮塔
+    }
+
+    /// <summary>P1-4: 触发攻击动画（在开火时调用）。</summary>
+    public void TriggerAttackAnimation()
+    {
+        if (_animPlayer != null && _animPlayer.HasAnimation && _lastDirIndex >= 0)
+        {
+            _isAttackingAnim = true;
+            _animPlayer.PlayAttack(_lastDirIndex);
         }
     }
 
@@ -796,6 +822,10 @@ public partial class Unit : CharacterBody2D
             _turretTint = teamColor;
         }
         // 矿车：底盘染色统一走 teamColor，无需分支
+
+        // P1-4: 初始化动画播放器（自动检测是否有动画素材）
+        _animPlayer = new UnitAnimationPlayer();
+        _animPlayer.Setup(this, Type);
     }
 
     public sealed override void _Process(double delta)
@@ -843,6 +873,15 @@ public partial class Unit : CharacterBody2D
 
         // 通用移动
         ProcessMovement(dt);
+
+        // P1-4: 多帧动画更新（如果该兵种有动画素材）
+        if (_animPlayer != null && _animPlayer.HasAnimation)
+        {
+            bool isMoving = Velocity != Vector2.Zero;
+            _animPlayer.Update(dt, isMoving, _isAttackingAnim, Math.Max(0, _lastDirIndex));
+            if (_animPlayer.AttackFinished)
+                _isAttackingAnim = false;
+        }
 
         // E6：搭载交互——步兵到达运输车附近后执行上车
         if (_embarkTarget != null && IsInstanceValid(_embarkTarget))
@@ -1377,6 +1416,8 @@ public partial class Unit : CharacterBody2D
                         }
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackUnitTarget.GlobalPosition);
+                        // P1-4: 触发攻击动画
+                        TriggerAttackAnimation();
                         // 溅射伤害：对目标周围敌方单位造成 50% 伤害
                         if (SplashRadius > 0f && GetParent() is Node2D parent)
                         {
@@ -1446,6 +1487,8 @@ public partial class Unit : CharacterBody2D
                         _attackBuildingTarget.TakeDamage(dmgB);
                         // Q5：开火视觉特效
                         SpawnFireEffects(_attackBuildingTarget.GlobalPosition);
+                        // P1-4: 触发攻击动画
+                        TriggerAttackAnimation();
                         _attackTimer = effectiveCooldown;
                         // E11：造成伤害获得经验
                         GainExperience(dmgB * 0.5f);
