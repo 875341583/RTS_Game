@@ -12,8 +12,9 @@ public enum BuildingType { Base, PowerPlant, Barracks, WarFactory, TechCenter, T
 
 /// <summary>
 /// 生产项类型：可由建筑排产的战斗单位或矿车。
+/// P1-5: 末尾追加 None/Sapper/ChiefEngineer（3D特有成员），原25个成员序号0-24不变，旧存档兼容。
 /// </summary>
-public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry, AntiAir, Engineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft }
+public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, Harvester, Infantry, AntiAir, Engineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft, None, Sapper, ChiefEngineer }
 
 /// <summary>
 /// 建筑/基地：可被选中、可被攻击。不同类型解锁不同单位生产。

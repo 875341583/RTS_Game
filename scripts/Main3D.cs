@@ -442,7 +442,7 @@ public partial class Main3D : Node3D
 
     // ======== 生产完成回调 ========
 
-    private void OnUnitProduced(Building3D.ProductionType prodType, Building3D producer)
+    private void OnUnitProduced(ProductionType prodType, Building3D producer)
     {
         var unitType = ProductionTypeToUnitType(prodType);
         if (unitType == UnitType.Default) return;
@@ -467,36 +467,36 @@ public partial class Main3D : Node3D
         }
     }
 
-    public static UnitType ProductionTypeToUnitType(Building3D.ProductionType pt) => pt switch
+    public static UnitType ProductionTypeToUnitType(ProductionType pt) => pt switch
     {
-        Building3D.ProductionType.Infantry => UnitType.Infantry,
-        Building3D.ProductionType.Engineer => UnitType.Engineer,
-        Building3D.ProductionType.Sapper => UnitType.Sapper,
-        Building3D.ProductionType.ChiefEngineer => UnitType.ChiefEngineer,
-        Building3D.ProductionType.Grenadier => UnitType.Grenadier,
-        Building3D.ProductionType.Sniper => UnitType.Sniper,
-        Building3D.ProductionType.FlameInfantry => UnitType.FlameInfantry,
-        Building3D.ProductionType.LightTank => UnitType.LightTank,
-        Building3D.ProductionType.HeavyTank => UnitType.HeavyTank,
-        Building3D.ProductionType.Artillery => UnitType.Artillery,
-        Building3D.ProductionType.RocketLauncher => UnitType.RocketLauncher,
-        Building3D.ProductionType.MissileTank => UnitType.MissileTank,
-        Building3D.ProductionType.AntiAir => UnitType.AntiAir,
-        Building3D.ProductionType.Harvester => UnitType.Harvester,
-        Building3D.ProductionType.Transport => UnitType.Transport,
-        Building3D.ProductionType.Hero => UnitType.Hero,
-        Building3D.ProductionType.Spy => UnitType.Spy,
-        Building3D.ProductionType.Thief => UnitType.Thief,
-        Building3D.ProductionType.Fighter => UnitType.Fighter,
-        Building3D.ProductionType.Helicopter => UnitType.Helicopter,
-        Building3D.ProductionType.RocketInfantry => UnitType.RocketInfantry,
-        Building3D.ProductionType.Bomber => UnitType.Bomber,
-        Building3D.ProductionType.Scout => UnitType.Scout,
-        Building3D.ProductionType.TransportHeli => UnitType.TransportHeli,
-        Building3D.ProductionType.Destroyer => UnitType.Destroyer,
-        Building3D.ProductionType.Submarine => UnitType.Submarine,
-        Building3D.ProductionType.AircraftCarrier => UnitType.AircraftCarrier,
-        Building3D.ProductionType.LandingCraft => UnitType.LandingCraft,
+        ProductionType.Infantry => UnitType.Infantry,
+        ProductionType.Engineer => UnitType.Engineer,
+        ProductionType.Sapper => UnitType.Sapper,
+        ProductionType.ChiefEngineer => UnitType.ChiefEngineer,
+        ProductionType.Grenadier => UnitType.Grenadier,
+        ProductionType.Sniper => UnitType.Sniper,
+        ProductionType.FlameInfantry => UnitType.FlameInfantry,
+        ProductionType.LightTank => UnitType.LightTank,
+        ProductionType.HeavyTank => UnitType.HeavyTank,
+        ProductionType.Artillery => UnitType.Artillery,
+        ProductionType.RocketLauncher => UnitType.RocketLauncher,
+        ProductionType.MissileTank => UnitType.MissileTank,
+        ProductionType.AntiAir => UnitType.AntiAir,
+        ProductionType.Harvester => UnitType.Harvester,
+        ProductionType.Transport => UnitType.Transport,
+        ProductionType.Hero => UnitType.Hero,
+        ProductionType.Spy => UnitType.Spy,
+        ProductionType.Thief => UnitType.Thief,
+        ProductionType.Fighter => UnitType.Fighter,
+        ProductionType.Helicopter => UnitType.Helicopter,
+        ProductionType.RocketInfantry => UnitType.RocketInfantry,
+        ProductionType.Bomber => UnitType.Bomber,
+        ProductionType.Scout => UnitType.Scout,
+        ProductionType.TransportHeli => UnitType.TransportHeli,
+        ProductionType.Destroyer => UnitType.Destroyer,
+        ProductionType.Submarine => UnitType.Submarine,
+        ProductionType.AircraftCarrier => UnitType.AircraftCarrier,
+        ProductionType.LandingCraft => UnitType.LandingCraft,
         _ => UnitType.Default,
     };
 
@@ -1453,44 +1453,44 @@ public partial class Main3D : Node3D
             if (wf != null && _money[teamId] >= UnitCosts[UnitType.Harvester])
             {
                 if (SpendMoney(teamId, UnitCosts[UnitType.Harvester]))
-                    wf.EnqueueProduction(Building3D.ProductionType.Harvester);
+                    wf.EnqueueProduction(ProductionType.Harvester);
                 return;
             }
         }
 
         // 随机造兵
         var rng = new Random();
-        var productionTypes = new List<(Building3D.ProductionType pt, int cost)>();
+        var productionTypes = new List<(ProductionType pt, int cost)>();
 
         // 兵营可造
         if (HasBuilding(teamId, BuildingType.Barracks))
         {
-            productionTypes.Add((Building3D.ProductionType.Infantry, 100));
-            productionTypes.Add((Building3D.ProductionType.Grenadier, 200));
+            productionTypes.Add((ProductionType.Infantry, 100));
+            productionTypes.Add((ProductionType.Grenadier, 200));
             if (HasBuilding(teamId, BuildingType.TechCenter))
             {
-                productionTypes.Add((Building3D.ProductionType.Sniper, 250));
-                productionTypes.Add((Building3D.ProductionType.Sapper, 150));
+                productionTypes.Add((ProductionType.Sniper, 250));
+                productionTypes.Add((ProductionType.Sapper, 150));
             }
         }
         // 车厂可造
         if (HasBuilding(teamId, BuildingType.WarFactory))
         {
-            productionTypes.Add((Building3D.ProductionType.LightTank, 200));
+            productionTypes.Add((ProductionType.LightTank, 200));
             if (HasBuilding(teamId, BuildingType.TechCenter))
             {
-                productionTypes.Add((Building3D.ProductionType.HeavyTank, 500));
-                productionTypes.Add((Building3D.ProductionType.Artillery, 400));
-                productionTypes.Add((Building3D.ProductionType.RocketLauncher, 450));
-                productionTypes.Add((Building3D.ProductionType.MissileTank, 600));
+                productionTypes.Add((ProductionType.HeavyTank, 500));
+                productionTypes.Add((ProductionType.Artillery, 400));
+                productionTypes.Add((ProductionType.RocketLauncher, 450));
+                productionTypes.Add((ProductionType.MissileTank, 600));
             }
-            productionTypes.Add((Building3D.ProductionType.AntiAir, 300));
+            productionTypes.Add((ProductionType.AntiAir, 300));
         }
         // 机场可造
         if (HasBuilding(teamId, BuildingType.Airfield))
         {
-            productionTypes.Add((Building3D.ProductionType.Fighter, 500));
-            productionTypes.Add((Building3D.ProductionType.Helicopter, 600));
+            productionTypes.Add((ProductionType.Fighter, 500));
+            productionTypes.Add((ProductionType.Helicopter, 600));
         }
 
         // 按造价降序尝试
@@ -1503,13 +1503,13 @@ public partial class Main3D : Node3D
             Building3D? producer = null;
             BuildingType requiredType = pt switch
             {
-                Building3D.ProductionType.Infantry or Building3D.ProductionType.Grenadier
-                or Building3D.ProductionType.Sniper or Building3D.ProductionType.Sapper
-                or Building3D.ProductionType.ChiefEngineer or Building3D.ProductionType.FlameInfantry
-                or Building3D.ProductionType.Engineer => BuildingType.Barracks,
-                Building3D.ProductionType.Fighter or Building3D.ProductionType.Helicopter
-                or Building3D.ProductionType.Bomber or Building3D.ProductionType.Scout
-                or Building3D.ProductionType.TransportHeli or Building3D.ProductionType.RocketInfantry
+                ProductionType.Infantry or ProductionType.Grenadier
+                or ProductionType.Sniper or ProductionType.Sapper
+                or ProductionType.ChiefEngineer or ProductionType.FlameInfantry
+                or ProductionType.Engineer => BuildingType.Barracks,
+                ProductionType.Fighter or ProductionType.Helicopter
+                or ProductionType.Bomber or ProductionType.Scout
+                or ProductionType.TransportHeli or ProductionType.RocketInfantry
                 => BuildingType.Airfield,
                 _ => BuildingType.WarFactory,
             };
@@ -1919,32 +1919,32 @@ public partial class Main3D : Node3D
         UpdateProductionPanel();
     }
 
-    private static string ProdTypeName(Building3D.ProductionType pt) => pt switch
+    private static string ProdTypeName(ProductionType pt) => pt switch
     {
-        Building3D.ProductionType.Infantry => "步兵",
-        Building3D.ProductionType.Engineer => "工程师",
-        Building3D.ProductionType.Sapper => "爆破手",
-        Building3D.ProductionType.ChiefEngineer => "主工",
-        Building3D.ProductionType.Grenadier => "掷弹兵",
-        Building3D.ProductionType.Sniper => "狙击手",
-        Building3D.ProductionType.FlameInfantry => "火焰兵",
-        Building3D.ProductionType.LightTank => "轻坦",
-        Building3D.ProductionType.HeavyTank => "重坦",
-        Building3D.ProductionType.Artillery => "炮兵",
-        Building3D.ProductionType.RocketLauncher => "火箭炮",
-        Building3D.ProductionType.MissileTank => "导弹车",
-        Building3D.ProductionType.AntiAir => "防空",
-        Building3D.ProductionType.Harvester => "矿车",
-        Building3D.ProductionType.Transport => "运输车",
-        Building3D.ProductionType.Hero => "英雄",
-        Building3D.ProductionType.Spy => "间谍",
-        Building3D.ProductionType.Thief => "窃贼",
-        Building3D.ProductionType.Fighter => "战机",
-        Building3D.ProductionType.Helicopter => "直升机",
-        Building3D.ProductionType.RocketInfantry => "火箭兵",
-        Building3D.ProductionType.Bomber => "轰炸机",
-        Building3D.ProductionType.Scout => "侦察机",
-        Building3D.ProductionType.TransportHeli => "运输机",
+        ProductionType.Infantry => "步兵",
+        ProductionType.Engineer => "工程师",
+        ProductionType.Sapper => "爆破手",
+        ProductionType.ChiefEngineer => "主工",
+        ProductionType.Grenadier => "掷弹兵",
+        ProductionType.Sniper => "狙击手",
+        ProductionType.FlameInfantry => "火焰兵",
+        ProductionType.LightTank => "轻坦",
+        ProductionType.HeavyTank => "重坦",
+        ProductionType.Artillery => "炮兵",
+        ProductionType.RocketLauncher => "火箭炮",
+        ProductionType.MissileTank => "导弹车",
+        ProductionType.AntiAir => "防空",
+        ProductionType.Harvester => "矿车",
+        ProductionType.Transport => "运输车",
+        ProductionType.Hero => "英雄",
+        ProductionType.Spy => "间谍",
+        ProductionType.Thief => "窃贼",
+        ProductionType.Fighter => "战机",
+        ProductionType.Helicopter => "直升机",
+        ProductionType.RocketInfantry => "火箭兵",
+        ProductionType.Bomber => "轰炸机",
+        ProductionType.Scout => "侦察机",
+        ProductionType.TransportHeli => "运输机",
         _ => pt.ToString(),
     };
 
@@ -2389,37 +2389,37 @@ public partial class Main3D : Node3D
         producer.EnqueueProduction(prodType);
     }
 
-    public static Building3D.ProductionType UnitTypeToProductionType(UnitType type) => type switch
+    public static ProductionType UnitTypeToProductionType(UnitType type) => type switch
     {
-        UnitType.Infantry => Building3D.ProductionType.Infantry,
-        UnitType.Engineer => Building3D.ProductionType.Engineer,
-        UnitType.Sapper => Building3D.ProductionType.Sapper,
-        UnitType.ChiefEngineer => Building3D.ProductionType.ChiefEngineer,
-        UnitType.Grenadier => Building3D.ProductionType.Grenadier,
-        UnitType.Sniper => Building3D.ProductionType.Sniper,
-        UnitType.FlameInfantry => Building3D.ProductionType.FlameInfantry,
-        UnitType.LightTank => Building3D.ProductionType.LightTank,
-        UnitType.HeavyTank => Building3D.ProductionType.HeavyTank,
-        UnitType.Artillery => Building3D.ProductionType.Artillery,
-        UnitType.RocketLauncher => Building3D.ProductionType.RocketLauncher,
-        UnitType.MissileTank => Building3D.ProductionType.MissileTank,
-        UnitType.AntiAir => Building3D.ProductionType.AntiAir,
-        UnitType.Harvester => Building3D.ProductionType.Harvester,
-        UnitType.Transport => Building3D.ProductionType.Transport,
-        UnitType.Hero => Building3D.ProductionType.Hero,
-        UnitType.Spy => Building3D.ProductionType.Spy,
-        UnitType.Thief => Building3D.ProductionType.Thief,
-        UnitType.Fighter => Building3D.ProductionType.Fighter,
-        UnitType.Helicopter => Building3D.ProductionType.Helicopter,
-        UnitType.RocketInfantry => Building3D.ProductionType.RocketInfantry,
-        UnitType.Bomber => Building3D.ProductionType.Bomber,
-        UnitType.Scout => Building3D.ProductionType.Scout,
-        UnitType.TransportHeli => Building3D.ProductionType.TransportHeli,
-        UnitType.Destroyer => Building3D.ProductionType.Destroyer,
-        UnitType.Submarine => Building3D.ProductionType.Submarine,
-        UnitType.AircraftCarrier => Building3D.ProductionType.AircraftCarrier,
-        UnitType.LandingCraft => Building3D.ProductionType.LandingCraft,
-        _ => Building3D.ProductionType.None,
+        UnitType.Infantry => ProductionType.Infantry,
+        UnitType.Engineer => ProductionType.Engineer,
+        UnitType.Sapper => ProductionType.Sapper,
+        UnitType.ChiefEngineer => ProductionType.ChiefEngineer,
+        UnitType.Grenadier => ProductionType.Grenadier,
+        UnitType.Sniper => ProductionType.Sniper,
+        UnitType.FlameInfantry => ProductionType.FlameInfantry,
+        UnitType.LightTank => ProductionType.LightTank,
+        UnitType.HeavyTank => ProductionType.HeavyTank,
+        UnitType.Artillery => ProductionType.Artillery,
+        UnitType.RocketLauncher => ProductionType.RocketLauncher,
+        UnitType.MissileTank => ProductionType.MissileTank,
+        UnitType.AntiAir => ProductionType.AntiAir,
+        UnitType.Harvester => ProductionType.Harvester,
+        UnitType.Transport => ProductionType.Transport,
+        UnitType.Hero => ProductionType.Hero,
+        UnitType.Spy => ProductionType.Spy,
+        UnitType.Thief => ProductionType.Thief,
+        UnitType.Fighter => ProductionType.Fighter,
+        UnitType.Helicopter => ProductionType.Helicopter,
+        UnitType.RocketInfantry => ProductionType.RocketInfantry,
+        UnitType.Bomber => ProductionType.Bomber,
+        UnitType.Scout => ProductionType.Scout,
+        UnitType.TransportHeli => ProductionType.TransportHeli,
+        UnitType.Destroyer => ProductionType.Destroyer,
+        UnitType.Submarine => ProductionType.Submarine,
+        UnitType.AircraftCarrier => ProductionType.AircraftCarrier,
+        UnitType.LandingCraft => ProductionType.LandingCraft,
+        _ => ProductionType.None,
     };
 
     // ======== 建筑放置 ========

@@ -10,22 +10,8 @@ namespace RTSGame;
 /// </summary>
 public partial class Building3D : Area3D
 {
-    // P1-5第1步: BuildingType 嵌套枚举已删除，统一引用全局 RTSGame.BuildingType（成员/顺序完全一致）。
-    // 3D特有的 ProductionType 暂保留嵌套（含 None/Sapper/ChiefEngineer 等成员差异，第2步接口层统一）。
-    public enum ProductionType
-    {
-        None,
-        // 步兵
-        Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry,
-        // 载具
-        LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Harvester, Transport,
-        // 特殊
-        Hero, Spy, Thief,
-        // 空军
-        Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli,
-        // 海军
-        Destroyer, Submarine, AircraftCarrier, LandingCraft,
-    }
+    // P1-5: BuildingType 与 ProductionType 嵌套枚举均已删除，统一引用全局 RTSGame.BuildingType / RTSGame.ProductionType。
+    // 全局 ProductionType 末尾追加了 None/Sapper/ChiefEngineer（3D特有成员），原25个成员序号不变，2D存档兼容。
 
     public BuildingType Type { get; set; } = BuildingType.Base;
     public int TeamId { get; set; } = 0;
