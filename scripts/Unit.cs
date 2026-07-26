@@ -53,6 +53,12 @@ public partial class Unit : CharacterBody2D
     // 子类可访问的移动状态
     protected Vector2 _moveTarget;
     protected bool _hasMoveTarget;
+    // P0-1: A*寻路路径跟踪
+    private List<Vector2> _path = new();
+    private int _pathIndex;
+    private bool _hasPath;
+    private float _pathRepathCooldown;
+    private Vector2 _lastPathTarget; // 上次计算路径时的目标，用于检测目标变更
     private Unit? _attackUnitTarget;
     private Building? _attackBuildingTarget;
     private float _attackTimer;
@@ -1716,9 +1722,22 @@ public partial class Unit : CharacterBody2D
 
         if (_hasMoveTarget)
         {
-            var direction = (_moveTarget - GlobalPosition);
+            // P0-1: A*寻路路径跟随
+            Vector2 currentTarget = _moveTarget; // 默认直线移动目标
+            bool usePathfinding = false;
+            if (!IsAirUnit)
+            {
+                usePathfinding = TryGetPathTarget(out currentTarget, dt);
+            }
+
+            var direction = (currentTarget - GlobalPosition);
             var distance = direction.Length();
-            if (distance > 5f)
+
+            // H1修复：使用PathFinder的路径点阈值，最终目标用更小阈值确保精确到达
+            bool isLastWaypoint = !usePathfinding || !_hasPath || _pathIndex >= _path.Count - 1;
+            float threshold = isLastWaypoint ? 5f : PathFinder.GetWaypointThreshold();
+
+            if (distance > threshold)
             {
                 direction = direction.Normalized();
 
@@ -1751,14 +1770,102 @@ public partial class Unit : CharacterBody2D
             }
             else
             {
-                Velocity = Vector2.Zero;
-                _hasMoveTarget = false;
+                // 到达当前路径点
+                if (usePathfinding && _hasPath && _pathIndex < _path.Count - 1)
+                {
+                    // 前进到下一个路径点
+                    _pathIndex++;
+                }
+                else
+                {
+                    // 到达最终目标
+                    Velocity = Vector2.Zero;
+                    _hasMoveTarget = false;
+                    _hasPath = false;
+                }
             }
         }
         else
         {
             Velocity = Vector2.Zero;
         }
+    }
+
+    /// <summary>
+    /// P0-1: 尝试获取A*路径上的下一个目标点。
+    /// 如果没有有效路径或PathFinder不可用，返回false（调用方退回直线移动）。
+    /// C2修复：检测_moveTarget变更时使旧路径失效（节流重算）。
+    /// M1修复：cooldown用实际dt递减。
+    /// </summary>
+    private bool TryGetPathTarget(out Vector2 target, float dt)
+    {
+        target = _moveTarget;
+
+        // C2修复：目标变更时使路径失效（追击移动目标时路径自动刷新）
+        if (_hasPath && _moveTarget.DistanceSquaredTo(_lastPathTarget) > 50f * 50f)
+        {
+            _hasPath = false;
+            _path.Clear();
+            _pathIndex = 0;
+        }
+
+        if (_hasPath && _path.Count > 0 && _pathIndex < _path.Count)
+        {
+            target = _path[_pathIndex];
+            return true;
+        }
+
+        // 路径耗尽或不存在，尝试重新计算
+        if (_pathRepathCooldown > 0f)
+        {
+            _pathRepathCooldown -= dt;
+            return false;
+        }
+
+        if (GetParent()?.GetParent() is Main mainNode)
+        {
+            var pathfinder = mainNode.GetPathFinder();
+            if (pathfinder != null)
+            {
+                var cat = GetTerrainCategory();
+                var newPath = pathfinder.FindPath(GlobalPosition, _moveTarget, cat);
+                if (newPath.Count > 0)
+                {
+                    _path = newPath;
+                    _pathIndex = 0;
+                    _hasPath = true;
+                    _lastPathTarget = _moveTarget;
+                    target = _path[0];
+                    return true;
+                }
+                else
+                {
+                    // 无可行路径，设冷却避免每帧重算
+                    _pathRepathCooldown = 0.5f;
+                    _hasPath = false;
+                    return false;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>P0-1: 清除当前路径（移动命令变更时调用）。</summary>
+    private void ClearPath()
+    {
+        _hasPath = false;
+        _path.Clear();
+        _pathIndex = 0;
+        _pathRepathCooldown = 0f; // 命令变更时允许立即重算
+    }
+
+    /// <summary>P0-1: 清除路径但保留重算冷却（停止命令用，避免误触发重算）。</summary>
+    private void ClearPathKeepCooldown()
+    {
+        _hasPath = false;
+        _path.Clear();
+        _pathIndex = 0;
     }
 
     /// <summary>获取当前单位的地形类别（用于速度修正查询）。</summary>
@@ -1885,6 +1992,8 @@ public partial class Unit : CharacterBody2D
         // 玩家下令时更新守卫位置为新的目的地
         _guardPosition = target;
         _hasGuardPosition = true;
+        // P0-1: 清除旧路径，让ProcessMovement重新计算A*路径
+        ClearPath();
     }
 
     /// <summary>攻击移动：移动到目标位置，途中遇敌自动接敌，消灭后继续前进。</summary>
@@ -1896,6 +2005,8 @@ public partial class Unit : CharacterBody2D
         _hasMoveTarget = true;
         _attackUnitTarget = null;
         _attackBuildingTarget = null;
+        // P0-1: 清除旧路径
+        ClearPath();
     }
 
     /// <summary>停止：取消一切命令，原地转为守卫。</summary>
@@ -1908,6 +2019,8 @@ public partial class Unit : CharacterBody2D
         Velocity = Vector2.Zero;
         _guardPosition = GlobalPosition;
         _hasGuardPosition = true;
+        // P0-1: 清除路径，保留冷却避免误重算
+        ClearPathKeepCooldown();
     }
 
     public virtual void CommandAttack(Unit target)
@@ -1934,6 +2047,8 @@ public partial class Unit : CharacterBody2D
         _hasMoveTarget = true;
         _attackUnitTarget = null;
         _attackBuildingTarget = null;
+        // P0-1: 清除旧路径
+        ClearPath();
         GD.Print($"[G7] 间谍开始任务: {SpyMission.MissionName(mission)} → {target.BuildingName}");
     }
 
@@ -2000,8 +2115,8 @@ public partial class Unit : CharacterBody2D
     /// <summary>G1: 获取科技攻击力乘数。</summary>
     public float TechDamageMultiplier => _techDamageMul;
 
-    protected void MoveTo(Vector2 target) { _moveTarget = target; _hasMoveTarget = true; }
-    protected void StopMove() { _hasMoveTarget = false; Velocity = Vector2.Zero; }
+    protected void MoveTo(Vector2 target) { _moveTarget = target; _hasMoveTarget = true; ClearPath(); }
+    protected void StopMove() { _hasMoveTarget = false; Velocity = Vector2.Zero; ClearPath(); }
 
     private void UpdateHealthBarVisibility()
     {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
@@ -19,6 +20,9 @@ public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, Mi
 /// </summary>
 public partial class Building : Area2D
 {
+    /// <summary>P0-1: 建筑被摧毁/出售时触发，供Main移除PathFinder障碍。</summary>
+    public event Action<Building>? Destroyed;
+
     [Export] public float MaxHealth { get; set; } = 1000f;
     [Export] public string BuildingName { get; set; } = "建造厂";
 
@@ -384,6 +388,8 @@ public partial class Building : Area2D
             // G5: 尤里卡 — 击毁者获得尤里卡进度
             if (GetParent()?.GetParent() is Main eurekaMain && _lastAttackerTeam >= 0)
                 eurekaMain.OnEurekaDestroy(_lastAttackerTeam);
+            // P0-1: 通知Main移除PathFinder障碍（在QueueFree前触发，此时位置仍有效）
+            Destroyed?.Invoke(this);
             QueueFree();
         }
     }

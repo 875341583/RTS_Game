@@ -21,6 +21,7 @@ public partial class Harvester : Unit
     private float _timer;
     private float _cargo;
     private HState _preFleeState;
+    private float _fleeThinkTimer; // P0-1: 逃离状态思考冷却，避免每帧重算A*
     /// <summary>所属基地引用。Main 初始化时设置。</summary>
     public Building? HomeBase { get; set; }
 
@@ -73,10 +74,16 @@ public partial class Harvester : Unit
                 // 朝远离敌人的方向逃，同时向基地靠近
                 if (HomeBase != null && IsInstanceValid(HomeBase))
                 {
-                    var fleeDir = (GlobalPosition - threat.GlobalPosition).Normalized();
-                    var toBase = (HomeBase.GlobalPosition - GlobalPosition).Normalized();
-                    var fleePos = GlobalPosition + (fleeDir * 0.6f + toBase * 0.4f) * 200f;
-                    MoveTo(fleePos);
+                    // P0-1: 节流A*重算频率（每0.2秒才重新算路径）
+                    _fleeThinkTimer -= dt;
+                    if (_fleeThinkTimer <= 0f)
+                    {
+                        _fleeThinkTimer = 0.2f;
+                        var fleeDir = (GlobalPosition - threat.GlobalPosition).Normalized();
+                        var toBase = (HomeBase.GlobalPosition - GlobalPosition).Normalized();
+                        var fleePos = GlobalPosition + (fleeDir * 0.6f + toBase * 0.4f) * 200f;
+                        MoveTo(fleePos);
+                    }
                 }
                 break;
             }

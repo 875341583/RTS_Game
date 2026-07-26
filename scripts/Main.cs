@@ -237,6 +237,11 @@ public partial class Main : Node2D
     /// <summary>获取地形网格（供Unit等查询速度修正和通行性）。</summary>
     public TerrainGrid GetTerrainGrid() => _terrain;
 
+    // ---- P0-1: A*寻路系统 ----
+    private PathFinder? _pathFinder;
+    /// <summary>获取全局PathFinder实例（可能为null，调用方需判空）。</summary>
+    public PathFinder? GetPathFinder() => _pathFinder;
+
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
     private bool _attackMoveMode;
@@ -364,6 +369,10 @@ public partial class Main : Node2D
         foreach (var kv in stats)
             GD.Print($"  {kv.Key}: {kv.Value}格");
         CreateGround();
+
+        // P0-1: 创建A*寻路器（基于地形栅格）
+        _pathFinder = new PathFinder(_terrain);
+        GD.Print("[PathFinder] A*寻路器已创建");
 
         // ---- 初始化 8 阵营 ----
         // 阵营起始位置：等距坐标下的网格位置 → 等距屏幕坐标
@@ -954,6 +963,9 @@ public partial class Main : Node2D
                 b.SetSelected(false);
                 _selected.Remove(b);
                 GD.Print($"[出售] {b.BuildingName} 已出售，回收 ${refund}，资金 ${_money[0]}");
+                // P0-1: 移除PathFinder障碍并取消事件订阅（H4修复）
+                OnBuildingDestroyed(b);
+                b.Destroyed -= OnBuildingDestroyed;
                 b.QueueFree();
             }
             if (toSell.Count == 0)
@@ -3806,10 +3818,29 @@ public partial class Main : Node2D
         b.InitAsType(type);
         b.GlobalPosition = pos;
         b.TeamId = teamId;
+        b.Destroyed += OnBuildingDestroyed;
         _buildingsNode.AddChild(b);
         // G5: 建造触发尤里卡
         OnEurekaBuild(teamId);
+        // P0-1: 注册建筑障碍到PathFinder
+        RegisterBuildingObstacle(b);
         return b;
+    }
+
+    /// <summary>P0-1: 将建筑位置注册为PathFinder障碍（3×3格子）。</summary>
+    private void RegisterBuildingObstacle(Building b)
+    {
+        if (_pathFinder == null) return;
+        _terrain.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
+        _pathFinder.AddBuilding(gx, gy, 1);
+    }
+
+    /// <summary>P0-1: 建筑被摧毁/出售时的回调，移除PathFinder障碍。</summary>
+    private void OnBuildingDestroyed(Building b)
+    {
+        if (_pathFinder == null) return;
+        _terrain.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
+        _pathFinder.RemoveBuilding(gx, gy, 1);
     }
 
     // ---------- G2 生产系统辅助 ----------
