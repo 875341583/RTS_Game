@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'b983e263-0c54-461f-bece-448a2ad1ccc5'
-  PropagateID: 'b983e263-0c54-461f-bece-448a2ad1ccc5'
-  ReservedCode1: 'fb8dee0f-0c27-4c57-ad8b-5df1e1fb1fb6'
-  ReservedCode2: 'fb8dee0f-0c27-4c57-ad8b-5df1e1fb1fb6'
+  ProduceID: 'da3c7311-e849-4f32-9307-b1b85b35232e'
+  PropagateID: 'da3c7311-e849-4f32-9307-b1b85b35232e'
+  ReservedCode1: '1c605d8a-319f-485f-8ba2-8297d69e0a88'
+  ReservedCode2: '1c605d8a-319f-485f-8ba2-8297d69e0a88'
 ---
 
 # 红警复刻 RTS
@@ -42,6 +42,31 @@ dotnet build
 ```
 
 在 Godot 编辑器中打开项目，按 F5 运行，或通过 导出 > Windows Desktop 生成可执行文件。
+
+## 测试
+
+单元测试项目位于 `tests/RTSGame.Tests/`，使用 xUnit 框架，覆盖可脱离 Godot 运行时的纯逻辑类。
+
+```
+cd tests/RTSGame.Tests
+dotnet test
+```
+
+覆盖率报告（需 coverlet）：
+
+```
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+当前覆盖的核心纯逻辑类（平均 95.5%）：
+
+| 类 | 覆盖率 | 说明 |
+|----|--------|------|
+| TechTree / TechProgress | 99%+ | 科技研究前置/计时/存档恢复 |
+| EraSystem / EraProgress | 97%+ | 时代加成/门控/升级/存档恢复 |
+| TacticalCards | 84% | 12类战术卡乘数函数 |
+
+继承 Godot Node 的类（Building/Unit/Main 等）需集成测试或 Godot 编辑器内测试，计划后续阶段补充。
 
 ## 操作
 
