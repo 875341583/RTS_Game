@@ -184,6 +184,12 @@ public partial class Main : Node2D
     /// <summary>地图大小常量（像素）。阵营基地分布在 200..(MapSize-200) 范围内。</summary>
     private const float MapSize = 2000f;
 
+    // ---- P1-3 自定义地图系统 ----
+    /// <summary>自定义地图文件路径（通过 --map= 参数指定）。</summary>
+    private string? _customMapPath = null;
+    /// <summary>已加载的自定义地图数据（null表示未使用自定义地图）。</summary>
+    private MapData? _customMap = null;
+
     // ---- 阶段12-C 音效系统 ----
     private AudioManager _audio = null!;
 
@@ -280,6 +286,11 @@ public partial class Main : Node2D
                 if (ulong.TryParse(val, out var parsedSeed))
                     _mapSeed = parsedSeed;
             }
+            // P1-3: 自定义地图文件参数 (--map=路径)
+            if (a.StartsWith("--map=", StringComparison.OrdinalIgnoreCase))
+            {
+                _customMapPath = a.Substring(6);
+            }
         }
         // 如果命令行没指定种子，从 GameSession 获取（主菜单输入）
         if (_mapSeed == 0)
@@ -289,6 +300,22 @@ public partial class Main : Node2D
             _mapSeed = (ulong)DateTime.Now.Ticks;
         _mapRng = new Random((int)(_mapSeed & 0x7FFFFFFF));
         GD.Print($"[Map] 种子 {_mapSeed}（可用 --seed={_mapSeed} 复现本张地图）");
+
+        // P1-3: 如果指定了自定义地图文件，加载并应用
+        if (!string.IsNullOrEmpty(_customMapPath))
+        {
+            _customMap = MapData.LoadFromFile(_customMapPath);
+            if (_customMap != null)
+            {
+                _mapSeed = _customMap.Seed;
+                _mapRng = new Random((int)(_mapSeed & 0x7FFFFFFF));
+                GD.Print($"[Map] 自定义地图已加载: {_customMap.Name} (seed={_mapSeed}, {_customMap.TerrainMods.Count}个修改, {_customMap.ResourceNodes.Count}个矿点, {_customMap.StrategicPoints.Count}个战略点)");
+            }
+            else
+            {
+                GD.PrintErr($"[Map] 自定义地图加载失败: {_customMapPath}，回退到种子生成");
+            }
+        }
 
         ApplyDifficultyConfig();
 
@@ -315,6 +342,24 @@ public partial class Main : Node2D
         // Q4：地面纹理（草地+道路+泥地）→ E1：地形系统驱动
         _terrain = new TerrainGrid();
         _terrain.GenerateFromSeed(_mapSeed);
+
+        // P1-3: 应用自定义地图的地形修改增量
+        if (_customMap != null && _customMap.TerrainMods.Count > 0)
+        {
+            foreach (var mod in _customMap.TerrainMods)
+            {
+                if (mod.Gx < 0 || mod.Gx >= TerrainGrid.GridSize ||
+                    mod.Gy < 0 || mod.Gy >= TerrainGrid.GridSize) continue;
+                var cell = _terrain.GetCell(mod.Gx, mod.Gy);
+                cell.Type = (TerrainType)mod.TerrainType;
+                cell.Elevation = mod.Elevation;
+                cell.HasBridge = mod.HasBridge;
+                cell.HasTunnel = mod.HasTunnel;
+                _terrain.SetCell(mod.Gx, mod.Gy, cell);
+            }
+            GD.Print($"[Map] 应用了 {_customMap.TerrainMods.Count} 个地形修改");
+        }
+
         var stats = _terrain.GetStats();
         GD.Print("[Terrain] 地形生成统计：");
         foreach (var kv in stats)
@@ -392,6 +437,18 @@ public partial class Main : Node2D
         // 中场争夺矿 + 中央高价值矿（位置由种子随机化，但保持围绕地图中央分布）
         GenerateRandomOreDeposits();
 
+        // P1-3: 自定义地图的矿点（与种子随机矿叠加，不替换）
+        if (_customMap != null)
+        {
+            foreach (var r in _customMap.ResourceNodes)
+            {
+                var pos = IsoCoords.GridToScreen(r.Gx, r.Gy);
+                SpawnOre(pos, r.Amount);
+            }
+            if (_customMap.ResourceNodes.Count > 0)
+                GD.Print($"[Map] 放置了 {_customMap.ResourceNodes.Count} 个自定义矿点");
+        }
+
         // E5 资源扩展：油田/稀有矿/陆地矿脉
         GenerateOilFields();
         GenerateRareMinerals();
@@ -402,6 +459,18 @@ public partial class Main : Node2D
 
         // ---- 战略要地（中央固定 + 侧翼种子偏移） ----
         GenerateStrategicPoints();
+
+        // P1-3: 自定义地图的战略点（与种子生成的战略点叠加）
+        if (_customMap != null)
+        {
+            foreach (var p in _customMap.StrategicPoints)
+            {
+                var pos = IsoCoords.GridToScreen(p.Gx, p.Gy);
+                SpawnStrategicPoint(pos);
+            }
+            if (_customMap.StrategicPoints.Count > 0)
+                GD.Print($"[Map] 放置了 {_customMap.StrategicPoints.Count} 个自定义战略点");
+        }
 
         // Q1：侧边栏建造面板
         _buildPanel = new BuildPanel();

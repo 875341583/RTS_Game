@@ -129,7 +129,7 @@ public partial class MainMenu : Control
         // 3D原型预览按钮
         var protoBtn = new Button();
         protoBtn.Text = "3D 2.5D 原型预览";
-        protoBtn.CustomMinimumSize = new Vector2(0, 40);
+        protoBtn.CustomMinimumSize = new Vector2(0, 36);
         protoBtn.AddThemeFontSizeOverride("font_size", 18);
         protoBtn.Pressed += () =>
         {
@@ -137,6 +137,18 @@ public partial class MainMenu : Control
             GetTree().ChangeSceneToFile("res://scenes/Prototype3D.tscn");
         };
         vbox.AddChild(protoBtn);
+
+        // 地图编辑器按钮
+        var editorBtn = new Button();
+        editorBtn.Text = "地图编辑器 (P1-3)";
+        editorBtn.CustomMinimumSize = new Vector2(0, 40);
+        editorBtn.AddThemeFontSizeOverride("font_size", 18);
+        editorBtn.Pressed += () =>
+        {
+            GD.Print("[MainMenu] 进入地图编辑器");
+            GetTree().ChangeSceneToFile("res://scenes/MapEditor.tscn");
+        };
+        vbox.AddChild(editorBtn);
 
         // 3D正式游戏按钮
         var game3DBtn = new Button();
