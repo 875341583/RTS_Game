@@ -12,8 +12,9 @@ public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileT
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
 /// 子类可重写 ProcessAI 自定义 AI 行为（如矿车自动采矿）。
+/// P1-5: 实现 IUnitEntity 接口，2D/3D 行为契约统一。
 /// </summary>
-public partial class Unit : CharacterBody2D
+public partial class Unit : CharacterBody2D, IUnitEntity
 {
     [Export] public float MoveSpeed { get; set; } = 200f;
     [Export] public float MaxHealth { get; set; } = 100f;
@@ -1763,6 +1764,13 @@ public partial class Unit : CharacterBody2D
             _selectionRing.Visible = selected;
         UpdateHealthBarVisibility();
     }
+
+    // ---- P1-5: IRenderable / IUnitEntity 薄适配方法 ----
+    // 不改变现有逻辑，仅提供接口要求的访问入口，供统一渲染/逻辑层调用。
+    /// <summary>IRenderable: 返回当前世界坐标。</summary>
+    public Vector2 GetPosition() => GlobalPosition;
+    /// <summary>IRenderable: Y-Sort 排序键（与 _Process 中 ZIndex 计算一致）。</summary>
+    public float GetSortY() => (int)(GlobalPosition.Y / 2f) + 1000;
 
     public virtual void CommandMove(Vector2 target)
     {

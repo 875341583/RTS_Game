@@ -18,8 +18,9 @@ public enum ProductionType { LightTank, HeavyTank, Artillery, RocketLauncher, Mi
 
 /// <summary>
 /// 建筑/基地：可被选中、可被攻击。不同类型解锁不同单位生产。
+/// P1-5: 实现 IBuildingEntity 接口，2D/3D 行为契约统一。
 /// </summary>
-public partial class Building : Area2D
+public partial class Building : Area2D, IBuildingEntity
 {
     /// <summary>P0-1: 建筑被摧毁/出售时触发，供Main移除PathFinder障碍。</summary>
     public event Action<Building>? Destroyed;
@@ -302,6 +303,17 @@ public partial class Building : Area2D
         if (_healthBar != null)
             _healthBar.Visible = selected || Health < MaxHealth;
     }
+
+    // ---- P1-5: IRenderable / IBuildingEntity 薄适配方法 ----
+    // 不改变现有逻辑，仅提供接口要求的访问入口，供统一渲染/逻辑层调用。
+    /// <summary>IRenderable: 是否已被摧毁（血量归零）。</summary>
+    public bool IsDead => Health <= 0f;
+    /// <summary>IRenderable: 返回当前世界坐标。</summary>
+    public Vector2 GetPosition() => GlobalPosition;
+    /// <summary>IRenderable: Y-Sort 排序键（与 _Process 中 ZIndex 计算一致）。</summary>
+    public float GetSortY() => (int)(GlobalPosition.Y / 2f) + 1000;
+    /// <summary>IBuildingEntity: 是否正常运营（存活）。低电降速由 Main 的 PowerGrid 管理，不在实体层判定。</summary>
+    public bool IsOperational() => Health > 0f;
 
     public void TakeDamage(float damage)
     {

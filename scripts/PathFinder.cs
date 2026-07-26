@@ -8,7 +8,7 @@ namespace RTSGame
     /// 动态建筑障碍、地形可通行性检查和路径平滑（视线优化）。
     /// 设计目标：消除单位直线移动导致的卡墙/堵路问题。
     /// </summary>
-    public class PathFinder
+    public class PathFinder : IPathFinder
     {
         // ========== 依赖 ==========
         private readonly TerrainGrid _terrain;
@@ -78,6 +78,21 @@ namespace RTSGame
 
         /// <summary>检查指定格子是否被建筑占据。</summary>
         public bool IsBuildingBlocked(int gx, int gy) => InBounds(gx, gy) && _buildingBlocked[gx, gy] > 0;
+
+        // ========== P1-5: IPathFinder 显式接口实现 ==========
+        // 2D 栅格寻路特有 TerrainUnitCategory 参数；接口通用版用 Ground 默认类别适配。
+        // 现有 3 参数 FindPath 公开方法保持不变，Main 调用不受影响。
+
+        /// <summary>IPathFinder: 通用寻路（默认 Infantry 地形类别，通行性最宽松）。</summary>
+        List<Vector2> IPathFinder.FindPath(Vector2 startWorld, Vector2 endWorld)
+            => FindPath(startWorld, endWorld, TerrainUnitCategory.Infantry);
+
+        /// <summary>IPathFinder: 指定世界坐标是否可通行（按 Infantry 类别检查）。</summary>
+        bool IPathFinder.IsWalkable(Vector2 worldPos)
+        {
+            _terrain.WorldToGrid(worldPos.X, worldPos.Y, out int gx, out int gy);
+            return InBounds(gx, gy) && IsPassable(gx, gy, TerrainUnitCategory.Infantry);
+        }
 
         // ========== 寻路接口 ==========
 
