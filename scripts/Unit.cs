@@ -200,21 +200,11 @@ public partial class Unit : CharacterBody2D
     private bool _isAttackingAnim = false;
 
     // ---- 8阵营色调色板（灰底素材用 Modulate 染色）----
-    /// <summary>8阵营色（基于红警2原版8色，明度/色相优化辨识度）。索引=TeamId。超出范围取模。</summary>
-    private static readonly Color[] TeamPalette =
-    {
-        new(0.82f, 0.16f, 0.16f), // 0 Red   纯红
-        new(0.16f, 0.32f, 0.82f), // 1 Blue  深蓝
-        new(0.18f, 0.78f, 0.22f), // 2 Green 纯绿（亮）
-        new(0.95f, 0.82f, 0.18f), // 3 Yellow 明黄
-        new(0.95f, 0.42f, 0.78f), // 4 Pink  亮粉（明度高）
-        new(0.44f, 0.18f, 0.72f), // 5 Purple 深紫（明度低）
-        new(0.95f, 0.51f, 0.12f), // 6 Orange 亮橙
-        new(0.14f, 0.62f, 0.88f), // 7 Cyan  偏蓝青（与2纯绿拉大色相差）
-    };
+    // P1-5第1步: TeamPalette 已统一至 GameData.TeamPalette，此处仅保留访问器以保持调用兼容。
+    // 直接转发到 GameData.TeamPalette / GameData.GetTeamColor，避免2D/3D重复定义。
 
-    /// <summary>获取 TeamId 对应的阵营色。</summary>
-    public static Color GetTeamColor(int teamId) => TeamPalette[teamId % TeamPalette.Length];
+    /// <summary>获取 TeamId 对应的阵营色（转发至 GameData）。</summary>
+    public static Color GetTeamColor(int teamId) => GameData.GetTeamColor(teamId);
 
     /// <summary>加载灰底单位 PNG 纹理（一套支持任意阵营色染色）。</summary>
     private static void EnsureTextures()

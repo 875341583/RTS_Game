@@ -10,13 +10,8 @@ namespace RTSGame;
 /// </summary>
 public partial class Building3D : Area3D
 {
-    public enum BuildingType
-    {
-        Base, PowerPlant, Barracks, WarFactory, TechCenter,
-        Turret, AntiAirTurret, RepairPad, Airfield, Shipyard,
-        NukeSilo, LightningTower, MissileSilo,
-    }
-
+    // P1-5第1步: BuildingType 嵌套枚举已删除，统一引用全局 RTSGame.BuildingType（成员/顺序完全一致）。
+    // 3D特有的 ProductionType 暂保留嵌套（含 None/Sapper/ChiefEngineer 等成员差异，第2步接口层统一）。
     public enum ProductionType
     {
         None,
@@ -142,10 +137,8 @@ public partial class Building3D : Area3D
     public void InitAsType(BuildingType type)
     {
         Type = type;
-        // P1-2: Building3D.BuildingType与全局BuildingType枚举成员一致，通过整数值桥接
-        // 注意：类内部的BuildingType指嵌套枚举，需用全局命名空间限定
-        var globalType = (RTSGame.BuildingType)(int)type;
-        var data = GameData.GetBuilding(globalType);
+        // P1-5第1步: Type 已是全局 BuildingType，直接查 GameData，无需 int 桥接。
+        var data = GameData.GetBuilding(type);
         var s = data.Stats3D;
 
         MaxHealth = s.MaxHealth;

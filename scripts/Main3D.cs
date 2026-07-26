@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
@@ -45,7 +45,7 @@ public partial class Main3D : Node3D
     private readonly Dictionary<int, List<Unit3D>> _squads = new();
 
     // 建筑放置
-    private Building3D.BuildingType _placementType;
+    private BuildingType _placementType;
     private bool _isPlacing;
     private int _mapSeed = 42;
 
@@ -114,21 +114,21 @@ public partial class Main3D : Node3D
     private static readonly string ShotDir = OS.GetUserDataDir();
 
     // 造价表
-    private static readonly Dictionary<Building3D.BuildingType, int> BuildingCosts = new()
+    private static readonly Dictionary<BuildingType, int> BuildingCosts = new()
     {
-        { Building3D.BuildingType.Base, 3000 },
-        { Building3D.BuildingType.PowerPlant, 400 },
-        { Building3D.BuildingType.Barracks, 500 },
-        { Building3D.BuildingType.WarFactory, 800 },
-        { Building3D.BuildingType.TechCenter, 1500 },
-        { Building3D.BuildingType.Turret, 300 },
-        { Building3D.BuildingType.AntiAirTurret, 400 },
-        { Building3D.BuildingType.RepairPad, 600 },
-        { Building3D.BuildingType.Airfield, 700 },
-        { Building3D.BuildingType.Shipyard, 800 },
-        { Building3D.BuildingType.NukeSilo, 2500 },
-        { Building3D.BuildingType.LightningTower, 2000 },
-        { Building3D.BuildingType.MissileSilo, 1500 },
+        { BuildingType.Base, 3000 },
+        { BuildingType.PowerPlant, 400 },
+        { BuildingType.Barracks, 500 },
+        { BuildingType.WarFactory, 800 },
+        { BuildingType.TechCenter, 1500 },
+        { BuildingType.Turret, 300 },
+        { BuildingType.AntiAirTurret, 400 },
+        { BuildingType.RepairPad, 600 },
+        { BuildingType.Airfield, 700 },
+        { BuildingType.Shipyard, 800 },
+        { BuildingType.NukeSilo, 2500 },
+        { BuildingType.LightningTower, 2000 },
+        { BuildingType.MissileSilo, 1500 },
     };
 
     private static readonly Dictionary<UnitType, int> UnitCosts = new()
@@ -357,10 +357,10 @@ public partial class Main3D : Node3D
             TerrainGrid3D.CellSize * 3,
             0,
             TerrainGrid3D.CellSize * 3);
-        CreateBuilding(Building3D.BuildingType.Base, PlayerTeamId, playerBasePos);
+        CreateBuilding(BuildingType.Base, PlayerTeamId, playerBasePos);
         // 玩家初始电站和兵营
-        CreateBuilding(Building3D.BuildingType.PowerPlant, PlayerTeamId, playerBasePos + new Vector3(0, 0, TerrainGrid3D.CellSize * 2));
-        CreateBuilding(Building3D.BuildingType.Barracks, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize * 2, 0, 0));
+        CreateBuilding(BuildingType.PowerPlant, PlayerTeamId, playerBasePos + new Vector3(0, 0, TerrainGrid3D.CellSize * 2));
+        CreateBuilding(BuildingType.Barracks, PlayerTeamId, playerBasePos + new Vector3(TerrainGrid3D.CellSize * 2, 0, 0));
 
         // 玩家初始矿车
         SpawnUnit(UnitType.Harvester, PlayerTeamId, playerBasePos + new Vector3(0, 0, -TerrainGrid3D.CellSize * 2));
@@ -381,10 +381,10 @@ public partial class Main3D : Node3D
             aiPos.X = Mathf.Clamp(aiPos.X, TerrainGrid3D.CellSize * 3, TerrainGrid3D.MapWorldSize - TerrainGrid3D.CellSize * 3);
             aiPos.Z = Mathf.Clamp(aiPos.Z, TerrainGrid3D.CellSize * 3, TerrainGrid3D.MapWorldSize - TerrainGrid3D.CellSize * 3);
 
-            CreateBuilding(Building3D.BuildingType.Base, i, aiPos);
-            CreateBuilding(Building3D.BuildingType.PowerPlant, i, aiPos + new Vector3(0, 0, TerrainGrid3D.CellSize * 2));
-            CreateBuilding(Building3D.BuildingType.Barracks, i, aiPos + new Vector3(TerrainGrid3D.CellSize * 2, 0, 0));
-            CreateBuilding(Building3D.BuildingType.WarFactory, i, aiPos + new Vector3(-TerrainGrid3D.CellSize * 2, 0, 0));
+            CreateBuilding(BuildingType.Base, i, aiPos);
+            CreateBuilding(BuildingType.PowerPlant, i, aiPos + new Vector3(0, 0, TerrainGrid3D.CellSize * 2));
+            CreateBuilding(BuildingType.Barracks, i, aiPos + new Vector3(TerrainGrid3D.CellSize * 2, 0, 0));
+            CreateBuilding(BuildingType.WarFactory, i, aiPos + new Vector3(-TerrainGrid3D.CellSize * 2, 0, 0));
 
             // AI初始矿车
             SpawnUnit(UnitType.Harvester, i, aiPos + new Vector3(0, 0, -TerrainGrid3D.CellSize * 2));
@@ -396,7 +396,7 @@ public partial class Main3D : Node3D
 
     // ======== 建筑创建 ========
 
-    public Building3D CreateBuilding(Building3D.BuildingType type, int teamId, Vector3 pos)
+    public Building3D CreateBuilding(BuildingType type, int teamId, Vector3 pos)
     {
         var building = new Building3D();
         building.Type = type;
@@ -408,7 +408,7 @@ public partial class Main3D : Node3D
         // P1-2: 应用阵营数值乘数（_Ready中的InitAsType已设置基础值）
         building.ApplyFactionMultipliers(teamId);
 
-        if (type == Building3D.BuildingType.Base)
+        if (type == BuildingType.Base)
             _bases[teamId] = building;
 
         // 建筑生产完成事件
@@ -591,7 +591,7 @@ public partial class Main3D : Node3D
         return provided - consumed;
     }
 
-    public bool HasBuilding(int teamId, Building3D.BuildingType type)
+    public bool HasBuilding(int teamId, BuildingType type)
     {
         foreach (var b in GetAllBuildings())
             if (b.TeamId == teamId && b.Type == type && !b._isDead) return true;
@@ -616,7 +616,7 @@ public partial class Main3D : Node3D
         SpawnExplosion(building.GlobalPosition, 5f);
         SpawnBuildingDebris(building.GlobalPosition, 3f);
         _selected.Remove(building);
-        if (building.Type == Building3D.BuildingType.Base)
+        if (building.Type == BuildingType.Base)
         {
             _bases.Remove(building.TeamId);
             ShowToast($"阵营{building.TeamId}的基地被摧毁！");
@@ -1359,71 +1359,71 @@ public partial class Main3D : Node3D
 
     private void AIBuildLogic(int teamId)
     {
-        if (!HasBuilding(teamId, Building3D.BuildingType.Base)) return;
+        if (!HasBuilding(teamId, BuildingType.Base)) return;
 
         // 14级优先级建筑决策
-        if (!HasBuilding(teamId, Building3D.BuildingType.PowerPlant) || GetTeamPower(teamId) < 50)
+        if (!HasBuilding(teamId, BuildingType.PowerPlant) || GetTeamPower(teamId) < 50)
         {
-            TryAIBuild(teamId, Building3D.BuildingType.PowerPlant);
+            TryAIBuild(teamId, BuildingType.PowerPlant);
             return;
         }
-        if (!HasBuilding(teamId, Building3D.BuildingType.Barracks))
+        if (!HasBuilding(teamId, BuildingType.Barracks))
         {
-            TryAIBuild(teamId, Building3D.BuildingType.Barracks);
+            TryAIBuild(teamId, BuildingType.Barracks);
             return;
         }
-        if (!HasBuilding(teamId, Building3D.BuildingType.WarFactory))
+        if (!HasBuilding(teamId, BuildingType.WarFactory))
         {
-            TryAIBuild(teamId, Building3D.BuildingType.WarFactory);
+            TryAIBuild(teamId, BuildingType.WarFactory);
             return;
         }
-        if (!HasBuilding(teamId, Building3D.BuildingType.TechCenter))
+        if (!HasBuilding(teamId, BuildingType.TechCenter))
         {
-            TryAIBuild(teamId, Building3D.BuildingType.TechCenter);
+            TryAIBuild(teamId, BuildingType.TechCenter);
             return;
         }
         if (GetTeamPower(teamId) < 0)
         {
-            TryAIBuild(teamId, Building3D.BuildingType.PowerPlant);
+            TryAIBuild(teamId, BuildingType.PowerPlant);
             return;
         }
-        if (CountBuildings(teamId, Building3D.BuildingType.Turret) < 2)
+        if (CountBuildings(teamId, BuildingType.Turret) < 2)
         {
-            TryAIBuild(teamId, Building3D.BuildingType.Turret);
+            TryAIBuild(teamId, BuildingType.Turret);
             return;
         }
-        if (CountBuildings(teamId, Building3D.BuildingType.AntiAirTurret) < 2)
+        if (CountBuildings(teamId, BuildingType.AntiAirTurret) < 2)
         {
-            TryAIBuild(teamId, Building3D.BuildingType.AntiAirTurret);
+            TryAIBuild(teamId, BuildingType.AntiAirTurret);
             return;
         }
-        if (!HasBuilding(teamId, Building3D.BuildingType.RepairPad))
+        if (!HasBuilding(teamId, BuildingType.RepairPad))
         {
-            TryAIBuild(teamId, Building3D.BuildingType.RepairPad);
+            TryAIBuild(teamId, BuildingType.RepairPad);
             return;
         }
-        if (!HasBuilding(teamId, Building3D.BuildingType.Airfield))
+        if (!HasBuilding(teamId, BuildingType.Airfield))
         {
-            TryAIBuild(teamId, Building3D.BuildingType.Airfield);
+            TryAIBuild(teamId, BuildingType.Airfield);
             return;
         }
         // 超武
         if (_difficulty >= Difficulty.Hard)
         {
-            if (!HasBuilding(teamId, Building3D.BuildingType.NukeSilo))
+            if (!HasBuilding(teamId, BuildingType.NukeSilo))
             {
-                TryAIBuild(teamId, Building3D.BuildingType.NukeSilo);
+                TryAIBuild(teamId, BuildingType.NukeSilo);
                 return;
             }
-            if (!HasBuilding(teamId, Building3D.BuildingType.LightningTower))
+            if (!HasBuilding(teamId, BuildingType.LightningTower))
             {
-                TryAIBuild(teamId, Building3D.BuildingType.LightningTower);
+                TryAIBuild(teamId, BuildingType.LightningTower);
                 return;
             }
         }
     }
 
-    private void TryAIBuild(int teamId, Building3D.BuildingType type)
+    private void TryAIBuild(int teamId, BuildingType type)
     {
         int cost = BuildingCosts.GetValueOrDefault(type, 0);
         if (_money[teamId] < cost + 50) return; // 留50储备
@@ -1442,14 +1442,14 @@ public partial class Main3D : Node3D
     private void AITrainUnits(int teamId)
     {
         // 找车厂/兵营
-        var producers = GetAllBuildings().Where(b => b.TeamId == teamId && !b._isDead && b.Type is Building3D.BuildingType.WarFactory or Building3D.BuildingType.Barracks).ToList();
+        var producers = GetAllBuildings().Where(b => b.TeamId == teamId && !b._isDead && b.Type is BuildingType.WarFactory or BuildingType.Barracks).ToList();
         if (producers.Count == 0) return;
 
         // 矿车数量检查
         int harvesterCount = GetAllUnits().Count(u => u.TeamId == teamId && u.Type == UnitType.Harvester && !u._isDead);
         if (harvesterCount < 3)
         {
-            var wf = producers.FirstOrDefault(b => b.Type == Building3D.BuildingType.WarFactory);
+            var wf = producers.FirstOrDefault(b => b.Type == BuildingType.WarFactory);
             if (wf != null && _money[teamId] >= UnitCosts[UnitType.Harvester])
             {
                 if (SpendMoney(teamId, UnitCosts[UnitType.Harvester]))
@@ -1463,21 +1463,21 @@ public partial class Main3D : Node3D
         var productionTypes = new List<(Building3D.ProductionType pt, int cost)>();
 
         // 兵营可造
-        if (HasBuilding(teamId, Building3D.BuildingType.Barracks))
+        if (HasBuilding(teamId, BuildingType.Barracks))
         {
             productionTypes.Add((Building3D.ProductionType.Infantry, 100));
             productionTypes.Add((Building3D.ProductionType.Grenadier, 200));
-            if (HasBuilding(teamId, Building3D.BuildingType.TechCenter))
+            if (HasBuilding(teamId, BuildingType.TechCenter))
             {
                 productionTypes.Add((Building3D.ProductionType.Sniper, 250));
                 productionTypes.Add((Building3D.ProductionType.Sapper, 150));
             }
         }
         // 车厂可造
-        if (HasBuilding(teamId, Building3D.BuildingType.WarFactory))
+        if (HasBuilding(teamId, BuildingType.WarFactory))
         {
             productionTypes.Add((Building3D.ProductionType.LightTank, 200));
-            if (HasBuilding(teamId, Building3D.BuildingType.TechCenter))
+            if (HasBuilding(teamId, BuildingType.TechCenter))
             {
                 productionTypes.Add((Building3D.ProductionType.HeavyTank, 500));
                 productionTypes.Add((Building3D.ProductionType.Artillery, 400));
@@ -1487,7 +1487,7 @@ public partial class Main3D : Node3D
             productionTypes.Add((Building3D.ProductionType.AntiAir, 300));
         }
         // 机场可造
-        if (HasBuilding(teamId, Building3D.BuildingType.Airfield))
+        if (HasBuilding(teamId, BuildingType.Airfield))
         {
             productionTypes.Add((Building3D.ProductionType.Fighter, 500));
             productionTypes.Add((Building3D.ProductionType.Helicopter, 600));
@@ -1501,17 +1501,17 @@ public partial class Main3D : Node3D
 
             // 找对应的生产建筑
             Building3D? producer = null;
-            Building3D.BuildingType requiredType = pt switch
+            BuildingType requiredType = pt switch
             {
                 Building3D.ProductionType.Infantry or Building3D.ProductionType.Grenadier
                 or Building3D.ProductionType.Sniper or Building3D.ProductionType.Sapper
                 or Building3D.ProductionType.ChiefEngineer or Building3D.ProductionType.FlameInfantry
-                or Building3D.ProductionType.Engineer => Building3D.BuildingType.Barracks,
+                or Building3D.ProductionType.Engineer => BuildingType.Barracks,
                 Building3D.ProductionType.Fighter or Building3D.ProductionType.Helicopter
                 or Building3D.ProductionType.Bomber or Building3D.ProductionType.Scout
                 or Building3D.ProductionType.TransportHeli or Building3D.ProductionType.RocketInfantry
-                => Building3D.BuildingType.Airfield,
-                _ => Building3D.BuildingType.WarFactory,
+                => BuildingType.Airfield,
+                _ => BuildingType.WarFactory,
             };
 
             // 找队列最短的建筑
@@ -1531,7 +1531,7 @@ public partial class Main3D : Node3D
         }
     }
 
-    private int CountBuildings(int teamId, Building3D.BuildingType type)
+    private int CountBuildings(int teamId, BuildingType type)
     {
         return GetAllBuildings().Count(b => b.TeamId == teamId && b.Type == type && !b._isDead);
     }
@@ -1678,17 +1678,17 @@ public partial class Main3D : Node3D
         _buildPanel.AddChild(titleLbl);
 
         // 建筑按钮列表
-        var buildButtons = new (string name, Building3D.BuildingType type)[]
+        var buildButtons = new (string name, BuildingType type)[]
         {
-            ("电站 $400 [P]", Building3D.BuildingType.PowerPlant),
-            ("兵营 $500 [O]", Building3D.BuildingType.Barracks),
-            ("车厂 $800 [I]", Building3D.BuildingType.WarFactory),
-            ("科技 $1500 [T]", Building3D.BuildingType.TechCenter),
-            ("机枪塔 $300", Building3D.BuildingType.Turret),
-            ("防空炮 $400", Building3D.BuildingType.AntiAirTurret),
-            ("维修厂 $600", Building3D.BuildingType.RepairPad),
-            ("核弹井 $2500", Building3D.BuildingType.NukeSilo),
-            ("闪电塔 $2000", Building3D.BuildingType.LightningTower),
+            ("电站 $400 [P]", BuildingType.PowerPlant),
+            ("兵营 $500 [O]", BuildingType.Barracks),
+            ("车厂 $800 [I]", BuildingType.WarFactory),
+            ("科技 $1500 [T]", BuildingType.TechCenter),
+            ("机枪塔 $300", BuildingType.Turret),
+            ("防空炮 $400", BuildingType.AntiAirTurret),
+            ("维修厂 $600", BuildingType.RepairPad),
+            ("核弹井 $2500", BuildingType.NukeSilo),
+            ("闪电塔 $2000", BuildingType.LightningTower),
         };
 
         int yOff = 24;
@@ -1811,7 +1811,7 @@ public partial class Main3D : Node3D
             var px = b.GlobalPosition.X * scale;
             var py = b.GlobalPosition.Z * scale;
             Color c = Unit3D.GetTeamColor(b.TeamId);
-            float r = b.Type == Building3D.BuildingType.Base ? 4f : 2.5f;
+            float r = b.Type == BuildingType.Base ? 4f : 2.5f;
             canvas.DrawCircle(new Vector2(px, py), r, c);
         }
 
@@ -1963,9 +1963,9 @@ public partial class Main3D : Node3D
         // 收集玩家正在生产的建筑
         var producers = GetAllBuildings()
             .Where(b => b.TeamId == PlayerTeamId && !b._isDead
-                && (b.Type == Building3D.BuildingType.Barracks
-                 || b.Type == Building3D.BuildingType.WarFactory
-                 || b.Type == Building3D.BuildingType.Airfield)
+                && (b.Type == BuildingType.Barracks
+                 || b.Type == BuildingType.WarFactory
+                 || b.Type == BuildingType.Airfield)
                 && b.CurrentProductionType.HasValue)
             .ToList();
 
@@ -2222,45 +2222,45 @@ public partial class Main3D : Node3D
         switch (char.ToUpper(keyChar))
         {
             case 'B':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory))
+                if (HasBuilding(PlayerTeamId, BuildingType.WarFactory))
                     TrySpawnPlayerUnit(UnitType.LightTank);
                 break;
             case 'N':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory) && HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter))
+                if (HasBuilding(PlayerTeamId, BuildingType.WarFactory) && HasBuilding(PlayerTeamId, BuildingType.TechCenter))
                     TrySpawnPlayerUnit(UnitType.HeavyTank);
                 break;
             case 'M':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory) && HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter))
+                if (HasBuilding(PlayerTeamId, BuildingType.WarFactory) && HasBuilding(PlayerTeamId, BuildingType.TechCenter))
                     TrySpawnPlayerUnit(UnitType.Artillery);
                 break;
             case 'H':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory))
+                if (HasBuilding(PlayerTeamId, BuildingType.WarFactory))
                     TrySpawnPlayerUnit(UnitType.Harvester);
                 break;
             case 'K':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory) && HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter))
+                if (HasBuilding(PlayerTeamId, BuildingType.WarFactory) && HasBuilding(PlayerTeamId, BuildingType.TechCenter))
                     TrySpawnPlayerUnit(UnitType.RocketLauncher);
                 break;
             case 'L':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory) && HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter))
+                if (HasBuilding(PlayerTeamId, BuildingType.WarFactory) && HasBuilding(PlayerTeamId, BuildingType.TechCenter))
                     TrySpawnPlayerUnit(UnitType.MissileTank);
                 break;
             // 建筑热键
             case 'P':
-                StartPlacement(Building3D.BuildingType.PowerPlant);
+                StartPlacement(BuildingType.PowerPlant);
                 break;
             case 'O':
-                StartPlacement(Building3D.BuildingType.Barracks);
+                StartPlacement(BuildingType.Barracks);
                 break;
             case 'I':
-                StartPlacement(Building3D.BuildingType.WarFactory);
+                StartPlacement(BuildingType.WarFactory);
                 break;
             case 'T':
-                StartPlacement(Building3D.BuildingType.TechCenter);
+                StartPlacement(BuildingType.TechCenter);
                 break;
             // 步兵
             case 'G':
-                if (HasBuilding(PlayerTeamId, Building3D.BuildingType.Barracks))
+                if (HasBuilding(PlayerTeamId, BuildingType.Barracks))
                     TrySpawnPlayerUnit(UnitType.Infantry);
                 break;
             // 命令
@@ -2289,7 +2289,7 @@ public partial class Main3D : Node3D
             case 'V':
                 // 出售建筑
                 foreach (var obj in _selected)
-                    if (obj is Building3D b && b.TeamId == PlayerTeamId && b.Type != Building3D.BuildingType.Base)
+                    if (obj is Building3D b && b.TeamId == PlayerTeamId && b.Type != BuildingType.Base)
                     {
                         int refund = BuildingCosts.GetValueOrDefault(b.Type, 0) / 2;
                         AddResourceForTeam(PlayerTeamId, refund);
@@ -2298,7 +2298,7 @@ public partial class Main3D : Node3D
                 break;
             // 超武
             case 'Z':
-                if (_playerNukeCooldown <= 0 && HasBuilding(PlayerTeamId, Building3D.BuildingType.NukeSilo))
+                if (_playerNukeCooldown <= 0 && HasBuilding(PlayerTeamId, BuildingType.NukeSilo))
                 {
                     var pos = GetMouseWorldPos();
                     ApplyNuke(pos, PlayerTeamId);
@@ -2306,7 +2306,7 @@ public partial class Main3D : Node3D
                 }
                 break;
             case 'C':
-                if (_playerLightningCooldown <= 0 && HasBuilding(PlayerTeamId, Building3D.BuildingType.LightningTower))
+                if (_playerLightningCooldown <= 0 && HasBuilding(PlayerTeamId, BuildingType.LightningTower))
                 {
                     var pos = GetMouseWorldPos();
                     ApplyLightning(pos, PlayerTeamId);
@@ -2318,7 +2318,7 @@ public partial class Main3D : Node3D
         // Shift+V = 导弹
         if (key.ShiftPressed && char.ToUpper(keyChar) == 'V')
         {
-            if (_playerMissileCooldown <= 0 && HasBuilding(PlayerTeamId, Building3D.BuildingType.MissileSilo))
+            if (_playerMissileCooldown <= 0 && HasBuilding(PlayerTeamId, BuildingType.MissileSilo))
             {
                 var pos = GetMouseWorldPos();
                 ApplyCruiseMissile(pos, PlayerTeamId);
@@ -2364,14 +2364,14 @@ public partial class Main3D : Node3D
         }
 
         // 找对应生产建筑
-        Building3D.BuildingType requiredType = type switch
+        BuildingType requiredType = type switch
         {
             UnitType.Infantry or UnitType.Grenadier or UnitType.Sniper or UnitType.Sapper
             or UnitType.FlameInfantry or UnitType.Engineer or UnitType.ChiefEngineer
-            or UnitType.Hero or UnitType.Spy or UnitType.Thief => Building3D.BuildingType.Barracks,
+            or UnitType.Hero or UnitType.Spy or UnitType.Thief => BuildingType.Barracks,
             UnitType.Fighter or UnitType.Helicopter or UnitType.Bomber or UnitType.Scout
-            or UnitType.TransportHeli or UnitType.RocketInfantry => Building3D.BuildingType.Airfield,
-            _ => Building3D.BuildingType.WarFactory,
+            or UnitType.TransportHeli or UnitType.RocketInfantry => BuildingType.Airfield,
+            _ => BuildingType.WarFactory,
         };
 
         if (!HasBuilding(PlayerTeamId, requiredType))
@@ -2424,7 +2424,7 @@ public partial class Main3D : Node3D
 
     // ======== 建筑放置 ========
 
-    private void StartPlacement(Building3D.BuildingType type)
+    private void StartPlacement(BuildingType type)
     {
         int cost = BuildingCosts.GetValueOrDefault(type, 0);
         if (_money[PlayerTeamId] < cost)
@@ -2436,17 +2436,17 @@ public partial class Main3D : Node3D
         // 前置建筑检查
         bool canBuild = type switch
         {
-            Building3D.BuildingType.Barracks => HasBuilding(PlayerTeamId, Building3D.BuildingType.PowerPlant),
-            Building3D.BuildingType.WarFactory => HasBuilding(PlayerTeamId, Building3D.BuildingType.Barracks),
-            Building3D.BuildingType.TechCenter => HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory),
-            Building3D.BuildingType.Turret => HasBuilding(PlayerTeamId, Building3D.BuildingType.Barracks),
-            Building3D.BuildingType.AntiAirTurret => HasBuilding(PlayerTeamId, Building3D.BuildingType.Barracks),
-            Building3D.BuildingType.RepairPad => HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory),
-            Building3D.BuildingType.Airfield => HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory),
-            Building3D.BuildingType.Shipyard => HasBuilding(PlayerTeamId, Building3D.BuildingType.WarFactory),
-            Building3D.BuildingType.NukeSilo => HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter),
-            Building3D.BuildingType.LightningTower => HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter),
-            Building3D.BuildingType.MissileSilo => HasBuilding(PlayerTeamId, Building3D.BuildingType.TechCenter),
+            BuildingType.Barracks => HasBuilding(PlayerTeamId, BuildingType.PowerPlant),
+            BuildingType.WarFactory => HasBuilding(PlayerTeamId, BuildingType.Barracks),
+            BuildingType.TechCenter => HasBuilding(PlayerTeamId, BuildingType.WarFactory),
+            BuildingType.Turret => HasBuilding(PlayerTeamId, BuildingType.Barracks),
+            BuildingType.AntiAirTurret => HasBuilding(PlayerTeamId, BuildingType.Barracks),
+            BuildingType.RepairPad => HasBuilding(PlayerTeamId, BuildingType.WarFactory),
+            BuildingType.Airfield => HasBuilding(PlayerTeamId, BuildingType.WarFactory),
+            BuildingType.Shipyard => HasBuilding(PlayerTeamId, BuildingType.WarFactory),
+            BuildingType.NukeSilo => HasBuilding(PlayerTeamId, BuildingType.TechCenter),
+            BuildingType.LightningTower => HasBuilding(PlayerTeamId, BuildingType.TechCenter),
+            BuildingType.MissileSilo => HasBuilding(PlayerTeamId, BuildingType.TechCenter),
             _ => true,
         };
 
@@ -2457,7 +2457,7 @@ public partial class Main3D : Node3D
         }
 
         // 电力检查（电站本身不限）
-        if (type != Building3D.BuildingType.PowerPlant && GetTeamPower(PlayerTeamId) < 0)
+        if (type != BuildingType.PowerPlant && GetTeamPower(PlayerTeamId) < 0)
         {
             ShowToast("电力不足！");
             return;
@@ -2809,7 +2809,7 @@ public partial class Main3D : Node3D
             _aiMissileCooldowns[i] -= dt;
 
             // AI释放超武
-            if (HasBuilding(i, Building3D.BuildingType.NukeSilo) && _aiNukeCooldowns[i] <= 0)
+            if (HasBuilding(i, BuildingType.NukeSilo) && _aiNukeCooldowns[i] <= 0)
             {
                 var target = FindSuperweaponTarget(i);
                 if (target.HasValue)
@@ -2818,7 +2818,7 @@ public partial class Main3D : Node3D
                     _aiNukeCooldowns[i] = NukeCooldown;
                 }
             }
-            if (HasBuilding(i, Building3D.BuildingType.LightningTower) && _aiLightningCooldowns[i] <= 0)
+            if (HasBuilding(i, BuildingType.LightningTower) && _aiLightningCooldowns[i] <= 0)
             {
                 var target = FindSuperweaponTarget(i);
                 if (target.HasValue)
@@ -2897,7 +2897,7 @@ public partial class Main3D : Node3D
         }
         // 随机敌方基地
         var targets = GetAllBuildings()
-            .Where(b => b.TeamId != firingTeamId && !b._isDead && b.Type == Building3D.BuildingType.Base)
+            .Where(b => b.TeamId != firingTeamId && !b._isDead && b.Type == BuildingType.Base)
             .ToList();
         if (targets.Count == 0) return null;
         return targets[(int)GD.RandRange(0, targets.Count - 1)].GlobalPosition;

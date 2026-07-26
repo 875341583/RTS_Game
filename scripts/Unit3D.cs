@@ -85,19 +85,9 @@ public partial class Unit3D : CharacterBody3D
     public static float AiGraceRemaining = 0f;
 
     // 8阵营色调色板（用于3D材质染色）
-    public static readonly Color[] TeamPalette =
-    {
-        new(0.82f, 0.16f, 0.16f),   // 0 Red
-        new(0.16f, 0.32f, 0.82f),   // 1 Blue
-        new(0.18f, 0.78f, 0.22f),   // 2 Green
-        new(0.95f, 0.82f, 0.18f),   // 3 Yellow
-        new(0.95f, 0.42f, 0.78f),   // 4 Pink
-        new(0.44f, 0.18f, 0.72f),   // 5 Purple
-        new(0.95f, 0.51f, 0.12f),   // 6 Orange
-        new(0.14f, 0.62f, 0.88f),   // 7 Cyan
-    };
-
-    public static Color GetTeamColor(int teamId) => TeamPalette[teamId % TeamPalette.Length];
+    // P1-5第1步: TeamPalette 已统一至 GameData.TeamPalette，此处仅保留访问器以保持调用兼容。
+    // 直接转发到 GameData.GetTeamColor，避免2D/3D重复定义。
+    public static Color GetTeamColor(int teamId) => GameData.GetTeamColor(teamId);
 
     // ======== 3D 节点引用 ========
     protected Node3D _modelRoot;        // 模型根节点（底盘等）
