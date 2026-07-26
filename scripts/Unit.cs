@@ -841,7 +841,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         QueueRedraw();
 
         // R5: 等距Y-Sort深度排序 — Y越大越靠前（画在越上面）
-        ZIndex = (int)(GlobalPosition.Y / 2f) + 1000;
+        ZIndex = RenderLayer.UnitBase + (int)(GlobalPosition.Y / 2f);
 
         // E3：地形高度视觉偏移——高海拔单位的body向上偏移，模拟"站在高处"
         if (GetParent()?.GetParent() is Main mainNode)
@@ -1770,7 +1770,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     /// <summary>IRenderable: 返回当前世界坐标。</summary>
     public Vector2 GetPosition() => GlobalPosition;
     /// <summary>IRenderable: Y-Sort 排序键（与 _Process 中 ZIndex 计算一致）。</summary>
-    public float GetSortY() => (int)(GlobalPosition.Y / 2f) + 1000;
+    public float GetSortY() => RenderLayer.UnitBase + (int)(GlobalPosition.Y / 2f);
 
     public virtual void CommandMove(Vector2 target)
     {

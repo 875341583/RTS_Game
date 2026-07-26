@@ -311,7 +311,7 @@ public partial class Building : Area2D, IBuildingEntity
     /// <summary>IRenderable: 返回当前世界坐标。</summary>
     public Vector2 GetPosition() => GlobalPosition;
     /// <summary>IRenderable: Y-Sort 排序键（与 _Process 中 ZIndex 计算一致）。</summary>
-    public float GetSortY() => (int)(GlobalPosition.Y / 2f) + 1000;
+    public float GetSortY() => RenderLayer.UnitBase + (int)(GlobalPosition.Y / 2f);
     /// <summary>IBuildingEntity: 是否正常运营（存活）。低电降速由 Main 的 PowerGrid 管理，不在实体层判定。</summary>
     public bool IsOperational() => Health > 0f;
 
@@ -592,7 +592,7 @@ public partial class Building : Area2D, IBuildingEntity
         float dt = (float)delta;
 
         // R5: 等距Y-Sort深度排序 — Y越大越靠前
-        ZIndex = (int)(GlobalPosition.Y / 2f) + 1000;
+        ZIndex = RenderLayer.UnitBase + (int)(GlobalPosition.Y / 2f);
 
         // Q5：受击闪白效果
         if (_hitFlashTimer > 0)

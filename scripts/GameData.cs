@@ -4,6 +4,29 @@ using Godot;
 
 namespace RTSGame;
 
+// ============================================================================
+// P1-5 第3步：渲染分层常量
+// 基于红警2画家算法 + Godot ZIndex。CanvasLayer 仅用于 UI（脱离世界坐标），
+// 游戏世界一切可见物通过 ZIndex 在同一 World2D 中分层，保证物理/碰撞正常。
+// ============================================================================
+
+/// <summary>
+/// 2D 渲染层 ZIndex 基准常量。红警2 画家算法核心：值越大越靠前绘制（盖在上方）。
+/// Y-Sort 对象层使用动态 ZIndex = UnitBase + (int)(Y / 2)。
+/// </summary>
+public static class RenderLayer
+{
+    /// <summary>地形层基线：背景/网格线。最底层。</summary>
+    public const int Terrain = -100;
+    /// <summary>对象层基线：单位/建筑 Y-Sort 动态起始值。</summary>
+    public const int UnitBase = 1000;
+    /// <summary>特效层基线：炮口闪光/炮弹/爆炸。始终在单位之上。</summary>
+    public const int Effect = 2000;
+    /// <summary>迷雾层基线：战争迷雾覆盖（预留）。</summary>
+    public const int Shroud = 3000;
+    // UI 层使用 CanvasLayer（脱离世界坐标），不参与 ZIndex 排序。
+}
+
 /// <summary>
 /// P1-2: 游戏数据管理器 — 从 res://data/*.json 加载单位和建筑属性数据。
 /// 替代4处硬编码switch-case（Unit.InitAsType / Unit3D.InitAsType / Building.InitAsType / Building3D.InitAsType）

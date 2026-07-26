@@ -29,7 +29,7 @@ public partial class BattleEffect : Node2D
     public override void _Ready()
     {
         EnsureTextures();
-        ZIndex = 10; // 在单位之上渲染
+        ZIndex = RenderLayer.Effect; // P1-5: 特效层，始终在单位之上（原值10会被单位Y-Sort 1000+遮挡）
 
         switch (_type)
         {
