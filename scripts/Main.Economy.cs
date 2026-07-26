@@ -22,10 +22,10 @@ public partial class Main
     }
 
     // ---------- 制造 ----------
-    private void TrySpawnUnit(UnitType type, int cost)
+    /// <summary>P1-2: 尝试生产单位（造价从GameData获取，含阵营乘数）。</summary>
+    private void TrySpawnUnit(UnitType type)
     {
-        // G1: 科技批量生产折扣
-        cost = Mathf.Max(1, (int)(cost * GetTechCostMultiplier(0)));
+        int cost = GetUnitCost(type);
 
         // 建筑前置检查
         if (!CanProduceUnit(0, type))
@@ -79,7 +79,8 @@ public partial class Main
 
     public void TrySpawnHarvester()
     {
-        if (_money[0] < HarvesterCost) { GD.Print("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
+        int cost = GetUnitCost(UnitType.Harvester);
+        if (_money[0] < cost) { GD.Print("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
         if (GetTeamPower(0) < 0) { GD.Print("[警告] 电力不足！"); return; }
 
         int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
@@ -88,9 +89,9 @@ public partial class Main
         var producer = FindProducerBuilding(BuildingType.Base, 0);
         if (producer == null) { GD.Print("[警告] 没有基地！"); return; }
 
-        _money[0] -= HarvesterCost;
+        _money[0] -= cost;
         producer.EnqueueProduction(ProductionType.Harvester);
-        GD.Print($"蓝方排产矿车，扣 ${HarvesterCost}，剩余 ${_money[0]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+        GD.Print($"蓝方排产矿车，扣 ${cost}，剩余 ${_money[0]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
     }
 
     // ---------- 建造系统 ----------
@@ -158,40 +159,36 @@ public partial class Main
         return false;
     }
 
+    /// <summary>P1-2: 获取单位造价（含阵营乘数和科技折扣）。</summary>
     private int GetUnitCost(UnitType type)
     {
-        return type switch
-        {
-            UnitType.LightTank => LightTankCost,
-            UnitType.Infantry => InfantryCost,
-            UnitType.HeavyTank => HeavyTankCost,
-            UnitType.Artillery => ArtilleryCost,
-            UnitType.RocketLauncher => RocketLauncherCost,
-            UnitType.MissileTank => MissileTankCost,
-            UnitType.AntiAir => AntiAirCost,
-            UnitType.Engineer => EngineerCost,
-            UnitType.Sapper => SapperCost,
-            UnitType.ChiefEngineer => ChiefEngineerCost,
-            UnitType.Grenadier => GrenadierCost,
-            UnitType.Sniper => SniperCost,
-            UnitType.FlameInfantry => FlameInfantryCost,
-            UnitType.Transport => TransportCost,
-            UnitType.Hero => HeroCost,         // E6b
-            UnitType.Spy => SpyCost,            // E6b
-            UnitType.Thief => ThiefCost,        // E6b
-            UnitType.Fighter => FighterCost,         // E7
-            UnitType.Helicopter => HelicopterCost,   // E7
-            UnitType.RocketInfantry => RocketInfantryCost, // E7
-            UnitType.Bomber => BomberCost,                 // E8
-            UnitType.Scout => ScoutCost,                   // E8
-            UnitType.TransportHeli => TransportHeliCost,    // E8
-            // E9：海军造价
-            UnitType.Destroyer => DestroyerCost,
-            UnitType.Submarine => SubmarineCost,
-            UnitType.AircraftCarrier => AircraftCarrierCost,
-            UnitType.LandingCraft => LandingCraftCost,
-            _ => 0
-        };
+        return GetUnitCost(type, PlayerTeamId);
+    }
+
+    /// <summary>P1-2: 获取单位造价（含阵营乘数和科技折扣）。</summary>
+    private int GetUnitCost(UnitType type, int teamId)
+    {
+        int baseCost = GameData.GetUnitCost(type);
+        // 阵营乘数
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        int cost = faction.ApplyCost(baseCost);
+        // G1: 科技批量生产折扣
+        cost = Mathf.Max(1, (int)(cost * GetTechCostMultiplier(teamId)));
+        return cost;
+    }
+
+    /// <summary>P1-2: 获取建筑造价（含阵营乘数）。</summary>
+    private int GetBuildingCost(BuildingType type, int teamId)
+    {
+        int baseCost = GameData.GetBuildingCost(type);
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        return faction.ApplyCost(baseCost);
+    }
+
+    /// <summary>P1-2: 获取建筑造价（玩家阵营）。</summary>
+    private int GetBuildingCost(BuildingType type)
+    {
+        return GetBuildingCost(type, PlayerTeamId);
     }
 
     private Vector2 GetBuildPosition(int teamId)
@@ -348,20 +345,7 @@ public partial class Main
         QueueRedraw();
     }
 
-    private int GetBuildingCost(BuildingType type)
-    {
-        return type switch
-        {
-            BuildingType.PowerPlant => PowerPlantCost,
-            BuildingType.Barracks => BarracksCost,
-            BuildingType.WarFactory => WarFactoryCost,
-            BuildingType.TechCenter => TechCenterCost,
-            BuildingType.Turret => TurretCost,
-            BuildingType.AntiAirTurret => AntiAirTurretCost,
-            BuildingType.RepairPad => RepairPadCost,
-            _ => 0
-        };
-    }
+    // P1-2: GetBuildingCost 已迁移到上方（支持阵营乘数的重载版本）
 
     /// <summary>G4：计算维修费用 = 造价 × 缺失血量比例 × 0.5。</summary>
     private int GetRepairCost(Building b)
@@ -420,56 +404,56 @@ public partial class Main
         bool hasTechCenter = HasBuilding(teamId, BuildingType.TechCenter);
 
         // 优先级1：没电站就建电站（基地消耗50电，必须建电站）
-        if (!hasPower && _money[teamId] >= PowerPlantCost)
+        if (!hasPower && _money[teamId] >= GetBuildingCost(BuildingType.PowerPlant, teamId))
         {
-            _money[teamId] -= PowerPlantCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.PowerPlant, teamId);
             SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant, ${_money[teamId]} left");
             return;
         }
 
         // 优先级2：电力不足（<30）时补电站
-        if (hasPower && power < 30 && _money[teamId] >= PowerPlantCost)
+        if (hasPower && power < 30 && _money[teamId] >= GetBuildingCost(BuildingType.PowerPlant, teamId))
         {
-            _money[teamId] -= PowerPlantCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.PowerPlant, teamId);
             SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant (low power), ${_money[teamId]} left");
             return;
         }
 
         // 优先级3：建兵营
-        if (hasPower && !hasBarracks && _money[teamId] >= BarracksCost)
+        if (hasPower && !hasBarracks && _money[teamId] >= GetBuildingCost(BuildingType.Barracks, teamId))
         {
-            _money[teamId] -= BarracksCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.Barracks, teamId);
             SpawnBuilding(BuildingType.Barracks, GetAIBuildPosition(teamId, BuildingType.Barracks), teamId);
             GD.Print($"[AI] Team {teamId} built Barracks, ${_money[teamId]} left");
             return;
         }
 
         // 优先级4：建战车工厂
-        if (hasBarracks && !hasWarFactory && _money[teamId] >= WarFactoryCost
+        if (hasBarracks && !hasWarFactory && _money[teamId] >= GetBuildingCost(BuildingType.WarFactory, teamId)
             && IsBuildingUnlockedByEra(teamId, BuildingType.WarFactory))
         {
-            _money[teamId] -= WarFactoryCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.WarFactory, teamId);
             SpawnBuilding(BuildingType.WarFactory, GetAIBuildPosition(teamId, BuildingType.WarFactory), teamId);
             GD.Print($"[AI] Team {teamId} built WarFactory, ${_money[teamId]} left");
             return;
         }
 
         // 优先级5：建科技中心（解锁高级兵种）
-        if (_aiUsesTech && hasWarFactory && !hasTechCenter && _money[teamId] >= TechCenterCost && power >= 0
+        if (_aiUsesTech && hasWarFactory && !hasTechCenter && _money[teamId] >= GetBuildingCost(BuildingType.TechCenter, teamId) && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.TechCenter))
         {
-            _money[teamId] -= TechCenterCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.TechCenter, teamId);
             SpawnBuilding(BuildingType.TechCenter, GetAIBuildPosition(teamId, BuildingType.TechCenter), teamId);
             GD.Print($"[AI] Team {teamId} built TechCenter, ${_money[teamId]} left");
             return;
         }
 
         // 优先级6：后期电力不够就再建电站
-        if (hasTechCenter && power < 50 && _money[teamId] >= PowerPlantCost)
+        if (hasTechCenter && power < 50 && _money[teamId] >= GetBuildingCost(BuildingType.PowerPlant, teamId))
         {
-            _money[teamId] -= PowerPlantCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.PowerPlant, teamId);
             SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
             GD.Print($"[AI] Team {teamId} built PowerPlant (for tech center), ${_money[teamId]} left");
             return;
@@ -478,10 +462,10 @@ public partial class Main
         // ---- 阶段12-A1+A2：防御建筑与维修厂 ----
         // 优先级7：建造维修厂（已建车厂且无维修厂且资金充裕）
         if (hasWarFactory && !HasBuilding(teamId, BuildingType.RepairPad)
-            && _money[teamId] >= RepairPadCost + 200 && power >= 0
+            && _money[teamId] >= GetBuildingCost(BuildingType.RepairPad, teamId) + 200 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.RepairPad))
         {
-            _money[teamId] -= RepairPadCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.RepairPad, teamId);
             SpawnBuilding(BuildingType.RepairPad, GetAIBuildPosition(teamId, BuildingType.RepairPad), teamId);
             GD.Print($"[AI] Team {teamId} built RepairPad, ${_money[teamId]} left");
             return;
@@ -490,10 +474,10 @@ public partial class Main
         // 优先级8：建造机枪塔（已建兵营，每阵营最多2座，资金充裕）
         int turretCount = CountBuildingOfType(teamId, BuildingType.Turret);
         if (hasBarracks && turretCount < 2
-            && _money[teamId] >= TurretCost + 300 && power >= 0
+            && _money[teamId] >= GetBuildingCost(BuildingType.Turret, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.Turret))
         {
-            _money[teamId] -= TurretCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.Turret, teamId);
             SpawnBuilding(BuildingType.Turret, GetAIBuildPosition(teamId, BuildingType.Turret), teamId);
             GD.Print($"[AI] Team {teamId} built Turret #{turretCount + 1}, ${_money[teamId]} left");
             return;
@@ -502,10 +486,10 @@ public partial class Main
         // 优先级9：建造防空炮（已建车厂，每阵营最多2座）
         int aaCount = CountBuildingOfType(teamId, BuildingType.AntiAirTurret);
         if (hasWarFactory && aaCount < 2
-            && _money[teamId] >= AntiAirTurretCost + 300 && power >= 0
+            && _money[teamId] >= GetBuildingCost(BuildingType.AntiAirTurret, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.AntiAirTurret))
         {
-            _money[teamId] -= AntiAirTurretCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.AntiAirTurret, teamId);
             SpawnBuilding(BuildingType.AntiAirTurret, GetAIBuildPosition(teamId, BuildingType.AntiAirTurret), teamId);
             GD.Print($"[AI] Team {teamId} built AntiAirTurret #{aaCount + 1}, ${_money[teamId]} left");
             return;
@@ -513,45 +497,45 @@ public partial class Main
 
         // E7：优先级10：建造机场（已建科技中心，每阵营最多1座）
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.Airfield)
-            && _money[teamId] >= AirfieldCost + 300 && power >= 0
+            && _money[teamId] >= GetBuildingCost(BuildingType.Airfield, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.Airfield))
         {
-            _money[teamId] -= AirfieldCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.Airfield, teamId);
             SpawnBuilding(BuildingType.Airfield, GetAIBuildPosition(teamId, BuildingType.Airfield), teamId);
             GD.Print($"[AI] Team {teamId} built Airfield, ${_money[teamId]} left");
             return;
         }
         // E9：优先级11：建造船厂（已建科技中心，每阵营最多1座）
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.Shipyard)
-            && _money[teamId] >= ShipyardCost + 300 && power >= 0
+            && _money[teamId] >= GetBuildingCost(BuildingType.Shipyard, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.Shipyard))
         {
-            _money[teamId] -= ShipyardCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.Shipyard, teamId);
             SpawnBuilding(BuildingType.Shipyard, GetAIBuildPosition(teamId, BuildingType.Shipyard), teamId);
             GD.Print($"[AI] Team {teamId} built Shipyard, ${_money[teamId]} left");
             return;
         }
         // E10：优先级12-14：超武建筑（已建科技中心）
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.NukeSilo)
-            && _money[teamId] >= NukeSiloCost + 300 && power >= 0)
+            && _money[teamId] >= GetBuildingCost(BuildingType.NukeSilo, teamId) + 300 && power >= 0)
         {
-            _money[teamId] -= NukeSiloCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.NukeSilo, teamId);
             SpawnBuilding(BuildingType.NukeSilo, GetAIBuildPosition(teamId, BuildingType.NukeSilo), teamId);
             GD.Print($"[AI] Team {teamId} built NukeSilo, ${_money[teamId]} left");
             return;
         }
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.LightningTower)
-            && _money[teamId] >= LightningTowerCost + 300 && power >= 0)
+            && _money[teamId] >= GetBuildingCost(BuildingType.LightningTower, teamId) + 300 && power >= 0)
         {
-            _money[teamId] -= LightningTowerCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.LightningTower, teamId);
             SpawnBuilding(BuildingType.LightningTower, GetAIBuildPosition(teamId, BuildingType.LightningTower), teamId);
             GD.Print($"[AI] Team {teamId} built LightningTower, ${_money[teamId]} left");
             return;
         }
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.MissileSilo)
-            && _money[teamId] >= MissileSiloCost + 300 && power >= 0)
+            && _money[teamId] >= GetBuildingCost(BuildingType.MissileSilo, teamId) + 300 && power >= 0)
         {
-            _money[teamId] -= MissileSiloCost;
+            _money[teamId] -= GetBuildingCost(BuildingType.MissileSilo, teamId);
             SpawnBuilding(BuildingType.MissileSilo, GetAIBuildPosition(teamId, BuildingType.MissileSilo), teamId);
             GD.Print($"[AI] Team {teamId} built MissileSilo, ${_money[teamId]} left");
             return;
@@ -588,7 +572,7 @@ public partial class Main
         {
             // 有科技中心时攒钱优先造高级兵种
             bool hasTech = HasBuilding(teamId, BuildingType.TechCenter);
-            if (!(hasTech && _money[teamId] < RocketLauncherCost && teamUnits >= 3))
+            if (!(hasTech && _money[teamId] < GetUnitCost(UnitType.RocketLauncher, teamId) && teamUnits >= 3))
             {
                 var types = new List<UnitType>();
                 if (HasBuilding(teamId, BuildingType.Barracks))
@@ -673,12 +657,13 @@ public partial class Main
 
         // 2. 矿车耗损自动补充（最多 3 辆）
         var teamHarvesters = CountHarvestersOfTeam(teamId);
-        if (_money[teamId] >= HarvesterCost && teamHarvesters < 3)
+        int harvesterCost = GetUnitCost(UnitType.Harvester, teamId);
+        if (_money[teamId] >= harvesterCost && teamHarvesters < 3)
         {
             var harvProducer = FindProducerBuilding(BuildingType.Base, teamId);
             if (harvProducer != null)
             {
-                _money[teamId] -= HarvesterCost;
+                _money[teamId] -= harvesterCost;
                 harvProducer.EnqueueProduction(ProductionType.Harvester);
             }
         }
@@ -786,12 +771,13 @@ public partial class Main
         int blueUnits = CountUnitsOfTeam(0);
         // 优先补矿车
         int blueHarvesters = CountHarvestersOfTeam(0);
-        if (_money[0] >= HarvesterCost && blueHarvesters < 3)
+        int blueHarvCost = GetUnitCost(UnitType.Harvester, 0);
+        if (_money[0] >= blueHarvCost && blueHarvesters < 3)
         {
             var harvProducer = FindProducerBuilding(BuildingType.Base, 0);
             if (harvProducer != null)
             {
-                _money[0] -= HarvesterCost;
+                _money[0] -= blueHarvCost;
                 harvProducer.EnqueueProduction(ProductionType.Harvester);
                 GD.Print($"[BlueAI] Blue queued harvester, ${_money[0]} left");
                 return;
@@ -804,7 +790,7 @@ public partial class Main
 
         // 有科技中心时攒钱优先造高级兵种
         bool hasTech = HasBuilding(0, BuildingType.TechCenter);
-        if (hasTech && _money[0] < RocketLauncherCost && blueUnits >= 3) return;
+        if (hasTech && _money[0] < GetUnitCost(UnitType.RocketLauncher, 0) && blueUnits >= 3) return;
 
         var types = new List<UnitType>();
         if (HasBuilding(0, BuildingType.Barracks))
@@ -952,6 +938,8 @@ public partial class Main
         u.GlobalPosition = pos;
         u.TeamId = teamId;
         u.AutoAI = autoAI;
+        // P1-2: 应用阵营数值乘数
+        u.ApplyFactionMultipliers(teamId);
         _unitsNode.AddChild(u);
         return u;
     }
@@ -972,6 +960,8 @@ public partial class Main
         b.InitAsType(type);
         b.GlobalPosition = pos;
         b.TeamId = teamId;
+        // P1-2: 应用阵营数值乘数
+        b.ApplyFactionMultipliers(teamId);
         b.Destroyed += OnBuildingDestroyed;
         _buildingsNode.AddChild(b);
         // G5: 建造触发尤里卡

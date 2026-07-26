@@ -509,11 +509,11 @@ public partial class Main
         _hintLabel.Text = "WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点\n" +
                           "Q 攻击移动 | X 停止 | R 维修建筑 | V 出售建筑(回收50%) | Ctrl+1~9 编队 | 1~9 选编队\n" +
                           "选中建筑右键设集结点 | 选中受损建筑按R维修 | 选中建筑(非基地)按V出售\n" +
-                          "B 轻坦$" + LightTankCost + " | N 重坦$" + HeavyTankCost +
-                          " | M 炮兵$" + ArtilleryCost + " | H 矿车$" + HarvesterCost + "\n" +
-                          "K 火箭炮$" + RocketLauncherCost + " | L 导弹车$" + MissileTankCost + " (需科技中心)\n" +
-                          "P 电站$" + PowerPlantCost + " | O 兵营$" + BarracksCost +
-                          " | I 车厂$" + WarFactoryCost + " | T 科技$" + TechCenterCost + " (需前置建筑)\n" +
+                          "B 轻坦$" + GetUnitCost(UnitType.LightTank) + " | N 重坦$" + GetUnitCost(UnitType.HeavyTank) +
+                          " | M 炮兵$" + GetUnitCost(UnitType.Artillery) + " | H 矿车$" + GetUnitCost(UnitType.Harvester) + "\n" +
+                          "K 火箭炮$" + GetUnitCost(UnitType.RocketLauncher) + " | L 导弹车$" + GetUnitCost(UnitType.MissileTank) + " (需科技中心)\n" +
+                          "P 电站$" + GetBuildingCost(BuildingType.PowerPlant) + " | O 兵营$" + GetBuildingCost(BuildingType.Barracks) +
+                          " | I 车厂$" + GetBuildingCost(BuildingType.WarFactory) + " | T 科技$" + GetBuildingCost(BuildingType.TechCenter) + " (需前置建筑)\n" +
                           "Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)\n" +
                           "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)\n" +
                           "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)\n" +

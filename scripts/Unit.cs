@@ -424,306 +424,55 @@ public partial class Unit : CharacterBody2D
         _ => null!
     };
 
-    /// <summary>按兵种类型初始化属性。必须在 _Ready 之前调用。</summary>
+    /// <summary>按兵种类型初始化属性。必须在 _Ready 之前调用。
+    /// P1-2: 从data/units.json加载基础数值，替代原300行switch-case。</summary>
     public void InitAsType(UnitType type)
     {
         Type = type;
-        switch (type)
+        var data = GameData.GetUnit(type);
+        var s = data.Stats2D;
+
+        UnitName = data.Name;
+        MaxHealth = s.MaxHealth;
+        MoveSpeed = s.MoveSpeed;
+        AttackDamage = s.AttackDamage;
+        AttackRange = s.AttackRange;
+        AttackCooldown = s.AttackCooldown;
+        AggroRange = s.AggroRange;
+        MinAttackRange = s.MinAttackRange;
+        SplashRadius = s.SplashRadius;
+        CanAttackAir = s.CanAttackAir;
+        AutoDefend = s.AutoDefend;
+        IsAirUnit = s.IsAirUnit;
+        MaxPassengers = s.MaxPassengers;
+
+        // Hero技能随机化（保留原逻辑，JSON只提供基础数值）
+        if (s.IsHero)
         {
-            case UnitType.LightTank:
-                UnitName = "轻坦克";
-                MaxHealth = 70f;
-                MoveSpeed = 250f;
-                AttackDamage = 10f;
-                AttackRange = 130f;
-                AttackCooldown = 0.8f;
-                AggroRange = 250f;
-                break;
-            case UnitType.HeavyTank:
-                UnitName = "重坦克";
-                MaxHealth = 180f;
-                MoveSpeed = 150f;
-                AttackDamage = 30f;
-                AttackRange = 160f;
-                AttackCooldown = 1.5f;
-                AggroRange = 300f;
-                break;
-            case UnitType.Artillery:
-                UnitName = "炮兵";
-                MaxHealth = 60f;
-                MoveSpeed = 100f;
-                AttackDamage = 40f;
-                AttackRange = 300f;
-                AttackCooldown = 2.5f;
-                MinAttackRange = 100f;
-                AggroRange = 350f;
-                break;
-            case UnitType.RocketLauncher:
-                UnitName = "火箭炮";
-                MaxHealth = 90f;
-                MoveSpeed = 110f;
-                AttackDamage = 50f;
-                AttackRange = 360f;
-                AttackCooldown = 3.0f;
-                MinAttackRange = 120f;
-                SplashRadius = 80f;
-                AggroRange = 380f;
-                break;
-            case UnitType.MissileTank:
-                UnitName = "导弹车";
-                MaxHealth = 70f;
-                MoveSpeed = 130f;
-                AttackDamage = 80f;
-                AttackRange = 420f;
-                AttackCooldown = 4.0f;
-                MinAttackRange = 150f;
-                AggroRange = 440f;
-                break;
-            case UnitType.AntiAir:
-                UnitName = "防空车";
-                MaxHealth = 70f;
-                MoveSpeed = 220f;
-                AttackDamage = 8f;
-                AttackRange = 140f;
-                AttackCooldown = 0.45f;
-                AggroRange = 260f;
-                CanAttackAir = true;  // E7：防空车对空
-                break;
-            case UnitType.Infantry:
-                UnitName = "步兵";
-                MaxHealth = 35f;
-                MoveSpeed = 90f;
-                AttackDamage = 6f;
-                AttackRange = 100f;
-                AttackCooldown = 0.6f;
-                AggroRange = 200f;
-                break;
-            case UnitType.Engineer:
-                UnitName = "工程车";
-                MaxHealth = 120f;
-                MoveSpeed = 240f;
-                AttackDamage = 0f;     // 纯辅助不攻击
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 0f;       // 不主动锁定目标
-                break;
-            case UnitType.Sapper:
-                UnitName = "工兵";
-                MaxHealth = 40f;
-                MoveSpeed = 95f;
-                AttackDamage = 3f;
-                AttackRange = 60f;
-                AttackCooldown = 0.8f;
-                AggroRange = 100f;
-                break;
-            case UnitType.ChiefEngineer:
-                UnitName = "高级工程师";
-                MaxHealth = 60f;
-                MoveSpeed = 100f;
-                AttackDamage = 5f;
-                AttackRange = 80f;
-                AttackCooldown = 0.7f;
-                AggroRange = 120f;
-                break;
-            // E6：新步兵系兵种
-            case UnitType.Grenadier:
-                UnitName = "掷弹兵";
-                MaxHealth = 40f;
-                MoveSpeed = 85f;
-                AttackDamage = 20f;
-                AttackRange = 180f;
-                AttackCooldown = 2.0f;
-                MinAttackRange = 50f;
-                SplashRadius = 60f;  // 掷弹兵AOE
-                AggroRange = 220f;
-                break;
-            case UnitType.Sniper:
-                UnitName = "狙击手";
-                MaxHealth = 30f;
-                MoveSpeed = 80f;
-                AttackDamage = 45f;
-                AttackRange = 350f;
-                AttackCooldown = 2.5f;
-                MinAttackRange = 80f;
-                AggroRange = 380f;
-                break;
-            case UnitType.FlameInfantry:
-                UnitName = "喷火兵";
-                MaxHealth = 50f;
-                MoveSpeed = 85f;
-                AttackDamage = 8f;
-                AttackRange = 80f;
-                AttackCooldown = 0.3f;  // 高射速近战
-                SplashRadius = 40f;    // 短距AOE
-                AggroRange = 120f;
-                break;
-            // E6：运输车
-            case UnitType.Transport:
-                UnitName = "运输车";
-                MaxHealth = 150f;
-                MoveSpeed = 200f;
-                AttackDamage = 0f;    // 基础无攻击，合体后有
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 0f;
-                MaxPassengers = 3;
-                break;
-            // E6b：特殊单位
-            case UnitType.Hero:
-                UnitName = "英雄";
-                MaxHealth = 200f;
-                MoveSpeed = 160f;
-                AttackDamage = 35f;
-                AttackRange = 160f;
-                AttackCooldown = 0.6f;
-                AggroRange = 300f;
-                AutoDefend = true;
-                // E6b：随机技能
-                _heroSkill = (HeroSkill)(GD.Randi() % 5 + 1);
-                switch (_heroSkill)
-                {
-                    case HeroSkill.DoubleShot: UnitName = "英雄·双发"; AttackCooldown = 0.35f; break;
-                    case HeroSkill.HealAura: UnitName = "英雄·治疗光环"; break;
-                    case HeroSkill.Dash: UnitName = "英雄·冲锋"; MoveSpeed = 260f; break;
-                    case HeroSkill.CriticalStrike: UnitName = "英雄·暴击"; break;
-                    case HeroSkill.Shield: UnitName = "英雄·护盾"; MaxHealth = 300f; break;
-                }
-                Health = MaxHealth;
-                GD.Print($"[E6b] 英雄技能：{_heroSkill}");
-                break;
-            case UnitType.Spy:
-                UnitName = "间谍";
-                MaxHealth = 45f;
-                MoveSpeed = 110f;
-                AttackDamage = 0f;
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 0f;
-                break;
-            case UnitType.Thief:
-                UnitName = "窃贼";
-                MaxHealth = 40f;
-                MoveSpeed = 130f;
-                AttackDamage = 5f;
-                AttackRange = 60f;
-                AttackCooldown = 0.8f;
-                AggroRange = 100f;
-                break;
-            // E7：空军单位
-            case UnitType.Fighter:
-                UnitName = "战斗机";
-                MaxHealth = 80f;
-                MoveSpeed = 350f;
-                AttackDamage = 25f;
-                AttackRange = 200f;
-                AttackCooldown = 1.0f;
-                AggroRange = 300f;
-                AutoDefend = true;
-                IsAirUnit = true;
-                break;
-            case UnitType.Helicopter:
-                UnitName = "直升机";
-                MaxHealth = 120f;
-                MoveSpeed = 220f;
-                AttackDamage = 15f;
-                AttackRange = 160f;
-                AttackCooldown = 0.5f;
-                SplashRadius = 30f;
-                AggroRange = 250f;
-                AutoDefend = true;
-                IsAirUnit = true;
-                break;
-            case UnitType.RocketInfantry:
-                UnitName = "火箭兵";
-                MaxHealth = 45f;
-                MoveSpeed = 85f;
-                AttackDamage = 20f;
-                AttackRange = 200f;
-                AttackCooldown = 1.8f;
-                MinAttackRange = 40f;
-                AggroRange = 250f;
-                CanAttackAir = true;
-                break;
-            // E8：扩展空军
-            case UnitType.Bomber:
-                UnitName = "轰炸机";
-                MaxHealth = 100f;
-                MoveSpeed = 180f;
-                AttackDamage = 50f;
-                AttackRange = 250f;
-                AttackCooldown = 3.0f;
-                SplashRadius = 100f;
-                AggroRange = 320f;
-                AutoDefend = true;
-                IsAirUnit = true;
-                break;
-            case UnitType.Scout:
-                UnitName = "侦察机";
-                MaxHealth = 50f;
-                MoveSpeed = 400f;
-                AttackDamage = 0f;
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 600f;  // 超大视野侦察
-                AutoDefend = false;
-                IsAirUnit = true;
-                break;
-            case UnitType.TransportHeli:
-                UnitName = "运输直升机";
-                MaxHealth = 180f;
-                MoveSpeed = 200f;
-                AttackDamage = 0f;
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 0f;
-                AutoDefend = false;
-                IsAirUnit = true;
-                MaxPassengers = 4;
-                break;
-            // E9：海军单位
-            case UnitType.Destroyer:
-                UnitName = "驱逐舰";
-                MaxHealth = 150f;
-                MoveSpeed = 150f;
-                AttackDamage = 20f;
-                AttackRange = 180f;
-                AttackCooldown = 0.8f;
-                AggroRange = 250f;
-                AutoDefend = true;
-                break;
-            case UnitType.Submarine:
-                UnitName = "潜艇";
-                MaxHealth = 80f;
-                MoveSpeed = 120f;
-                AttackDamage = 35f;
-                AttackRange = 160f;
-                AttackCooldown = 2.0f;
-                AggroRange = 200f;
-                AutoDefend = true;
-                break;
-            case UnitType.AircraftCarrier:
-                UnitName = "航母";
-                MaxHealth = 300f;
-                MoveSpeed = 80f;
-                AttackDamage = 0f;
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 0f;
-                AutoDefend = false;
-                MaxPassengers = 4; // 搭载战斗机
-                break;
-            case UnitType.LandingCraft:
-                UnitName = "登陆艇";
-                MaxHealth = 120f;
-                MoveSpeed = 100f;
-                AttackDamage = 0f;
-                AttackRange = 0f;
-                AttackCooldown = 0f;
-                AggroRange = 0f;
-                AutoDefend = false;
-                MaxPassengers = 3; // 搭载步兵
-                break;
+            _heroSkill = (HeroSkill)(GD.Randi() % 5 + 1);
+            switch (_heroSkill)
+            {
+                case HeroSkill.DoubleShot: UnitName = "英雄·双发"; AttackCooldown = 0.35f; break;
+                case HeroSkill.HealAura: UnitName = "英雄·治疗光环"; break;
+                case HeroSkill.Dash: UnitName = "英雄·冲锋"; MoveSpeed = 260f; break;
+                case HeroSkill.CriticalStrike: UnitName = "英雄·暴击"; break;
+                case HeroSkill.Shield: UnitName = "英雄·护盾"; MaxHealth = 300f; break;
+            }
+            Health = MaxHealth;
+            GD.Print($"[E6b] 英雄技能：{_heroSkill}");
         }
+    }
+
+    /// <summary>P1-2: 应用阵营数值乘数。在InitAsType之后、TeamId设置之后调用。
+    /// 影响生命、伤害、速度。成本在Main.GetUnitCost中处理。</summary>
+    public void ApplyFactionMultipliers(int teamId)
+    {
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        MaxHealth = faction.ApplyHealth(MaxHealth);
+        AttackDamage = faction.ApplyDamage(AttackDamage);
+        MoveSpeed = faction.ApplySpeed(MoveSpeed);
+        // 同步当前血量到新上限
+        if (Health > MaxHealth) Health = MaxHealth;
     }
 
     /// <summary>判断兵种是否为步兵类（步体、工兵、高级工程师、掷弹兵、狙击手、喷火兵、英雄、间谍、窃贼）。</summary>

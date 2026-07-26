@@ -1,0 +1,80 @@
+{
+  "_comment": "P1-2: 阵营定义。将原8色阵营升级为3个差异化阵营，每个阵营有独特的可用单位/建筑白名单、数值乘数和专属科技。teamId 0=玩家(同盟军)，1..7=AI(随机分配阵营)。",
+  "version": 1,
+  "factions": {
+    "Allies": {
+      "name": "同盟军",
+      "description": "均衡型阵营，空军和海军齐全，适合全面发展。",
+      "color": { "r": 0.16, "g": 0.32, "b": 0.82 },
+      "statMultipliers": {
+        "health": 1.0,
+        "damage": 1.0,
+        "speed": 1.05,
+        "cost": 0.95
+      },
+      "availableUnits": [
+        "LightTank", "HeavyTank", "Artillery", "RocketLauncher", "AntiAir",
+        "Harvester", "Infantry", "Engineer", "Grenadier", "Sniper", "FlameInfantry",
+        "Transport", "Hero", "Spy", "Thief",
+        "Fighter", "Helicopter", "RocketInfantry", "Bomber", "Scout", "TransportHeli",
+        "Destroyer", "Submarine", "AircraftCarrier", "LandingCraft"
+      ],
+      "availableBuildings": [
+        "PowerPlant", "Barracks", "WarFactory", "TechCenter",
+        "Turret", "AntiAirTurret", "RepairPad", "Airfield", "Shipyard", "MissileSilo"
+      ],
+      "exclusiveTechs": ["AirSuperiority", "NavalSupport"],
+      "_comment_exclusiveTechs": "专属科技：空中优势（空军伤害+15%）、海军支援（海军生产速度+20%）"
+    },
+    "Soviet": {
+      "name": "苏维埃",
+      "description": "重装甲阵营，陆地突击强势，但空军受限、海军薄弱。",
+      "color": { "r": 0.82, "g": 0.16, "b": 0.16 },
+      "statMultipliers": {
+        "health": 1.20,
+        "damage": 1.10,
+        "speed": 0.90,
+        "cost": 1.0
+      },
+      "availableUnits": [
+        "LightTank", "HeavyTank", "Artillery", "RocketLauncher", "MissileTank", "AntiAir",
+        "Harvester", "Infantry", "Engineer", "Sapper", "ChiefEngineer", "FlameInfantry",
+        "Transport", "Hero", "Thief",
+        "Helicopter",
+        "Destroyer", "LandingCraft"
+      ],
+      "availableBuildings": [
+        "PowerPlant", "Barracks", "WarFactory", "TechCenter",
+        "Turret", "AntiAirTurret", "RepairPad", "Airfield", "Shipyard", "NukeSilo"
+      ],
+      "exclusiveTechs": ["HeavyArmor", "NuclearPower"],
+      "_comment_exclusiveTechs": "专属科技：重装甲（坦克生命+15%）、核能（电站发电+50%）"
+    },
+    "Yuri": {
+      "name": "尤里军团",
+      "description": "潜行与控制型阵营，依赖间谍和特殊单位，正面对抗偏弱。",
+      "color": { "r": 0.44, "g": 0.18, "b": 0.72 },
+      "statMultipliers": {
+        "health": 0.90,
+        "damage": 1.0,
+        "speed": 1.10,
+        "cost": 0.90
+      },
+      "availableUnits": [
+        "LightTank", "Artillery", "AntiAir",
+        "Harvester", "Infantry", "Engineer", "Sapper", "Grenadier", "Sniper",
+        "Transport", "Hero", "Spy", "Thief",
+        "Helicopter", "Scout", "TransportHeli",
+        "Submarine", "LandingCraft"
+      ],
+      "availableBuildings": [
+        "PowerPlant", "Barracks", "WarFactory", "TechCenter",
+        "Turret", "RepairPad", "Airfield", "Shipyard", "LightningTower"
+      ],
+      "exclusiveTechs": ["MindControl", "StealthOps"],
+      "_comment_exclusiveTechs": "专属科技：心灵控制（间谍/窃贼效率+30%）、隐蔽行动（单位隐身时间+50%）"
+    }
+  },
+  "defaultFaction": "Allies",
+  "_comment_defaultFaction": "未指定阵营时使用同盟军（保持向后兼容）"
+}

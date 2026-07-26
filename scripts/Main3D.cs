@@ -167,6 +167,10 @@ public partial class Main3D : Node3D
 
     public override void _Ready()
     {
+        // P1-2: 加载游戏数据（单位/建筑/阵营）
+        GameData.Load();
+        FactionManager.Load();
+
         // 解析难度
         var args = OS.GetCmdlineArgs();
         foreach (var a in args)
@@ -401,6 +405,8 @@ public partial class Main3D : Node3D
         building.Initialize(_terrain, this);
         _buildingsNode.AddChild(building);
         MarkBuildingsCacheDirty();
+        // P1-2: 应用阵营数值乘数（_Ready中的InitAsType已设置基础值）
+        building.ApplyFactionMultipliers(teamId);
 
         if (type == Building3D.BuildingType.Base)
             _bases[teamId] = building;
@@ -422,6 +428,8 @@ public partial class Main3D : Node3D
         _unitsNode.AddChild(unit);
         MarkUnitsCacheDirty();
         unit.InitAsType(type);
+        // P1-2: 应用阵营数值乘数
+        unit.ApplyFactionMultipliers(teamId);
 
         // AI单位自动战斗
         if (teamId != PlayerTeamId)

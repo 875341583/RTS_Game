@@ -838,90 +838,46 @@ public partial class Unit3D : CharacterBody3D
     // 兼容字段
     private bool IsNavalUnit_test;
 
-    // ======== InitAsType: 27种兵种数值初始化（从2D移植）========
+    // ======== InitAsType: 27种兵种数值初始化（从data/units.json加载）========
 
     public void InitAsType(UnitType type)
     {
         Type = type;
+        var data = GameData.GetUnit(type);
+        var s = data.Stats3D;
 
-        switch (type)
-        {
-            case UnitType.LightTank:
-                MaxHealth = 120; MoveSpeed = 14f; AttackDamage = 18; AttackRange = 12; AttackCooldown = 0.8f; break;
-            case UnitType.HeavyTank:
-                MaxHealth = 250; MoveSpeed = 9f; AttackDamage = 30; AttackRange = 13; AttackCooldown = 1.2f; break;
-            case UnitType.Artillery:
-                MaxHealth = 80; MoveSpeed = 8f; AttackDamage = 35; AttackRange = 20; AttackCooldown = 2.0f;
-                MinAttackRange = 5; SplashRadius = 3; break;
-            case UnitType.RocketLauncher:
-                MaxHealth = 70; MoveSpeed = 9f; AttackDamage = 25; AttackRange = 18; AttackCooldown = 1.5f;
-                SplashRadius = 4; break;
-            case UnitType.MissileTank:
-                MaxHealth = 100; MoveSpeed = 8f; AttackDamage = 40; AttackRange = 22; AttackCooldown = 3.0f; break;
-            case UnitType.AntiAir:
-                MaxHealth = 80; MoveSpeed = 11f; AttackDamage = 12; AttackRange = 16; AttackCooldown = 0.3f;
-                CanAttackAir = true; break;
-            case UnitType.Infantry:
-                MaxHealth = 50; MoveSpeed = 8f; AttackDamage = 8; AttackRange = 8; AttackCooldown = 0.5f; break;
-            case UnitType.Engineer:
-                MaxHealth = 60; MoveSpeed = 8f; AttackDamage = 5; AttackRange = 5; AttackCooldown = 1.0f; break;
-            case UnitType.Sapper:
-                MaxHealth = 50; MoveSpeed = 8f; AttackDamage = 3; AttackRange = 3; AttackCooldown = 2.0f;
-                _terrainModType = TerrainModType.Flatten; break;
-            case UnitType.ChiefEngineer:
-                MaxHealth = 70; MoveSpeed = 9f; AttackDamage = 5; AttackRange = 5; AttackCooldown = 1.5f;
-                _terrainModType = TerrainModType.Flatten; break;
-            case UnitType.Grenadier:
-                MaxHealth = 55; MoveSpeed = 8f; AttackDamage = 15; AttackRange = 10; AttackCooldown = 1.0f;
-                SplashRadius = 2; break;
-            case UnitType.Sniper:
-                MaxHealth = 45; MoveSpeed = 8f; AttackDamage = 30; AttackRange = 18; AttackCooldown = 2.0f; break;
-            case UnitType.FlameInfantry:
-                MaxHealth = 60; MoveSpeed = 8f; AttackDamage = 12; AttackRange = 6; AttackCooldown = 0.3f;
-                SplashRadius = 1.5f; break;
-            case UnitType.Transport:
-                MaxHealth = 100; MoveSpeed = 10f; AttackDamage = 0; AttackRange = 0; AttackCooldown = 99;
-                MaxPassengers = 3; break;
-            case UnitType.Hero:
-                MaxHealth = 200; MoveSpeed = 10f; AttackDamage = 25; AttackRange = 10; AttackCooldown = 0.5f;
-                _heroSkill = (HeroSkill)new Random().Next(1, 6); break;
-            case UnitType.Spy:
-                MaxHealth = 50; MoveSpeed = 9f; AttackDamage = 5; AttackRange = 5; AttackCooldown = 2.0f; break;
-            case UnitType.Thief:
-                MaxHealth = 45; MoveSpeed = 9f; AttackDamage = 3; AttackRange = 3; AttackCooldown = 2.0f; break;
-            case UnitType.Fighter:
-                MaxHealth = 80; MoveSpeed = 25f; AttackDamage = 20; AttackRange = 14; AttackCooldown = 0.5f;
-                IsAirUnit = true; CanAttackAir = true; break;
-            case UnitType.Helicopter:
-                MaxHealth = 100; MoveSpeed = 18f; AttackDamage = 15; AttackRange = 12; AttackCooldown = 0.8f;
-                IsAirUnit = true; break;
-            case UnitType.RocketInfantry:
-                MaxHealth = 50; MoveSpeed = 7f; AttackDamage = 18; AttackRange = 14; AttackCooldown = 1.5f;
-                CanAttackAir = true; break;
-            case UnitType.Bomber:
-                MaxHealth = 120; MoveSpeed = 20f; AttackDamage = 50; AttackRange = 6; AttackCooldown = 3.0f;
-                IsAirUnit = true; SplashRadius = 5; break;
-            case UnitType.Scout:
-                MaxHealth = 40; MoveSpeed = 28f; AttackDamage = 0; AttackRange = 0; AttackCooldown = 99;
-                IsAirUnit = true; break;
-            case UnitType.TransportHeli:
-                MaxHealth = 90; MoveSpeed = 16f; AttackDamage = 0; AttackRange = 0; AttackCooldown = 99;
-                IsAirUnit = true; MaxPassengers = 5; break;
-            case UnitType.Destroyer:
-                MaxHealth = 150; MoveSpeed = 10f; AttackDamage = 20; AttackRange = 15; AttackCooldown = 1.0f; break;
-            case UnitType.Submarine:
-                MaxHealth = 100; MoveSpeed = 8f; AttackDamage = 35; AttackRange = 14; AttackCooldown = 2.5f; break;
-            case UnitType.AircraftCarrier:
-                MaxHealth = 300; MoveSpeed = 6f; AttackDamage = 0; AttackRange = 0; AttackCooldown = 99;
-                MaxPassengers = 4; break;
-            case UnitType.LandingCraft:
-                MaxHealth = 120; MoveSpeed = 7f; AttackDamage = 5; AttackRange = 5; AttackCooldown = 2.0f;
-                MaxPassengers = 4; break;
-        }
+        MaxHealth = s.MaxHealth;
+        MoveSpeed = s.MoveSpeed;
+        AttackDamage = s.AttackDamage;
+        AttackRange = s.AttackRange;
+        AttackCooldown = s.AttackCooldown;
+        MinAttackRange = s.MinAttackRange;
+        SplashRadius = s.SplashRadius;
+        CanAttackAir = s.CanAttackAir;
+        IsAirUnit = s.IsAirUnit;
+        MaxPassengers = s.MaxPassengers;
+
+        // 3D工兵地形平整标记
+        if (s.TerrainModType == "Flatten")
+            _terrainModType = TerrainModType.Flatten;
+
+        // Hero技能随机化（3D版）
+        if (s.IsHero)
+            _heroSkill = (HeroSkill)new Random().Next(1, 6);
 
         // 等级能力修正
         if (_abilities.Contains(UnitAbility.TurboEngine))
             MoveSpeed *= 1.2f;
+    }
+
+    /// <summary>P1-2: 应用阵营数值乘数。在InitAsType之后调用。</summary>
+    public void ApplyFactionMultipliers(int teamId)
+    {
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        MaxHealth = faction.ApplyHealth(MaxHealth);
+        AttackDamage = faction.ApplyDamage(AttackDamage);
+        MoveSpeed = faction.ApplySpeed(MoveSpeed);
+        if (Health > MaxHealth) Health = MaxHealth;
     }
 
     public static bool IsInfantryType(UnitType type) => type == UnitType.Infantry || type == UnitType.Engineer

@@ -48,56 +48,11 @@ public partial class Main : Node2D
 
     // 资金：玩家 2500，每个 AI 2000
     private readonly int[] _money = new int[TotalTeamCount] { 2500, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };
-    private const int LightTankCost = 200;
-    private const int HeavyTankCost = 500;
-    private const int ArtilleryCost = 400;
-    private const int HarvesterCost = 500;
-    private const int InfantryCost = 100;
-    private const int AntiAirCost = 300;
-    private const int EngineerCost = 300;
-    // E4：工程单位造价
-    private const int SapperCost = 150;
-    private const int ChiefEngineerCost = 400;
-    // E6：新步兵造价
-    private const int GrenadierCost = 200;
-    private const int SniperCost = 250;
-    private const int FlameInfantryCost = 180;
-    private const int TransportCost = 400;
-    // E6b：特殊单位造价
-    private const int HeroCost = 600;
-    private const int SpyCost = 500;
-    private const int ThiefCost = 300;
-    // E7：空军造价
-    private const int FighterCost = 500;
-    private const int HelicopterCost = 600;
-    private const int RocketInfantryCost = 350;
-    // E8：扩展空军造价
-    private const int BomberCost = 800;
-    private const int ScoutCost = 300;
-    private const int TransportHeliCost = 600;
-    // E9：海军造价
-    private const int DestroyerCost = 500;
-    private const int SubmarineCost = 600;
-    private const int AircraftCarrierCost = 1200;
-    private const int LandingCraftCost = 400;
-    private const int ShipyardCost = 900;
-    // E10：超武建筑造价
-    private const int NukeSiloCost = 1500;
-    private const int LightningTowerCost = 1500;
-    private const int MissileSiloCost = 1200;
+    // P1-2: 单位/建筑造价已迁移到 data/units.json 和 data/buildings.json
+    // 通过 GameData.GetUnitCost() / GameData.GetBuildingCost() 获取
+    // 阵营乘数通过 FactionDef.ApplyCost() 应用
+    // P0-3残留兼容：以下属性从GameData取基础值（不含阵营乘数，乘数在GetUnitCost/GetBuildingCost方法中应用）
     private const int MaxUnitsPerTeam = 20;
-    private const int PowerPlantCost = 300;
-    private const int BarracksCost = 400;
-    private const int WarFactoryCost = 600;
-    private const int TechCenterCost = 800;
-    // 阶段12-A1+A2：新建筑造价
-    private const int TurretCost = 400;
-    private const int AntiAirTurretCost = 600;
-    private const int RepairPadCost = 500;
-    // E7：机场造价
-    private const int AirfieldCost = 700;
-    private const int RocketLauncherCost = 600;
-    private const int MissileTankCost = 800;
 
     // 场景预载
     private PackedScene _unitScene = null!;
@@ -293,6 +248,10 @@ public partial class Main : Node2D
 
     public override void _Ready()
     {
+        // P1-2: 加载游戏数据（单位/建筑/阵营）
+        GameData.Load();
+        FactionManager.Load();
+
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
         QualitySettings.AutoDetect();
 
@@ -449,7 +408,7 @@ public partial class Main : Node2D
         _buildPanel.DifficultyName = _difficulty.ToString();
         GetNode<CanvasLayer>("UI").AddChild(_buildPanel);
         _buildPanel.BuildBuildingRequested += (bt) => TryBuildBuilding(bt);
-        _buildPanel.BuildUnitRequested += (ut) => TrySpawnUnit(ut, GetUnitCost(ut));
+        _buildPanel.BuildUnitRequested += (ut) => TrySpawnUnit(ut);
         _buildPanel.BuildHarvesterRequested += () => TrySpawnHarvester();
         GD.Print("[UI] 侧边栏建造面板已加载");
 
@@ -707,16 +666,16 @@ public partial class Main : Node2D
         else { _f12ShotDown = false; }
 
         // 制造单位热键
-        if (Input.IsActionJustPressed("spawn_unit")) TrySpawnUnit(UnitType.LightTank, LightTankCost);
-        if (Input.IsActionJustPressed("spawn_heavy")) TrySpawnUnit(UnitType.HeavyTank, HeavyTankCost);
-        if (Input.IsActionJustPressed("spawn_artillery")) TrySpawnUnit(UnitType.Artillery, ArtilleryCost);
+        if (Input.IsActionJustPressed("spawn_unit")) TrySpawnUnit(UnitType.LightTank);
+        if (Input.IsActionJustPressed("spawn_heavy")) TrySpawnUnit(UnitType.HeavyTank);
+        if (Input.IsActionJustPressed("spawn_artillery")) TrySpawnUnit(UnitType.Artillery);
         if (Input.IsActionJustPressed("spawn_harvester")) TrySpawnHarvester();
         if (Input.IsActionJustPressed("build_power")) TryBuildBuilding(BuildingType.PowerPlant);
         if (Input.IsActionJustPressed("build_barracks")) TryBuildBuilding(BuildingType.Barracks);
         if (Input.IsActionJustPressed("build_warfactory")) TryBuildBuilding(BuildingType.WarFactory);
         if (Input.IsActionJustPressed("build_tech")) TryBuildBuilding(BuildingType.TechCenter);
-        if (Input.IsActionJustPressed("spawn_rocket")) TrySpawnUnit(UnitType.RocketLauncher, RocketLauncherCost);
-        if (Input.IsActionJustPressed("spawn_missile")) TrySpawnUnit(UnitType.MissileTank, MissileTankCost);
+        if (Input.IsActionJustPressed("spawn_rocket")) TrySpawnUnit(UnitType.RocketLauncher);
+        if (Input.IsActionJustPressed("spawn_missile")) TrySpawnUnit(UnitType.MissileTank);
         // L1修复: 以下生产热键与面板键冲突(N/K/G/H/T/J/Y)，面板打开时禁用生产热键
         if (!AnyPanelOpen())
         {
@@ -724,56 +683,56 @@ public partial class Main : Node2D
         if (Input.IsKeyPressed(Key.K) && _prevKeyState != Key.K)
         {
             if (Input.IsKeyPressed(Key.Shift))
-                TrySpawnUnit(UnitType.ChiefEngineer, ChiefEngineerCost);
+                TrySpawnUnit(UnitType.ChiefEngineer);
             else
-                TrySpawnUnit(UnitType.Sapper, SapperCost);
+                TrySpawnUnit(UnitType.Sapper);
         }
         _prevKeyState = Input.IsKeyPressed(Key.K) ? Key.K : Key.None;
 
         // E6：新步兵热键 G(掷弹兵) / Shift+G(狙击手) / F(喷火兵) / T(运输车)
         if (Input.IsKeyPressed(Key.G) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Grenadier, GrenadierCost);
+            TrySpawnUnit(UnitType.Grenadier);
         if (Input.IsKeyPressed(Key.G) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Sniper, SniperCost);
+            TrySpawnUnit(UnitType.Sniper);
         if (Input.IsKeyPressed(Key.F) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.FlameInfantry, FlameInfantryCost);
+            TrySpawnUnit(UnitType.FlameInfantry);
         if (Input.IsKeyPressed(Key.T) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Transport, TransportCost);
+            TrySpawnUnit(UnitType.Transport);
 
         // E6b：特殊单位热键 Y(英雄) / Shift+Y(间谍) / U(窃贼)
         if (Input.IsKeyPressed(Key.Y) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Hero, HeroCost);
+            TrySpawnUnit(UnitType.Hero);
         if (Input.IsKeyPressed(Key.Y) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Spy, SpyCost);
+            TrySpawnUnit(UnitType.Spy);
         if (Input.IsKeyPressed(Key.U) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Thief, ThiefCost);
+            TrySpawnUnit(UnitType.Thief);
 
         // E7：空军热键 J(战斗机) / Shift+J(直升机) / Shift+W(火箭兵)
         if (Input.IsKeyPressed(Key.J) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Fighter, FighterCost);
+            TrySpawnUnit(UnitType.Fighter);
         if (Input.IsKeyPressed(Key.J) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Helicopter, HelicopterCost);
+            TrySpawnUnit(UnitType.Helicopter);
         if (Input.IsKeyPressed(Key.W) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.RocketInfantry, RocketInfantryCost);
+            TrySpawnUnit(UnitType.RocketInfantry);
 
         // E8：扩展空军热键 Shift+B(轰炸机) / H(侦察机) / Shift+H(运输直升机)
         if (Input.IsKeyPressed(Key.B) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Bomber, BomberCost);
+            TrySpawnUnit(UnitType.Bomber);
         if (Input.IsKeyPressed(Key.H) && !Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Scout, ScoutCost);
+            TrySpawnUnit(UnitType.Scout);
         if (Input.IsKeyPressed(Key.H) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.TransportHeli, TransportHeliCost);
+            TrySpawnUnit(UnitType.TransportHeli);
         } // end if (!AnyPanelOpen())
 
         // E9：海军热键 Shift+1(驱逐舰) / Shift+2(潜艇) / Shift+3(航母) / Shift+4(登陆艇)
         if (Input.IsKeyPressed(Key.Key1) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Destroyer, DestroyerCost);
+            TrySpawnUnit(UnitType.Destroyer);
         if (Input.IsKeyPressed(Key.Key2) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.Submarine, SubmarineCost);
+            TrySpawnUnit(UnitType.Submarine);
         if (Input.IsKeyPressed(Key.Key3) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.AircraftCarrier, AircraftCarrierCost);
+            TrySpawnUnit(UnitType.AircraftCarrier);
         if (Input.IsKeyPressed(Key.Key4) && Input.IsKeyPressed(Key.Shift))
-            TrySpawnUnit(UnitType.LandingCraft, LandingCraftCost);
+            TrySpawnUnit(UnitType.LandingCraft);
 
         // E6：E键运输车下车
         if (Input.IsKeyPressed(Key.E))

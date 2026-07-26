@@ -1,0 +1,114 @@
+{
+  "_comment": "P1-2: 建筑属性数据表。2D/3D分别一套数值（坐标系不同）。单一数据源替代Building.cs/Building3D.cs两处硬编码switch-case，以及Main.cs中的成本const常量。",
+  "version": 1,
+  "buildings": {
+    "Base": {
+      "name": "建造厂",
+      "cost": 0,
+      "_comment_cost": "基地为起始建筑，不可建造",
+      "stats2d": { "maxHealth": 1000, "powerProvided": 50, "powerConsumed": 50 },
+      "stats3d": { "maxHealth": 2000, "powerProvided": 0, "powerConsumed": 0 }
+    },
+    "PowerPlant": {
+      "name": "电站",
+      "cost": 300,
+      "stats2d": { "maxHealth": 300, "powerProvided": 100, "powerConsumed": 0 },
+      "stats3d": { "maxHealth": 600, "powerProvided": 150, "powerConsumed": 0 }
+    },
+    "Barracks": {
+      "name": "兵营",
+      "cost": 400,
+      "stats2d": { "maxHealth": 500, "powerProvided": 0, "powerConsumed": 30 },
+      "stats3d": { "maxHealth": 700, "powerProvided": 0, "powerConsumed": 20 }
+    },
+    "WarFactory": {
+      "name": "战车工厂",
+      "cost": 600,
+      "stats2d": { "maxHealth": 700, "powerProvided": 0, "powerConsumed": 50 },
+      "stats3d": { "maxHealth": 900, "powerProvided": 0, "powerConsumed": 50 }
+    },
+    "TechCenter": {
+      "name": "科技中心",
+      "cost": 800,
+      "stats2d": { "maxHealth": 600, "powerProvided": 0, "powerConsumed": 80 },
+      "stats3d": { "maxHealth": 800, "powerProvided": 0, "powerConsumed": 100 }
+    },
+    "Turret": {
+      "name": "机枪塔",
+      "cost": 400,
+      "stats2d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 25, "isDefensive": true, "attackDamage": 18, "attackRange": 180, "attackCooldown": 0.6 },
+      "stats3d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 20, "isDefensive": true, "attackDamage": 15, "attackRange": 12, "attackCooldown": 0.3 }
+    },
+    "AntiAirTurret": {
+      "name": "防空炮",
+      "cost": 600,
+      "stats2d": { "maxHealth": 350, "powerProvided": 0, "powerConsumed": 40, "isDefensive": true, "attackDamage": 30, "attackRange": 220, "attackCooldown": 1.0 },
+      "stats3d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 30, "isDefensive": true, "attackDamage": 12, "attackRange": 18, "attackCooldown": 0.2 }
+    },
+    "RepairPad": {
+      "name": "维修厂",
+      "cost": 500,
+      "stats2d": { "maxHealth": 500, "powerProvided": 0, "powerConsumed": 30, "isRepairStation": true, "repairRadius": 220 },
+      "stats3d": { "maxHealth": 600, "powerProvided": 0, "powerConsumed": 30, "isRepairStation": true, "repairRadius": 10 }
+    },
+    "Airfield": {
+      "name": "机场",
+      "cost": 700,
+      "stats2d": { "maxHealth": 600, "powerProvided": 0, "powerConsumed": 50 },
+      "stats3d": { "maxHealth": 700, "powerProvided": 0, "powerConsumed": 40 }
+    },
+    "Shipyard": {
+      "name": "船厂",
+      "cost": 900,
+      "stats2d": { "maxHealth": 800, "powerProvided": 0, "powerConsumed": 60 },
+      "stats3d": { "maxHealth": 800, "powerProvided": 0, "powerConsumed": 40 }
+    },
+    "NukeSilo": {
+      "name": "核弹发射井",
+      "cost": 1500,
+      "stats2d": { "maxHealth": 500, "powerProvided": 0, "powerConsumed": 100 },
+      "stats3d": { "maxHealth": 1000, "powerProvided": 0, "powerConsumed": 100 }
+    },
+    "LightningTower": {
+      "name": "闪电风暴塔",
+      "cost": 1500,
+      "stats2d": { "maxHealth": 500, "powerProvided": 0, "powerConsumed": 100 },
+      "stats3d": { "maxHealth": 800, "powerProvided": 0, "powerConsumed": 80 }
+    },
+    "MissileSilo": {
+      "name": "导弹发射井",
+      "cost": 1200,
+      "stats2d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 80 },
+      "stats3d": { "maxHealth": 900, "powerProvided": 0, "powerConsumed": 60 }
+    }
+  },
+  "productionTimes": {
+    "_comment": "生产所需时间（秒），来自Building.GetProductionTime。2D/3D共用同一套时间。",
+    "LightTank": 3.0,
+    "HeavyTank": 6.0,
+    "Artillery": 5.0,
+    "RocketLauncher": 8.0,
+    "MissileTank": 10.0,
+    "Harvester": 5.0,
+    "Infantry": 2.0,
+    "AntiAir": 3.0,
+    "Engineer": 4.0,
+    "Grenadier": 3.0,
+    "Sniper": 4.0,
+    "FlameInfantry": 3.0,
+    "Transport": 5.0,
+    "Hero": 8.0,
+    "Spy": 6.0,
+    "Thief": 4.0,
+    "Fighter": 6.0,
+    "Helicopter": 7.0,
+    "RocketInfantry": 3.0,
+    "Bomber": 10.0,
+    "Scout": 4.0,
+    "TransportHeli": 8.0,
+    "Destroyer": 8.0,
+    "Submarine": 10.0,
+    "AircraftCarrier": 15.0,
+    "LandingCraft": 6.0
+  }
+}

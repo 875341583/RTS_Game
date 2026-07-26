@@ -1,0 +1,174 @@
+{
+  "_comment": "P1-2: 单位属性数据表。2D/3D分别一套数值（坐标系不同）。单一数据源替代4处硬编码switch-case。",
+  "version": 1,
+  "units": {
+    "LightTank": {
+      "name": "轻坦克",
+      "cost": 200,
+      "stats2d": { "maxHealth": 70, "moveSpeed": 250, "attackDamage": 10, "attackRange": 130, "attackCooldown": 0.8, "aggroRange": 250 },
+      "stats3d": { "maxHealth": 120, "moveSpeed": 14, "attackDamage": 18, "attackRange": 12, "attackCooldown": 0.8 }
+    },
+    "HeavyTank": {
+      "name": "重坦克",
+      "cost": 500,
+      "stats2d": { "maxHealth": 180, "moveSpeed": 150, "attackDamage": 30, "attackRange": 160, "attackCooldown": 1.5, "aggroRange": 300 },
+      "stats3d": { "maxHealth": 250, "moveSpeed": 9, "attackDamage": 30, "attackRange": 13, "attackCooldown": 1.2 }
+    },
+    "Artillery": {
+      "name": "炮兵",
+      "cost": 400,
+      "stats2d": { "maxHealth": 60, "moveSpeed": 100, "attackDamage": 40, "attackRange": 300, "attackCooldown": 2.5, "minAttackRange": 100, "aggroRange": 350 },
+      "stats3d": { "maxHealth": 80, "moveSpeed": 8, "attackDamage": 35, "attackRange": 20, "attackCooldown": 2.0, "minAttackRange": 5, "splashRadius": 3 }
+    },
+    "RocketLauncher": {
+      "name": "火箭炮",
+      "cost": 600,
+      "stats2d": { "maxHealth": 90, "moveSpeed": 110, "attackDamage": 50, "attackRange": 360, "attackCooldown": 3.0, "minAttackRange": 120, "splashRadius": 80, "aggroRange": 380 },
+      "stats3d": { "maxHealth": 70, "moveSpeed": 9, "attackDamage": 25, "attackRange": 18, "attackCooldown": 1.5, "splashRadius": 4 }
+    },
+    "MissileTank": {
+      "name": "导弹车",
+      "cost": 800,
+      "stats2d": { "maxHealth": 70, "moveSpeed": 130, "attackDamage": 80, "attackRange": 420, "attackCooldown": 4.0, "minAttackRange": 150, "aggroRange": 440 },
+      "stats3d": { "maxHealth": 100, "moveSpeed": 8, "attackDamage": 40, "attackRange": 22, "attackCooldown": 3.0 }
+    },
+    "AntiAir": {
+      "name": "防空车",
+      "cost": 300,
+      "stats2d": { "maxHealth": 70, "moveSpeed": 220, "attackDamage": 8, "attackRange": 140, "attackCooldown": 0.45, "aggroRange": 260, "canAttackAir": true },
+      "stats3d": { "maxHealth": 80, "moveSpeed": 11, "attackDamage": 12, "attackRange": 16, "attackCooldown": 0.3, "canAttackAir": true }
+    },
+    "Harvester": {
+      "name": "矿车",
+      "cost": 500,
+      "stats2d": { "maxHealth": 100, "moveSpeed": 140, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0 },
+      "stats3d": { "maxHealth": 100, "moveSpeed": 8, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0 }
+    },
+    "Infantry": {
+      "name": "步兵",
+      "cost": 100,
+      "stats2d": { "maxHealth": 35, "moveSpeed": 90, "attackDamage": 6, "attackRange": 100, "attackCooldown": 0.6, "aggroRange": 200 },
+      "stats3d": { "maxHealth": 50, "moveSpeed": 8, "attackDamage": 8, "attackRange": 8, "attackCooldown": 0.5 }
+    },
+    "Engineer": {
+      "name": "工程车",
+      "cost": 300,
+      "stats2d": { "maxHealth": 120, "moveSpeed": 240, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0 },
+      "stats3d": { "maxHealth": 60, "moveSpeed": 8, "attackDamage": 5, "attackRange": 5, "attackCooldown": 1.0 }
+    },
+    "Sapper": {
+      "name": "工兵",
+      "cost": 150,
+      "stats2d": { "maxHealth": 40, "moveSpeed": 95, "attackDamage": 3, "attackRange": 60, "attackCooldown": 0.8, "aggroRange": 100 },
+      "stats3d": { "maxHealth": 50, "moveSpeed": 8, "attackDamage": 3, "attackRange": 3, "attackCooldown": 2.0, "terrainModType": "Flatten" }
+    },
+    "ChiefEngineer": {
+      "name": "高级工程师",
+      "cost": 400,
+      "stats2d": { "maxHealth": 60, "moveSpeed": 100, "attackDamage": 5, "attackRange": 80, "attackCooldown": 0.7, "aggroRange": 120 },
+      "stats3d": { "maxHealth": 70, "moveSpeed": 9, "attackDamage": 5, "attackRange": 5, "attackCooldown": 1.5, "terrainModType": "Flatten" }
+    },
+    "Grenadier": {
+      "name": "掷弹兵",
+      "cost": 200,
+      "stats2d": { "maxHealth": 40, "moveSpeed": 85, "attackDamage": 20, "attackRange": 180, "attackCooldown": 2.0, "minAttackRange": 50, "splashRadius": 60, "aggroRange": 220 },
+      "stats3d": { "maxHealth": 55, "moveSpeed": 8, "attackDamage": 15, "attackRange": 10, "attackCooldown": 1.0, "splashRadius": 2 }
+    },
+    "Sniper": {
+      "name": "狙击手",
+      "cost": 250,
+      "stats2d": { "maxHealth": 30, "moveSpeed": 80, "attackDamage": 45, "attackRange": 350, "attackCooldown": 2.5, "minAttackRange": 80, "aggroRange": 380 },
+      "stats3d": { "maxHealth": 45, "moveSpeed": 8, "attackDamage": 30, "attackRange": 18, "attackCooldown": 2.0 }
+    },
+    "FlameInfantry": {
+      "name": "喷火兵",
+      "cost": 180,
+      "stats2d": { "maxHealth": 50, "moveSpeed": 85, "attackDamage": 8, "attackRange": 80, "attackCooldown": 0.3, "splashRadius": 40, "aggroRange": 120 },
+      "stats3d": { "maxHealth": 60, "moveSpeed": 8, "attackDamage": 12, "attackRange": 6, "attackCooldown": 0.3, "splashRadius": 1.5 }
+    },
+    "Transport": {
+      "name": "运输车",
+      "cost": 400,
+      "stats2d": { "maxHealth": 150, "moveSpeed": 200, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0, "maxPassengers": 3 },
+      "stats3d": { "maxHealth": 100, "moveSpeed": 10, "attackDamage": 0, "attackRange": 0, "attackCooldown": 99, "maxPassengers": 3 }
+    },
+    "Hero": {
+      "name": "英雄",
+      "cost": 600,
+      "stats2d": { "maxHealth": 200, "moveSpeed": 160, "attackDamage": 35, "attackRange": 160, "attackCooldown": 0.6, "aggroRange": 300, "autoDefend": true, "isHero": true },
+      "stats3d": { "maxHealth": 200, "moveSpeed": 10, "attackDamage": 25, "attackRange": 10, "attackCooldown": 0.5, "isHero": true }
+    },
+    "Spy": {
+      "name": "间谍",
+      "cost": 500,
+      "stats2d": { "maxHealth": 45, "moveSpeed": 110, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0 },
+      "stats3d": { "maxHealth": 50, "moveSpeed": 9, "attackDamage": 5, "attackRange": 5, "attackCooldown": 2.0 }
+    },
+    "Thief": {
+      "name": "窃贼",
+      "cost": 300,
+      "stats2d": { "maxHealth": 40, "moveSpeed": 130, "attackDamage": 5, "attackRange": 60, "attackCooldown": 0.8, "aggroRange": 100 },
+      "stats3d": { "maxHealth": 45, "moveSpeed": 9, "attackDamage": 3, "attackRange": 3, "attackCooldown": 2.0 }
+    },
+    "Fighter": {
+      "name": "战斗机",
+      "cost": 500,
+      "stats2d": { "maxHealth": 80, "moveSpeed": 350, "attackDamage": 25, "attackRange": 200, "attackCooldown": 1.0, "aggroRange": 300, "autoDefend": true, "isAirUnit": true },
+      "stats3d": { "maxHealth": 80, "moveSpeed": 25, "attackDamage": 20, "attackRange": 14, "attackCooldown": 0.5, "isAirUnit": true, "canAttackAir": true }
+    },
+    "Helicopter": {
+      "name": "直升机",
+      "cost": 600,
+      "stats2d": { "maxHealth": 120, "moveSpeed": 220, "attackDamage": 15, "attackRange": 160, "attackCooldown": 0.5, "splashRadius": 30, "aggroRange": 250, "autoDefend": true, "isAirUnit": true },
+      "stats3d": { "maxHealth": 100, "moveSpeed": 18, "attackDamage": 15, "attackRange": 12, "attackCooldown": 0.8, "isAirUnit": true }
+    },
+    "RocketInfantry": {
+      "name": "火箭兵",
+      "cost": 350,
+      "stats2d": { "maxHealth": 45, "moveSpeed": 85, "attackDamage": 20, "attackRange": 200, "attackCooldown": 1.8, "minAttackRange": 40, "aggroRange": 250, "canAttackAir": true },
+      "stats3d": { "maxHealth": 50, "moveSpeed": 7, "attackDamage": 18, "attackRange": 14, "attackCooldown": 1.5, "canAttackAir": true }
+    },
+    "Bomber": {
+      "name": "轰炸机",
+      "cost": 800,
+      "stats2d": { "maxHealth": 100, "moveSpeed": 180, "attackDamage": 50, "attackRange": 250, "attackCooldown": 3.0, "splashRadius": 100, "aggroRange": 320, "autoDefend": true, "isAirUnit": true },
+      "stats3d": { "maxHealth": 120, "moveSpeed": 20, "attackDamage": 50, "attackRange": 6, "attackCooldown": 3.0, "isAirUnit": true, "splashRadius": 5 }
+    },
+    "Scout": {
+      "name": "侦察机",
+      "cost": 300,
+      "stats2d": { "maxHealth": 50, "moveSpeed": 400, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 600, "autoDefend": false, "isAirUnit": true },
+      "stats3d": { "maxHealth": 40, "moveSpeed": 28, "attackDamage": 0, "attackRange": 0, "attackCooldown": 99, "isAirUnit": true }
+    },
+    "TransportHeli": {
+      "name": "运输直升机",
+      "cost": 600,
+      "stats2d": { "maxHealth": 180, "moveSpeed": 200, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0, "autoDefend": false, "isAirUnit": true, "maxPassengers": 4 },
+      "stats3d": { "maxHealth": 90, "moveSpeed": 16, "attackDamage": 0, "attackRange": 0, "attackCooldown": 99, "isAirUnit": true, "maxPassengers": 5 }
+    },
+    "Destroyer": {
+      "name": "驱逐舰",
+      "cost": 500,
+      "stats2d": { "maxHealth": 150, "moveSpeed": 150, "attackDamage": 20, "attackRange": 180, "attackCooldown": 0.8, "aggroRange": 250, "autoDefend": true },
+      "stats3d": { "maxHealth": 150, "moveSpeed": 10, "attackDamage": 20, "attackRange": 15, "attackCooldown": 1.0 }
+    },
+    "Submarine": {
+      "name": "潜艇",
+      "cost": 600,
+      "stats2d": { "maxHealth": 80, "moveSpeed": 120, "attackDamage": 35, "attackRange": 160, "attackCooldown": 2.0, "aggroRange": 200, "autoDefend": true },
+      "stats3d": { "maxHealth": 100, "moveSpeed": 8, "attackDamage": 35, "attackRange": 14, "attackCooldown": 2.5 }
+    },
+    "AircraftCarrier": {
+      "name": "航母",
+      "cost": 1200,
+      "stats2d": { "maxHealth": 300, "moveSpeed": 80, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0, "autoDefend": false, "maxPassengers": 4 },
+      "stats3d": { "maxHealth": 300, "moveSpeed": 6, "attackDamage": 0, "attackRange": 0, "attackCooldown": 99, "maxPassengers": 4 }
+    },
+    "LandingCraft": {
+      "name": "登陆艇",
+      "cost": 400,
+      "stats2d": { "maxHealth": 120, "moveSpeed": 100, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0, "autoDefend": false, "maxPassengers": 3 },
+      "stats3d": { "maxHealth": 120, "moveSpeed": 7, "attackDamage": 5, "attackRange": 5, "attackCooldown": 2.0, "maxPassengers": 4 }
+    }
+  }
+}

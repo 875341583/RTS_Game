@@ -125,93 +125,32 @@ public partial class Building : Area2D
     /// <summary>是否处于叛变风险期。</summary>
     public bool IsDefectionRisk => _defectionTimer > 0f;
 
-    /// <summary>按建筑类型初始化属性。必须在 _Ready 之前调用。</summary>
+    /// <summary>按建筑类型初始化属性。必须在 _Ready 之前调用。
+    /// P1-2: 从data/buildings.json加载基础数值，替代原switch-case。</summary>
     public void InitAsType(BuildingType type)
     {
         Type = type;
-        switch (type)
-        {
-            case BuildingType.Base:
-                BuildingName = "建造厂";
-                MaxHealth = 1000f;
-                PowerConsumed = 50;
-                PowerProvided = 50; // v5体验修复：基地自带基础供电，解决开局缺电卡壳
-                break;
-            case BuildingType.PowerPlant:
-                BuildingName = "电站";
-                MaxHealth = 300f;
-                PowerProvided = 100;
-                break;
-            case BuildingType.Barracks:
-                BuildingName = "兵营";
-                MaxHealth = 500f;
-                PowerConsumed = 30;
-                break;
-            case BuildingType.WarFactory:
-                BuildingName = "战车工厂";
-                MaxHealth = 700f;
-                PowerConsumed = 50;
-                break;
-            case BuildingType.TechCenter:
-                BuildingName = "科技中心";
-                MaxHealth = 600f;
-                PowerConsumed = 80;
-                break;
-            // 阶段12-A1：防御建筑
-            case BuildingType.Turret:
-                BuildingName = "机枪塔";
-                MaxHealth = 400f;
-                PowerConsumed = 25;
-                IsDefensive = true;
-                AttackDamage = 18f;
-                AttackRange = 180f;
-                AttackCooldown = 0.6f;
-                break;
-            case BuildingType.AntiAirTurret:
-                BuildingName = "防空炮";
-                MaxHealth = 350f;
-                PowerConsumed = 40;
-                IsDefensive = true;
-                AttackDamage = 30f;
-                AttackRange = 220f;
-                AttackCooldown = 1.0f;
-                break;
-            // 阶段12-A2：维修厂
-            case BuildingType.RepairPad:
-                BuildingName = "维修厂";
-                MaxHealth = 500f;
-                PowerConsumed = 30;
-                IsRepairStation = true;
-                break;
-            // E7：机场
-            case BuildingType.Airfield:
-                BuildingName = "机场";
-                MaxHealth = 600f;
-                PowerConsumed = 50;
-                break;
-            // E9：船厂
-            case BuildingType.Shipyard:
-                BuildingName = "船厂";
-                MaxHealth = 800f;
-                PowerConsumed = 60;
-                break;
-            // E10：超武建筑
-            case BuildingType.NukeSilo:
-                BuildingName = "核弹发射井";
-                MaxHealth = 500f;
-                PowerConsumed = 100;
-                break;
-            case BuildingType.LightningTower:
-                BuildingName = "闪电风暴塔";
-                MaxHealth = 500f;
-                PowerConsumed = 100;
-                break;
-            case BuildingType.MissileSilo:
-                BuildingName = "导弹发射井";
-                MaxHealth = 400f;
-                PowerConsumed = 80;
-                break;
-        }
+        var data = GameData.GetBuilding(type);
+        var s = data.Stats2D;
+
+        BuildingName = data.Name;
+        MaxHealth = s.MaxHealth;
+        PowerProvided = s.PowerProvided;
+        PowerConsumed = s.PowerConsumed;
+        IsDefensive = s.IsDefensive;
+        AttackDamage = s.AttackDamage;
+        AttackRange = s.AttackRange;
+        AttackCooldown = s.AttackCooldown;
+        IsRepairStation = s.IsRepairStation;
+        RepairRadius = s.RepairRadius > 0 ? s.RepairRadius : RepairRadius; // 保留默认220
+    }
+
+    /// <summary>P1-2: 应用阵营数值乘数。在InitAsType之后、TeamId设置之后调用。</summary>
+    public void ApplyFactionMultipliers(int teamId)
+    {
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        MaxHealth = faction.ApplyHealth(MaxHealth);
+        AttackDamage = faction.ApplyDamage(AttackDamage);
     }
 
     public override void _Ready()
@@ -631,38 +570,9 @@ public partial class Building : Area2D
         QueueRedraw();
     }
 
-    /// <summary>获取生产所需时间（秒）。</summary>
-    public static float GetProductionTime(ProductionType type) => type switch
-    {
-        ProductionType.LightTank => 3f,
-        ProductionType.HeavyTank => 6f,
-        ProductionType.Artillery => 5f,
-        ProductionType.RocketLauncher => 8f,
-        ProductionType.MissileTank => 10f,
-        ProductionType.Harvester => 5f,
-        ProductionType.Infantry => 2f,
-        ProductionType.AntiAir => 3f,
-        ProductionType.Engineer => 4f,
-        ProductionType.Grenadier => 3f,       // E6
-        ProductionType.Sniper => 4f,          // E6
-        ProductionType.FlameInfantry => 3f,   // E6
-        ProductionType.Transport => 5f,       // E6
-        ProductionType.Hero => 8f,            // E6b
-        ProductionType.Spy => 6f,             // E6b
-        ProductionType.Thief => 4f,           // E6b
-        ProductionType.Fighter => 6f,          // E7
-        ProductionType.Helicopter => 7f,       // E7
-        ProductionType.RocketInfantry => 3f,   // E7
-        ProductionType.Bomber => 10f,            // E8
-        ProductionType.Scout => 4f,               // E8
-        ProductionType.TransportHeli => 8f,       // E8
-        // E9：海军生产时间
-        ProductionType.Destroyer => 8f,
-        ProductionType.Submarine => 10f,
-        ProductionType.AircraftCarrier => 15f,
-        ProductionType.LandingCraft => 6f,
-        _ => 3f
-    };
+    /// <summary>获取生产所需时间（秒）。
+    /// P1-2: 从data/buildings.json的productionTimes表加载，替代原switch-case。</summary>
+    public static float GetProductionTime(ProductionType type) => GameData.GetProductionTime(type);
 
     public override void _Process(double delta)
     {

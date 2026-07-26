@@ -142,39 +142,31 @@ public partial class Building3D : Area3D
     public void InitAsType(BuildingType type)
     {
         Type = type;
-        switch (type)
-        {
-            case BuildingType.Base:
-                MaxHealth = 2000; PowerProvided = 0; PowerConsumed = 0; break;
-            case BuildingType.PowerPlant:
-                MaxHealth = 600; PowerProvided = 150; PowerConsumed = 0; break;
-            case BuildingType.Barracks:
-                MaxHealth = 700; PowerProvided = 0; PowerConsumed = 20; break;
-            case BuildingType.WarFactory:
-                MaxHealth = 900; PowerProvided = 0; PowerConsumed = 50; break;
-            case BuildingType.TechCenter:
-                MaxHealth = 800; PowerProvided = 0; PowerConsumed = 100; break;
-            case BuildingType.Turret:
-                MaxHealth = 400; PowerConsumed = 20;
-                IsDefensive = true; AttackDamage = 15; AttackRange = 12; AttackCooldown = 0.3f; break;
-            case BuildingType.AntiAirTurret:
-                MaxHealth = 400; PowerConsumed = 30;
-                IsDefensive = true; AttackDamage = 12; AttackRange = 18; AttackCooldown = 0.2f; break;
-            case BuildingType.RepairPad:
-                MaxHealth = 600; PowerConsumed = 30;
-                IsRepairStation = true; RepairRadius = 10f; break;
-            case BuildingType.Airfield:
-                MaxHealth = 700; PowerConsumed = 40; break;
-            case BuildingType.Shipyard:
-                MaxHealth = 800; PowerConsumed = 40; break;
-            case BuildingType.NukeSilo:
-                MaxHealth = 1000; PowerConsumed = 100; break;
-            case BuildingType.LightningTower:
-                MaxHealth = 800; PowerConsumed = 80; break;
-            case BuildingType.MissileSilo:
-                MaxHealth = 900; PowerConsumed = 60; break;
-        }
+        // P1-2: Building3D.BuildingType与全局BuildingType枚举成员一致，通过整数值桥接
+        // 注意：类内部的BuildingType指嵌套枚举，需用全局命名空间限定
+        var globalType = (RTSGame.BuildingType)(int)type;
+        var data = GameData.GetBuilding(globalType);
+        var s = data.Stats3D;
+
+        MaxHealth = s.MaxHealth;
+        PowerProvided = s.PowerProvided;
+        PowerConsumed = s.PowerConsumed;
+        IsDefensive = s.IsDefensive;
+        AttackDamage = s.AttackDamage;
+        AttackRange = s.AttackRange;
+        AttackCooldown = s.AttackCooldown;
+        IsRepairStation = s.IsRepairStation;
+        if (s.RepairRadius > 0) RepairRadius = s.RepairRadius;
         Health = Math.Min(Health, MaxHealth);
+    }
+
+    /// <summary>P1-2: 应用阵营数值乘数。在InitAsType之后调用。</summary>
+    public void ApplyFactionMultipliers(int teamId)
+    {
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        MaxHealth = faction.ApplyHealth(MaxHealth);
+        AttackDamage = faction.ApplyDamage(AttackDamage);
+        if (Health > MaxHealth) Health = MaxHealth;
     }
 
     // ======== 3D 模型构建 ========
