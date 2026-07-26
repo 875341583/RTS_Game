@@ -165,4 +165,30 @@ public partial class StrategicPoint : Area2D
         }
         return ImageTexture.CreateFromImage(img);
     }
+
+    // ==================== P0-2: 存档/读档 访问器 ====================
+
+    /// <summary>获取当前所有者阵营ID（-1=中立）。</summary>
+    public int GetOwningTeam() => OwningTeam;
+
+    /// <summary>P0-2 读档：直接设置所有者阵营并刷新视觉。</summary>
+    public void SetOwningTeam(int teamId)
+    {
+        // 通过属性 backer 设置——OwningTeam的private set由本类可访问
+        OwningTeam = teamId;
+        _captureProgress = 0f;
+        EnsureTextures();
+        _visual.Texture = teamId switch
+        {
+            0 => _blueTex,
+            1 => _redTex,
+            _ => _neutralTex
+        };
+        _label.Text = teamId switch
+        {
+            0 => "蓝方控制",
+            1 => "红方控制",
+            _ => "战略点"
+        };
+    }
 }

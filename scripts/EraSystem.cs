@@ -203,4 +203,22 @@ public class EraProgress
     public float Progress => IsUpgrading && EraSystem.GetNextEra(CurrentEra) != null
         ? Mathf.Clamp(1f - UpgradeTimer / EraSystem.GetNextEra(CurrentEra)!.UpgradeTime, 0f, 1f)
         : 0f;
+
+    // ==================== P0-2: 存档/读档 恢复方法 ====================
+
+    /// <summary>P0-2 读档：重置为石器时代初始状态。</summary>
+    public void Reset()
+    {
+        CurrentEra = EraSystem.Era.Stone;
+        IsUpgrading = false;
+        UpgradeTimer = 0f;
+    }
+
+    /// <summary>P0-2 读档：直接恢复时代与升级进度。</summary>
+    public void Restore(EraSystem.Era era, bool isUpgrading, float upgradeTimer)
+    {
+        CurrentEra = era;
+        IsUpgrading = isUpgrading;
+        UpgradeTimer = Mathf.Max(0f, upgradeTimer);
+    }
 }

@@ -463,4 +463,31 @@ public partial class ResourceNode : Area2D
                 break;
         }
     }
+
+    // ==================== P0-2: 存档/读档 访问器 ====================
+
+    /// <summary>获取当前剩余资源量。</summary>
+    public int GetAmount() => Amount;
+
+    /// <summary>P0-2 读档：直接设置剩余资源量（不触发采集动画）。</summary>
+    public void SetAmount(int value)
+    {
+        Amount = Mathf.Max(0, value);
+    }
+
+    /// <summary>P0-2 读档：直接设置油田所有者（-1=中立）。同时刷新油田显示标签。</summary>
+    public void SetOilOwner(int teamId)
+    {
+        OilOwner = teamId;
+        // 更新标签：油田的视觉标签在_Process中维护，这里仅刷新一次
+        if (_amountLabel != null && ResourceType == ResourceType.OilField)
+        {
+            _amountLabel.Text = OilOwner switch
+            {
+                0 => "蓝方油田",
+                1 => "红方油田",
+                _ => "中立油田"
+            };
+        }
+    }
 }

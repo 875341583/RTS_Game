@@ -2118,6 +2118,106 @@ public partial class Unit : CharacterBody2D
     protected void MoveTo(Vector2 target) { _moveTarget = target; _hasMoveTarget = true; ClearPath(); }
     protected void StopMove() { _hasMoveTarget = false; Velocity = Vector2.Zero; ClearPath(); }
 
+    // ==================== P0-2: 存档/读档 访问器 ====================
+    // 以下方法供SaveLoadSystem读取/写入单位状态。所有读取方法只读，写入方法仅在读档恢复时调用。
+
+    /// <summary>获取当前移动目标坐标（无活动目标时返回GlobalPosition）。</summary>
+    public Vector2 GetMoveTarget() => _moveTarget;
+    /// <summary>是否存在活跃的移动目标。</summary>
+    public bool HasMoveTarget() => _hasMoveTarget;
+    /// <summary>获取警戒位置（无则返回GlobalPosition）。</summary>
+    public Vector2 GetGuardPosition() => _guardPosition;
+    /// <summary>是否存在警戒位置。</summary>
+    public bool HasGuardPosition() => _hasGuardPosition;
+    /// <summary>获取当前等级。</summary>
+    public int GetLevel() => _level;
+    /// <summary>获取当前经验值。</summary>
+    public float GetExperience() => _experience;
+    /// <summary>获取已有能力列表的副本。</summary>
+    public List<UnitAbility> GetAbilities() => new(_abilities);
+    /// <summary>获取英雄技能枚举值。</summary>
+    public HeroSkill GetHeroSkill() => _heroSkill;
+    /// <summary>获取间谍伪装阵营ID（-1=未伪装）。</summary>
+    public int GetSpyDisguiseTeam() => _spyDisguiseTeam;
+    /// <summary>获取上次受到攻击的阵营ID（-1=未受攻击）。</summary>
+    public int GetLastAttackerTeam() => _lastAttackerTeam;
+
+    /// <summary>获取运输车乘客的类型列表（仅Type，不含血量等级）。</summary>
+    public List<UnitType> GetPassengerTypes()
+    {
+        var list = new List<UnitType>();
+        foreach (var p in Passengers)
+            if (IsInstanceValid(p)) list.Add(p.Type);
+        return list;
+    }
+    /// <summary>获取运输车乘客的血量列表。</summary>
+    public List<float> GetPassengerHealths()
+    {
+        var list = new List<float>();
+        foreach (var p in Passengers)
+            if (IsInstanceValid(p)) list.Add(p.Health);
+        return list;
+    }
+    /// <summary>获取运输车乘客的等级列表。</summary>
+    public List<int> GetPassengerLevels()
+    {
+        var list = new List<int>();
+        foreach (var p in Passengers)
+            if (IsInstanceValid(p)) list.Add(p.GetLevel());
+        return list;
+    }
+
+    // ---------- 读档恢复写入器 ----------
+
+    /// <summary>P0-2 读档：恢复等级和经验（绕过AddExperience的连锁升级逻辑，升级后能力由RestoreAbilities单独设置）。</summary>
+    public void RestoreLevel(int level, float experience)
+    {
+        _level = Mathf.Clamp(level, 1, SaveLoadSystem.MaxUnitLevel);
+        _experience = Mathf.Max(0f, experience);
+    }
+
+    /// <summary>P0-2 读档：直接覆盖能力列表（清空旧能力后重新填入）。</summary>
+    public void RestoreAbilities(List<UnitAbility> abilities)
+    {
+        _abilities.Clear();
+        // 去重添加
+        var seen = new HashSet<UnitAbility>();
+        foreach (var a in abilities)
+        {
+            if (a == UnitAbility.None || seen.Contains(a)) continue;
+            seen.Add(a);
+            _abilities.Add(a);
+        }
+    }
+
+    /// <summary>P0-2 读档：恢复英雄技能。</summary>
+    public void RestoreHeroSkill(HeroSkill skill) => _heroSkill = skill;
+
+    /// <summary>P0-2 读档：恢复间谍伪装阵营与最后受击阵营。</summary>
+    public void RestoreSpyState(int spyDisguiseTeam, int lastAttackerTeam)
+    {
+        _spyDisguiseTeam = spyDisguiseTeam;
+        _lastAttackerTeam = lastAttackerTeam;
+        // 伪装颜色修正
+        if (_spyDisguiseTeam >= 0 && _body != null)
+            _body.Modulate = GetTeamColor(_spyDisguiseTeam);
+    }
+
+    /// <summary>P0-2 读档：恢复移动目标（触发ClearPath以确保下一帧重算路径）。</summary>
+    public void RestoreMoveTarget(Vector2 target)
+    {
+        _moveTarget = target;
+        _hasMoveTarget = true;
+        ClearPath();
+    }
+
+    /// <summary>P0-2 读档：恢复警戒位置。</summary>
+    public void RestoreGuardPosition(Vector2 pos)
+    {
+        _guardPosition = pos;
+        _hasGuardPosition = true;
+    }
+
     private void UpdateHealthBarVisibility()
     {
         if (_healthBar != null)

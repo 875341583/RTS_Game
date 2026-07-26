@@ -223,4 +223,28 @@ public class TechProgress
         }
         Completed.Add(id);
     }
+
+    // ==================== P0-2: 存档/读档 恢复方法 ====================
+
+    /// <summary>P0-2 读档：清空已完成科技和正在研究状态（不重置QueuedTech，由SetQueuedTech单独设置）。</summary>
+    public void Clear()
+    {
+        Completed.Clear();
+        CurrentlyResearching = null;
+        ResearchTimer = 0f;
+        QueuedTech = null;
+    }
+
+    /// <summary>P0-2 读档：恢复正在研究的科技与剩余时间（不经过StartResearch的完整初始化）。</summary>
+    public void RestoreResearching(TechTree.TechId id, float timer)
+    {
+        CurrentlyResearching = id;
+        ResearchTimer = Mathf.Max(0f, timer);
+    }
+
+    /// <summary>P0-2 读档：恢复排队中的下一项科技。</summary>
+    public void SetQueuedTech(TechTree.TechId id)
+    {
+        QueuedTech = id;
+    }
 }

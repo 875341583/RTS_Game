@@ -470,6 +470,41 @@ public partial class Building : Area2D
         return _productionQueue.ToList();
     }
 
+    // ==================== P0-2: 存档/读档 访问器 ====================
+
+    /// <summary>获取生产状态的完整快照：(等待队列, 当前生产类型, 剩余时间, 总时间)。</summary>
+    public (List<ProductionType> Queue, ProductionType? Current, float Timer, float Duration) GetProductionState()
+    {
+        return (_productionQueue.ToList(), _currentProduction, _productionTimer, _productionDuration);
+    }
+
+    /// <summary>获取集结点（无则返回null）。</summary>
+    public Vector2? GetRallyPoint() => RallyPoint;
+
+    /// <summary>获取建筑原始阵营（被占领前的归属，-1=从未被占）。</summary>
+    public int GetOriginalTeamId() => _originalTeamId;
+
+    /// <summary>获取当前正在占领本建筑的阵营ID（-1=无占领进行中）。</summary>
+    public int GetCapturingTeamId() => _capturingTeamId;
+
+    /// <summary>P0-2 读档：直接恢复生产队列与计时状态（绕过EnqueueProduction的扣费/校验逻辑）。</summary>
+    public void RestoreProductionState(List<int> queue, int current, float timer, float duration)
+    {
+        _productionQueue.Clear();
+        foreach (var id in queue) _productionQueue.Enqueue((ProductionType)id);
+        _currentProduction = current >= 0 ? (ProductionType?)current : null;
+        _productionTimer = timer;
+        _productionDuration = duration;
+    }
+
+    /// <summary>P0-2 读档：恢复占领状态（用于叛变/缴获逻辑保持）。</summary>
+    public void RestoreCaptureState(int originalTeamId, int capturingTeamId, float captureProgress)
+    {
+        _originalTeamId = originalTeamId;
+        _capturingTeamId = capturingTeamId;
+        CaptureProgress = Mathf.Clamp(captureProgress, 0f, SaveLoadSystem.CaptureProgressMax);
+    }
+
     // ---- G4 建筑维修与出售 ----
 
     /// <summary>是否需要维修（血量不满）。</summary>
