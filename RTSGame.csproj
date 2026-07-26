@@ -7,4 +7,10 @@
     <RootNamespace>RTSGame</RootNamespace>
     <AssemblyName>RTSGame</AssemblyName>
   </PropertyGroup>
+
+  <!--P1-1: 单元测试项目位于 tests/ 子目录，排除避免被游戏程序集编译-->
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
+  </ItemGroup>
 </Project>

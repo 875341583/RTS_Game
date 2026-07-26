@@ -12,6 +12,11 @@ mono_crash.*.json
 bin/
 obj/
 
+# Test results (P1-1: xUnit/coverlet output)
+TestResults/
+coverage.cobertura.xml
+[Bb]enchmark.Results/
+
 # Build artifacts
 *.dll
 *.pdb

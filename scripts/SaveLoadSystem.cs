@@ -212,7 +212,7 @@ namespace RTSGame
             // 序列化为JSON
             string json = Json.Stringify(data.ToGodotVariant());
 
-            using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Write);
+            using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Write);
             if (file == null)
             {
                 GD.PrintErr($"[SaveLoad] 无法打开存档文件: {filePath}");
@@ -242,13 +242,13 @@ namespace RTSGame
 
         private static SaveData? _LoadGameInner(string filePath)
         {
-            if (!FileAccess.FileExists(filePath))
+            if (!Godot.FileAccess.FileExists(filePath))
             {
                 GD.PrintErr($"[SaveLoad] 存档文件不存在: {filePath}");
                 return null;
             }
 
-            using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Read);
+            using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
             if (file == null)
             {
                 GD.PrintErr($"[SaveLoad] 无法读取存档文件: {filePath}");

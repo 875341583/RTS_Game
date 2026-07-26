@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>RTSGame.Tests</RootNamespace>
+    <AssemblyName>RTSGame.Tests</AssemblyName>
+    <!-- Godot程序集引用GodotSharp，测试项目需能解析该引用 -->
+    <GenerateRuntimeConfigFiles>true</GenerateRuntimeConfigFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <!--GodotSharp：让游戏程序集中引用的Mathf/GodotObject类型在测试侧可解析-->
+    <PackageReference Include="GodotSharp" Version="4.7.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--引用游戏项目，编译产物RTSGame.dll含测试目标的纯逻辑类。
+        Private=true确保RTSGame.dll及GodotSharp依赖复制到测试输出目录。-->
+    <ProjectReference Include="..\..\RTSGame.csproj" ReferenceOutputAssembly="true">
+      <Private>true</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>
