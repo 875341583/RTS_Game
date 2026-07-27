@@ -109,4 +109,30 @@ public class MapConfigTests
         MapConfig.SetSize(MapConfig.SizePreset.Medium);
         Assert.Equal(256f, MapConfig.MapWorldSize3D);
     }
+
+    [Fact]
+    public void GameSession_DefaultMapSize_Small()
+    {
+        Assert.Equal(MapConfig.SizePreset.Small, GameSession.SelectedMapSize);
+    }
+
+    [Fact]
+    public void GameSession_SetMapSize_PropagatesToMapConfig()
+    {
+        GameSession.SelectedMapSize = MapConfig.SizePreset.Medium;
+        Assert.Equal(MapConfig.SizePreset.Medium, GameSession.SelectedMapSize);
+        // Reset for other tests
+        GameSession.SelectedMapSize = MapConfig.SizePreset.Small;
+    }
+
+    [Fact]
+    public void BasePositions_Large_ScalesUp()
+    {
+        MapConfig.SetSize(MapConfig.SizePreset.Large);
+        var bases = MapConfig.BasePositions;
+        Assert.Equal(8, bases.Length);
+        // Large: edge = 96-5 = 91
+        Assert.Equal((0, 0), bases[0]);
+        Assert.Equal((91, 91), bases[1]);
+    }
 }

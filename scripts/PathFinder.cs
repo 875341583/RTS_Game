@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace RTSGame
 {
     /// <summary>
-    /// 栅格A*寻路器（P0-1）。基于TerrainGrid 32×32栅格，支持8方向移动、
+    /// 栅格A*寻路器（P0-1）。基于TerrainGrid动态尺寸栅格，支持8方向移动、
     /// 动态建筑障碍、地形可通行性检查和路径平滑（视线优化）。
     /// 设计目标：消除单位直线移动导致的卡墙/堵路问题。
     /// </summary>
@@ -191,7 +191,7 @@ namespace RTSGame
 
             while (_openList.Count > 0 && maxIterations-- > 0)
             {
-                // 找F值最小的节点（线性搜索，32×32=1024格足够快）
+                // 找F值最小的节点（线性搜索，大地图时可用优先队列优化）
                 int bestIdx = 0;
                 var (bx, by) = _openList[0];
                 int bestF = _gCost[bx, by] + _hCost[bx, by];

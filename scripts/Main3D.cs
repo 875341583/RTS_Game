@@ -168,6 +168,9 @@ public partial class Main3D : Node3D
         // P2-4: 加载Mod（在游戏数据之前，以便Mod覆盖生效）
         ModLoader.LoadAllMods();
 
+        // P2-2: 应用地图尺寸配置
+        MapConfig.SetSize(GameSession.SelectedMapSize);
+
         // P1-2: 加载游戏数据（单位/建筑/阵营）
         GameData.Load();
         FactionManager.Load();

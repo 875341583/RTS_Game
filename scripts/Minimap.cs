@@ -20,9 +20,9 @@ public partial class Minimap : Control
     private Node2D? _unitsNode;
 
     // 地图与小地图参数
-    private const float MapSize = 2000f;
+    private static float MapSize => MapConfig.MapPixelSize;
     private const float MmSize = 180f;
-    private const float S = MmSize / MapSize; // ~0.09
+    private static float S => MmSize / MapSize;
 
     // 颜色
     private static readonly Color CBg = new(0.08f, 0.15f, 0.08f);

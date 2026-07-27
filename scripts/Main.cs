@@ -167,8 +167,8 @@ public partial class Main : Node2D
     private ulong _mapSeed = 0;
     /// <summary>地图 RNG（基于种子初始化，所有地图生成共用此实例保证可复现）。</summary>
     private Random _mapRng = new(42);
-    /// <summary>地图大小常量（像素）。阵营基地分布在 200..(MapSize-200) 范围内。</summary>
-    private const float MapSize = 2000f;
+    /// <summary>地图大小（像素）。P2-2: 委托给 MapConfig 动态计算。</summary>
+    private static float MapSize => MapConfig.MapPixelSize;
 
     // ---- P1-3 自定义地图系统 ----
     /// <summary>自定义地图文件路径（通过 --map= 参数指定）。</summary>
@@ -243,6 +243,21 @@ public partial class Main : Node2D
         // P2-4: 加载Mod（在游戏数据之前，以便Mod覆盖生效）
         ModLoader.LoadAllMods();
 
+        // P2-2: 应用地图尺寸配置（从GameSession读取，支持命令行 --mapsize=32/64/96）
+        var args = OS.GetCmdlineArgs();
+        MapConfig.SetSize(GameSession.SelectedMapSize);
+        for (int i = 0; i < args.Length; i++)
+        {
+            string a = args[i];
+            if (a.StartsWith("--mapsize", StringComparison.OrdinalIgnoreCase))
+            {
+                string val = a.Contains('=') ? a.Split('=')[1] : "";
+                if (int.TryParse(val, out var size))
+                    MapConfig.SetSize(size);
+            }
+        }
+        GameLog.Debug($"[Map] 地图尺寸 {MapConfig.GridSize}×{MapConfig.GridSize} (像素 {MapConfig.MapPixelSize})");
+
         // P1-2: 加载游戏数据（单位/建筑/阵营）
         GameData.Load();
         FactionManager.Load();
@@ -253,7 +268,6 @@ public partial class Main : Node2D
         // P5：解析难度参数（--difficulty=easy/normal/hard/brutal）
         // 优先命令行参数（headless 测试用），否则用菜单选择（GameSession）
         _difficulty = GameSession.SelectedDifficulty;
-        var args = OS.GetCmdlineArgs();
         for (int i = 0; i < args.Length; i++)
         {
             string a = args[i];
@@ -367,19 +381,14 @@ public partial class Main : Node2D
             if (_eureka[i] == null) _eureka[i] = new EurekaSystem.TeamEureka();
 
         // ---- 初始化 8 阵营 ----
-        // 阵营起始位置：等距坐标下的网格位置 → 等距屏幕坐标
-        // 网格坐标系仍是32×32，转为等距屏幕坐标后视觉上呈菱形分布
-        var teamGridPositions = new (int gx, int gy)[TotalTeamCount]
-        {
-            (1, 1),         // 0 玩家（左上角）
-            (30, 30),       // 1 AI（右下角）
-            (30, 1),        // 2 AI（右上角）
-            (1, 30),        // 3 AI（左下角）
-            (16, 1),        // 4 AI（顶部中央）
-            (16, 30),       // 5 AI（底部中央）
-            (1, 16),        // 6 AI（左侧中央）
-            (30, 16),       // 7 AI（右侧中央）
-        };
+        // 阵营起始位置：P2-2: 使用 MapConfig 动态计算，支持任意地图尺寸
+        var basePositions = MapConfig.BasePositions;
+        var teamGridPositions = new (int gx, int gy)[TotalTeamCount];
+        for (int i = 0; i < TotalTeamCount && i < basePositions.Length; i++)
+            teamGridPositions[i] = basePositions[i];
+        // 如果阵营数 > BasePositions 数组长度，剩余阵营放在中心附近
+        for (int i = basePositions.Length; i < TotalTeamCount; i++)
+            teamGridPositions[i] = (MapConfig.Center, MapConfig.Center);
         var teamStartPositions = new Vector2[TotalTeamCount];
         for (int i = 0; i < TotalTeamCount; i++)
             teamStartPositions[i] = IsoCoords.GridToScreen(teamGridPositions[i].gx, teamGridPositions[i].gy);

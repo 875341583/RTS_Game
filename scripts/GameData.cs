@@ -49,9 +49,7 @@ public static class GameConst
     public const float UnitCapMultiplier = 1.0f;
 
     // === 地图 ===
-    /// <summary>默认地图尺寸</summary>
-    public const int DefaultMapSize = 32;
-    /// <summary>地图尺寸选项</summary>
+    /// <summary>地图尺寸选项（P2-2: 委托给 MapConfig.SizePreset）</summary>
     public static readonly int[] MapSizeOptions = { 32, 64, 96 };
     /// <summary>战略点每16x16格1个</summary>
     public const int StrategicPointInterval = 16;

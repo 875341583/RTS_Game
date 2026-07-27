@@ -111,6 +111,40 @@ public partial class MainMenu : Control
         seedHint.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(seedHint);
 
+        var spacer2a = new Control { CustomMinimumSize = new Vector2(0, 8) };
+        vbox.AddChild(spacer2a);
+
+        // P2-2: 地图尺寸选择
+        var mapSizeRow = new HBoxContainer();
+        mapSizeRow.AddThemeConstantOverride("separation", 8);
+        var mapSizeLabel = MakeLabel("地图尺寸:", 14, new Color(0.6f, 0.65f, 0.6f));
+        mapSizeRow.AddChild(mapSizeLabel);
+
+        var mapSizeOptions = new (string Label, MapConfig.SizePreset Preset, string Desc)[]
+        {
+            ("小(32×32)", MapConfig.SizePreset.Small, "快速对战"),
+            ("中(64×64)", MapConfig.SizePreset.Medium, "标准对战"),
+            ("大(96×96)", MapConfig.SizePreset.Large, "大规模战役"),
+        };
+        foreach (var opt in mapSizeOptions)
+        {
+            var btn = new Button();
+            btn.Text = opt.Label;
+            btn.AddThemeFontSizeOverride("font_size", 13);
+            btn.CustomMinimumSize = new Vector2(0, 28);
+            btn.Pressed += () =>
+            {
+                GameSession.SelectedMapSize = opt.Preset;
+                GameLog.Debug($"[MainMenu] 地图尺寸选择: {opt.Label}");
+            };
+            mapSizeRow.AddChild(btn);
+        }
+        vbox.AddChild(mapSizeRow);
+
+        var mapSizeHint = MakeLabel("大地图需要更强性能（单位更多、AI更多）", 11, new Color(0.45f, 0.5f, 0.45f));
+        mapSizeHint.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(mapSizeHint);
+
         var spacer2b = new Control { CustomMinimumSize = new Vector2(0, 12) };
         vbox.AddChild(spacer2b);
 
@@ -210,7 +244,7 @@ public partial class MainMenu : Control
                     GameSession.MapSeed = parsedSeed;
                 else
                     GameSession.MapSeed = 0; // 0=随机
-                GameLog.Info($"[MainMenu] 选择难度: {diff}，种子: {GameSession.MapSeed}，进入游戏");
+                GameLog.Info($"[MainMenu] 选择难度: {diff}，种子: {GameSession.MapSeed}，地图尺寸: {GameSession.SelectedMapSize}，进入游戏");
                 CallDeferred(nameof(ChangeToGameScene));
             }
         };
