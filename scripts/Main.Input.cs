@@ -45,6 +45,7 @@ public partial class Main
                 if (_lightningTargetMode && !mouseOverPanel)
                 {
                     ApplyLightning(worldPos, PlayerTeamId);
+                    ReplayRecorder.Record(ReplayRecorder.ActionType.Lightning, new { X = worldPos.X, Y = worldPos.Y });
                     _lightningTargetMode = false;
                     _playerLightningCooldown = GameConst.LightningCooldown;
                     QueueRedraw();
@@ -54,6 +55,7 @@ public partial class Main
                 if (_nukeTargetMode && !mouseOverPanel)
                 {
                     ApplyNuke(worldPos, PlayerTeamId);
+                    ReplayRecorder.Record(ReplayRecorder.ActionType.Nuke, new { X = worldPos.X, Y = worldPos.Y });
                     _nukeTargetMode = false;
                     _playerNukeCooldown = GameConst.NukeCooldown;
                     QueueRedraw();
@@ -63,6 +65,7 @@ public partial class Main
                 if (_missileTargetMode && !mouseOverPanel)
                 {
                     ApplyCruiseMissile(worldPos, PlayerTeamId);
+                    ReplayRecorder.Record(ReplayRecorder.ActionType.CruiseMissile, new { X = worldPos.X, Y = worldPos.Y });
                     _missileTargetMode = false;
                     _playerMissileCooldown = GameConst.MissileCooldown;
                     QueueRedraw();
@@ -253,6 +256,7 @@ public partial class Main
             if (sel.Count > 0)
             {
                 foreach (var u in sel) u.CommandStop();
+                ReplayRecorder.Record(ReplayRecorder.ActionType.CommandStop);
                 GameLog.Debug($"[操控] 停止 ({sel.Count} 单位)");
             }
         }
@@ -282,6 +286,8 @@ public partial class Main
                     }
                 }
             }
+            if (repaired > 0)
+                ReplayRecorder.Record(ReplayRecorder.ActionType.RepairBuilding, new { Count = repaired });
             if (repaired == 0)
             {
                 GameLog.Debug("[维修] 没有可维修的建筑（需选中受损的蓝方建筑）");
@@ -302,6 +308,7 @@ public partial class Main
                 _money[0] += refund;
                 b.SetSelected(false);
                 _selected.Remove(b);
+                ReplayRecorder.Record(ReplayRecorder.ActionType.SellBuilding, new { Type = b.Type.ToString() });
                 GameLog.Debug($"[出售] {b.BuildingName} 已出售，回收 ${refund}，资金 ${_money[0]}");
                 // P0-1: 移除PathFinder障碍并取消事件订阅（H4修复）
                 OnBuildingDestroyed(b);
@@ -403,11 +410,13 @@ public partial class Main
     private void SaveSquad(int idx)
     {
         _squads[idx] = GetSelectedFriendlyUnits();
+        ReplayRecorder.Record(ReplayRecorder.ActionType.SaveSquad, new { Index = idx });
         GameLog.Debug($"[编队] 编队{idx + 1} 已保存 ({_squads[idx].Count} 单位)");
     }
 
     private void SelectSquad(int idx)
     {
+        ReplayRecorder.Record(ReplayRecorder.ActionType.SelectSquad, new { Index = idx });
         if (!_squads.TryGetValue(idx, out var squad) || squad.Count == 0) return;
         foreach (var o in _selected)
         {
@@ -440,6 +449,7 @@ public partial class Main
     private void IssueAttackMove(Vector2 worldPos)
     {
         var list = GetSelectedFriendlyUnits();
+        ReplayRecorder.Record(ReplayRecorder.ActionType.CommandAttackMove, new { X = worldPos.X, Y = worldPos.Y });
         int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(list.Count)));
         for (int i = 0; i < list.Count; i++)
         {
@@ -482,6 +492,7 @@ public partial class Main
                     var cancelled = producer.CancelLastProduction();
                     if (cancelled.HasValue)
                     {
+                        ReplayRecorder.Record(ReplayRecorder.ActionType.CancelProduction, new { Building = producer.BuildingName });
                         GameLog.Debug($"[取消生产] {producer.BuildingName} 取消: {cancelled.Value}");
                         _audio?.PlaySfx(AudioManager.Sfx.UiClick);
                     }
@@ -489,6 +500,7 @@ public partial class Main
                 }
                 // 否则设集结点
                 producer.SetRallyPoint(worldPos);
+                ReplayRecorder.Record(ReplayRecorder.ActionType.SetRallyPoint, new { X = worldPos.X, Y = worldPos.Y });
                 GameLog.Debug($"[集结点] {producer.BuildingName} 集结点 -> {worldPos}");
                 return;
             }
@@ -503,6 +515,7 @@ public partial class Main
         {
             foreach (var unit in friendlyUnits)
                 unit.CommandAttack(enemyUnit);
+            ReplayRecorder.Record(ReplayRecorder.ActionType.CommandAttack, new { X = worldPos.X, Y = worldPos.Y });
             // P2-3: 播放攻击语音
             var attacker = friendlyUnits.FirstOrDefault();
             if (attacker != null)
@@ -527,7 +540,10 @@ public partial class Main
                 if (spy.IsSpyOnMission) continue; // 已在执行任务
                 var mission = SpyMission.ChooseMission(enemyBuilding.Type);
                 spy.CommandSpyMission(enemyBuilding, mission);
+                ReplayRecorder.Record(ReplayRecorder.ActionType.CommandSpyMission, new { Mission = mission.ToString(), TargetX = worldPos.X, TargetY = worldPos.Y });
             }
+            if (nonSpyUnits.Count > 0)
+                ReplayRecorder.Record(ReplayRecorder.ActionType.CommandAttackBuilding, new { X = worldPos.X, Y = worldPos.Y });
             // P2-3: 播放攻击语音（非间谍单位）
             var atkUnit = nonSpyUnits.FirstOrDefault();
             if (atkUnit != null)
@@ -559,6 +575,9 @@ public partial class Main
         Unit.TerrainModType modType = DetectTerrainMod(terrainCell);
         if (modType != Unit.TerrainModType.None)
         {
+            bool hasEngineer = friendlyUnits.Any(u => u.IsEngineerUnit);
+            if (hasEngineer)
+                ReplayRecorder.Record(ReplayRecorder.ActionType.CommandTerrainMod, new { ModType = modType.ToString(), X = worldPos.X, Y = worldPos.Y });
             // 仅工程单位执行地形改造，非工程单位仍正常移动
             for (int i = 0; i < friendlyUnits.Count; i++)
             {
@@ -578,6 +597,7 @@ public partial class Main
                 int row = i / cols;
                 friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
             }
+            ReplayRecorder.Record(ReplayRecorder.ActionType.CommandMove, new { X = worldPos.X, Y = worldPos.Y });
         }
         // 阶段12-C：下令移动音效
         _audio?.PlaySfx(AudioManager.Sfx.Move);

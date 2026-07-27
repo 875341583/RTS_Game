@@ -16,6 +16,12 @@ public class TestAssemblyInitializer
     /// <summary>在测试启动时调用一次，设置安全模式并预加载所有数据驱动类的fallback数据</summary>
     public static void EnsureFallbackDataLoaded()
     {
+        // 禁用GameLog的Godot native调用（测试进程中无Godot运行时，GD.Print会崩溃）
+        GameLog.SafeMode = true;
+
+        // 禁用ReplayRecorder的Godot native调用
+        ReplayRecorder.SetSilent(true);
+
         // 禁用ModLoader的Godot IO（测试进程中无Godot运行时）
         ModLoader.DisableGodotIO();
 

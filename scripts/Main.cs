@@ -645,6 +645,9 @@ public partial class Main : Node2D
         GameLog.Debug("★ 选中建筑右键设集结点 | R维修 | V出售");
         GameLog.Debug("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成 | N间谍 | K占领");
         GameLog.Debug("========================================");
+
+        // P3-1: 启动回放录制
+        ReplayRecorder.Start(_mapSeed, _difficulty.ToString(), MapConfig.GridSize, MapConfig.Theme.ToString());
     }
 
     // ======== E4：地形改造支持方法 ========
@@ -678,6 +681,9 @@ public partial class Main : Node2D
     public override void _Process(double delta)
     {
         var dt = (float)delta;
+
+        // P3-1: 回放帧计数器
+        ReplayRecorder.Tick();
 
         // AI保护期递减：保护期内AI不主动进攻，给玩家发展空间
         if (Unit.AiGraceRemaining > 0f)
@@ -1014,6 +1020,12 @@ public partial class Main : Node2D
             if (_gameOverDelay <= 0f)
             {
                 _gameOverDelay = -1f;
+                // P3-1: 游戏结束时保存回放
+                if (ReplayRecorder.IsRecording)
+                {
+                    ReplayRecorder.Stop();
+                    ReplayRecorder.Save();
+                }
                 ShowGameOverUI();
             }
         }

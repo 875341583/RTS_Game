@@ -72,6 +72,7 @@ public partial class Main
 
             _money[0] -= cost;
             producer.EnqueueProduction(UnitTypeToProductionType(type));
+            ReplayRecorder.Record(ReplayRecorder.ActionType.SpawnUnit, new { Type = type.ToString() });
             GameLog.Debug($"蓝方排产{type}(批量{i+1}/{batchCount})，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
         }
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
@@ -91,6 +92,7 @@ public partial class Main
 
         _money[0] -= cost;
         producer.EnqueueProduction(ProductionType.Harvester);
+        ReplayRecorder.Record(ReplayRecorder.ActionType.SpawnHarvester);
         GameLog.Debug($"蓝方排产矿车，扣 ${cost}，剩余 ${_money[0]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
     }
 
@@ -331,6 +333,7 @@ public partial class Main
 
         // Q1：进入放置模式（玩家手动选择位置）
         _placementMode = type;
+        ReplayRecorder.Record(ReplayRecorder.ActionType.PlaceBuilding, new { Type = type.ToString() });
         if (_buildPanel != null) _buildPanel.ActivePlacement = type;
         QueueRedraw();
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
@@ -341,6 +344,7 @@ public partial class Main
     public void CancelPlacement()
     {
         _placementMode = null;
+        ReplayRecorder.Record(ReplayRecorder.ActionType.CancelPlacement);
         if (_buildPanel != null) _buildPanel.ActivePlacement = null;
         QueueRedraw();
     }

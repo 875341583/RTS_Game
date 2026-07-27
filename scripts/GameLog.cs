@@ -68,8 +68,17 @@ public static class GameLog
             PrintLog(Level.Debug, message);
     }
 
+    /// <summary>是否在Godot运行时外安全降级（单元测试等场景自动启用）</summary>
+    public static bool SafeMode { get; set; } = false;
+
     private static void PrintLog(Level level, string message)
     {
+        if (SafeMode)
+        {
+            // 非Godot运行时中不能调用GD.Print等native方法
+            System.Console.WriteLine($"[{level}] {message}");
+            return;
+        }
         var tag = ShowLevelTag ? $"[{level.ToString().ToUpper()}] " : "";
         switch (level)
         {

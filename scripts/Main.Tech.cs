@@ -39,6 +39,7 @@ public partial class Main
         }
         _money[0] -= node.Cost;
         tp.StartResearch(techId);
+        ReplayRecorder.Record(ReplayRecorder.ActionType.ResearchTech, new { TechId = techId.ToString() });
         GameLog.Debug($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[0]}");
         ShowToast($"开始研究: {node.Name}");
     }
@@ -326,6 +327,7 @@ public partial class Main
         }
         _money[0] -= next.UpgradeCost;
         ep.StartUpgrade();
+        ReplayRecorder.Record(ReplayRecorder.ActionType.AdvanceEra, new { FromEra = ep.CurrentEra.ToString() });
         GameLog.Debug($"[G2] 开始时代升级：{EraSystem.Eras[(int)ep.CurrentEra].Name} → {next.Name} (成本${next.UpgradeCost}，{next.UpgradeTime:F0}秒)");
         ShowToast($"时代升级中: → {next.Name}");
     }
@@ -508,6 +510,7 @@ public partial class Main
     {
         _playerCard = card;
         _cardLabel.Visible = false;
+        ReplayRecorder.Record(ReplayRecorder.ActionType.SelectCard, new { Card = card.ToString() });
         var info = TacticalCards.Cards[card];
         GameLog.Debug($"[G3] 玩家选择战术卡: {info.Name} — {info.Description}");
         ShowToast($"战术卡: {info.Name}");
