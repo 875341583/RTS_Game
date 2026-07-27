@@ -85,14 +85,22 @@ public enum TerrainUnitCategory
 /// </summary>
 public class TerrainGrid
 {
-    /// <summary>网格边长（格数）</summary>
-    public const int GridSize = 32;
+    /// <summary>网格边长（格数）— P2-2: 委托给 MapConfig</summary>
+    public static int GridSize => MapConfig.GridSize;
     /// <summary>每格像素大小</summary>
     public const int TileSize = 64;
     /// <summary>地图像素大小 = GridSize * TileSize</summary>
-    public const float MapPixelSize = GridSize * TileSize; // 2048
+    public static float MapPixelSize => MapConfig.MapPixelSize;
 
-    private readonly TerrainCell[,] _cells = new TerrainCell[GridSize, GridSize];
+    private TerrainCell[,] _cells = new TerrainCell[32, 32]; // 初始默认，Resize时重建
+
+    /// <summary>确保_cells数组与当前GridSize匹配（P2-2: 动态尺寸）。</summary>
+    private void EnsureCellArray()
+    {
+        int gs = GridSize;
+        if (_cells.GetLength(0) != gs || _cells.GetLength(1) != gs)
+            _cells = new TerrainCell[gs, gs];
+    }
 
     /// <summary>获取指定格子的地形数据。</summary>
     public TerrainCell GetCell(int gx, int gy)
@@ -216,6 +224,8 @@ public class TerrainGrid
     /// </summary>
     public void GenerateFromSeed(ulong seed)
     {
+        EnsureCellArray();
+        int gs = GridSize;
         var rng = new Random((int)(seed & 0x7FFFFFFF));
 
         // 1. 初始化全部为草地+平地
@@ -261,8 +271,10 @@ public class TerrainGrid
         {
             int cx = rng.Next(4, GridSize - 4);
             int cy = rng.Next(4, GridSize - 4);
-            // 避开地图中央8x8区域（战略点区域）
-            if (Math.Abs(cx - 16) < 4 && Math.Abs(cy - 16) < 4) continue;
+            // P2-2: 避开地图中央战略点区域
+            int center = MapConfig.Center;
+            int spaRadius = 4;
+            if (Math.Abs(cx - center) < spaRadius && Math.Abs(cy - center) < spaRadius) continue;
             // 避开边缘基地区域
             if (IsBaseArea(cx, cy)) continue;
 
@@ -473,9 +485,10 @@ public class TerrainGrid
 
     private void GenerateCity(Random rng)
     {
-        // 地图中央附近生成一个城市区域（3-4格方块的城市路面）
-        int cx = 14 + rng.Next(4); // 14-17
-        int cy = 14 + rng.Next(4);
+        // P2-2: 地图中央附近生成一个城市区域
+        int center = MapConfig.Center;
+        int cx = center - 2 + rng.Next(4);
+        int cy = center - 2 + rng.Next(4);
         int size = 2 + rng.Next(2); // 2-3格
         for (int dy = -size; dy <= size; dy++)
             for (int dx = -size; dx <= size; dx++)
@@ -490,7 +503,7 @@ public class TerrainGrid
     private void GenerateRoads(Random rng)
     {
         // 道路：从地图中心向四个方向延伸（沿用十字形骨架）
-        int mid = GridSize / 2;
+        int mid = MapConfig.Center;
         for (int i = 0; i < GridSize; i++)
         {
             // 水平主干道
@@ -517,12 +530,8 @@ public class TerrainGrid
 
     private void EnsureBaseAreas()
     {
-        // 确保所有8个阵营的起始区域为平地+草地（3x3范围）
-        var basePositions = new (int x, int y)[]
-        {
-            (0, 0), (27, 27), (27, 0), (0, 27),
-            (14, 0), (14, 27), (0, 14), (27, 14)
-        };
+        // P2-2: 使用MapConfig动态计算基地位置
+        var basePositions = MapConfig.BasePositions;
         foreach (var (bx, by) in basePositions)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -677,19 +686,8 @@ public class TerrainGrid
             yield return (x + dx, y + dy);
     }
 
-    /// <summary>判断是否在基地起始区域附近（3格范围）。</summary>
-    private static bool IsBaseArea(int x, int y)
-    {
-        var basePositions = new (int x, int y)[]
-        {
-            (0, 0), (27, 27), (27, 0), (0, 27),
-            (14, 0), (14, 27), (0, 14), (27, 14)
-        };
-        foreach (var (bx, by) in basePositions)
-            if (Math.Abs(x - bx) <= 2 && Math.Abs(y - by) <= 2)
-                return true;
-        return false;
-    }
+    /// <summary>判断是否在基地起始区域附近（3格范围）— P2-2: 委托给MapConfig。</summary>
+    private static bool IsBaseArea(int x, int y) => MapConfig.IsBaseArea(x, y);
 
     /// <summary>地图边界外的默认格子。</summary>
     private static TerrainCell DefaultBorder() => new()

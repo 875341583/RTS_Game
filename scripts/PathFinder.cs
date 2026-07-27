@@ -16,19 +16,33 @@ namespace RTSGame
         // ========== 障碍数据（M6修复：引用计数，避免重叠区域错误解锁） ==========
         private readonly int[,] _buildingBlocked;
 
-        // ========== A*常量 ==========
-        private const int GS = TerrainGrid.GridSize; // 32
-        private const int StraightCost = 10;
-        private const int DiagonalCost = 14; // ≈10*√2
+    // ========== A*常量 ==========
+    private const int StraightCost = 10;
+    private const int DiagonalCost = 14; // ≈10*√2
 
-        // ========== A*工作数组（类级复用，避免每帧GC） ==========
-        private readonly int[,] _gCost = new int[GS, GS];
-        private readonly int[,] _hCost = new int[GS, GS];
-        private readonly int[,] _parentX = new int[GS, GS];
-        private readonly int[,] _parentY = new int[GS, GS];
-        private readonly bool[,] _closed = new bool[GS, GS];
-        private readonly bool[,] _opened = new bool[GS, GS];
-        private readonly List<(int x, int y)> _openList = new(GS * GS);
+    // ========== A*工作数组（P2-2: 动态大小，EnsureWorkArrays时按GridSize分配） ==========
+    private int[,] _gCost;
+    private int[,] _hCost;
+    private int[,] _parentX;
+    private int[,] _parentY;
+    private bool[,] _closed;
+    private bool[,] _opened;
+    private List<(int x, int y)> _openList;
+    private int _gs; // 当前GridSize快照
+
+    private void EnsureWorkArrays()
+    {
+        int gs = TerrainGrid.GridSize;
+        if (_gs == gs && _gCost != null) return;
+        _gs = gs;
+        _gCost = new int[gs, gs];
+        _hCost = new int[gs, gs];
+        _parentX = new int[gs, gs];
+        _parentY = new int[gs, gs];
+        _closed = new bool[gs, gs];
+        _opened = new bool[gs, gs];
+        _openList = new List<(int, int)>(gs * gs);
+    }
 
         // 8方向偏移：先直线后对角线
         private static readonly (int dx, int dy, bool diagonal)[] _neighbors =
@@ -40,11 +54,12 @@ namespace RTSGame
         /// <summary>路径点到达阈值（等距屏幕坐标像素）。</summary>
         private const float WaypointThreshold = 12f;
 
-        public PathFinder(TerrainGrid terrain)
-        {
-            _terrain = terrain;
-            _buildingBlocked = new int[GS, GS];
-        }
+    public PathFinder(TerrainGrid terrain)
+    {
+        _terrain = terrain;
+        EnsureWorkArrays();
+        _buildingBlocked = new int[_gs, _gs];
+    }
 
         // ========== 障碍管理 ==========
 
@@ -102,6 +117,7 @@ namespace RTSGame
         /// </summary>
         public List<Vector2> FindPath(Vector2 startWorld, Vector2 endWorld, TerrainUnitCategory cat)
         {
+            EnsureWorkArrays();
             _terrain.WorldToGrid(startWorld.X, startWorld.Y, out int sx, out int sy);
             _terrain.WorldToGrid(endWorld.X, endWorld.Y, out int ex, out int ey);
 
@@ -171,7 +187,7 @@ namespace RTSGame
             _opened[sx, sy] = true;
             _openList.Add((sx, sy));
 
-            int maxIterations = GS * GS * 4; // 安全上限
+            int maxIterations = _gs * _gs * 4; // 安全上限
 
             while (_openList.Count > 0 && maxIterations-- > 0)
             {
@@ -260,7 +276,7 @@ namespace RTSGame
         {
             var path = new List<(int x, int y)>();
             int cx = ex, cy = ey;
-            int safety = GS * GS;
+            int safety = _gs * _gs;
             while ((cx != sx || cy != sy) && safety-- > 0)
             {
                 path.Add((cx, cy));
@@ -353,7 +369,7 @@ namespace RTSGame
         /// <summary>BFS螺旋搜索最近可通行格。</summary>
         private bool FindNearestPassable(int gx, int gy, TerrainUnitCategory cat, out int rx, out int ry)
         {
-            for (int r = 1; r < GS; r++)
+            for (int r = 1; r < _gs; r++)
             {
                 for (int dy = -r; dy <= r; dy++)
                 {
@@ -378,7 +394,7 @@ namespace RTSGame
 
         // ========== 工具方法 ==========
 
-        private static bool InBounds(int x, int y) => (uint)x < GS && (uint)y < GS;
+        private bool InBounds(int x, int y) => (uint)x < _gs && (uint)y < _gs;
 
         /// <summary>对角线距离启发函数（与移动代价一致，保证A*最优性）。</summary>
         private static int Heuristic(int x0, int y0, int x1, int y1)

@@ -12,14 +12,22 @@ namespace RTSGame;
 /// </summary>
 public class TerrainGrid3D
 {
-    /// <summary>网格边长（格数）</summary>
-    public const int GridSize = 32;
+    /// <summary>网格边长（格数）— P2-2: 委托给 MapConfig</summary>
+    public static int GridSize => MapConfig.GridSize;
     /// <summary>每格3D单位大小（米）</summary>
-    public const float CellSize = 4.0f;
+    public static float CellSize => MapConfig.CellSize3D;
     /// <summary>地图3D大小 = GridSize * CellSize</summary>
-    public static readonly float MapWorldSize = GridSize * CellSize; // 128
+    public static float MapWorldSize => MapConfig.MapWorldSize3D;
 
-    private readonly TerrainCell[,] _cells = new TerrainCell[GridSize, GridSize];
+    private TerrainCell[,] _cells = new TerrainCell[32, 32]; // P2-2: 初始默认，EnsureCellArray时重建
+
+    /// <summary>确保_cells数组与当前GridSize匹配（P2-2: 动态尺寸）。</summary>
+    private void EnsureCellArray()
+    {
+        int gs = GridSize;
+        if (_cells.GetLength(0) != gs || _cells.GetLength(1) != gs)
+            _cells = new TerrainCell[gs, gs];
+    }
 
     // ======== 3D 渲染根节点 ========
     private Node3D _terrainRoot;
@@ -207,6 +215,7 @@ public class TerrainGrid3D
 
     public void GenerateMap(int seed)
     {
+        EnsureCellArray();
         _mapRng = new Random(seed);
 
         for (int x = 0; x < GridSize; x++)
