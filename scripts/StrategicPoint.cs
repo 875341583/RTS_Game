@@ -55,7 +55,7 @@ public partial class StrategicPoint : Area2D
         BodyEntered += OnBodyEntered;
         BodyExited += OnBodyExited;
 
-        GD.Print($"[StrategicPoint] Created at {GlobalPosition}");
+        GameLog.Debug($"[StrategicPoint] Created at {GlobalPosition}");
     }
 
     private void OnBodyEntered(Node body)
@@ -90,7 +90,7 @@ public partial class StrategicPoint : Area2D
                 _captureProgress = 0f;
                 _visual.Texture = _blueTex;
                 _label.Text = "蓝方控制";
-                GD.Print("[StrategicPoint] Blue captured!");
+                GameLog.Debug("[StrategicPoint] Blue captured!");
             }
         }
         else if (_redCount > 0 && _blueCount == 0 && OwningTeam != 1)
@@ -102,7 +102,7 @@ public partial class StrategicPoint : Area2D
                 _captureProgress = 0f;
                 _visual.Texture = _redTex;
                 _label.Text = "红方控制";
-                GD.Print("[StrategicPoint] Red captured!");
+                GameLog.Debug("[StrategicPoint] Red captured!");
             }
         }
         else if (_blueCount == 0 && _redCount == 0)

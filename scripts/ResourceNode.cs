@@ -135,7 +135,7 @@ public partial class ResourceNode : Area2D
             {
                 OilOwner = 0;
                 _captureProgress = 0f;
-                GD.Print($"[OilField] Blue captured oil at {GlobalPosition}!");
+                GameLog.Debug($"[OilField] Blue captured oil at {GlobalPosition}!");
                 // 重绘视觉为蓝方占领
                 RegenerateOreImage();
             }
@@ -147,7 +147,7 @@ public partial class ResourceNode : Area2D
             {
                 OilOwner = 1;
                 _captureProgress = 0f;
-                GD.Print($"[OilField] Red captured oil at {GlobalPosition}!");
+                GameLog.Debug($"[OilField] Red captured oil at {GlobalPosition}!");
                 RegenerateOreImage();
             }
         }
@@ -425,7 +425,7 @@ public partial class ResourceNode : Area2D
         Amount -= actual;
         if (IsDepleted)
         {
-            GD.Print($"[Resource] {ResourceType} depleted at {GlobalPosition}");
+            GameLog.Debug($"[Resource] {ResourceType} depleted at {GlobalPosition}");
             var tween = CreateTween();
             tween.TweenProperty(_ore, "modulate:a", 0f, 0.6f);
             tween.Parallel().TweenProperty(_amountLabel, "modulate:a", 0f, 0.6f);

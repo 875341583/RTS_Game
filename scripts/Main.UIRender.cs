@@ -48,7 +48,7 @@ public partial class Main
         AddChild(_groundSprite);
         MoveChild(_groundSprite, 0); // 最底层
 
-        GD.Print($"[IsoTerrain] 等距地形渲染完成，图尺寸: {isoImg.GetWidth()}x{isoImg.GetHeight()}，偏移: ({offX}, {offY})");
+        GameLog.Debug($"[IsoTerrain] 等距地形渲染完成，图尺寸: {isoImg.GetWidth()}x{isoImg.GetHeight()}，偏移: ({offX}, {offY})");
     }
 
     private static void EnsureGroundTileTextures()
@@ -118,7 +118,7 @@ public partial class Main
         _rockTex = GD.Load<Texture2D>("res://assets/sprites/environment/crateMetal.png");
         if (_rockTex == null)
         {
-            GD.PrintErr("[Obstacle] Failed to load crateMetal.png");
+            GameLog.Error("[Obstacle] Failed to load crateMetal.png");
             var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             img.SetPixel(0, 0, Colors.Magenta);
             _rockTex = ImageTexture.CreateFromImage(img);
@@ -127,7 +127,7 @@ public partial class Main
         _wallTex = GD.Load<Texture2D>("res://assets/sprites/environment/sandbagBrown.png");
         if (_wallTex == null)
         {
-            GD.PrintErr("[Obstacle] Failed to load sandbagBrown.png");
+            GameLog.Error("[Obstacle] Failed to load sandbagBrown.png");
             var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             img.SetPixel(0, 0, Colors.Magenta);
             _wallTex = ImageTexture.CreateFromImage(img);
@@ -172,7 +172,7 @@ public partial class Main
             SpawnOre(pos, 1500);
         }
 
-        GD.Print($"[Map] 矿点生成完毕（种子 {_mapSeed}）");
+        GameLog.Debug($"[Map] 矿点生成完毕（种子 {_mapSeed}）");
     }
 
     // ========== E5 资源扩展生成 ==========
@@ -183,7 +183,7 @@ public partial class Main
         var oilPositions = _terrain.GetOilFieldPositions();
         if (oilPositions.Count == 0)
         {
-            GD.Print("[E5] 没有合适的油田位置，跳过");
+            GameLog.Debug("[E5] 没有合适的油田位置，跳过");
             return;
         }
 
@@ -212,7 +212,7 @@ public partial class Main
             placed++;
         }
 
-        GD.Print($"[E5] 油田生成完毕：{placed} 个");
+        GameLog.Debug($"[E5] 油田生成完毕：{placed} 个");
     }
 
     /// <summary>生成稀有矿（采集收益×2）。2-3个，分布在山脉附近高地。</summary>
@@ -221,7 +221,7 @@ public partial class Main
         var rarePositions = _terrain.GetRareMineralPositions();
         if (rarePositions.Count == 0)
         {
-            GD.Print("[E5] 没有合适的稀有矿位置，跳过");
+            GameLog.Debug("[E5] 没有合适的稀有矿位置，跳过");
             return;
         }
 
@@ -246,7 +246,7 @@ public partial class Main
             placed++;
         }
 
-        GD.Print($"[E5] 稀有矿生成完毕：{placed} 个");
+        GameLog.Debug($"[E5] 稀有矿生成完毕：{placed} 个");
     }
 
     /// <summary>生成陆地矿脉（散布广、储值低、数量多）。8-12个，遍布可通行陆地。</summary>
@@ -255,7 +255,7 @@ public partial class Main
         var veinPositions = _terrain.GetSuitableResourcePositions(1, 1, false, false);
         if (veinPositions.Count == 0)
         {
-            GD.Print("[E5] 没有合适的陆地矿脉位置，跳过");
+            GameLog.Debug("[E5] 没有合适的陆地矿脉位置，跳过");
             return;
         }
 
@@ -280,7 +280,7 @@ public partial class Main
             placed++;
         }
 
-        GD.Print($"[E5] 陆地矿脉生成完毕：{placed} 个");
+        GameLog.Debug($"[E5] 陆地矿脉生成完毕：{placed} 个");
     }
 
     /// <summary>生成油田节点。</summary>
@@ -395,7 +395,7 @@ public partial class Main
             placed++;
         }
 
-        GD.Print($"[Map] 障碍物生成完毕：4 墙 + {placed} 岩石（种子 {_mapSeed}）");
+        GameLog.Debug($"[Map] 障碍物生成完毕：4 墙 + {placed} 岩石（种子 {_mapSeed}）");
     }
 
     /// <summary>种子驱动生成战略要地：中央固定 + 2 个侧翼随机偏移。</summary>
@@ -418,7 +418,7 @@ public partial class Main
         var pos2 = center + new Vector2(Mathf.Cos(angle2) * dist2, Mathf.Sin(angle2) * dist2);
         SpawnStrategicPoint(ClampToMap(pos2, 100f));
 
-        GD.Print($"[Map] 战略点生成完毕：1 中央 + 2 侧翼（种子 {_mapSeed}）");
+        GameLog.Debug($"[Map] 战略点生成完毕：1 中央 + 2 侧翼（种子 {_mapSeed}）");
     }
 
     /// <summary>在画面顶部显示一条 Toast 通知，自动淡出。</summary>

@@ -88,7 +88,7 @@ public static class FactionManager
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GD.PrintErr($"[FactionManager] 无法加载阵营配置: {path}");
+            GameLog.Error($"[FactionManager] 无法加载阵营配置: {path}");
             // 降级：创建默认阵营
             CreateDefaultFactions();
             _loaded = true;
@@ -98,7 +98,7 @@ public static class FactionManager
         var parsed = Json.ParseString(json);
         if (parsed.VariantType != Variant.Type.Dictionary)
         {
-            GD.PrintErr($"[FactionManager] 阵营配置解析失败");
+            GameLog.Error($"[FactionManager] 阵营配置解析失败");
             CreateDefaultFactions();
             _loaded = true;
             return;
@@ -116,7 +116,7 @@ public static class FactionManager
             _factionList.Add(def);
         }
         _loaded = true;
-        GD.Print($"[FactionManager] 阵营加载完成: {_factionList.Count}个阵营（默认: {_defaultFactionId}）");
+        GameLog.Debug($"[FactionManager] 阵营加载完成: {_factionList.Count}个阵营（默认: {_defaultFactionId}）");
     }
 
     private static void EnsureLoaded()
@@ -156,7 +156,7 @@ public static class FactionManager
                 if (Enum.TryParse<UnitType>(name, out var ut))
                     def.AvailableUnits.Add(ut);
                 else
-                    GD.PrintErr($"[FactionManager] 阵营{id}未知单位类型: {name}");
+                    GameLog.Error($"[FactionManager] 阵营{id}未知单位类型: {name}");
             }
         }
         if (d.ContainsKey("availableBuildings"))
@@ -169,7 +169,7 @@ public static class FactionManager
                 if (Enum.TryParse<BuildingType>(name, out var bt))
                     def.AvailableBuildings.Add(bt);
                 else
-                    GD.PrintErr($"[FactionManager] 阵营{id}未知建筑类型: {name}");
+                    GameLog.Error($"[FactionManager] 阵营{id}未知建筑类型: {name}");
             }
         }
         if (d.ContainsKey("exclusiveTechs"))

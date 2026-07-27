@@ -105,7 +105,7 @@ public partial class Main
         string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
         ShowToast($"☢ {who}释放核弹！命中 {unitHits} 单位 / {bldHits} 建筑",
             new Color(1f, 0.3f, 0.2f));
-        GD.Print($"[核弹] Team {firingTeamId} 于 {pos} 释放，命中 {unitHits} 单位 + {bldHits} 建筑");
+        GameLog.Debug($"[核弹] Team {firingTeamId} 于 {pos} 释放，命中 {unitHits} 单位 + {bldHits} 建筑");
 
         // 阶段12-C：核弹音效
         _audio?.PlaySfxForce(AudioManager.Sfx.Nuke);
@@ -151,7 +151,7 @@ public partial class Main
         string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
         ShowToast($"⚡ {who}释放闪电风暴！初始命中 {unitHits} 敌方目标，持续 {LightningDuration:F0}s",
             new Color(0.5f, 0.8f, 1f));
-        GD.Print($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {LightningDuration}s");
+        GameLog.Debug($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {LightningDuration}s");
 
         // 阶段12-C：闪电风暴音效
         _audio?.PlaySfxForce(AudioManager.Sfx.Lightning);
@@ -188,7 +188,7 @@ public partial class Main
                 }
             }
         }
-        GD.Print($"[巡航导弹] 位置{pos}，命中{unitHits}单位/{bldHits}建筑");
+        GameLog.Debug($"[巡航导弹] 位置{pos}，命中{unitHits}单位/{bldHits}建筑");
         // 视觉特效：复用核弹爆炸
         _activeNukeVisuals.Add(new NukeVisual { Position = pos, Age = 0f, Lifetime = 4f });
         QueueRedraw();
@@ -319,14 +319,14 @@ public partial class Main
                         _techProgress[spyTeamId].ForceComplete(stolenTech.Value);
                         ApplyTechEffects(spyTeamId);
                         var nodeName = TechTree.Nodes[stolenTech.Value];
-                        GD.Print($"[G7] 间谍窃取科技成功: {nodeName.Name} (Team {spyTeamId})");
+                        GameLog.Debug($"[G7] 间谍窃取科技成功: {nodeName.Name} (Team {spyTeamId})");
                         ShowToast(spyTeamId == 0 ? $"间谍窃取: {nodeName.Name}" : $"AI Team {spyTeamId} 间谍窃取科技");
                     }
                     else
                     {
                         // 敌方无可窃取科技，补偿$300
                         AddResourceForTeam(spyTeamId, 300);
-                        GD.Print($"[G7] 间谍无可窃取科技，获得$300补偿 (Team {spyTeamId})");
+                        GameLog.Debug($"[G7] 间谍无可窃取科技，获得$300补偿 (Team {spyTeamId})");
                         ShowToast(spyTeamId == 0 ? "间谍: 无可窃取科技, $300补偿" : "");
                     }
                 }
@@ -337,7 +337,7 @@ public partial class Main
                 if (IsInstanceValid(target))
                 {
                     target.PowerConsumed += 200;
-                    GD.Print($"[G7] 间谍破坏电网: {target.BuildingName} 断电{(int)SpyMission.SabotagePowerDuration}秒 (Team {target.TeamId})");
+                    GameLog.Debug($"[G7] 间谍破坏电网: {target.BuildingName} 断电{(int)SpyMission.SabotagePowerDuration}秒 (Team {target.TeamId})");
                     ShowToast(spyTeamId == 0 ? $"间谍破坏: {target.BuildingName}断电" : "");
                     // 延迟恢复
                     DelayedRestoreSpySabotage(target, SpyMission.SabotagePowerDuration, 200);
@@ -351,7 +351,7 @@ public partial class Main
                 {
                     SpendMoney(target.TeamId, stolen);
                     AddResourceForTeam(spyTeamId, stolen);
-                    GD.Print($"[G7] 间谍窃取${stolen} (Team {target.TeamId} → Team {spyTeamId})");
+                    GameLog.Debug($"[G7] 间谍窃取${stolen} (Team {target.TeamId} → Team {spyTeamId})");
                     ShowToast(spyTeamId == 0 ? $"间谍窃取: ${stolen}" : "");
                 }
                 break;
@@ -362,7 +362,7 @@ public partial class Main
                 {
                     // 通过大幅增加PowerConsumed使建筑离线
                     target.PowerConsumed += 500;
-                    GD.Print($"[G7] 间谍瘫痪生产: {target.BuildingName} 暂停{(int)SpyMission.SabotageProdDuration}秒");
+                    GameLog.Debug($"[G7] 间谍瘫痪生产: {target.BuildingName} 暂停{(int)SpyMission.SabotageProdDuration}秒");
                     ShowToast(spyTeamId == 0 ? $"间谍瘫痪: {target.BuildingName}停工" : "");
                     DelayedRestoreSpySabotage(target, SpyMission.SabotageProdDuration, 500);
                 }
@@ -383,7 +383,7 @@ public partial class Main
                         nearbyEnemies++;
                 }
                 sb.AppendLine($"  附近敌方单位: {nearbyEnemies}");
-                GD.Print($"[G7] 间谍侦察: {sb.ToString().Trim()}");
+                GameLog.Debug($"[G7] 间谍侦察: {sb.ToString().Trim()}");
                 if (spyTeamId == 0) ShowToast(sb.ToString().Trim());
                 break;
         }
@@ -433,7 +433,7 @@ public partial class Main
         {
             var mission = SpyMission.ChooseMission(target.Type);
             idleSpy.CommandSpyMission(target, mission);
-            GD.Print($"[G7] AI Team {teamId} 派间谍执行 {SpyMission.MissionName(mission)} → {target.BuildingName}");
+            GameLog.Debug($"[G7] AI Team {teamId} 派间谍执行 {SpyMission.MissionName(mission)} → {target.BuildingName}");
         }
     }
 
@@ -445,7 +445,7 @@ public partial class Main
         {
             b.PowerConsumed -= powerRestore;
             if (b.PowerConsumed < 0) b.PowerConsumed = 0;
-            GD.Print($"[G7] 间谍破坏效果恢复: {b.BuildingName}");
+            GameLog.Debug($"[G7] 间谍破坏效果恢复: {b.BuildingName}");
         }
     }
 

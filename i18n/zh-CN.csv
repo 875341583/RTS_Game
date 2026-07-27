@@ -1,0 +1,84 @@
+# i18n翻译文件 - 简体中文
+# 格式: key,translation
+# key命名规范: 类别.名称 (如 ui.build、unit.light_tank)
+# 修改后需重新导入项目让Godot生成.translation文件
+
+# === UI 通用 ===
+ui.ok,确定
+ui.cancel,取消
+ui.close,关闭
+ui.back,返回
+ui.start,开始
+ui.restart,重新开始
+ui.quit,退出
+ui.pause,暂停
+ui.resume,继续
+ui.save,保存
+ui.load,加载
+ui.settings,设置
+ui.help,帮助
+
+# === 主菜单 ===
+menu.title,铁幕突袭
+menu.new_game,新游戏
+menu.map_editor,地图编辑器
+menu.prototype_3d,3D原型预览
+menu.play_3d,3D正式游戏
+menu.difficulty,难度选择
+menu.seed,种子
+
+# === 建造面板 ===
+build.power_plant,电站
+build.barracks,兵营
+build.war_factory,车厂
+build.tech_center,科技中心
+build.repair_pad,维修厂
+build.turret,炮塔
+build.anti_air,防空塔
+build.airfield,机场
+build.shipyard,船坞
+build.nuke_silo,核弹井
+build.lightning_tower,闪电塔
+build.missile_silo,导弹井
+build.super_weapon,超级武器
+build.walls,围墙
+
+# === 难度 ===
+difficulty.casual,休闲
+difficulty.normal,普通
+difficulty.hard,困难
+difficulty.nightmare,噩梦
+
+# === 时代 ===
+era.stone,石器时代
+era.bronze,青铜时代
+era.iron,铁器时代
+era.modern,现代
+
+# === 战术卡 ===
+tactical.rush,闪电突击
+tactical.defense,钢铁堡垒
+tactical.economy,经济繁荣
+
+# === 游戏提示 ===
+hint.destroy_base,摧毁敌方基地建筑即可获胜
+hint.build_base,建造电站→兵营→科技中心
+hint.select_unit,选中单位右键移动/攻击
+hint.tab_tech,Tab打开科技树
+hint.y_era,Y时代升级
+hint.t_tactical,T战术卡
+hint.g_power,G电力网络
+hint.h_tactic,H战术卡面板
+hint.j_adjacency,J邻接加成
+hint.n_spy,N间谍操作
+hint.k_capture,K占领状态
+
+# === 日志/通知 ===
+log.money_low,资金不足
+log.power_low,电力不足
+log.unit_cap,达到单位上限
+log.no_barracks,需要兵营
+log.no_war_factory,需要车厂
+log.no_tech_center,需要科技中心
+log.no_airfield,需要机场
+log.no_shipyard,需要船坞

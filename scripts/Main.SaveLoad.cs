@@ -191,7 +191,7 @@ public partial class Main
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"[SaveLoad] 快速存档失败: {ex.Message}");
+            GameLog.Error($"[SaveLoad] 快速存档失败: {ex.Message}");
             ShowToast("存档失败！", new Color(1.0f, 0.3f, 0.3f));
         }
     }
@@ -205,7 +205,7 @@ public partial class Main
             if (files.Length == 0)
             {
                 ShowToast("没有可用存档", new Color(1.0f, 0.8f, 0.3f));
-                GD.Print("[SaveLoad] 无存档可用");
+                GameLog.Debug("[SaveLoad] 无存档可用");
                 return;
             }
             string path = $"{GetSaveDir()}/{files[0]}";
@@ -220,7 +220,7 @@ public partial class Main
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"[SaveLoad] 快速读档失败: {ex.Message}");
+            GameLog.Error($"[SaveLoad] 快速读档失败: {ex.Message}");
             ShowToast("读档失败！", new Color(1.0f, 0.3f, 0.3f));
         }
     }
@@ -233,7 +233,7 @@ public partial class Main
     {
         if (data == null) return;
 
-        GD.Print($"[SaveLoad] 开始应用存档：版本{data.Version} 建筑{data.Buildings.Count} 单位{data.Units.Count}");
+        GameLog.Debug($"[SaveLoad] 开始应用存档：版本{data.Version} 建筑{data.Buildings.Count} 单位{data.Units.Count}");
 
         // 1. 清空现有单位/建筑/资源/战略点节点
         ClearAllEntities();
@@ -254,7 +254,7 @@ public partial class Main
                 cell.HasTunnel = tm.HasTunnel;
                 _terrain.SetCell(tm.Gx, tm.Gy, cell);
             }
-            GD.Print($"[SaveLoad] 应用了{data.TerrainMods.Count}个地形修改");
+            GameLog.Debug($"[SaveLoad] 应用了{data.TerrainMods.Count}个地形修改");
         }
         // 地形渲染：由于地图刷新，重置IsoTerrainRenderer的缓存，让下次绘制重新出图
         // IsoTerrainRenderer通过TerrainGrid读取数据，此处无需再额外触发
@@ -399,7 +399,7 @@ public partial class Main
         _gameResult = data.GameResult ?? "";
 
         // 15. 重置PathFinder障碍（建筑已在SpawnBuilding时注册）
-        GD.Print($"[SaveLoad] 存档应用完成。单位数={CountUnitsOfTeam(0) + CountBuildingsOfTeam(0)}");
+        GameLog.Debug($"[SaveLoad] 存档应用完成。单位数={CountUnitsOfTeam(0) + CountBuildingsOfTeam(0)}");
     }
 
     /// <summary>清空场景中所有单位、建筑节点（保留资源点/战略点/地形不重建）。</summary>

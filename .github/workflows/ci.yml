@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore RTSGame.sln
+
+      - name: Build game project
+        run: dotnet build RTSGame.csproj --no-restore --configuration Release
+
+      - name: Build test project
+        run: dotnet build tests/RTSGame.Tests/RTSGame.Tests.csproj --no-restore --configuration Release
+
+      - name: Run unit tests with coverage
+        run: |
+          dotnet test tests/RTSGame.Tests/RTSGame.Tests.csproj \
+            --no-build \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults \
+            --logger "trx;LogFileName=test_results.trx"
+
+      - name: Extract coverage report
+        if: always()
+        run: |
+          COVERAGE_FILE=$(find ./TestResults -name "coverage.cobertura.xml" | head -n 1)
+          if [ -n "$COVERAGE_FILE" ]; then
+            echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "Coverage file: $COVERAGE_FILE" >> $GITHUB_STEP_SUMMARY
+            # Extract line coverage percentage
+            LINE_RATE=$(grep -oP 'line-rate="\K[^"]+' "$COVERAGE_FILE" | head -n 1)
+            if [ -n "$LINE_RATE" ]; then
+              PCT=$(echo "$LINE_RATE * 100" | bc -l | cut -c1-5)
+              echo "**Line Coverage: ${PCT}%**" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            ./TestResults/**/coverage.cobertura.xml
+            ./TestResults/**/test_results.trx
+          retention-days: 14

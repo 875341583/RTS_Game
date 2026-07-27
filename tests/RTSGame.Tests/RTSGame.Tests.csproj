@@ -20,6 +20,15 @@
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <!--GodotSharp：让游戏程序集中引用的Mathf/GodotObject类型在测试侧可解析-->
     <PackageReference Include="GodotSharp" Version="4.7.1" />
+    <!--P2-5: Roslyn Analyzer 代码静态分析（测试项目同样启用）-->
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Roslynator.Analyzers" Version="4.13.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>

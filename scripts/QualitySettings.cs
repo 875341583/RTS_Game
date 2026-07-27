@@ -81,7 +81,7 @@ public static class QualitySettings
         }
 
         ApplySettings();
-        GD.Print($"[R7] 画质分级: {LevelName} (GPU: {HasGPU}, Renderer: {rendererName})");
+        GameLog.Debug($"[R7] 画质分级: {LevelName} (GPU: {HasGPU}, Renderer: {rendererName})");
     }
 
     /// <summary>根据当前画质等级应用渲染参数。</summary>
@@ -130,7 +130,7 @@ public static class QualitySettings
         Current = level;
         HasGPU = level != QualityLevel.Low;
         ApplySettings();
-        GD.Print($"[R7] 画质已切换: {LevelName}");
+        GameLog.Debug($"[R7] 画质已切换: {LevelName}");
     }
 
     /// <summary>是否应该渲染高开销特效（如粒子、光晕）。</summary>

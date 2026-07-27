@@ -744,7 +744,7 @@ public partial class BuildPanel : Control
     {
         var tex = GD.Load<Texture2D>(path);
         if (tex == null)
-            GD.PrintErr($"[BuildPanel] Failed to load icon: {path}");
+            GameLog.Error($"[BuildPanel] Failed to load icon: {path}");
         return tex;
     }
 }

@@ -610,7 +610,7 @@ public class TerrainGrid3D
             _terrainRoot.AddChild(mmi);
         }
 
-        GD.Print($"[TerrainGrid3D] Terrain built with MultiMesh — {tileGroups.Sum(g => g.Value.Count)} tiles in {tileGroups.Count} draw calls (was ~1000)");
+        GameLog.Debug($"[TerrainGrid3D] Terrain built with MultiMesh — {tileGroups.Sum(g => g.Value.Count)} tiles in {tileGroups.Count} draw calls (was ~1000)");
 
         // 地形装饰 — 岩石、树木、草丛
         BuildTerrainDecorations();
@@ -905,7 +905,7 @@ public class TerrainGrid3D
         // 为简单起见，直接在代码中烘焙
         _navRegion.BakeNavigationMesh(false);
 
-        GD.Print("[TerrainGrid3D] Navigation mesh baked");
+        GameLog.Debug("[TerrainGrid3D] Navigation mesh baked");
     }
 
     // ======== 便利方法 ========

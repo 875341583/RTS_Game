@@ -41,7 +41,7 @@ public partial class MainMenu : Control
             }
             if (hasDifficulty)
             {
-                GD.Print($"[MainMenu] 自动进入游戏 (难度 {GameSession.SelectedDifficulty}, 种子 {GameSession.MapSeed}, mode={DisplayServer.GetName()})");
+                GameLog.Info($"[MainMenu] 自动进入游戏 (难度 {GameSession.SelectedDifficulty}, 种子 {GameSession.MapSeed}, mode={DisplayServer.GetName()})");
                 CallDeferred(nameof(ChangeToGameScene));
                 return;
             }
@@ -133,7 +133,7 @@ public partial class MainMenu : Control
         protoBtn.AddThemeFontSizeOverride("font_size", 18);
         protoBtn.Pressed += () =>
         {
-            GD.Print("[MainMenu] 进入3D原型预览");
+            GameLog.Info("[MainMenu] 进入3D原型预览");
             GetTree().ChangeSceneToFile("res://scenes/Prototype3D.tscn");
         };
         vbox.AddChild(protoBtn);
@@ -145,7 +145,7 @@ public partial class MainMenu : Control
         editorBtn.AddThemeFontSizeOverride("font_size", 18);
         editorBtn.Pressed += () =>
         {
-            GD.Print("[MainMenu] 进入地图编辑器");
+            GameLog.Info("[MainMenu] 进入地图编辑器");
             GetTree().ChangeSceneToFile("res://scenes/MapEditor.tscn");
         };
         vbox.AddChild(editorBtn);
@@ -157,7 +157,7 @@ public partial class MainMenu : Control
         game3DBtn.AddThemeFontSizeOverride("font_size", 20);
         game3DBtn.Pressed += () =>
         {
-            GD.Print("[MainMenu] 进入3D正式游戏");
+            GameLog.Info("[MainMenu] 进入3D正式游戏");
             GetTree().ChangeSceneToFile("res://scenes/Main3D.tscn");
         };
         vbox.AddChild(game3DBtn);
@@ -172,7 +172,7 @@ public partial class MainMenu : Control
         exitBtn.Pressed += () => GetTree().Quit();
         vbox.AddChild(exitBtn);
 
-        GD.Print("[MainMenu] 主菜单已加载");
+        GameLog.Info("[MainMenu] 主菜单已加载");
     }
 
     private void ChangeToGameScene()
@@ -210,7 +210,7 @@ public partial class MainMenu : Control
                     GameSession.MapSeed = parsedSeed;
                 else
                     GameSession.MapSeed = 0; // 0=随机
-                GD.Print($"[MainMenu] 选择难度: {diff}，种子: {GameSession.MapSeed}，进入游戏");
+                GameLog.Info($"[MainMenu] 选择难度: {diff}，种子: {GameSession.MapSeed}，进入游戏");
                 CallDeferred(nameof(ChangeToGameScene));
             }
         };

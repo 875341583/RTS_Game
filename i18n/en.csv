@@ -1,0 +1,82 @@
+# i18n translation file - English
+# Format: key,translation
+
+# === UI Common ===
+ui.ok,OK
+ui.cancel,Cancel
+ui.close,Close
+ui.back,Back
+ui.start,Start
+ui.restart,Restart
+ui.quit,Quit
+ui.pause,Pause
+ui.resume,Resume
+ui.save,Save
+ui.load,Load
+ui.settings,Settings
+ui.help,Help
+
+# === Main Menu ===
+menu.title,Iron Curtain
+menu.new_game,New Game
+menu.map_editor,Map Editor
+menu.prototype_3d,3D Prototype
+menu.play_3d,3D Game
+menu.difficulty,Difficulty
+menu.seed,Seed
+
+# === Build Panel ===
+build.power_plant,Power Plant
+build.barracks,Barracks
+build.war_factory,War Factory
+build.tech_center,Tech Center
+build.repair_pad,Repair Pad
+build.turret,Turret
+build.anti_air,Anti-Air
+build.airfield,Airfield
+build.shipyard,Shipyard
+build.nuke_silo,Nuke Silo
+build.lightning_tower,Lightning Tower
+build.missile_silo,Missile Silo
+build.super_weapon,Super Weapon
+build.walls,Walls
+
+# === Difficulty ===
+difficulty.casual,Casual
+difficulty.normal,Normal
+difficulty.hard,Hard
+difficulty.nightmare,Nightmare
+
+# === Era ===
+era.stone,Stone Age
+era.bronze,Bronze Age
+era.iron,Iron Age
+era.modern,Modern
+
+# === Tactical Card ===
+tactical.rush,Lightning Rush
+tactical.defense,Iron Fortress
+tactical.economy,Economic Boom
+
+# === Hints ===
+hint.destroy_base,Destroy enemy base buildings to win
+hint.build_base,Build: Power Plant > Barracks > Tech Center
+hint.select_unit,Select units right-click to move or attack
+hint.tab_tech,Tab: Tech Tree
+hint.y_era,Y: Era Upgrade
+hint.t_tactical,T: Tactical Card
+hint.g_power,G: Power Grid
+hint.h_tactic,H: Tactical Panel
+hint.j_adjacency,J: Adjacency Bonus
+hint.n_spy,N: Spy Operations
+hint.k_capture,K: Capture Status
+
+# === Log/Notification ===
+log.money_low,Insufficient funds
+log.power_low,Insufficient power
+log.unit_cap,Unit cap reached
+log.no_barracks,Need Barracks
+log.no_war_factory,Need War Factory
+log.no_tech_center,Need Tech Center
+log.no_airfield,Need Airfield
+log.no_shipyard,Need Shipyard

@@ -30,7 +30,7 @@ public partial class Main
         // 建筑前置检查
         if (!CanProduceUnit(0, type))
         {
-            GD.Print($"[警告] 缺少生产{type}所需建筑！");
+            GameLog.Warning($"[警告] 缺少生产{type}所需建筑！");
             return;
         }
 
@@ -42,7 +42,7 @@ public partial class Main
             // 电力检查
             if (GetTeamPower(0) < 0)
             {
-                GD.Print($"[警告] 电力不足，无法生产单位！当前电力: {GetTeamPower(0)}");
+                GameLog.Error($"[警告] 电力不足，无法生产单位！当前电力: {GetTeamPower(0)}");
                 break;
             }
 
@@ -51,7 +51,7 @@ public partial class Main
             int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
             if (total >= effectiveCap)
             {
-                GD.Print($"[警告] 达到单位上限 {effectiveCap}！");
+                GameLog.Warning($"[警告] 达到单位上限 {effectiveCap}！");
                 break;
             }
 
@@ -59,20 +59,20 @@ public partial class Main
             var producer = FindProducerForUnit(type, 0);
             if (producer == null)
             {
-                GD.Print($"[警告] 没有可用的{GetProducerForUnit(type)}！");
+                GameLog.Warning($"[警告] 没有可用的{GetProducerForUnit(type)}！");
                 break;
             }
 
             if (_money[0] < cost)
             {
-                GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}");
+                GameLog.Warning($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}");
                 _audio?.PlaySfx(AudioManager.Sfx.UiError);
                 break;
             }
 
             _money[0] -= cost;
             producer.EnqueueProduction(UnitTypeToProductionType(type));
-            GD.Print($"蓝方排产{type}(批量{i+1}/{batchCount})，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+            GameLog.Debug($"蓝方排产{type}(批量{i+1}/{batchCount})，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
         }
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
     }
@@ -80,18 +80,18 @@ public partial class Main
     public void TrySpawnHarvester()
     {
         int cost = GetUnitCost(UnitType.Harvester);
-        if (_money[0] < cost) { GD.Print("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
-        if (GetTeamPower(0) < 0) { GD.Print("[警告] 电力不足！"); return; }
+        if (_money[0] < cost) { GameLog.Warning("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
+        if (GetTeamPower(0) < 0) { GameLog.Warning("[警告] 电力不足！"); return; }
 
         int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
-        if (total >= _unitCap) { GD.Print($"[警告] 达到单位上限 {_unitCap}！"); return; }
+        if (total >= _unitCap) { GameLog.Warning($"[警告] 达到单位上限 {_unitCap}！"); return; }
 
         var producer = FindProducerBuilding(BuildingType.Base, 0);
-        if (producer == null) { GD.Print("[警告] 没有基地！"); return; }
+        if (producer == null) { GameLog.Warning("[警告] 没有基地！"); return; }
 
         _money[0] -= cost;
         producer.EnqueueProduction(ProductionType.Harvester);
-        GD.Print($"蓝方排产矿车，扣 ${cost}，剩余 ${_money[0]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+        GameLog.Debug($"蓝方排产矿车，扣 ${cost}，剩余 ${_money[0]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
     }
 
     // ---------- 建造系统 ----------
@@ -295,46 +295,46 @@ public partial class Main
     private void TryBuildBuilding(BuildingType type)
     {
         // 前置建筑检查
-        if (type == BuildingType.PowerPlant && !HasBuilding(0, BuildingType.Base)) { GD.Print("[警告] 需要先有建造厂！"); return; }
-        if (type == BuildingType.Barracks && !HasBuilding(0, BuildingType.PowerPlant)) { GD.Print("[警告] 需要先有电站！"); return; }
-        if (type == BuildingType.WarFactory && !HasBuilding(0, BuildingType.Barracks)) { GD.Print("[警告] 需要先有兵营！"); return; }
-        if (type == BuildingType.TechCenter && !HasBuilding(0, BuildingType.WarFactory)) { GD.Print("[警告] 需要先有战车工厂！"); return; }
+        if (type == BuildingType.PowerPlant && !HasBuilding(0, BuildingType.Base)) { GameLog.Warning("[警告] 需要先有建造厂！"); return; }
+        if (type == BuildingType.Barracks && !HasBuilding(0, BuildingType.PowerPlant)) { GameLog.Warning("[警告] 需要先有电站！"); return; }
+        if (type == BuildingType.WarFactory && !HasBuilding(0, BuildingType.Barracks)) { GameLog.Warning("[警告] 需要先有兵营！"); return; }
+        if (type == BuildingType.TechCenter && !HasBuilding(0, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有战车工厂！"); return; }
         // 阶段12-A1+A2 新增前置
-        if (type == BuildingType.Turret && !HasBuilding(0, BuildingType.Barracks)) { GD.Print("[警告] 需要先有兵营！"); return; }
-        if (type == BuildingType.AntiAirTurret && !HasBuilding(0, BuildingType.WarFactory)) { GD.Print("[警告] 需要先有车厂！"); return; }
-        if (type == BuildingType.RepairPad && !HasBuilding(0, BuildingType.WarFactory)) { GD.Print("[警告] 需要先有车厂！"); return; }
+        if (type == BuildingType.Turret && !HasBuilding(0, BuildingType.Barracks)) { GameLog.Warning("[警告] 需要先有兵营！"); return; }
+        if (type == BuildingType.AntiAirTurret && !HasBuilding(0, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有车厂！"); return; }
+        if (type == BuildingType.RepairPad && !HasBuilding(0, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有车厂！"); return; }
 
         // P5：难度科技等级限制（系统复杂度分级）
-        if (type == BuildingType.WarFactory && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁战车工厂！"); return; }
-        if (type == BuildingType.TechCenter && _playerTechLevel < 3) { GD.Print("[难度限制] 当前难度未解锁科技中心！"); return; }
-        if (type == BuildingType.AntiAirTurret && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁防空炮！"); return; }
-        if (type == BuildingType.RepairPad && _playerTechLevel < 2) { GD.Print("[难度限制] 当前难度未解锁维修厂！"); return; }
+        if (type == BuildingType.WarFactory && _playerTechLevel < 2) { GameLog.Debug("[难度限制] 当前难度未解锁战车工厂！"); return; }
+        if (type == BuildingType.TechCenter && _playerTechLevel < 3) { GameLog.Debug("[难度限制] 当前难度未解锁科技中心！"); return; }
+        if (type == BuildingType.AntiAirTurret && _playerTechLevel < 2) { GameLog.Debug("[难度限制] 当前难度未解锁防空炮！"); return; }
+        if (type == BuildingType.RepairPad && _playerTechLevel < 2) { GameLog.Debug("[难度限制] 当前难度未解锁维修厂！"); return; }
 
         // G2: 时代限制检查
         if (!IsBuildingUnlockedByEra(0, type))
         {
             var ep = _eraProgress[0];
-            GD.Print($"[G2] {type} 需要{EraSystem.GetNextEra(ep.CurrentEra)?.Name ?? "更高时代"}才能建造！当前：{EraSystem.Eras[(int)ep.CurrentEra].Name}");
+            GameLog.Debug($"[G2] {type} 需要{EraSystem.GetNextEra(ep.CurrentEra)?.Name ?? "更高时代"}才能建造！当前：{EraSystem.Eras[(int)ep.CurrentEra].Name}");
             return;
         }
 
         // 电力检查（电站本身不受电力限制）
         if (type != BuildingType.PowerPlant && GetTeamPower(0) < 0)
         {
-            GD.Print($"[警告] 电力不足！当前电力: {GetTeamPower(0)}");
+            GameLog.Warning($"[警告] 电力不足！当前电力: {GetTeamPower(0)}");
             return;
         }
 
         // 资金检查
         int cost = GetBuildingCost(type);
-        if (_money[0] < cost) { GD.Print($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
+        if (_money[0] < cost) { GameLog.Warning($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
 
         // Q1：进入放置模式（玩家手动选择位置）
         _placementMode = type;
         if (_buildPanel != null) _buildPanel.ActivePlacement = type;
         QueueRedraw();
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
-        GD.Print($"[放置] 选择 {type} 放置位置，左键放置 / 右键取消");
+        GameLog.Debug($"[放置] 选择 {type} 放置位置，左键放置 / 右键取消");
     }
 
     // ---------- Q1 建筑放置 ----------
@@ -383,11 +383,11 @@ public partial class Main
             Mathf.Clamp(grid.Y, 1f, TerrainGrid.GridSize - 2f)
         );
         pos = IsoCoords.GridToScreenF(grid.X, grid.Y);
-        if (_money[0] < cost) { GD.Print("[放置] 资金不足"); CancelPlacement(); return; }
-        if (!CanPlaceBuilding(pos)) { GD.Print("[放置] 位置被占用"); return; }
+        if (_money[0] < cost) { GameLog.Debug("[放置] 资金不足"); CancelPlacement(); return; }
+        if (!CanPlaceBuilding(pos)) { GameLog.Debug("[放置] 位置被占用"); return; }
         _money[0] -= cost;
         SpawnBuilding(type, pos, teamId: 0);
-        GD.Print($"蓝方建造{type}，扣 ${cost}，剩余 ${_money[0]}，位置 {pos}");
+        GameLog.Debug($"蓝方建造{type}，扣 ${cost}，剩余 ${_money[0]}，位置 {pos}");
         _audio?.PlaySfx(AudioManager.Sfx.UiPlace);
         // 放一个就退出放置模式（红警2风格：点一次放一个）
         CancelPlacement();
@@ -408,7 +408,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.PowerPlant, teamId);
             SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
-            GD.Print($"[AI] Team {teamId} built PowerPlant, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built PowerPlant, ${_money[teamId]} left");
             return;
         }
 
@@ -417,7 +417,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.PowerPlant, teamId);
             SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
-            GD.Print($"[AI] Team {teamId} built PowerPlant (low power), ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built PowerPlant (low power), ${_money[teamId]} left");
             return;
         }
 
@@ -426,7 +426,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.Barracks, teamId);
             SpawnBuilding(BuildingType.Barracks, GetAIBuildPosition(teamId, BuildingType.Barracks), teamId);
-            GD.Print($"[AI] Team {teamId} built Barracks, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built Barracks, ${_money[teamId]} left");
             return;
         }
 
@@ -436,7 +436,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.WarFactory, teamId);
             SpawnBuilding(BuildingType.WarFactory, GetAIBuildPosition(teamId, BuildingType.WarFactory), teamId);
-            GD.Print($"[AI] Team {teamId} built WarFactory, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built WarFactory, ${_money[teamId]} left");
             return;
         }
 
@@ -446,7 +446,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.TechCenter, teamId);
             SpawnBuilding(BuildingType.TechCenter, GetAIBuildPosition(teamId, BuildingType.TechCenter), teamId);
-            GD.Print($"[AI] Team {teamId} built TechCenter, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built TechCenter, ${_money[teamId]} left");
             return;
         }
 
@@ -455,7 +455,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.PowerPlant, teamId);
             SpawnBuilding(BuildingType.PowerPlant, GetAIBuildPosition(teamId, BuildingType.PowerPlant), teamId);
-            GD.Print($"[AI] Team {teamId} built PowerPlant (for tech center), ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built PowerPlant (for tech center), ${_money[teamId]} left");
             return;
         }
 
@@ -467,7 +467,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.RepairPad, teamId);
             SpawnBuilding(BuildingType.RepairPad, GetAIBuildPosition(teamId, BuildingType.RepairPad), teamId);
-            GD.Print($"[AI] Team {teamId} built RepairPad, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built RepairPad, ${_money[teamId]} left");
             return;
         }
 
@@ -479,7 +479,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.Turret, teamId);
             SpawnBuilding(BuildingType.Turret, GetAIBuildPosition(teamId, BuildingType.Turret), teamId);
-            GD.Print($"[AI] Team {teamId} built Turret #{turretCount + 1}, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built Turret #{turretCount + 1}, ${_money[teamId]} left");
             return;
         }
 
@@ -491,7 +491,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.AntiAirTurret, teamId);
             SpawnBuilding(BuildingType.AntiAirTurret, GetAIBuildPosition(teamId, BuildingType.AntiAirTurret), teamId);
-            GD.Print($"[AI] Team {teamId} built AntiAirTurret #{aaCount + 1}, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built AntiAirTurret #{aaCount + 1}, ${_money[teamId]} left");
             return;
         }
 
@@ -502,7 +502,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.Airfield, teamId);
             SpawnBuilding(BuildingType.Airfield, GetAIBuildPosition(teamId, BuildingType.Airfield), teamId);
-            GD.Print($"[AI] Team {teamId} built Airfield, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built Airfield, ${_money[teamId]} left");
             return;
         }
         // E9：优先级11：建造船厂（已建科技中心，每阵营最多1座）
@@ -512,7 +512,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.Shipyard, teamId);
             SpawnBuilding(BuildingType.Shipyard, GetAIBuildPosition(teamId, BuildingType.Shipyard), teamId);
-            GD.Print($"[AI] Team {teamId} built Shipyard, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built Shipyard, ${_money[teamId]} left");
             return;
         }
         // E10：优先级12-14：超武建筑（已建科技中心）
@@ -521,7 +521,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.NukeSilo, teamId);
             SpawnBuilding(BuildingType.NukeSilo, GetAIBuildPosition(teamId, BuildingType.NukeSilo), teamId);
-            GD.Print($"[AI] Team {teamId} built NukeSilo, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built NukeSilo, ${_money[teamId]} left");
             return;
         }
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.LightningTower)
@@ -529,7 +529,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.LightningTower, teamId);
             SpawnBuilding(BuildingType.LightningTower, GetAIBuildPosition(teamId, BuildingType.LightningTower), teamId);
-            GD.Print($"[AI] Team {teamId} built LightningTower, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built LightningTower, ${_money[teamId]} left");
             return;
         }
         if (hasTechCenter && !HasBuilding(teamId, BuildingType.MissileSilo)
@@ -537,7 +537,7 @@ public partial class Main
         {
             _money[teamId] -= GetBuildingCost(BuildingType.MissileSilo, teamId);
             SpawnBuilding(BuildingType.MissileSilo, GetAIBuildPosition(teamId, BuildingType.MissileSilo), teamId);
-            GD.Print($"[AI] Team {teamId} built MissileSilo, ${_money[teamId]} left");
+            GameLog.Debug($"[AI] Team {teamId} built MissileSilo, ${_money[teamId]} left");
             return;
         }
     }
@@ -636,7 +636,7 @@ public partial class Main
                             {
                                 _money[teamId] -= c;
                                 producer.EnqueueProduction(UnitTypeToProductionType(t));
-                                GD.Print($"[AI] Team {teamId} queued {t}, ${_money[teamId]} left, {producer.BuildingName}队列{producer.QueueCount}");
+                                GameLog.Debug($"[AI] Team {teamId} queued {t}, ${_money[teamId]} left, {producer.BuildingName}队列{producer.QueueCount}");
                                 break;
         }
 
@@ -746,7 +746,7 @@ public partial class Main
                 {
                     _money[0] -= cost;
                     b.Repair();
-                    GD.Print($"[BlueAI] 维修{b.BuildingName}，扣 ${cost}，剩余 ${_money[0]}");
+                    GameLog.Debug($"[BlueAI] 维修{b.BuildingName}，扣 ${cost}，剩余 ${_money[0]}");
                 }
             }
         }
@@ -779,7 +779,7 @@ public partial class Main
             {
                 _money[0] -= blueHarvCost;
                 harvProducer.EnqueueProduction(ProductionType.Harvester);
-                GD.Print($"[BlueAI] Blue queued harvester, ${_money[0]} left");
+                GameLog.Debug($"[BlueAI] Blue queued harvester, ${_money[0]} left");
                 return;
             }
         }
@@ -842,7 +842,7 @@ public partial class Main
                 {
                     _money[0] -= c;
                     producer.EnqueueProduction(UnitTypeToProductionType(t));
-                    GD.Print($"[BlueAI] Blue queued {t}, ${_money[0]} left, {producer.BuildingName}队列{producer.QueueCount}");
+                    GameLog.Debug($"[BlueAI] Blue queued {t}, ${_money[0]} left, {producer.BuildingName}队列{producer.QueueCount}");
                 }
                 return;
             }
@@ -899,7 +899,7 @@ public partial class Main
             if (nearest != null && nearestDist < 1600f)
             {
                 nearest.CommandMove(sp.GlobalPosition);
-                GD.Print($"[AI] Team {teamId} sending unit to capture point at {sp.GlobalPosition} (dist {(int)nearestDist})");
+                GameLog.Debug($"[AI] Team {teamId} sending unit to capture point at {sp.GlobalPosition} (dist {(int)nearestDist})");
                 return;
             }
         }
@@ -924,7 +924,7 @@ public partial class Main
             if (nearest != null && nearestDist < 1400f)
             {
                 nearest.CommandMove(rn.GlobalPosition);
-                GD.Print($"[AI] Team {teamId} sending unit to capture oil field at {rn.GlobalPosition} (dist {(int)nearestDist})");
+                GameLog.Debug($"[AI] Team {teamId} sending unit to capture oil field at {rn.GlobalPosition} (dist {(int)nearestDist})");
                 return;
             }
         }
@@ -1004,7 +1004,7 @@ public partial class Main
             var home = FindHomeBase(teamId);
             if (home == null) return; // 基地被摧毁，无法生成矿车
             SpawnHarvester(spawnPos + new Vector2(60, 0), teamId, home);
-            GD.Print($"[生产完成] {producer.BuildingName} (Team {teamId}) 生产矿车");
+            GameLog.Debug($"[生产完成] {producer.BuildingName} (Team {teamId}) 生产矿车");
         }
         else
         {
@@ -1019,7 +1019,7 @@ public partial class Main
             {
                 unit.CommandMove(producer.RallyPoint.Value);
             }
-            GD.Print($"[生产完成] {producer.BuildingName} (Team {teamId}) 生产 {unitType}");
+            GameLog.Debug($"[生产完成] {producer.BuildingName} (Team {teamId}) 生产 {unitType}");
         }
 
         // 阶段12-C：玩家方生产完成音效

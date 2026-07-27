@@ -60,7 +60,7 @@ public partial class AudioManager : Node
         AddChild(_sfxPlayer2);
 
         LoadAllSounds();
-        GD.Print("[Audio] 音效管理器初始化完毕");
+        GameLog.Debug("[Audio] 音效管理器初始化完毕");
     }
 
     private void LoadAllSounds()
@@ -130,7 +130,7 @@ public partial class AudioManager : Node
         _bgmPlayer.Stream = bgm;
         _bgmPlayer.VolumeDb = Mathf.LinearToDb(BgmVolume);
         _bgmPlayer.Play();
-        GD.Print("[Audio] BGM 开始播放");
+        GameLog.Debug("[Audio] BGM 开始播放");
     }
 
     /// <summary>停止 BGM。</summary>
@@ -144,6 +144,6 @@ public partial class AudioManager : Node
     {
         Muted = !Muted;
         _bgmPlayer.VolumeDb = Muted ? -80f : Mathf.LinearToDb(BgmVolume);
-        GD.Print($"[Audio] 静音: {Muted}");
+        GameLog.Debug($"[Audio] 静音: {Muted}");
     }
 }

@@ -80,7 +80,7 @@ public partial class Prototype3D : Node3D
         SpawnTestUnits();
         SpawnTestBuildings();
 
-        GD.Print("Prototype3D ready — 2.5D isometric view");
+        GameLog.Debug("Prototype3D ready — 2.5D isometric view");
     }
 
     /// <summary>

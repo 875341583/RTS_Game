@@ -22,24 +22,24 @@ public partial class Main
 
         if (tp.Completed.Contains(techId))
         {
-            GD.Print($"[G1] {node.Name} 已研究完成");
+            GameLog.Debug($"[G1] {node.Name} 已研究完成");
             return;
         }
         if (tp.CurrentlyResearching.HasValue)
         {
-            GD.Print($"[G1] 正在研究中: {TechTree.Nodes[tp.CurrentlyResearching.Value].Name} ({tp.Progress*100:F0}%)");
+            GameLog.Debug($"[G1] 正在研究中: {TechTree.Nodes[tp.CurrentlyResearching.Value].Name} ({tp.Progress*100:F0}%)");
             return;
         }
         if (!TechTree.CanResearch(tp.Completed, techId, hasTech, _money[0]))
         {
-            if (!hasTech) GD.Print($"[G1] {node.Name} 需要科技中心");
-            else if (_money[0] < node.Cost) GD.Print($"[G1] 资金不足: {node.Name} 需要${node.Cost}，当前${_money[0]}");
-            else GD.Print($"[G1] {node.Name} 需要前置科技");
+            if (!hasTech) GameLog.Debug($"[G1] {node.Name} 需要科技中心");
+            else if (_money[0] < node.Cost) GameLog.Debug($"[G1] 资金不足: {node.Name} 需要${node.Cost}，当前${_money[0]}");
+            else GameLog.Debug($"[G1] {node.Name} 需要前置科技");
             return;
         }
         _money[0] -= node.Cost;
         tp.StartResearch(techId);
-        GD.Print($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[0]}");
+        GameLog.Debug($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[0]}");
         ShowToast($"开始研究: {node.Name}");
     }
 
@@ -86,7 +86,7 @@ public partial class Main
         if (completed.HasValue)
         {
             var node = TechTree.Nodes[completed.Value];
-            GD.Print($"[G1] 科技研究完成: {node.Name} — {node.Description}");
+            GameLog.Debug($"[G1] 科技研究完成: {node.Name} — {node.Description}");
             ShowToast($"科技完成: {node.Name}");
             ApplyTechEffects(0);
             if (_techTreePanelVisible) UpdateTechTreePanel();
@@ -127,7 +127,7 @@ public partial class Main
                 {
                     _money[team] -= node.Cost;
                     aiTp.StartResearch(target);
-                    GD.Print($"[G1] AI Team {team} 开始研究: {node.Name}");
+                    GameLog.Debug($"[G1] AI Team {team} 开始研究: {node.Name}");
                 }
             }
         }
@@ -140,7 +140,7 @@ public partial class Main
             if (aiCompleted.HasValue)
             {
                 var node = TechTree.Nodes[aiCompleted.Value];
-                GD.Print($"[G1] AI Team {team} 科技完成: {node.Name}");
+                GameLog.Debug($"[G1] AI Team {team} 科技完成: {node.Name}");
                 ApplyTechEffects(team);
             }
         }
@@ -302,31 +302,31 @@ public partial class Main
         var ep = _eraProgress[0];
         if (ep.IsUpgrading)
         {
-            GD.Print($"[G2] 时代升级进行中... {ep.Progress*100:F0}%");
+            GameLog.Debug($"[G2] 时代升级进行中... {ep.Progress*100:F0}%");
             return;
         }
         var next = EraSystem.GetNextEra(ep.CurrentEra);
         if (next == null)
         {
-            GD.Print("[G2] 已达到最高时代（信息时代）");
+            GameLog.Debug("[G2] 已达到最高时代（信息时代）");
             return;
         }
         if (!EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(0, t), _money[0]))
         {
             if (_money[0] < next.UpgradeCost)
-                GD.Print($"[G2] 资金不足：升级到{next.Name}需要${next.UpgradeCost}，当前${_money[0]}");
+                GameLog.Debug($"[G2] 资金不足：升级到{next.Name}需要${next.UpgradeCost}，当前${_money[0]}");
             else
             {
                 string missing = "";
                 foreach (var req in next.RequiredBuildings)
                     if (!HasBuilding(0, req)) missing += $" {req}";
-                GD.Print($"[G2] 缺少前置建筑：{missing}");
+                GameLog.Debug($"[G2] 缺少前置建筑：{missing}");
             }
             return;
         }
         _money[0] -= next.UpgradeCost;
         ep.StartUpgrade();
-        GD.Print($"[G2] 开始时代升级：{EraSystem.Eras[(int)ep.CurrentEra].Name} → {next.Name} (成本${next.UpgradeCost}，{next.UpgradeTime:F0}秒)");
+        GameLog.Debug($"[G2] 开始时代升级：{EraSystem.Eras[(int)ep.CurrentEra].Name} → {next.Name} (成本${next.UpgradeCost}，{next.UpgradeTime:F0}秒)");
         ShowToast($"时代升级中: → {next.Name}");
     }
 
@@ -377,7 +377,7 @@ public partial class Main
         if (ep.UpdateUpgrade(dt * eraUpgradeMul))
         {
             var eraInfo = EraSystem.Eras[(int)ep.CurrentEra];
-            GD.Print($"[G2] 时代升级完成: {eraInfo.Name} — {eraInfo.Description}");
+            GameLog.Debug($"[G2] 时代升级完成: {eraInfo.Name} — {eraInfo.Description}");
             ShowToast($"进入{eraInfo.Name}!");
             ApplyEraEffects(0);
             if (_eraPanelVisible) UpdateEraPanel();
@@ -405,7 +405,7 @@ public partial class Main
                     {
                         _money[team] -= next.UpgradeCost;
                         aiEp.StartUpgrade();
-                        GD.Print($"[G2] AI Team {team} 开始时代升级: → {next.Name}");
+                        GameLog.Debug($"[G2] AI Team {team} 开始时代升级: → {next.Name}");
                     }
                 }
             }
@@ -419,7 +419,7 @@ public partial class Main
             if (aiEp.UpdateUpgrade(dt * aiEraMul))
             {
                 var eraInfo = EraSystem.Eras[(int)aiEp.CurrentEra];
-                GD.Print($"[G2] AI Team {team} 进入{eraInfo.Name}");
+                GameLog.Debug($"[G2] AI Team {team} 进入{eraInfo.Name}");
                 ApplyEraEffects(team);
             }
         }
@@ -500,7 +500,7 @@ public partial class Main
         sb.AppendLine("按 1/2/3 键选择对应战术卡");
         _cardLabel.Text = sb.ToString();
         _cardLabel.Visible = true;
-        GD.Print("[G3] 战术卡选择面板已弹出 — 按1/2/3选择");
+        GameLog.Debug("[G3] 战术卡选择面板已弹出 — 按1/2/3选择");
     }
 
     /// <summary>玩家选择战术卡后应用效果。</summary>
@@ -509,7 +509,7 @@ public partial class Main
         _playerCard = card;
         _cardLabel.Visible = false;
         var info = TacticalCards.Cards[card];
-        GD.Print($"[G3] 玩家选择战术卡: {info.Name} — {info.Description}");
+        GameLog.Debug($"[G3] 玩家选择战术卡: {info.Name} — {info.Description}");
         ShowToast($"战术卡: {info.Name}");
 
         // 应用即时效果
@@ -518,7 +518,7 @@ public partial class Main
         {
             int bonus = (int)(_blueStartMoney * 0.5f);
             _money[0] += bonus;
-            GD.Print($"[G3] 闪电经济: +${bonus} 起始资金");
+            GameLog.Debug($"[G3] 闪电经济: +${bonus} 起始资金");
         }
 
         // 快速部署：单位上限+10
@@ -534,7 +534,7 @@ public partial class Main
         {
             var aiPick = TacticalCards.DrawRandom(1, rng)[0];
             _aiCards[team - 1] = aiPick;
-            GD.Print($"[G3] AI Team {team} 战术卡: {TacticalCards.Cards[aiPick].Name}");
+            GameLog.Debug($"[G3] AI Team {team} 战术卡: {TacticalCards.Cards[aiPick].Name}");
             // AI闪电经济即时效果
             if (aiPick == TacticalCards.CardId.BlitzEconomy)
             {
@@ -996,7 +996,7 @@ public partial class Main
             _money[teamId] += compensation;
             if (teamId == 0)
                 ShowToast($"★ {reason}: {branch}分支已毕业！+${compensation}补偿", new Color(1f, 0.85f, 0.3f));
-            GD.Print($"[G5] Team {teamId} {reason}({branch}) — 分支已毕业，+${compensation}补偿");
+            GameLog.Debug($"[G5] Team {teamId} {reason}({branch}) — 分支已毕业，+${compensation}补偿");
             return;
         }
 
@@ -1010,7 +1010,7 @@ public partial class Main
 
         if (teamId == 0)
             ShowToast($"★ {reason}！免费获得科技: {node.Name}", new Color(0.7f, 1f, 0.7f));
-        GD.Print($"[G5] Team {teamId} {reason} — 免费获得{branch}科技: {node.Name}");
+        GameLog.Debug($"[G5] Team {teamId} {reason} — 免费获得{branch}科技: {node.Name}");
 
         // 刷新UI
         if (_eurekaLabel.Visible) UpdateEurekaPanel();

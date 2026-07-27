@@ -200,7 +200,7 @@ public class MapData
                 using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Write);
                 if (file == null)
                 {
-                    GD.PrintErr($"[MapData] 无法写入地图文件: {filePath}");
+                    GameLog.Error($"[MapData] 无法写入地图文件: {filePath}");
                     return false;
                 }
                 file.StoreString(json);
@@ -209,12 +209,12 @@ public class MapData
             {
                 System.IO.File.WriteAllText(filePath, json);
             }
-            GD.Print($"[MapData] 地图已保存: {filePath} ({data.TerrainMods.Count}个修改, {data.ResourceNodes.Count}个矿点, {data.StrategicPoints.Count}个战略点)");
+            GameLog.Debug($"[MapData] 地图已保存: {filePath} ({data.TerrainMods.Count}个修改, {data.ResourceNodes.Count}个矿点, {data.StrategicPoints.Count}个战略点)");
             return true;
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"[MapData] 保存地图失败: {ex.Message}");
+            GameLog.Error($"[MapData] 保存地图失败: {ex.Message}");
             return false;
         }
     }
@@ -230,7 +230,7 @@ public class MapData
                 using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
                 if (file == null)
                 {
-                    GD.PrintErr($"[MapData] 无法读取地图文件: {filePath}");
+                    GameLog.Error($"[MapData] 无法读取地图文件: {filePath}");
                     return null;
                 }
                 json = file.GetAsText();
@@ -242,17 +242,17 @@ public class MapData
             var parsed = Json.ParseString(json);
             if (parsed.VariantType != Variant.Type.Dictionary)
             {
-                GD.PrintErr($"[MapData] 地图文件解析失败: {filePath}");
+                GameLog.Error($"[MapData] 地图文件解析失败: {filePath}");
                 return null;
             }
             var data = FromVariant(parsed);
             if (data != null)
-                GD.Print($"[MapData] 地图已加载: {data.Name} (seed={data.Seed}, {data.TerrainMods.Count}个修改)");
+                GameLog.Debug($"[MapData] 地图已加载: {data.Name} (seed={data.Seed}, {data.TerrainMods.Count}个修改)");
             return data;
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"[MapData] 加载地图失败: {ex.Message}");
+            GameLog.Error($"[MapData] 加载地图失败: {ex.Message}");
             return null;
         }
     }

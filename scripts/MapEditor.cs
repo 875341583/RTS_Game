@@ -125,7 +125,7 @@ public partial class MapEditor : Control
             {
                 _mapData = loaded;
                 _currentSeed = loaded.Seed;
-                GD.Print($"[MapEditor] 从文件加载地图: {loadPath}");
+                GameLog.Info($"[MapEditor] 从文件加载地图: {loadPath}");
             }
         }
 
@@ -142,7 +142,7 @@ public partial class MapEditor : Control
         RefreshGround();
         RefreshMarkers();
 
-        GD.Print($"[MapEditor] 编辑器就绪 (seed={_currentSeed}, mods={_mapData.TerrainMods.Count})");
+        GameLog.Info($"[MapEditor] 编辑器就绪 (seed={_currentSeed}, mods={_mapData.TerrainMods.Count})");
     }
 
     public override void _Input(InputEvent @event)
@@ -236,7 +236,7 @@ public partial class MapEditor : Control
                 string path = "user://mapeditor_screenshot.png";
                 img.SavePng(path);
                 string abs = ProjectSettings.GlobalizePath(path);
-                GD.Print($"[MapEditor] 截图已保存: {abs}");
+                GameLog.Info($"[MapEditor] 截图已保存: {abs}");
                 _statusLabel.Text = $"截图: {abs}";
             }
         }
@@ -386,7 +386,7 @@ public partial class MapEditor : Control
                 RefreshGround();
                 RefreshMarkers();
                 UpdateStatus();
-                GD.Print($"[MapEditor] 种子已更新: {s}");
+                GameLog.Info($"[MapEditor] 种子已更新: {s}");
             }
         };
         seedRow.AddChild(seedBtn);
@@ -801,7 +801,7 @@ public partial class MapEditor : Control
         RefreshGround();
         RefreshMarkers();
         UpdateStatus();
-        GD.Print("[MapEditor] 新建地图（保留当前种子）");
+        GameLog.Info("[MapEditor] 新建地图（保留当前种子）");
     }
 
     private void OnSavePressed()
@@ -815,7 +815,7 @@ public partial class MapEditor : Control
 
         if (MapData.SaveToFile(_mapData, path))
         {
-            GD.Print($"[MapEditor] 地图已保存: {path}");
+            GameLog.Info($"[MapEditor] 地图已保存: {path}");
             // 也显示系统绝对路径
             string absPath = ProjectSettings.GlobalizePath(path);
             _statusLabel.Text = $"已保存到: {absPath}";
@@ -862,7 +862,7 @@ public partial class MapEditor : Control
             RefreshGround();
             RefreshMarkers();
             UpdateStatus();
-            GD.Print($"[MapEditor] 已加载: {latest}");
+            GameLog.Info($"[MapEditor] 已加载: {latest}");
         }
     }
 

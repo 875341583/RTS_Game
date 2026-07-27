@@ -464,7 +464,7 @@ public static class IsoTerrainRenderer
         {
             arr[i] = GD.Load<Texture2D>(paths[i]);
             if (arr[i] == null)
-                GD.PrintErr($"[IsoTerrain] Failed to load: {paths[i]}");
+                GameLog.Error($"[IsoTerrain] Failed to load: {paths[i]}");
         }
         return arr;
     }

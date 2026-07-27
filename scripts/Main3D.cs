@@ -215,7 +215,7 @@ public partial class Main3D : Node3D
         // 初始化AI保护期
         ApplyAiGracePeriod();
 
-        GD.Print($"[Main3D] Game started — Difficulty: {_difficulty}, Seed: {_mapSeed}");
+        GameLog.Debug($"[Main3D] Game started — Difficulty: {_difficulty}, Seed: {_mapSeed}");
     }
 
     private void StartGameBgm()
@@ -818,7 +818,7 @@ public partial class Main3D : Node3D
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
-        GD.Print("[Main3D] Shared FX materials initialized");
+        GameLog.Debug("[Main3D] Shared FX materials initialized");
     }
 
     /// <summary>
@@ -2739,7 +2739,7 @@ public partial class Main3D : Node3D
         var img = GetViewport().GetTexture().GetImage();
         string path = System.IO.Path.Combine(ShotDir, $"shot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
         img.SavePng(path);
-        GD.Print($"[Main3D] Screenshot saved: {path}");
+        GameLog.Debug($"[Main3D] Screenshot saved: {path}");
     }
 
     // ======== _Process ========

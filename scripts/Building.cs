@@ -276,9 +276,9 @@ public partial class Building : Area2D, IBuildingEntity
             if (tex != null)
                 _isoBuildingSprites[t] = tex;
             else
-                GD.PrintErr($"[R4] Failed to load building sprite: {path}");
+                GameLog.Error($"[R4] Failed to load building sprite: {path}");
         }
-        GD.Print($"[R4] 等距建筑精灵图加载完成: {_isoBuildingSprites.Count}/{13} 种建筑");
+        GameLog.Debug($"[R4] 等距建筑精灵图加载完成: {_isoBuildingSprites.Count}/{13} 种建筑");
     }
 
     private static Texture2D LoadTexture(string path)
@@ -286,7 +286,7 @@ public partial class Building : Area2D, IBuildingEntity
         var tex = GD.Load<Texture2D>(path);
         if (tex == null)
         {
-            GD.PrintErr($"[Building] Failed to load texture: {path}");
+            GameLog.Error($"[Building] Failed to load texture: {path}");
             // 降级：返回1x1品红色纹理
             var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             img.SetPixel(0, 0, Colors.Magenta);
@@ -330,7 +330,7 @@ public partial class Building : Area2D, IBuildingEntity
             main.OnBuildingAttacked(this);
         if (Health <= 0)
         {
-            GD.Print($"{BuildingName} (Team {TeamId}) destroyed!");
+            GameLog.Debug($"{BuildingName} (Team {TeamId}) destroyed!");
             // Q5：建筑被摧毁爆炸
             if (GetParent()?.GetParent() is Node2D parentNode)
                 parentNode.AddChild(BattleEffect.BigExplosion(GlobalPosition));
@@ -562,13 +562,13 @@ public partial class Building : Area2D, IBuildingEntity
             _capturingTeamId = -1;
             _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
             _body.Modulate = _teamTint;
-            GD.Print($"{BuildingName} 被 Team {capturingTeamId} 占领!");
+            GameLog.Debug($"{BuildingName} 被 Team {capturingTeamId} 占领!");
 
             // G8: 占领即获资源
             if (GetParent()?.GetParent() is Main capturedMain)
             {
                 capturedMain.AddResourceForTeam(capturingTeamId, CaptureBonus.CaptureMoneyReward);
-                GD.Print($"[G8] 占领奖励: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
+                GameLog.Debug($"[G8] 占领奖励: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
                 capturedMain.ShowToast(capturingTeamId == 0
                     ? $"占领{BuildingName}! +${CaptureBonus.CaptureMoneyReward}"
                     : "");
@@ -638,7 +638,7 @@ public partial class Building : Area2D, IBuildingEntity
                 {
                     if (_originalTeamId >= 0 && _originalTeamId != TeamId)
                     {
-                        GD.Print($"[G8] 叛变! {BuildingName} 从 Team {TeamId} 叛变回 Team {_originalTeamId}!");
+                        GameLog.Debug($"[G8] 叛变! {BuildingName} 从 Team {TeamId} 叛变回 Team {_originalTeamId}!");
                         if (GetParent()?.GetParent() is Main capMain)
                             capMain.ShowToast(TeamId == 0
                                 ? $"{BuildingName}叛变! 被Team {_originalTeamId}夺回"

@@ -27,6 +27,70 @@ public static class RenderLayer
     // UI 层使用 CanvasLayer（脱离世界坐标），不参与 ZIndex 排序。
 }
 
+// ============================================================================
+// P2-1: 游戏逻辑常量 — 替代散布在代码中的魔法数字
+// ============================================================================
+
+/// <summary>游戏核心常量：经济、单位上限、地图尺寸等</summary>
+public static class GameConst
+{
+    // === 经济 ===
+    /// <summary>初始资金</summary>
+    public const int StartingMoney = 5000;
+    /// <summary>最低资金（低于此值显示警告）</summary>
+    public const int LowMoneyThreshold = 500;
+    /// <summary>建筑变卖退款比例</summary>
+    public const float SellRefundRatio = 0.5f;
+
+    // === 单位 ===
+    /// <summary>默认单位上限</summary>
+    public const int DefaultUnitCap = 50;
+    /// <summary>单位上限软上限倍率（实际=Base*倍率）</summary>
+    public const float UnitCapMultiplier = 1.0f;
+
+    // === 地图 ===
+    /// <summary>默认地图尺寸</summary>
+    public const int DefaultMapSize = 32;
+    /// <summary>地图尺寸选项</summary>
+    public static readonly int[] MapSizeOptions = { 32, 64, 96 };
+    /// <summary>战略点每16x16格1个</summary>
+    public const int StrategicPointInterval = 16;
+
+    // === 战斗 ===
+    /// <summary>闪电风暴伤害</summary>
+    public const int LightningDamage = 200;
+    /// <summary>核弹伤害</summary>
+    public const int NukeDamage = 500;
+    /// <summary>导弹伤害</summary>
+    public const int MissileDamage = 300;
+    /// <summary>超武最小距离（防自伤）</summary>
+    public const float SuperWeaponMinSafeDistance = 200f;
+
+    // === 电力 ===
+    /// <summary>低电力警告阈值比（电力/需求 &lt; 此值）</summary>
+    public const float LowPowerRatio = 0.8f;
+
+    // === 时间 ===
+    /// <summary>AI思考间隔（秒）</summary>
+    public const float AiThinkInterval = 2.0f;
+    /// <summary>战术卡选择倒计时（秒）</summary>
+    public const int TacticalCardCountdown = 5;
+    /// <summary>存档版本</summary>
+    public const int SaveVersion = 2;
+
+    // === 渲染/UI ===
+    /// <summary>等距图块宽度（像素）</summary>
+    public const int IsoTileWidth = 90;
+    /// <summary>等距图块高度（像素）</summary>
+    public const int IsoTileHeight = 60;
+    /// <summary>单位精灵尺寸</summary>
+    public const int UnitSpriteSize = 96;
+    /// <summary>建筑精灵尺寸</summary>
+    public const int BuildingSpriteSize = 128;
+    /// <summary>小地图尺寸</summary>
+    public const int MinimapSize = 200;
+}
+
 /// <summary>
 /// P1-2: 游戏数据管理器 — 从 res://data/*.json 加载单位和建筑属性数据。
 /// 替代4处硬编码switch-case（Unit.InitAsType / Unit3D.InitAsType / Building.InitAsType / Building3D.InitAsType）
@@ -132,7 +196,7 @@ public static class GameData
         LoadUnits();
         LoadBuildings();
         _loaded = true;
-        GD.Print($"[GameData] 数据加载完成: {_units.Count}单位, {_buildings.Count}建筑, {_productionTimes.Count}生产时间");
+        GameLog.Debug($"[GameData] 数据加载完成: {_units.Count}单位, {_buildings.Count}建筑, {_productionTimes.Count}生产时间");
     }
 
     /// <summary>确保数据已加载（首次访问时自动调用）。</summary>
@@ -147,14 +211,14 @@ public static class GameData
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GD.PrintErr($"[GameData] 无法加载单位数据: {path}");
+            GameLog.Error($"[GameData] 无法加载单位数据: {path}");
             return;
         }
         var json = file.GetAsText();
         var parsed = Json.ParseString(json);
         if (parsed.VariantType != Variant.Type.Dictionary)
         {
-            GD.PrintErr($"[GameData] 单位数据解析失败: {path}");
+            GameLog.Error($"[GameData] 单位数据解析失败: {path}");
             return;
         }
         var root = parsed.AsGodotDictionary();
@@ -164,7 +228,7 @@ public static class GameData
             string typeName = key.AsString();
             if (!Enum.TryParse<UnitType>(typeName, out var unitType))
             {
-                GD.PrintErr($"[GameData] 未知单位类型: {typeName}");
+                GameLog.Error($"[GameData] 未知单位类型: {typeName}");
                 continue;
             }
             var entry = ParseUnitEntry(units[key].AsGodotDictionary());
@@ -212,14 +276,14 @@ public static class GameData
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GD.PrintErr($"[GameData] 无法加载建筑数据: {path}");
+            GameLog.Error($"[GameData] 无法加载建筑数据: {path}");
             return;
         }
         var json = file.GetAsText();
         var parsed = Json.ParseString(json);
         if (parsed.VariantType != Variant.Type.Dictionary)
         {
-            GD.PrintErr($"[GameData] 建筑数据解析失败: {path}");
+            GameLog.Error($"[GameData] 建筑数据解析失败: {path}");
             return;
         }
         var root = parsed.AsGodotDictionary();
@@ -229,7 +293,7 @@ public static class GameData
             string typeName = key.AsString();
             if (!Enum.TryParse<BuildingType>(typeName, out var buildingType))
             {
-                GD.PrintErr($"[GameData] 未知建筑类型: {typeName}");
+                GameLog.Error($"[GameData] 未知建筑类型: {typeName}");
                 continue;
             }
             var entry = ParseBuildingEntry(buildings[key].AsGodotDictionary());
@@ -247,7 +311,7 @@ public static class GameData
                 if (typeName.StartsWith("_")) continue;
                 if (!Enum.TryParse<ProductionType>(typeName, out var prodType))
                 {
-                    GD.PrintErr($"[GameData] 未知生产类型: {typeName}");
+                    GameLog.Error($"[GameData] 未知生产类型: {typeName}");
                     continue;
                 }
                 _productionTimes[prodType] = (float)times[key].AsDouble();
@@ -305,7 +369,7 @@ public static class GameData
     {
         EnsureLoaded();
         if (_units.TryGetValue(type, out var entry)) return entry.Cost;
-        GD.PrintErr($"[GameData] 单位造价缺失: {type}，返回0");
+        GameLog.Error($"[GameData] 单位造价缺失: {type}，返回0");
         return 0;
     }
 
@@ -314,7 +378,7 @@ public static class GameData
     {
         EnsureLoaded();
         if (_buildings.TryGetValue(type, out var entry)) return entry.Cost;
-        GD.PrintErr($"[GameData] 建筑造价缺失: {type}，返回0");
+        GameLog.Error($"[GameData] 建筑造价缺失: {type}，返回0");
         return 0;
     }
 
@@ -323,7 +387,7 @@ public static class GameData
     {
         EnsureLoaded();
         if (_productionTimes.TryGetValue(type, out var time)) return time;
-        GD.PrintErr($"[GameData] 生产时间缺失: {type}，返回3.0秒");
+        GameLog.Error($"[GameData] 生产时间缺失: {type}，返回3.0秒");
         return 3f;
     }
 
@@ -337,7 +401,7 @@ public static class GameData
         string name = prodType.ToString();
         if (Enum.TryParse<UnitType>(name, out var unitType))
             return GetUnitCost(unitType);
-        GD.PrintErr($"[GameData] 无法将ProductionType映射为UnitType: {prodType}");
+        GameLog.Error($"[GameData] 无法将ProductionType映射为UnitType: {prodType}");
         return 0;
     }
 }

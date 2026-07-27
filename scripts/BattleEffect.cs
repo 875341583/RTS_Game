@@ -164,7 +164,7 @@ public partial class BattleEffect : Node2D
         var tex = GD.Load<Texture2D>(path);
         if (tex == null)
         {
-            GD.PrintErr($"[BattleEffect] Failed to load: {path}");
+            GameLog.Error($"[BattleEffect] Failed to load: {path}");
             var img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             img.SetPixel(0, 0, Colors.Magenta);
             return ImageTexture.CreateFromImage(img);

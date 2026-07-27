@@ -50,7 +50,7 @@ public partial class Main
         _money[0] = _blueStartMoney;
         for (int t = 1; t <= AiTeamCount; t++)
             _money[t] = _aiStartMoney;
-        GD.Print($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney}(x7) | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled} | 活跃AI {_activeAiCount}/7 (休眠 {AiTeamCount - _activeAiCount} 个)");
+        GameLog.Debug($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney}(x7) | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled} | 活跃AI {_activeAiCount}/7 (休眠 {AiTeamCount - _activeAiCount} 个)");
     }
 
     private void CheckWinCondition()
@@ -139,7 +139,7 @@ public partial class Main
         menuBtn.Pressed += () => CallDeferred(nameof(ReturnToMenu));
         vbox.AddChild(menuBtn);
 
-        GD.Print($"[GameOver] {_gameResult} (难度 {_difficulty})");
+        GameLog.Debug($"[GameOver] {_gameResult} (难度 {_difficulty})");
     }
 
     private void RestartGame()
