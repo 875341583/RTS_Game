@@ -87,17 +87,14 @@ public static class TacticalCards
             return;
         }
 
-        const string path = "res://data/tactical_cards.json";
-        var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-        if (file == null)
+        // P2-4: 通过ModLoader读取，支持Mod覆盖
+        var jsonText = ModLoader.ReadDataFile("tactical_cards.json");
+        if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning($"[TacticalCards] 无法打开 {path}，使用硬编码fallback");
+            GameLog.Warning("[TacticalCards] 无法读取 tactical_cards.json，使用硬编码fallback");
             LoadFallback();
             return;
         }
-
-        var jsonText = file.GetAsText();
-        file.Close();
 
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Array)

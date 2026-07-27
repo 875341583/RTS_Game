@@ -240,6 +240,9 @@ public partial class Main : Node2D
 
     public override void _Ready()
     {
+        // P2-4: 加载Mod（在游戏数据之前，以便Mod覆盖生效）
+        ModLoader.LoadAllMods();
+
         // P1-2: 加载游戏数据（单位/建筑/阵营）
         GameData.Load();
         FactionManager.Load();

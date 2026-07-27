@@ -62,17 +62,14 @@ public static class DifficultyConfig
             return;
         }
 
-        const string path = "res://data/difficulty.json";
-        var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-        if (file == null)
+        // P2-4: 通过ModLoader读取，支持Mod覆盖
+        var jsonText = ModLoader.ReadDataFile("difficulty.json");
+        if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning($"[DifficultyConfig] 无法打开 {path}，使用硬编码fallback");
+            GameLog.Warning("[DifficultyConfig] 无法读取 difficulty.json，使用硬编码fallback");
             LoadFallback();
             return;
         }
-
-        var jsonText = file.GetAsText();
-        file.Close();
 
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Dictionary)

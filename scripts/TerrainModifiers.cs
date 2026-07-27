@@ -83,17 +83,14 @@ public static class TerrainModifiers
             return;
         }
 
-        const string path = "res://data/terrain_modifiers.json";
-        var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-        if (file == null)
+        // P2-4: 通过ModLoader读取，支持Mod覆盖
+        var jsonText = ModLoader.ReadDataFile("terrain_modifiers.json");
+        if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning($"[TerrainModifiers] 无法打开 {path}，使用硬编码fallback");
+            GameLog.Warning("[TerrainModifiers] 无法读取 terrain_modifiers.json，使用硬编码fallback");
             LoadFallback();
             return;
         }
-
-        var jsonText = file.GetAsText();
-        file.Close();
 
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Dictionary)

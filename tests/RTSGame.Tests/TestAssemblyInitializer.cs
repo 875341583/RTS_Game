@@ -16,6 +16,9 @@ public class TestAssemblyInitializer
     /// <summary>在测试启动时调用一次，设置安全模式并预加载所有数据驱动类的fallback数据</summary>
     public static void EnsureFallbackDataLoaded()
     {
+        // 禁用ModLoader的Godot IO（测试进程中无Godot运行时）
+        ModLoader.DisableGodotIO();
+
         // 防止懒加载getter触发Godot IO崩溃
         TechTree.SetAlwaysFallback(true);
         TacticalCards.SetAlwaysFallback(true);
