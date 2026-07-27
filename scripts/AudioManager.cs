@@ -60,6 +60,10 @@ public partial class AudioManager : Node
         AddChild(_sfxPlayer2);
 
         LoadAllSounds();
+
+        // P2-3: 初始化BGM管理器
+        BgmManager.Initialize(_bgmPlayer);
+
         GameLog.Debug("[Audio] 音效管理器初始化完毕");
     }
 
@@ -122,15 +126,10 @@ public partial class AudioManager : Node
         player.Play();
     }
 
-    /// <summary>开始播放 BGM（循环）。</summary>
+    /// <summary>开始播放 BGM（循环）— P2-3: 委托给BgmManager。</summary>
     public void StartBgm()
     {
-        var bgm = GD.Load<AudioStream>("res://assets/sounds/bgm_march.wav");
-        if (bgm == null) return;
-        _bgmPlayer.Stream = bgm;
-        _bgmPlayer.VolumeDb = Mathf.LinearToDb(BgmVolume);
-        _bgmPlayer.Play();
-        GameLog.Debug("[Audio] BGM 开始播放");
+        BgmManager.SwitchScene(BgmManager.BgmScene.Battle);
     }
 
     /// <summary>停止 BGM。</summary>
