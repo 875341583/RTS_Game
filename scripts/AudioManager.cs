@@ -34,6 +34,7 @@ public partial class AudioManager : Node
     private AudioStreamPlayer _bgmPlayer = null!;
     private AudioStreamPlayer _sfxPlayer = null!;
     private AudioStreamPlayer _sfxPlayer2 = null!;  // 第二个播放器用于重叠音效
+    private AudioStreamPlayer _voicePlayer = null!; // P2-3: 单位语音专用播放器
     private readonly Dictionary<Sfx, AudioStream> _streams = new();
 
     // ---- 节流：同种音效最小间隔（秒），防止刷屏 ----
@@ -58,6 +59,10 @@ public partial class AudioManager : Node
         AddChild(_sfxPlayer);
         _sfxPlayer2 = new AudioStreamPlayer { Name = "SFXPlayer2" };
         AddChild(_sfxPlayer2);
+
+        // P2-3: 语音播放器
+        _voicePlayer = new AudioStreamPlayer { Name = "VoicePlayer" };
+        AddChild(_voicePlayer);
 
         LoadAllSounds();
 
@@ -144,5 +149,14 @@ public partial class AudioManager : Node
         Muted = !Muted;
         _bgmPlayer.VolumeDb = Muted ? -80f : Mathf.LinearToDb(BgmVolume);
         GameLog.Debug($"[Audio] 静音: {Muted}");
+    }
+
+    /// <summary>P2-3: 播放单位语音（选择/移动/攻击）。</summary>
+    public void PlayUnitVoice(UnitType unitType, UnitVoice.VoiceType voiceType)
+    {
+        if (Muted) return;
+        string key = UnitVoice.GetUnitTypeKey(unitType);
+        if (string.IsNullOrEmpty(key)) return;
+        UnitVoice.Play(_voicePlayer, key, voiceType);
     }
 }

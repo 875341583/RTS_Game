@@ -503,6 +503,10 @@ public partial class Main
         {
             foreach (var unit in friendlyUnits)
                 unit.CommandAttack(enemyUnit);
+            // P2-3: 播放攻击语音
+            var attacker = friendlyUnits.FirstOrDefault();
+            if (attacker != null)
+                _audio?.PlayUnitVoice(attacker.Type, UnitVoice.VoiceType.Attack);
             return;
         }
         // 点击敌方建筑 → 攻击建筑（G7: 间谍则执行间谍任务）
@@ -524,6 +528,10 @@ public partial class Main
                 var mission = SpyMission.ChooseMission(enemyBuilding.Type);
                 spy.CommandSpyMission(enemyBuilding, mission);
             }
+            // P2-3: 播放攻击语音（非间谍单位）
+            var atkUnit = nonSpyUnits.FirstOrDefault();
+            if (atkUnit != null)
+                _audio?.PlayUnitVoice(atkUnit.Type, UnitVoice.VoiceType.Attack);
             return;
         }
 
@@ -573,6 +581,10 @@ public partial class Main
         }
         // 阶段12-C：下令移动音效
         _audio?.PlaySfx(AudioManager.Sfx.Move);
+        // P2-3: 播放移动语音
+        var mover = friendlyUnits.FirstOrDefault();
+        if (mover != null)
+            _audio?.PlayUnitVoice(mover.Type, UnitVoice.VoiceType.Move);
     }
 
     /// <summary>E4：检测右键位置需要的地形改造类型。</summary>
@@ -649,7 +661,13 @@ public partial class Main
 
         // 阶段12-C：选中单位音效
         if (_selected.Count > 0)
+        {
             _audio?.PlaySfx(AudioManager.Sfx.Select);
+            // P2-3: 播放单位选择语音（取第一个单位类型）
+            var firstUnit = _selected.OfType<Unit>().FirstOrDefault();
+            if (firstUnit != null)
+                _audio?.PlayUnitVoice(firstUnit.Type, UnitVoice.VoiceType.Select);
+        }
     }
 
     private void UpdateDragBox(Vector2 start, Vector2 end)

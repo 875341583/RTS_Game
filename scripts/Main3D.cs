@@ -2110,6 +2110,8 @@ public partial class Main3D : Node3D
                 _selected.Add(closestUnit);
                 closestUnit.SetSelected(true);
                 AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Select);
+                // P2-3: 播放单位选择语音
+                AudioManager.Instance?.PlayUnitVoice(closestUnit.Type, UnitVoice.VoiceType.Select);
             }
             return;
         }
@@ -2126,7 +2128,13 @@ public partial class Main3D : Node3D
             }
         }
         if (_selected.Count > 0)
+        {
             AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Select);
+            // P2-3: 播放单位选择语音
+            var firstUnit = _selected.OfType<Unit3D>().FirstOrDefault();
+            if (firstUnit != null)
+                AudioManager.Instance?.PlayUnitVoice(firstUnit.Type, UnitVoice.VoiceType.Select);
+        }
     }
 
     private void ClearSelection()
@@ -2165,11 +2173,19 @@ public partial class Main3D : Node3D
         {
             foreach (var obj in _selected)
                 if (obj is Unit3D u) u.CommandAttack(enemyUnit);
+            // P2-3: 播放攻击语音
+            var atkUnit = _selected.OfType<Unit3D>().FirstOrDefault();
+            if (atkUnit != null)
+                AudioManager.Instance?.PlayUnitVoice(atkUnit.Type, UnitVoice.VoiceType.Attack);
         }
         else if (enemyBldg != null && hasUnits)
         {
             foreach (var obj in _selected)
                 if (obj is Unit3D u) u.CommandAttackBuilding(enemyBldg);
+            // P2-3: 播放攻击语音
+            var atkUnit = _selected.OfType<Unit3D>().FirstOrDefault();
+            if (atkUnit != null)
+                AudioManager.Instance?.PlayUnitVoice(atkUnit.Type, UnitVoice.VoiceType.Attack);
         }
         else if (hasBuildings && !hasUnits)
         {
@@ -2211,6 +2227,10 @@ public partial class Main3D : Node3D
                 }
                 // 移动音效
                 AudioManager.Instance?.PlaySfx(AudioManager.Sfx.Move);
+                // P2-3: 播放移动语音
+                var mover = units.FirstOrDefault();
+                if (mover != null)
+                    AudioManager.Instance?.PlayUnitVoice(mover.Type, UnitVoice.VoiceType.Move);
             }
         }
     }
