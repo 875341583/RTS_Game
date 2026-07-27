@@ -194,8 +194,13 @@ public static class GameData
         new(0.14f, 0.62f, 0.88f), // 7 Cyan  偏蓝青（与2纯绿拉大色相差）
     };
 
-    /// <summary>获取 TeamId 对应的阵营色（取模防越界）。</summary>
-    public static Color GetTeamColor(int teamId) => TeamPalette[teamId % TeamPalette.Length];
+    /// <summary>获取 TeamId 对应的阵营色。优先从 FactionManager 取色（阵营差异化），超出阵营数后回退到 TeamPalette 取模。</summary>
+    public static Color GetTeamColor(int teamId)
+    {
+        if (FactionManager.IsLoaded && teamId < FactionManager.Count)
+            return FactionManager.GetFactionForTeam(teamId).Color;
+        return TeamPalette[teamId % TeamPalette.Length];
+    }
 
     // ======== 缓存 ========
 

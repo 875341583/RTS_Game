@@ -30,7 +30,7 @@ public partial class Main
             GameLog.Debug($"[G1] 正在研究中: {TechTree.Nodes[tp.CurrentlyResearching.Value].Name} ({tp.Progress*100:F0}%)");
             return;
         }
-        if (!TechTree.CanResearch(tp.Completed, techId, hasTech, _money[0]))
+        if (!TechTree.CanResearch(tp.Completed, techId, hasTech, _money[0], FactionManager.GetFactionForTeam(0).Id))
         {
             if (!hasTech) GameLog.Debug($"[G1] {node.Name} 需要科技中心");
             else if (_money[0] < node.Cost) GameLog.Debug($"[G1] 资金不足: {node.Name} 需要${node.Cost}，当前${_money[0]}");
@@ -64,7 +64,7 @@ public partial class Main
                 if (node == null) continue;
                 bool done = tp.Completed.Contains(node.Id);
                 bool researching = tp.CurrentlyResearching == node.Id;
-                bool available = TechTree.CanResearch(tp.Completed, node.Id, HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter, _money[0]);
+                bool available = TechTree.CanResearch(tp.Completed, node.Id, HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter, _money[0], FactionManager.GetFactionForTeam(0).Id);
                 string status = done ? "[已完成]" : researching ? $"[研究中{tp.Progress*100:F0}%]" : available ? "[可研究]" : "[锁定]";
                 string keyHint = done ? "  " : $"({techIdx})";
                 sb.AppendLine($"  {keyHint} T{tier} {node.Name} {status} — ${node.Cost} / {node.ResearchTime:F0}s");

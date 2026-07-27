@@ -39,6 +39,14 @@ public static class TechTree
         Def_PowerGrid,         // 电网优化 — 电站发电+50%
         Def_AdvancedTurrets,   // 高级炮塔 — 防御建筑射程+20%、伤害+20%
         Def_RepairSystems,     // 维修系统 — 建筑自动缓慢回血
+
+        // P1-2: 阵营专属科技（仅对应阵营可研究）
+        Fac_AirSuperiority,    // 同盟军专属：空中优势 — 空军伤害+15%
+        Fac_NavalSupport,      // 同盟军专属：海军支援 — 海军生产速度+20%
+        Fac_HeavyArmor,        // 苏维埃专属：重装甲 — 坦克生命+15%
+        Fac_NuclearPower,      // 苏维埃专属：核能 — 电站发电+50%
+        Fac_MindControl,       // 尤里专属：心灵控制 — 间谍/窃贼效率+30%
+        Fac_StealthOps,        // 尤里专属：隐蔽行动 — 单位隐蔽时间+50%
     }
 
     // ===== 科技节点定义 =====
@@ -121,7 +129,8 @@ public static class TechTree
             var dict = entry.AsGodotDictionary();
             if (dict == null) continue;
 
-            var idStr = dict["id"].AsString();
+            var idStr = dict.ContainsKey("id") ? dict["id"].AsString() : "";
+            if (string.IsNullOrEmpty(idStr)) continue;
             if (!System.Enum.TryParse<TechId>(idStr, out var id))
             {
                 GameLog.Warning($"[TechTree] 未知科技ID: {idStr}");
@@ -247,13 +256,54 @@ public static class TechTree
             Prerequisites = new[]{ TechId.Def_AdvancedTurrets },
             Description = "所有建筑每秒自动恢复2%血量"
         };
+
+        // P1-2: 阵营专属科技（硬编码后备，JSON加载时覆盖）
+        _nodes[TechId.Fac_AirSuperiority] = new TechNode
+        {
+            Id = TechId.Fac_AirSuperiority, Name = "空中优势", Branch = "阵营专属", Tier = 1,
+            Cost = 800, ResearchTime = 40f, RequiresTechCenter = true,
+            Description = "同盟军专属：空军伤害+15%"
+        };
+        _nodes[TechId.Fac_NavalSupport] = new TechNode
+        {
+            Id = TechId.Fac_NavalSupport, Name = "海军支援", Branch = "阵营专属", Tier = 2,
+            Cost = 900, ResearchTime = 45f, RequiresTechCenter = true,
+            Prerequisites = new[]{ TechId.Fac_AirSuperiority },
+            Description = "同盟军专属：海军生产速度+20%"
+        };
+        _nodes[TechId.Fac_HeavyArmor] = new TechNode
+        {
+            Id = TechId.Fac_HeavyArmor, Name = "重装甲", Branch = "阵营专属", Tier = 1,
+            Cost = 800, ResearchTime = 40f, RequiresTechCenter = true,
+            Description = "苏维埃专属：坦克生命+15%"
+        };
+        _nodes[TechId.Fac_NuclearPower] = new TechNode
+        {
+            Id = TechId.Fac_NuclearPower, Name = "核能", Branch = "阵营专属", Tier = 2,
+            Cost = 900, ResearchTime = 45f, RequiresTechCenter = true,
+            Prerequisites = new[]{ TechId.Fac_HeavyArmor },
+            Description = "苏维埃专属：电站发电+50%"
+        };
+        _nodes[TechId.Fac_MindControl] = new TechNode
+        {
+            Id = TechId.Fac_MindControl, Name = "心灵控制", Branch = "阵营专属", Tier = 1,
+            Cost = 800, ResearchTime = 40f, RequiresTechCenter = true,
+            Description = "尤里专属：间谍/窃贼效率+30%"
+        };
+        _nodes[TechId.Fac_StealthOps] = new TechNode
+        {
+            Id = TechId.Fac_StealthOps, Name = "隐蔽行动", Branch = "阵营专属", Tier = 2,
+            Cost = 900, ResearchTime = 45f, RequiresTechCenter = true,
+            Prerequisites = new[]{ TechId.Fac_MindControl },
+            Description = "尤里专属：单位隐蔽时间+50%"
+        };
     }
 
     /// <summary>检查科技是否已研究。</summary>
     public static bool IsResearched(HashSet<TechId> completed, TechId id) => completed.Contains(id);
 
-    /// <summary>检查科技是否可以研究（前置条件+科技中心+资金）。</summary>
-    public static bool CanResearch(HashSet<TechId> completed, TechId id, bool hasTechCenter, int money)
+    /// <summary>检查科技是否可以研究（前置条件+科技中心+资金+阵营专属）。</summary>
+    public static bool CanResearch(HashSet<TechId> completed, TechId id, bool hasTechCenter, int money, string? factionId = null)
     {
         var node = Nodes[id];
         if (completed.Contains(id)) return false;
@@ -261,8 +311,47 @@ public static class TechTree
         if (money < node.Cost) return false;
         foreach (var pre in node.Prerequisites)
             if (!completed.Contains(pre)) return false;
+        // P1-2: 阵营专属科技检查
+        var exclusive = GetFactionExclusiveTech(factionId);
+        if (exclusive != null && exclusive.Count > 0)
+        {
+            // 该科技是某阵营专属，但当前阵营不匹配
+            if (IsFactionExclusiveTech(id) && !exclusive.Contains(id))
+                return false;
+        }
         return true;
     }
+
+    /// <summary>P1-2: 检查科技是否是阵营专属科技。</summary>
+    public static bool IsFactionExclusiveTech(TechId id) => id switch
+    {
+        TechId.Fac_AirSuperiority or TechId.Fac_NavalSupport or
+        TechId.Fac_HeavyArmor or TechId.Fac_NuclearPower or
+        TechId.Fac_MindControl or TechId.Fac_StealthOps => true,
+        _ => false,
+    };
+
+    /// <summary>P1-2: 获取指定阵营可研究的专属科技列表。factionId 为null时返回空。</summary>
+    public static HashSet<TechId>? GetFactionExclusiveTech(string? factionId) => factionId switch
+    {
+        "Allies" => _alliesExclusive,
+        "Soviet" => _sovietExclusive,
+        "Yuri" => _yuriExclusive,
+        _ => null,
+    };
+
+    private static readonly HashSet<TechId> _alliesExclusive = new()
+    {
+        TechId.Fac_AirSuperiority, TechId.Fac_NavalSupport,
+    };
+    private static readonly HashSet<TechId> _sovietExclusive = new()
+    {
+        TechId.Fac_HeavyArmor, TechId.Fac_NuclearPower,
+    };
+    private static readonly HashSet<TechId> _yuriExclusive = new()
+    {
+        TechId.Fac_MindControl, TechId.Fac_StealthOps,
+    };
 
     /// <summary>获取科技在某分支的第tier层节点。</summary>
     public static TechNode? GetByBranchTier(string branch, int tier)

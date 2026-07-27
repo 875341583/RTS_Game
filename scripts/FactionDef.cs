@@ -71,6 +71,9 @@ public static class FactionManager
     private static string _defaultFactionId = "Allies";
     private static bool _loaded = false;
 
+    /// <summary>P1-2: 玩家阵营覆盖。设置后 GetFactionForTeam(0) 返回此阵营而非默认映射。</summary>
+    private static string? _playerFactionId = null;
+
     /// <summary>是否已加载。</summary>
     public static bool IsLoaded => _loaded;
 
@@ -216,13 +219,22 @@ public static class FactionManager
     }
 
     /// <summary>通过teamId获取阵营定义（循环复用）。
-    /// teamId 0→第1个阵营，1→第2个...超出后取模。
+    /// teamId 0=玩家阵营（可被 SetPlayerFaction 覆盖），1..N=AI循环复用。
     /// 注意：玩家(teamId=0)默认用默认阵营，可被SetTeamFaction覆盖。</summary>
     public static FactionDef GetFactionForTeam(int teamId)
     {
         EnsureLoaded();
         if (_factionList.Count == 0) throw new InvalidOperationException("无阵营定义");
+        if (teamId == 0 && _playerFactionId != null && _factions.TryGetValue(_playerFactionId, out var pf))
+            return pf;
         return _factionList[teamId % _factionList.Count];
+    }
+
+    /// <summary>P1-2: 设置玩家阵营（由 GameSession.PlayerFactionId 驱动）。</summary>
+    public static void SetPlayerFaction(string factionId)
+    {
+        _playerFactionId = factionId;
+        GameLog.Debug($"[FactionManager] 玩家阵营设为: {factionId}");
     }
 
     /// <summary>获取默认阵营。</summary>

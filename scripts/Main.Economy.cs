@@ -99,6 +99,14 @@ public partial class Main
     // ---------- 建造系统 ----------
     private bool CanProduceUnit(int teamId, UnitType unitType)
     {
+        // P1-2: 阵营白名单检查
+        var faction = FactionManager.GetFactionForTeam(teamId);
+        if (!faction.CanProduceUnit(unitType))
+        {
+            if (teamId == 0) GameLog.Warning($"[P1-2] {faction.Name}无法生产 {unitType}！");
+            return false;
+        }
+
         // G2: 时代限制检查
         if (!IsUnitUnlockedByEra(teamId, unitType)) return false;
         return unitType switch
@@ -296,6 +304,14 @@ public partial class Main
 
     private void TryBuildBuilding(BuildingType type)
     {
+        // P1-2: 阵营白名单检查
+        var playerFaction = FactionManager.GetFactionForTeam(0);
+        if (!playerFaction.CanBuild(type))
+        {
+            GameLog.Warning($"[P1-2] {playerFaction.Name}无法建造 {type}！");
+            return;
+        }
+
         // 前置建筑检查
         if (type == BuildingType.PowerPlant && !HasBuilding(0, BuildingType.Base)) { GameLog.Warning("[警告] 需要先有建造厂！"); return; }
         if (type == BuildingType.Barracks && !HasBuilding(0, BuildingType.PowerPlant)) { GameLog.Warning("[警告] 需要先有电站！"); return; }

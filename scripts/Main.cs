@@ -262,6 +262,7 @@ public partial class Main : Node2D
         // P1-2: 加载游戏数据（单位/建筑/阵营）
         GameData.Load();
         FactionManager.Load();
+        FactionManager.SetPlayerFaction(GameSession.PlayerFactionId);
 
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
         QualitySettings.AutoDetect();
@@ -669,6 +670,13 @@ public partial class Main : Node2D
         TechTree.TechId.Def_PowerGrid,
         TechTree.TechId.Def_AdvancedTurrets,
         TechTree.TechId.Def_RepairSystems,
+        // P1-2: 阵营专属科技（仅对应阵营可研究）
+        TechTree.TechId.Fac_AirSuperiority,
+        TechTree.TechId.Fac_NavalSupport,
+        TechTree.TechId.Fac_HeavyArmor,
+        TechTree.TechId.Fac_NuclearPower,
+        TechTree.TechId.Fac_MindControl,
+        TechTree.TechId.Fac_StealthOps,
     };
 
     // ======== G2: 时代系统方法 ========

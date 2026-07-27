@@ -17,4 +17,7 @@ public static class GameSession
 
     /// <summary>P2-2: 地图主题。默认 Default（混合地形）。</summary>
     public static MapConfig.MapTheme SelectedMapTheme { get; set; } = MapConfig.MapTheme.Default;
+
+    /// <summary>P1-2: 玩家选择的阵营ID。默认 "Allies"（同盟军）。游戏场景 _Ready 时 FactionManager 已加载，用于设置玩家阵营。</summary>
+    public static string PlayerFactionId { get; set; } = "Allies";
 }

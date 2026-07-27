@@ -178,6 +178,37 @@ public partial class MainMenu : Control
         themeHint.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(themeHint);
 
+        // P1-2: 阵营选择
+        var factionRow = new HBoxContainer();
+        factionRow.AddThemeConstantOverride("separation", 6);
+        var factionLabel = MakeLabel("玩家阵营:", 14, new Color(0.6f, 0.65f, 0.6f));
+        factionRow.AddChild(factionLabel);
+
+        // 阵营按钮需要在 _Ready 时 FactionManager 已加载
+        FactionManager.Load();
+        var factions = FactionManager.GetAllFactions();
+        foreach (var fac in factions)
+        {
+            var btn = new Button();
+            btn.Text = fac.Name;
+            btn.AddThemeFontSizeOverride("font_size", 13);
+            btn.CustomMinimumSize = new Vector2(0, 28);
+            // 用阵营色做按钮文字色
+            btn.AddThemeColorOverride("font_color", fac.Color);
+            btn.AddThemeColorOverride("font_hover_color", fac.Color.Lightened(0.3f));
+            btn.Pressed += () =>
+            {
+                GameSession.PlayerFactionId = fac.Id;
+                GameLog.Debug($"[MainMenu] 阵营选择: {fac.Name} ({fac.Id})");
+            };
+            factionRow.AddChild(btn);
+        }
+        vbox.AddChild(factionRow);
+
+        var factionHint = MakeLabel("不同阵营有不同的可用单位/建筑、数值乘数和专属科技", 11, new Color(0.45f, 0.5f, 0.45f));
+        factionHint.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(factionHint);
+
         var spacer2b = new Control { CustomMinimumSize = new Vector2(0, 12) };
         vbox.AddChild(spacer2b);
 

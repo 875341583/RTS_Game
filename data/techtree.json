@@ -130,5 +130,71 @@
     "description": "所有建筑每秒自动恢复2%血量",
     "requiresTechCenter": true,
     "prerequisites": ["Def_AdvancedTurrets"]
+  },
+  {
+    "id": "Fac_AirSuperiority",
+    "name": "空中优势",
+    "branch": "阵营专属",
+    "tier": 1,
+    "cost": 800,
+    "researchTime": 40.0,
+    "description": "同盟军专属：空军伤害+15%",
+    "requiresTechCenter": true,
+    "prerequisites": []
+  },
+  {
+    "id": "Fac_NavalSupport",
+    "name": "海军支援",
+    "branch": "阵营专属",
+    "tier": 2,
+    "cost": 900,
+    "researchTime": 45.0,
+    "description": "同盟军专属：海军生产速度+20%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Fac_AirSuperiority"]
+  },
+  {
+    "id": "Fac_HeavyArmor",
+    "name": "重装甲",
+    "branch": "阵营专属",
+    "tier": 1,
+    "cost": 800,
+    "researchTime": 40.0,
+    "description": "苏维埃专属：坦克生命+15%",
+    "requiresTechCenter": true,
+    "prerequisites": []
+  },
+  {
+    "id": "Fac_NuclearPower",
+    "name": "核能",
+    "branch": "阵营专属",
+    "tier": 2,
+    "cost": 900,
+    "researchTime": 45.0,
+    "description": "苏维埃专属：电站发电+50%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Fac_HeavyArmor"]
+  },
+  {
+    "id": "Fac_MindControl",
+    "name": "心灵控制",
+    "branch": "阵营专属",
+    "tier": 1,
+    "cost": 800,
+    "researchTime": 40.0,
+    "description": "尤里专属：间谍/窃贼效率+30%",
+    "requiresTechCenter": true,
+    "prerequisites": []
+  },
+  {
+    "id": "Fac_StealthOps",
+    "name": "隐蔽行动",
+    "branch": "阵营专属",
+    "tier": 2,
+    "cost": 900,
+    "researchTime": 45.0,
+    "description": "尤里专属：单位隐蔽时间+50%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Fac_MindControl"]
   }
 ]
