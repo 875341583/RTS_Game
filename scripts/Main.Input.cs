@@ -46,7 +46,7 @@ public partial class Main
                 {
                     ApplyLightning(worldPos, PlayerTeamId);
                     _lightningTargetMode = false;
-                    _playerLightningCooldown = LightningCooldownDuration;
+                    _playerLightningCooldown = GameConst.LightningCooldown;
                     QueueRedraw();
                     return;
                 }
@@ -55,7 +55,7 @@ public partial class Main
                 {
                     ApplyNuke(worldPos, PlayerTeamId);
                     _nukeTargetMode = false;
-                    _playerNukeCooldown = NukeCooldownDuration;
+                    _playerNukeCooldown = GameConst.NukeCooldown;
                     QueueRedraw();
                     return;
                 }
@@ -64,7 +64,7 @@ public partial class Main
                 {
                     ApplyCruiseMissile(worldPos, PlayerTeamId);
                     _missileTargetMode = false;
-                    _playerMissileCooldown = MissileCooldownDuration;
+                    _playerMissileCooldown = GameConst.MissileCooldown;
                     QueueRedraw();
                     return;
                 }

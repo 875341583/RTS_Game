@@ -66,6 +66,28 @@ public static class GameConst
     /// <summary>超武最小距离（防自伤）</summary>
     public const float SuperWeaponMinSafeDistance = 200f;
 
+    // === 超武冷却（秒） ===
+    /// <summary>核弹冷却时间</summary>
+    public const float NukeCooldown = 300f;
+    /// <summary>闪电风暴冷却时间</summary>
+    public const float LightningCooldown = 240f;
+    /// <summary>导弹冷却时间</summary>
+    public const float MissileCooldown = 180f;
+
+    // === 超武范围 ===
+    /// <summary>核弹爆炸半径</summary>
+    public const float NukeRadius = 260f;
+    /// <summary>闪电风暴半径</summary>
+    public const float LightningRadius = 160f;
+    /// <summary>导弹爆炸半径</summary>
+    public const float MissileRadius = 180f;
+
+    // === 超武持续参数 ===
+    /// <summary>闪电风暴每秒伤害</summary>
+    public const float LightningDps = 80f;
+    /// <summary>闪电风暴持续时间</summary>
+    public const float LightningDuration = 5f;
+
     // === 电力 ===
     /// <summary>低电力警告阈值比（电力/需求 &lt; 此值）</summary>
     public const float LowPowerRatio = 0.8f;
@@ -182,6 +204,7 @@ public static class GameData
     private static readonly Dictionary<UnitType, UnitEntry> _units = new();
     private static readonly Dictionary<BuildingType, BuildingEntry> _buildings = new();
     private static readonly Dictionary<ProductionType, float> _productionTimes = new();
+    private static readonly Dictionary<ProductionType, float> _productionTimes3d = new();
     private static bool _loaded = false;
 
     /// <summary>是否已加载数据。</summary>
@@ -196,7 +219,7 @@ public static class GameData
         LoadUnits();
         LoadBuildings();
         _loaded = true;
-        GameLog.Debug($"[GameData] 数据加载完成: {_units.Count}单位, {_buildings.Count}建筑, {_productionTimes.Count}生产时间");
+        GameLog.Debug($"[GameData] 数据加载完成: {_units.Count}单位, {_buildings.Count}建筑, {_productionTimes.Count}生产时间(2D), {_productionTimes3d.Count}生产时间(3D)");
     }
 
     /// <summary>确保数据已加载（首次访问时自动调用）。</summary>
@@ -317,6 +340,23 @@ public static class GameData
                 _productionTimes[prodType] = (float)times[key].AsDouble();
             }
         }
+
+        // 3D版生产时间表
+        if (root.ContainsKey("productionTimes3d"))
+        {
+            var times3d = root["productionTimes3d"].AsGodotDictionary();
+            foreach (var key in times3d.Keys)
+            {
+                string typeName = key.AsString();
+                if (typeName.StartsWith("_")) continue;
+                if (!Enum.TryParse<ProductionType>(typeName, out var prodType))
+                {
+                    GameLog.Error($"[GameData] 未知3D生产类型: {typeName}");
+                    continue;
+                }
+                _productionTimes3d[prodType] = (float)times3d[key].AsDouble();
+            }
+        }
     }
 
     private static BuildingEntry ParseBuildingEntry(Godot.Collections.Dictionary d)
@@ -382,12 +422,13 @@ public static class GameData
         return 0;
     }
 
-    /// <summary>获取生产时间（秒）。</summary>
-    public static float GetProductionTime(ProductionType type)
+    /// <summary>获取生产时间（秒）。is3d=true时返回3D版时间。</summary>
+    public static float GetProductionTime(ProductionType type, bool is3d = false)
     {
         EnsureLoaded();
-        if (_productionTimes.TryGetValue(type, out var time)) return time;
-        GameLog.Error($"[GameData] 生产时间缺失: {type}，返回3.0秒");
+        var dict = is3d ? _productionTimes3d : _productionTimes;
+        if (dict.TryGetValue(type, out var time)) return time;
+        GameLog.Error($"[GameData] 生产时间缺失: {type}(3D={is3d})，返回3.0秒");
         return 3f;
     }
 

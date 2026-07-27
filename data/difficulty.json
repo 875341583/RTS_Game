@@ -1,0 +1,54 @@
+{
+  "Easy": {
+    "aiThinkInterval": 14.0,
+    "aiStartMoney": 1500,
+    "blueStartMoney": 3000,
+    "aiStartHarvesters": 2,
+    "aiUsesTech": false,
+    "aiCapturesPoints": false,
+    "strategicPointIncomeEnabled": false,
+    "unitCap": 12,
+    "playerTechLevel": 1,
+    "aiGraceRemaining": 120.0,
+    "activeAiCount": 2
+  },
+  "Normal": {
+    "aiThinkInterval": 10.0,
+    "aiStartMoney": 1800,
+    "blueStartMoney": 2700,
+    "aiStartHarvesters": 3,
+    "aiUsesTech": true,
+    "aiCapturesPoints": true,
+    "strategicPointIncomeEnabled": true,
+    "unitCap": 16,
+    "playerTechLevel": 3,
+    "aiGraceRemaining": 60.0,
+    "activeAiCount": 4
+  },
+  "Hard": {
+    "aiThinkInterval": 7.0,
+    "aiStartMoney": 2200,
+    "blueStartMoney": 2500,
+    "aiStartHarvesters": 3,
+    "aiUsesTech": true,
+    "aiCapturesPoints": true,
+    "strategicPointIncomeEnabled": true,
+    "unitCap": 20,
+    "playerTechLevel": 3,
+    "aiGraceRemaining": 30.0,
+    "activeAiCount": 6
+  },
+  "Brutal": {
+    "aiThinkInterval": 4.0,
+    "aiStartMoney": 3000,
+    "blueStartMoney": 2200,
+    "aiStartHarvesters": 4,
+    "aiUsesTech": true,
+    "aiCapturesPoints": true,
+    "strategicPointIncomeEnabled": true,
+    "unitCap": 24,
+    "playerTechLevel": 3,
+    "aiGraceRemaining": 0.0,
+    "activeAiCount": 7
+  }
+}

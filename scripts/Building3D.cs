@@ -593,38 +593,7 @@ public partial class Building3D : Area3D
         _productionTotalTime = GetProductionTime(_currentProduction.Value);
     }
 
-    public static float GetProductionTime(ProductionType type) => type switch
-    {
-        ProductionType.Infantry => 5f,
-        ProductionType.Engineer => 8f,
-        ProductionType.Sapper => 5f,
-        ProductionType.ChiefEngineer => 10f,
-        ProductionType.Grenadier => 7f,
-        ProductionType.Sniper => 9f,
-        ProductionType.FlameInfantry => 7f,
-        ProductionType.LightTank => 12f,
-        ProductionType.HeavyTank => 20f,
-        ProductionType.Artillery => 16f,
-        ProductionType.RocketLauncher => 18f,
-        ProductionType.MissileTank => 25f,
-        ProductionType.AntiAir => 15f,
-        ProductionType.Harvester => 18f,
-        ProductionType.Transport => 15f,
-        ProductionType.Hero => 30f,
-        ProductionType.Spy => 20f,
-        ProductionType.Thief => 15f,
-        ProductionType.Fighter => 20f,
-        ProductionType.Helicopter => 24f,
-        ProductionType.RocketInfantry => 12f,
-        ProductionType.Bomber => 32f,
-        ProductionType.Scout => 12f,
-        ProductionType.TransportHeli => 24f,
-        ProductionType.Destroyer => 25f,
-        ProductionType.Submarine => 30f,
-        ProductionType.AircraftCarrier => 40f,
-        ProductionType.LandingCraft => 20f,
-        _ => 10f,
-    };
+    public static float GetProductionTime(ProductionType type) => GameData.GetProductionTime(type, is3d: true);
 
     public bool IsProducing => _currentProduction != null;
     public float ProductionProgress => _currentProduction.HasValue ? (_productionProgress / _productionTotalTime) : 0f;

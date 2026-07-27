@@ -56,7 +56,7 @@ public partial class Main
         }
     }
 
-    /// <summary>在指定位置释放核弹：对范围内所有非己方单位/建筑造成 NukeDamage 伤害，并播放冲击波 + 多层爆炸特效。</summary>
+    /// <summary>在指定位置释放核弹：对范围内所有非己方单位/建筑造成 GameConst.NukeDamage 伤害，并播放冲击波 + 多层爆炸特效。</summary>
     private void ApplyNuke(Vector2 pos, int firingTeamId)
     {
         int unitHits = 0, bldHits = 0;
@@ -65,9 +65,9 @@ public partial class Main
         foreach (var c in _unitsNode.GetChildren())
         {
             if (c is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId
-                && pos.DistanceTo(u.GlobalPosition) <= NukeRadius)
+                && pos.DistanceTo(u.GlobalPosition) <= GameConst.NukeRadius)
             {
-                u.TakeDamage(NukeDamage);
+                u.TakeDamage(GameConst.NukeDamage);
                 unitHits++;
             }
         }
@@ -75,9 +75,9 @@ public partial class Main
         foreach (var c in _buildingsNode.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId
-                && pos.DistanceTo(b.GlobalPosition) <= NukeRadius)
+                && pos.DistanceTo(b.GlobalPosition) <= GameConst.NukeRadius)
             {
-                b.TakeDamage(NukeDamage);
+                b.TakeDamage(GameConst.NukeDamage);
                 bldHits++;
             }
         }
@@ -115,7 +115,7 @@ public partial class Main
 
     // ---------- 阶段12-A4 闪电风暴 ----------
 
-    /// <summary>在指定位置释放闪电风暴：立即造成一次 LightningDps 伤害，并在接下来 LightningDuration 秒内持续每秒造成同等伤害。
+    /// <summary>在指定位置释放闪电风暴：立即造成一次 GameConst.LightningDps 伤害，并在接下来 GameConst.LightningDuration 秒内持续每秒造成同等伤害。
     /// 伤害结算由 _Process 中的 _activeLightnings 列表推进。</summary>
     private void ApplyLightning(Vector2 pos, int firingTeamId)
     {
@@ -128,7 +128,7 @@ public partial class Main
             Position = pos,
             FiringTeamId = firingTeamId,
             Age = 0f,
-            Lifetime = LightningDuration,
+            Lifetime = GameConst.LightningDuration,
             DamageTickTimer = 0f, // 下次伤害在 1 秒后
             BoltRefreshTimer = 0f
         });
@@ -149,9 +149,9 @@ public partial class Main
 
         // 6. 通知提示
         string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
-        ShowToast($"⚡ {who}释放闪电风暴！初始命中 {unitHits} 敌方目标，持续 {LightningDuration:F0}s",
+        ShowToast($"⚡ {who}释放闪电风暴！初始命中 {unitHits} 敌方目标，持续 {GameConst.LightningDuration:F0}s",
             new Color(0.5f, 0.8f, 1f));
-        GameLog.Debug($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {LightningDuration}s");
+        GameLog.Debug($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {GameConst.LightningDuration}s");
 
         // 阶段12-C：闪电风暴音效
         _audio?.PlaySfxForce(AudioManager.Sfx.Lightning);
@@ -167,9 +167,9 @@ public partial class Main
             if (child is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId && !u.IsDead)
             {
                 float d = u.GlobalPosition.DistanceTo(pos);
-                if (d < MissileRadius)
+                if (d < GameConst.MissileRadius)
                 {
-                    float dmg = MissileDamage * (1f - d / MissileRadius);
+                    float dmg = GameConst.MissileDamage * (1f - d / GameConst.MissileRadius);
                     u.TakeDamage(dmg);
                     unitHits++;
                 }
@@ -180,9 +180,9 @@ public partial class Main
             if (child is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId)
             {
                 float d = b.GlobalPosition.DistanceTo(pos);
-                if (d < MissileRadius)
+                if (d < GameConst.MissileRadius)
                 {
-                    float dmg = MissileDamage * (1f - d / MissileRadius) * 0.8f; // 建筑伤害8折
+                    float dmg = GameConst.MissileDamage * (1f - d / GameConst.MissileRadius) * 0.8f; // 建筑伤害8折
                     b.TakeDamage(dmg);
                     bldHits++;
                 }
@@ -194,25 +194,25 @@ public partial class Main
         QueueRedraw();
     }
 
-    /// <summary>对闪电风暴作用半径内的所有非己方单位/建筑造成一次 LightningDps 伤害，返回命中数量。</summary>
+    /// <summary>对闪电风暴作用半径内的所有非己方单位/建筑造成一次 GameConst.LightningDps 伤害，返回命中数量。</summary>
     private int DamageLightningAreaOnce(Vector2 pos, int firingTeamId)
     {
         int hits = 0;
         foreach (var c in _unitsNode.GetChildren())
         {
             if (c is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId
-                && pos.DistanceTo(u.GlobalPosition) <= LightningRadius)
+                && pos.DistanceTo(u.GlobalPosition) <= GameConst.LightningRadius)
             {
-                u.TakeDamage(LightningDps);
+                u.TakeDamage(GameConst.LightningDps);
                 hits++;
             }
         }
         foreach (var c in _buildingsNode.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId
-                && pos.DistanceTo(b.GlobalPosition) <= LightningRadius)
+                && pos.DistanceTo(b.GlobalPosition) <= GameConst.LightningRadius)
             {
-                b.TakeDamage(LightningDps);
+                b.TakeDamage(GameConst.LightningDps);
                 hits++;
             }
         }

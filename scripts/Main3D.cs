@@ -62,9 +62,7 @@ public partial class Main3D : Node3D
     private float _playerLightningCooldown;
     private float _playerMissileCooldown;
 
-    private const float NukeCooldown = 300f;
-    private const float LightningCooldown = 240f;
-    private const float MissileCooldown = 180f;
+    // 超武冷却常量已迁移到 GameConst（P2-4 数据驱动去重）
 
     // 超武特效
     private struct NukeEffect { public Vector3 Pos; public float Age; public float Lifetime; }
@@ -335,9 +333,9 @@ public partial class Main3D : Node3D
         for (int i = 1; i <= AiTeamCount; i++)
         {
             _aiThinkTimers[i] = aiInterval;
-            _aiNukeCooldowns[i] = NukeCooldown;
-            _aiLightningCooldowns[i] = LightningCooldown;
-            _aiMissileCooldowns[i] = MissileCooldown;
+            _aiNukeCooldowns[i] = GameConst.NukeCooldown;
+            _aiLightningCooldowns[i] = GameConst.LightningCooldown;
+            _aiMissileCooldowns[i] = GameConst.MissileCooldown;
         }
 
         Unit3D.AiGraceRemaining = grace;
@@ -2302,7 +2300,7 @@ public partial class Main3D : Node3D
                 {
                     var pos = GetMouseWorldPos();
                     ApplyNuke(pos, PlayerTeamId);
-                    _playerNukeCooldown = NukeCooldown;
+                    _playerNukeCooldown = GameConst.NukeCooldown;
                 }
                 break;
             case 'C':
@@ -2310,7 +2308,7 @@ public partial class Main3D : Node3D
                 {
                     var pos = GetMouseWorldPos();
                     ApplyLightning(pos, PlayerTeamId);
-                    _playerLightningCooldown = LightningCooldown;
+                    _playerLightningCooldown = GameConst.LightningCooldown;
                 }
                 break;
         }
@@ -2322,7 +2320,7 @@ public partial class Main3D : Node3D
             {
                 var pos = GetMouseWorldPos();
                 ApplyCruiseMissile(pos, PlayerTeamId);
-                _playerMissileCooldown = MissileCooldown;
+                _playerMissileCooldown = GameConst.MissileCooldown;
             }
         }
 
@@ -2815,7 +2813,7 @@ public partial class Main3D : Node3D
                 if (target.HasValue)
                 {
                     ApplyNuke(target.Value, i);
-                    _aiNukeCooldowns[i] = NukeCooldown;
+                    _aiNukeCooldowns[i] = GameConst.NukeCooldown;
                 }
             }
             if (HasBuilding(i, BuildingType.LightningTower) && _aiLightningCooldowns[i] <= 0)
@@ -2824,7 +2822,7 @@ public partial class Main3D : Node3D
                 if (target.HasValue)
                 {
                     ApplyLightning(target.Value, i);
-                    _aiLightningCooldowns[i] = LightningCooldown;
+                    _aiLightningCooldowns[i] = GameConst.LightningCooldown;
                 }
             }
         }

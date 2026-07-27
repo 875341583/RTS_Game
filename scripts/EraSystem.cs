@@ -21,6 +21,10 @@ namespace RTSGame;
 ///   - 每个时代所有单位+5%攻击/+5%血量（累计）
 ///   - 每个时代矿车+10%采集速度（累计）
 ///   - 高时代解锁更高级单位/建筑
+/// 
+/// P2-4: 数据驱动 — 从 res://data/eras.json 加载时代元数据（名称/描述/升级费用/时间/前置建筑），
+/// 替代硬编码数组。效果公式与解锁逻辑保留为代码（业务逻辑，非配置数据）。
+/// JSON加载失败时回退到硬编码数据。
 /// </summary>
 public static class EraSystem
 {
@@ -45,34 +49,137 @@ public static class EraSystem
         public BuildingType[] RequiredBuildings { get; init; } = System.Array.Empty<BuildingType>();
     }
 
-    // ===== 时代数据 =====
-    public static readonly EraInfo[] Eras = new EraInfo[]
+    // ===== P2-4: 从JSON加载的时代数据 =====
+    private static EraInfo[] _eras = System.Array.Empty<EraInfo>();
+    private static readonly object _erasLock = new();
+    private static bool _alwaysFallback = false;
+
+    /// <summary>强制使用硬编码数据（供单元测试使用，在无Godot运行时的环境中调用）</summary>
+    public static void SetAlwaysFallback(bool value) => _alwaysFallback = value;
+
+    /// <summary>所有时代（P2-4: 优先从JSON加载，失败则用硬编码fallback）</summary>
+    public static EraInfo[] Eras
     {
-        new EraInfo
+        get
         {
-            Id = Era.Stone, Name = "石器时代", Description = "起步时代：仅能建造基础建筑和生产步兵",
-            UpgradeCost = 0, UpgradeTime = 0f,
-            RequiredBuildings = System.Array.Empty<BuildingType>()
-        },
-        new EraInfo
+            lock (_erasLock)
+            {
+                if (_eras.Length == 0) LoadFromJsonCore(_alwaysFallback);
+                return _eras;
+            }
+        }
+    }
+
+    /// <summary>P2-4: 从 res://data/eras.json 加载时代元数据。
+    /// forceFallback=true时跳过Godot IO，直接用硬编码数据（供单元测试使用）。</summary>
+    public static void LoadFromJson(bool forceFallback = false)
+    {
+        lock (_erasLock)
         {
-            Id = Era.Bronze, Name = "青铜时代", Description = "解锁车厂/重坦/炮兵/防御塔/维修厂",
-            UpgradeCost = 800, UpgradeTime = 30f,
-            RequiredBuildings = new[] { BuildingType.Barracks }
-        },
-        new EraInfo
+            if (_eras.Length > 0) return; // 已加载，无论fallback还是JSON都跳过
+            LoadFromJsonCore(forceFallback);
+        }
+    }
+
+    /// <summary>内部加载实现（调用方需持有 _erasLock）</summary>
+    private static void LoadFromJsonCore(bool forceFallback)
+    {
+        if (forceFallback)
         {
-            Id = Era.Industrial, Name = "工业时代", Description = "解锁科技中心/火箭炮/导弹车/机场/空军",
-            UpgradeCost = 1500, UpgradeTime = 45f,
-            RequiredBuildings = new[] { BuildingType.WarFactory }
-        },
-        new EraInfo
+            LoadFallback();
+            return;
+        }
+
+        const string path = "res://data/eras.json";
+        var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
+        if (file == null)
         {
-            Id = Era.Information, Name = "信息时代", Description = "解锁船厂/海军/轰炸机/超武/英雄/间谍",
-            UpgradeCost = 2500, UpgradeTime = 60f,
-            RequiredBuildings = new[] { BuildingType.TechCenter }
-        },
-    };
+            GameLog.Warning($"[EraSystem] 无法打开 {path}，使用硬编码fallback");
+            LoadFallback();
+            return;
+        }
+
+        var jsonText = file.GetAsText();
+        file.Close();
+
+        var jsonResult = Json.ParseString(jsonText);
+        if (jsonResult.VariantType != Variant.Type.Array)
+        {
+            GameLog.Warning("[EraSystem] eras.json 格式错误，使用硬编码fallback");
+            LoadFallback();
+            return;
+        }
+
+        var list = new List<EraInfo>();
+        var array = jsonResult.AsGodotArray();
+        foreach (var entry in array)
+        {
+            var dict = entry.AsGodotDictionary();
+            if (dict == null) continue;
+
+            var idStr = dict["id"].AsString();
+            if (!System.Enum.TryParse<Era>(idStr, out var id))
+            {
+                GameLog.Warning($"[EraSystem] 未知时代ID: {idStr}");
+                continue;
+            }
+
+            var reqBuildings = new List<BuildingType>();
+            if (dict.ContainsKey("requiredBuildings") && dict["requiredBuildings"].VariantType == Variant.Type.Array)
+            {
+                foreach (var b in dict["requiredBuildings"].AsGodotArray())
+                {
+                    if (System.Enum.TryParse<BuildingType>(b.AsString(), out var bt))
+                        reqBuildings.Add(bt);
+                }
+            }
+
+            list.Add(new EraInfo
+            {
+                Id = id,
+                Name = dict["name"].AsString(),
+                Description = dict["description"].AsString(),
+                UpgradeCost = (int)dict["upgradeCost"].AsInt64(),
+                UpgradeTime = (float)dict["upgradeTime"].AsDouble(),
+                RequiredBuildings = reqBuildings.ToArray(),
+            });
+        }
+
+        _eras = list.ToArray();
+        GameLog.Info($"[EraSystem] 从JSON加载 {_eras.Length} 个时代");
+    }
+
+    /// <summary>P2-4: 硬编码fallback（JSON加载失败时使用）</summary>
+    private static void LoadFallback()
+    {
+        _eras = new EraInfo[]
+        {
+            new EraInfo
+            {
+                Id = Era.Stone, Name = "石器时代", Description = "起步时代：仅能建造基础建筑和生产步兵",
+                UpgradeCost = 0, UpgradeTime = 0f,
+                RequiredBuildings = System.Array.Empty<BuildingType>()
+            },
+            new EraInfo
+            {
+                Id = Era.Bronze, Name = "青铜时代", Description = "解锁车厂/重坦/炮兵/防御塔/维修厂",
+                UpgradeCost = 800, UpgradeTime = 30f,
+                RequiredBuildings = new[] { BuildingType.Barracks }
+            },
+            new EraInfo
+            {
+                Id = Era.Industrial, Name = "工业时代", Description = "解锁科技中心/火箭炮/导弹车/机场/空军",
+                UpgradeCost = 1500, UpgradeTime = 45f,
+                RequiredBuildings = new[] { BuildingType.WarFactory }
+            },
+            new EraInfo
+            {
+                Id = Era.Information, Name = "信息时代", Description = "解锁船厂/海军/轰炸机/超武/英雄/间谍",
+                UpgradeCost = 2500, UpgradeTime = 60f,
+                RequiredBuildings = new[] { BuildingType.TechCenter }
+            },
+        };
+    }
 
     /// <summary>获取时代的攻击力加成乘数（每个时代+5%，累计）。</summary>
     public static float GetDamageMultiplier(Era era) => 1f + (int)era * 0.05f;

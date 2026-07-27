@@ -9,6 +9,10 @@ namespace RTSGame;
 /// 游戏开始后弹出3张随机战术卡，玩家选1张，影响整局战略走向。
 /// AI也随机选1张。
 /// 按T键查看当前战术卡。
+/// 
+/// P2-4: 数据驱动 — 从 res://data/tactical_cards.json 加载卡牌元数据（名称/描述/图标），
+/// 替代硬编码字典。效果查询方法（Get*Mul）保留为代码（业务逻辑，非配置数据）。
+/// JSON加载失败时回退到硬编码数据。
 /// </summary>
 public static class TacticalCards
 {
@@ -34,50 +38,145 @@ public static class TacticalCards
         public string Icon { get; init; } = "";  // 简单图标标识
     }
 
-    // ===== 所有战术卡 =====
-    public static readonly Dictionary<CardId, CardInfo> Cards = new()
+    // ===== P2-4: 从JSON加载的战术卡元数据 =====
+    private static readonly Dictionary<CardId, CardInfo> _cards = new();
+    private static readonly object _cardsLock = new();
+    private static bool _alwaysFallback = false;
+
+    /// <summary>强制使用硬编码数据（供单元测试使用，在无Godot运行时的环境中调用）</summary>
+    public static void SetAlwaysFallback(bool value) => _alwaysFallback = value;
+
+    /// <summary>所有战术卡（P2-4: 优先从JSON加载，失败则用硬编码fallback）</summary>
+    public static IReadOnlyDictionary<CardId, CardInfo> Cards
     {
-        [CardId.BlitzEconomy] = new CardInfo
+        get
+        {
+            lock (_cardsLock)
+            {
+                if (_cards.Count == 0)
+                {
+                    if (_alwaysFallback)
+                        LoadFromJsonCore(true);
+                    else
+                        LoadFromJsonCore(false);
+                }
+                return _cards;
+            }
+        }
+    }
+
+    /// <summary>P2-4: 从 res://data/tactical_cards.json 加载战术卡元数据。
+    /// forceFallback=true时跳过Godot IO，直接用硬编码数据（供单元测试使用）。</summary>
+    public static void LoadFromJson(bool forceFallback = false)
+    {
+        lock (_cardsLock)
+        {
+            if (_cards.Count > 0) return; // 已加载，无论fallback还是JSON都跳过
+            LoadFromJsonCore(forceFallback && _cards.Count == 0);
+        }
+    }
+
+    /// <summary>内部加载实现（调用方需持有 _cardsLock）</summary>
+    private static void LoadFromJsonCore(bool forceFallback)
+    {
+        _cards.Clear();
+
+        if (forceFallback)
+        {
+            LoadFallback();
+            return;
+        }
+
+        const string path = "res://data/tactical_cards.json";
+        var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
+        if (file == null)
+        {
+            GameLog.Warning($"[TacticalCards] 无法打开 {path}，使用硬编码fallback");
+            LoadFallback();
+            return;
+        }
+
+        var jsonText = file.GetAsText();
+        file.Close();
+
+        var jsonResult = Json.ParseString(jsonText);
+        if (jsonResult.VariantType != Variant.Type.Array)
+        {
+            GameLog.Warning("[TacticalCards] tactical_cards.json 格式错误，使用硬编码fallback");
+            LoadFallback();
+            return;
+        }
+
+        var array = jsonResult.AsGodotArray();
+        foreach (var entry in array)
+        {
+            var dict = entry.AsGodotDictionary();
+            if (dict == null) continue;
+
+            var idStr = dict["id"].AsString();
+            if (!System.Enum.TryParse<CardId>(idStr, out var id))
+            {
+                GameLog.Warning($"[TacticalCards] 未知卡牌ID: {idStr}");
+                continue;
+            }
+
+            _cards[id] = new CardInfo
+            {
+                Id = id,
+                Name = dict["name"].AsString(),
+                Icon = dict["icon"].AsString(),
+                Description = dict["description"].AsString(),
+            };
+        }
+
+        GameLog.Info($"[TacticalCards] 从JSON加载 {_cards.Count} 张战术卡");
+    }
+
+    /// <summary>P2-4: 硬编码fallback（JSON加载失败时使用）</summary>
+    private static void LoadFallback()
+    {
+        _cards.Clear();
+        _cards[CardId.BlitzEconomy] = new CardInfo
         {
             Id = CardId.BlitzEconomy, Name = "闪电经济", Icon = "$",
             Description = "起始资金+50%，矿车采矿收益+20%"
-        },
-        [CardId.BlitzTactics] = new CardInfo
+        };
+        _cards[CardId.BlitzTactics] = new CardInfo
         {
             Id = CardId.BlitzTactics, Name = "闪击战术", Icon = ">>",
             Description = "所有单位移动速度+15%，生产时间-15%"
-        },
-        [CardId.IronFlood] = new CardInfo
+        };
+        _cards[CardId.IronFlood] = new CardInfo
         {
             Id = CardId.IronFlood, Name = "钢铁洪流", Icon = "[T]",
             Description = "坦克类单位血量+20%、攻击力+10%"
-        },
-        [CardId.InfantryAssault] = new CardInfo
+        };
+        _cards[CardId.InfantryAssault] = new CardInfo
         {
             Id = CardId.InfantryAssault, Name = "步兵突击", Icon = "[I]",
             Description = "步兵类单位血量+25%、成本-20%"
-        },
-        [CardId.Fortress] = new CardInfo
+        };
+        _cards[CardId.Fortress] = new CardInfo
         {
             Id = CardId.Fortress, Name = "要塞防御", Icon = "[F]",
             Description = "建筑血量+30%，防御建筑射程+15%"
-        },
-        [CardId.TechLeap] = new CardInfo
+        };
+        _cards[CardId.TechLeap] = new CardInfo
         {
             Id = CardId.TechLeap, Name = "科技跃进", Icon = "^",
             Description = "研究速度+50%，时代升级速度+30%"
-        },
-        [CardId.WarMachine] = new CardInfo
+        };
+        _cards[CardId.WarMachine] = new CardInfo
         {
             Id = CardId.WarMachine, Name = "战争机器", Icon = "+",
             Description = "全单位攻击+15%，但血量-10%"
-        },
-        [CardId.RapidDeploy] = new CardInfo
+        };
+        _cards[CardId.RapidDeploy] = new CardInfo
         {
             Id = CardId.RapidDeploy, Name = "快速部署", Icon = "[]+",
             Description = "单位上限+10，生产时间-20%"
-        },
-    };
+        };
+    }
 
     /// <summary>随机抽取N张不重复战术卡。</summary>
     public static CardId[] DrawRandom(int count, RandomNumberGenerator rng)

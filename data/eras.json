@@ -1,0 +1,34 @@
+[
+  {
+    "id": "Stone",
+    "name": "石器时代",
+    "description": "起步时代：仅能建造基础建筑和生产步兵",
+    "upgradeCost": 0,
+    "upgradeTime": 0.0,
+    "requiredBuildings": []
+  },
+  {
+    "id": "Bronze",
+    "name": "青铜时代",
+    "description": "解锁车厂/重坦/炮兵/防御塔/维修厂",
+    "upgradeCost": 800,
+    "upgradeTime": 30.0,
+    "requiredBuildings": ["Barracks"]
+  },
+  {
+    "id": "Industrial",
+    "name": "工业时代",
+    "description": "解锁科技中心/火箭炮/导弹车/机场/空军",
+    "upgradeCost": 1500,
+    "upgradeTime": 45.0,
+    "requiredBuildings": ["WarFactory"]
+  },
+  {
+    "id": "Information",
+    "name": "信息时代",
+    "description": "解锁船厂/海军/轰炸机/超武/英雄/间谍",
+    "upgradeCost": 2500,
+    "upgradeTime": 60.0,
+    "requiredBuildings": ["TechCenter"]
+  }
+]

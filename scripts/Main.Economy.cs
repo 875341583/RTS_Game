@@ -685,7 +685,7 @@ public partial class Main
         if (HasBuilding(teamId, BuildingType.NukeSilo))
         {
             if (!_aiNukeCooldowns.ContainsKey(teamId))
-                _aiNukeCooldowns[teamId] = NukeCooldownDuration;
+                _aiNukeCooldowns[teamId] = GameConst.NukeCooldown;
 
             if (_aiNukeCooldowns[teamId] <= 0f)
             {
@@ -693,7 +693,7 @@ public partial class Main
                 if (target.HasValue)
                 {
                     ApplyNuke(target.Value, teamId);
-                    _aiNukeCooldowns[teamId] = NukeCooldownDuration;
+                    _aiNukeCooldowns[teamId] = GameConst.NukeCooldown;
                 }
             }
         }
@@ -701,7 +701,7 @@ public partial class Main
         if (HasBuilding(teamId, BuildingType.LightningTower))
         {
             if (!_aiLightningCooldowns.ContainsKey(teamId))
-                _aiLightningCooldowns[teamId] = LightningCooldownDuration;
+                _aiLightningCooldowns[teamId] = GameConst.LightningCooldown;
 
             if (_aiLightningCooldowns[teamId] <= 0f)
             {
@@ -709,7 +709,7 @@ public partial class Main
                 if (target.HasValue)
                 {
                     ApplyLightning(target.Value, teamId);
-                    _aiLightningCooldowns[teamId] = LightningCooldownDuration;
+                    _aiLightningCooldowns[teamId] = GameConst.LightningCooldown;
                 }
             }
         }
@@ -718,7 +718,7 @@ public partial class Main
         if (HasBuilding(teamId, BuildingType.MissileSilo))
         {
             if (!_aiMissileCooldowns.ContainsKey(teamId))
-                _aiMissileCooldowns[teamId] = MissileCooldownDuration;
+                _aiMissileCooldowns[teamId] = GameConst.MissileCooldown;
 
             if (_aiMissileCooldowns[teamId] <= 0f)
             {
@@ -726,7 +726,7 @@ public partial class Main
                 if (target.HasValue)
                 {
                     ApplyCruiseMissile(target.Value, teamId);
-                    _aiMissileCooldowns[teamId] = MissileCooldownDuration;
+                    _aiMissileCooldowns[teamId] = GameConst.MissileCooldown;
                 }
             }
         }

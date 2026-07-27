@@ -83,7 +83,7 @@
     }
   },
   "productionTimes": {
-    "_comment": "生产所需时间（秒），来自Building.GetProductionTime。2D/3D共用同一套时间。",
+    "_comment": "2D版生产所需时间（秒）。3D版见productionTimes3d。",
     "LightTank": 3.0,
     "HeavyTank": 6.0,
     "Artillery": 5.0,
@@ -110,5 +110,36 @@
     "Submarine": 10.0,
     "AircraftCarrier": 15.0,
     "LandingCraft": 6.0
+  },
+  "productionTimes3d": {
+    "_comment": "3D版生产所需时间（秒），来自Building3D.cs原硬编码。",
+    "Infantry": 5.0,
+    "Engineer": 8.0,
+    "Sapper": 5.0,
+    "ChiefEngineer": 10.0,
+    "Grenadier": 7.0,
+    "Sniper": 9.0,
+    "FlameInfantry": 7.0,
+    "LightTank": 12.0,
+    "HeavyTank": 20.0,
+    "Artillery": 16.0,
+    "RocketLauncher": 18.0,
+    "MissileTank": 25.0,
+    "AntiAir": 15.0,
+    "Harvester": 18.0,
+    "Transport": 15.0,
+    "Hero": 30.0,
+    "Spy": 20.0,
+    "Thief": 15.0,
+    "Fighter": 20.0,
+    "Helicopter": 24.0,
+    "RocketInfantry": 12.0,
+    "Bomber": 32.0,
+    "Scout": 12.0,
+    "TransportHeli": 24.0,
+    "Destroyer": 25.0,
+    "Submarine": 30.0,
+    "AircraftCarrier": 40.0,
+    "LandingCraft": 20.0
   }
 }

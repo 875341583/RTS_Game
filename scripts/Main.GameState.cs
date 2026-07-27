@@ -12,40 +12,22 @@ namespace RTSGame;
 public partial class Main
 {
 
-    /// <summary>P5：应用难度配置到游戏参数。</summary>
+    /// <summary>P5：应用难度配置到游戏参数。P2-4: 从DifficultyConfig数据驱动加载。</summary>
     private void ApplyDifficultyConfig()
     {
-        switch (_difficulty)
-        {
-            case Difficulty.Easy:
-                _aiThinkInterval = 14f; _aiStartMoney = 1500; _blueStartMoney = 3000;
-                _aiStartHarvesters = 2; _aiUsesTech = false; _aiCapturesPoints = false;
-                StrategicPointIncomeEnabled = false; _unitCap = 12; _playerTechLevel = 1;
-                Unit.AiGraceRemaining = 120f; // Easy: 2分钟保护期
-                _activeAiCount = 2; // Easy: 仅2个活跃AI，其余5个休眠
-                break;
-            case Difficulty.Normal:
-                _aiThinkInterval = 10f; _aiStartMoney = 1800; _blueStartMoney = 2700;
-                _aiStartHarvesters = 3; _aiUsesTech = true; _aiCapturesPoints = true;
-                StrategicPointIncomeEnabled = true; _unitCap = 16; _playerTechLevel = 3; // v5修复：Lv2→Lv3，解锁科技中心
-                Unit.AiGraceRemaining = 60f; // Normal: 60秒保护期
-                _activeAiCount = 4; // v5修复：Normal难度活跃AI 7→4，3个AI休眠，缓解1v7压力
-                break;
-            case Difficulty.Hard:
-                _aiThinkInterval = 7f; _aiStartMoney = 2200; _blueStartMoney = 2500;
-                _aiStartHarvesters = 3; _aiUsesTech = true; _aiCapturesPoints = true;
-                StrategicPointIncomeEnabled = true; _unitCap = 20; _playerTechLevel = 3;
-                Unit.AiGraceRemaining = 30f; // Hard: 30秒保护期
-                _activeAiCount = 6; // Hard: 6个活跃AI，1个休眠
-                break;
-            case Difficulty.Brutal:
-                _aiThinkInterval = 4f; _aiStartMoney = 3000; _blueStartMoney = 2200;
-                _aiStartHarvesters = 4; _aiUsesTech = true; _aiCapturesPoints = true;
-                StrategicPointIncomeEnabled = true; _unitCap = 24; _playerTechLevel = 3;
-                Unit.AiGraceRemaining = 0f; // Brutal: 无保护期，开局即战
-                _activeAiCount = 7; // Brutal: 全部7个AI活跃，极限挑战
-                break;
-        }
+        var dc = DifficultyConfig.Get(_difficulty.ToString());
+        _aiThinkInterval = dc.AiThinkInterval;
+        _aiStartMoney = dc.AiStartMoney;
+        _blueStartMoney = dc.BlueStartMoney;
+        _aiStartHarvesters = dc.AiStartHarvesters;
+        _aiUsesTech = dc.AiUsesTech;
+        _aiCapturesPoints = dc.AiCapturesPoints;
+        StrategicPointIncomeEnabled = dc.StrategicPointIncomeEnabled;
+        _unitCap = dc.UnitCap;
+        _playerTechLevel = dc.PlayerTechLevel;
+        Unit.AiGraceRemaining = dc.AiGraceRemaining;
+        _activeAiCount = dc.ActiveAiCount;
+
         _enemyThinkTimer = _aiThinkInterval;
         _money[0] = _blueStartMoney;
         for (int t = 1; t <= AiTeamCount; t++)

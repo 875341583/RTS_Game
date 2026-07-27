@@ -113,12 +113,7 @@ public partial class Main : Node2D
         private const bool DormantAiAutoAi = false;
 
         // ---- 阶段12-A4 超武系统（核弹） ----
-        /// <summary>核弹冷却总时长（秒）。5分钟。</summary>
-        private const float NukeCooldownDuration = 300f;
-        /// <summary>核弹爆炸半径（像素）。</summary>
-        private const float NukeRadius = 260f;
-        /// <summary>核弹爆炸伤害（点）。</summary>
-        private const float NukeDamage = 600f;
+        // 超武常量已迁移到 GameConst（P2-4 数据驱动去重）
         /// <summary>玩家核弹冷却剩余（秒）。≤0 表示可发射。</summary>
         private float _playerNukeCooldown = 0f;
         /// <summary>玩家是否处于核弹目标选择模式（按 N 进入，左键释放 / 右键取消）。</summary>
@@ -136,14 +131,7 @@ public partial class Main : Node2D
         }
 
         // ---- 阶段12-A4 超武系统（闪电风暴） ----
-        /// <summary>闪电风暴冷却总时长（秒）。4分钟（比核弹短）。</summary>
-        private const float LightningCooldownDuration = 240f;
-        /// <summary>闪电风暴作用半径（像素）。比核弹小。</summary>
-        private const float LightningRadius = 160f;
-        /// <summary>闪电风暴每秒伤害（点/秒）。</summary>
-        private const float LightningDps = 80f;
-        /// <summary>闪电风暴持续时间（秒）。在此期间持续对范围内敌方造成伤害。</summary>
-        private const float LightningDuration = 5f;
+        // 超武常量已迁移到 GameConst（P2-4 数据驱动去重）
         /// <summary>玩家闪电风暴冷却剩余（秒）。</summary>
         private float _playerLightningCooldown = 0f;
         /// <summary>玩家是否处于闪电风暴目标选择模式（按 C 进入，左键释放 / 右键取消）。</summary>
@@ -155,9 +143,7 @@ public partial class Main : Node2D
     /// <summary>闪电风暴视觉与持续伤害数据。DamageTickTimer 累积到1.0即结算一次伤害。</summary>
 
     // E10：巡航导弹超武
-    private const float MissileCooldownDuration = 180f;
-    private const float MissileRadius = 180f;
-    private const float MissileDamage = 300f;
+    // 超武常量已迁移到 GameConst（P2-4 数据驱动去重）
     private float _playerMissileCooldown = 0f;
     private bool _missileTargetMode = false;
     private readonly Dictionary<int, float> _aiMissileCooldowns = new();
@@ -1098,7 +1084,7 @@ public partial class Main : Node2D
         foreach (var nuke in _activeNukeVisuals)
         {
             float progress = nuke.Age / nuke.Lifetime;
-            float radius = NukeRadius * (0.3f + 0.7f * progress);
+            float radius = GameConst.NukeRadius * (0.3f + 0.7f * progress);
             // 外层冲击波（亮黄白→淡出）
             DrawArc(nuke.Position, radius, 0f, Mathf.Tau, 48,
                 new Color(1f, 0.95f, 0.6f, (1f - progress) * 0.85f), 4f);
@@ -1108,7 +1094,7 @@ public partial class Main : Node2D
             // 中心辐射填充（绿色毒雾感）
             if (progress < 0.7f)
             {
-                float fillR = NukeRadius * 0.5f * (1f - progress / 0.7f);
+                float fillR = GameConst.NukeRadius * 0.5f * (1f - progress / 0.7f);
                 DrawCircle(nuke.Position, fillR,
                     new Color(0.7f, 1f, 0.3f, (1f - progress) * 0.18f));
             }
@@ -1119,10 +1105,10 @@ public partial class Main : Node2D
         {
             var mousePos = _camera.GetGlobalMousePosition();
             // 爆炸范围预览圈
-            DrawArc(mousePos, NukeRadius, 0f, Mathf.Tau, 64,
+            DrawArc(mousePos, GameConst.NukeRadius, 0f, Mathf.Tau, 64,
                 new Color(1f, 0.25f, 0.15f, 0.55f), 2f);
             // 内圈危险标识
-            DrawArc(mousePos, NukeRadius * 0.5f, 0f, Mathf.Tau, 48,
+            DrawArc(mousePos, GameConst.NukeRadius * 0.5f, 0f, Mathf.Tau, 48,
                 new Color(1f, 0.4f, 0.2f, 0.35f), 1.5f);
             // 中心十字准星
             var cross = new Color(1f, 0.3f, 0.2f, 0.9f);
@@ -1148,12 +1134,12 @@ public partial class Main : Node2D
         {
             float progress = lv.Age / lv.Lifetime;
             // 1. 地面电光填充圈（淡蓝色发光）
-            DrawCircle(lv.Position, LightningRadius,
+            DrawCircle(lv.Position, GameConst.LightningRadius,
                 new Color(0.3f, 0.6f, 1f, 0.15f * (1f - progress * 0.5f)));
             // 2. 多重电光环（白蓝色同心圆，向外扩散）
             for (int ring = 0; ring < 3; ring++)
             {
-                float ringR = LightningRadius * (0.4f + 0.3f * ring) * (1f + 0.05f * Mathf.Sin(lv.Age * 8f + ring));
+                float ringR = GameConst.LightningRadius * (0.4f + 0.3f * ring) * (1f + 0.05f * Mathf.Sin(lv.Age * 8f + ring));
                 DrawArc(lv.Position, ringR, 0f, Mathf.Tau, 48,
                     new Color(0.7f, 0.9f, 1f, (1f - progress) * 0.7f), 2f);
             }
@@ -1174,10 +1160,10 @@ public partial class Main : Node2D
         {
             var mousePos = _camera.GetGlobalMousePosition();
             // 爆炸范围预览圈（蓝色）
-            DrawArc(mousePos, LightningRadius, 0f, Mathf.Tau, 64,
+            DrawArc(mousePos, GameConst.LightningRadius, 0f, Mathf.Tau, 64,
                 new Color(0.4f, 0.8f, 1f, 0.55f), 2f);
             // 内圈
-            DrawArc(mousePos, LightningRadius * 0.5f, 0f, Mathf.Tau, 48,
+            DrawArc(mousePos, GameConst.LightningRadius * 0.5f, 0f, Mathf.Tau, 48,
                 new Color(0.5f, 0.85f, 1f, 0.35f), 1.5f);
             // 中心十字准星（青蓝色）
             var cross = new Color(0.6f, 0.9f, 1f, 0.95f);

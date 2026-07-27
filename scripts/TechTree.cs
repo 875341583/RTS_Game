@@ -57,20 +57,38 @@ public static class TechTree
 
     // ===== P2-4: 从JSON加载的科技节点 =====
     private static readonly Dictionary<TechId, TechNode> _nodes = new();
+    private static readonly object _nodesLock = new();
+    private static bool _alwaysFallback = false;
+
+    /// <summary>强制使用硬编码数据（供单元测试使用，在无Godot运行时的环境中调用）</summary>
+    public static void SetAlwaysFallback(bool value) => _alwaysFallback = value;
 
     /// <summary>所有科技节点（P2-4: 优先从JSON加载，失败则用硬编码fallback）</summary>
     public static IReadOnlyDictionary<TechId, TechNode> Nodes
     {
         get
         {
-            if (_nodes.Count == 0) LoadFromJson();
-            return _nodes;
+            lock (_nodesLock)
+            {
+                if (_nodes.Count == 0) LoadFromJsonCore(_alwaysFallback);
+                return _nodes;
+            }
         }
     }
 
     /// <summary>P2-4: 从 res://data/techtree.json 加载科技节点。
     /// forceFallback=true时跳过Godot IO，直接用硬编码数据（供单元测试使用）。</summary>
     public static void LoadFromJson(bool forceFallback = false)
+    {
+        lock (_nodesLock)
+        {
+            if (_nodes.Count > 0) return; // 已加载，无论fallback还是JSON都跳过
+            LoadFromJsonCore(forceFallback);
+        }
+    }
+
+    /// <summary>内部加载实现（调用方需持有 _nodesLock）</summary>
+    private static void LoadFromJsonCore(bool forceFallback)
     {
         _nodes.Clear();
         

@@ -10,6 +10,11 @@ namespace RTSGame.Tests;
 /// </summary>
 public class TacticalCardsTests
 {
+    public TacticalCardsTests()
+    {
+        TestAssemblyInitializer.EnsureFallbackDataLoaded();
+    }
+
     // ===== 移动速度乘数 =====
 
     [Fact]

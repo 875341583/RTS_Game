@@ -1,0 +1,16 @@
+{
+  "constants": {
+    "successRate": 0.80,
+    "infiltrateTime": 4.0,
+    "sabotagePowerDuration": 8.0,
+    "sabotageProdDuration": 10.0,
+    "stealMoneyAmount": 500
+  },
+  "missions": [
+    { "id": "StealTech", "name": "窃取科技", "description": "窃取1个敌方已研究科技(免费完成)" },
+    { "id": "SabotagePower", "name": "破坏电网", "description": "使电站断电8秒" },
+    { "id": "StealMoney", "name": "窃取资金", "description": "偷取$500" },
+    { "id": "SabotageProd", "name": "瘫痪生产", "description": "暂停生产10秒" },
+    { "id": "Recon", "name": "侦察", "description": "揭示敌方建筑/单位信息5秒" }
+  ]
+}

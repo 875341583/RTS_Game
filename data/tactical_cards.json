@@ -1,0 +1,10 @@
+[
+  { "id": "BlitzEconomy", "name": "闪电经济", "icon": "$", "description": "起始资金+50%，矿车采矿收益+20%" },
+  { "id": "BlitzTactics", "name": "闪击战术", "icon": ">>", "description": "所有单位移动速度+15%，生产时间-15%" },
+  { "id": "IronFlood", "name": "钢铁洪流", "icon": "[T]", "description": "坦克类单位血量+20%、攻击力+10%" },
+  { "id": "InfantryAssault", "name": "步兵突击", "icon": "[I]", "description": "步兵类单位血量+25%、成本-20%" },
+  { "id": "Fortress", "name": "要塞防御", "icon": "[F]", "description": "建筑血量+30%，防御建筑射程+15%" },
+  { "id": "TechLeap", "name": "科技跃进", "icon": "^", "description": "研究速度+50%，时代升级速度+30%" },
+  { "id": "WarMachine", "name": "战争机器", "icon": "+", "description": "全单位攻击+15%，但血量-10%" },
+  { "id": "RapidDeploy", "name": "快速部署", "icon": "[]+", "description": "单位上限+10，生产时间-20%" }
+]
