@@ -1,3 +1,14 @@
+---
+AIGC:
+  ContentProducer: '001191110102MAD55U9H0F10002'
+  ContentPropagator: '001191110102MAD55U9H0F10002'
+  Label: '1'
+  ProduceID: '254791a5-c4a8-4b5f-acc2-41bbf8c75002'
+  PropagateID: '254791a5-c4a8-4b5f-acc2-41bbf8c75002'
+  ReservedCode1: '4f9824fc-962a-4c0b-a4e1-a37312111c5c'
+  ReservedCode2: '4f9824fc-962a-4c0b-a4e1-a37312111c5c'
+---
+
 # 铁幕突袭 | Iron Curtain RTS
 
 > **等距2.5D实时战略游戏** — 灵感源自经典RTS，融合文明6式深度策略。15分钟一局，3大阵营，27种单位，军事工业美学。

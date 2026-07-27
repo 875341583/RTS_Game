@@ -17,7 +17,7 @@ public partial class Main
     {
         return _techTreePanelVisible || _eraPanelVisible || _powerGridPanelVisible
             || _adjacencyPanelVisible || _spyMissionPanelVisible || _capturePanelVisible
-            || _eurekaLabel.Visible || _cardLabel.Visible;
+            || _eurekaLabel.Visible || _cardPanel.Visible;
     }
 
     public override void _Input(InputEvent @event)
@@ -200,7 +200,7 @@ public partial class Main
         }
 
         // G3: 战术卡选择面板可见时，1/2/3选择对应卡
-        if (_cardLabel.Visible && _cardChoices.Length > 0)
+        if (_cardPanel.Visible && _cardChoices.Length > 0)
         {
             int cardIdx = kc switch
             {

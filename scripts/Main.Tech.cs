@@ -480,7 +480,7 @@ public partial class Main
 
     // ======== G3: 战术卡系统方法 ========
 
-    /// <summary>显示战术卡选择面板。</summary>
+    /// <summary>显示战术卡选择面板（带可点击卡片按钮）。</summary>
     private void ShowCardSelection()
     {
         _cardSelectionPending = false;
@@ -488,28 +488,95 @@ public partial class Main
         rng.Randomize();
         _cardChoices = TacticalCards.DrawRandom(3, rng);
 
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══════════ 战术卡选择 ═══════════");
-        sb.AppendLine("开局战略卡 — 选择1张影响整局走向！");
-        sb.AppendLine();
+        // 清除旧按钮
+        foreach (var child in _cardButtonContainer.GetChildren())
+            child.QueueFree();
+
+        // 为每张卡创建可点击的面板按钮
         for (int i = 0; i < _cardChoices.Length; i++)
         {
             var card = TacticalCards.Cards[_cardChoices[i]];
-            sb.AppendLine($"  ({i + 1}) {card.Icon} {card.Name}");
-            sb.AppendLine($"       {card.Description}");
-            sb.AppendLine();
+            int cardIndex = i; // 闭包捕获
+
+            var cardButton = new Button
+            {
+                Text = $"{card.Icon} {card.Name}\n\n{card.Description}\n\n[按 {i + 1} 或点击选择]",
+                CustomMinimumSize = new Vector2(210, 320),
+                Alignment = HorizontalAlignment.Center,
+                ClipText = false,
+            };
+            cardButton.AddThemeFontSizeOverride("font_size", 13);
+            cardButton.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.8f));
+            cardButton.AddThemeColorOverride("font_hover_color", new Color(1f, 1f, 0.6f));
+            cardButton.AddThemeColorOverride("font_pressed_color", new Color(0.9f, 1f, 0.9f));
+
+            // 军工风深色背景样式
+            var btnStyle = new StyleBoxFlat();
+            btnStyle.BgColor = new Color(0.1f, 0.15f, 0.12f, 0.95f);
+            btnStyle.BorderWidthLeft = 2;
+            btnStyle.BorderWidthRight = 2;
+            btnStyle.BorderWidthTop = 2;
+            btnStyle.BorderWidthBottom = 2;
+            btnStyle.BorderColor = new Color(0.35f, 0.55f, 0.4f);
+            btnStyle.CornerRadiusTopLeft = 6;
+            btnStyle.CornerRadiusTopRight = 6;
+            btnStyle.CornerRadiusBottomLeft = 6;
+            btnStyle.CornerRadiusBottomRight = 6;
+            btnStyle.ContentMarginLeft = 12;
+            btnStyle.ContentMarginRight = 12;
+            btnStyle.ContentMarginTop = 12;
+            btnStyle.ContentMarginBottom = 12;
+            cardButton.AddThemeStyleboxOverride("normal", btnStyle);
+
+            // hover 样式（亮边框）
+            var hoverStyle = new StyleBoxFlat();
+            hoverStyle.BgColor = new Color(0.15f, 0.22f, 0.18f, 0.98f);
+            hoverStyle.BorderWidthLeft = 2;
+            hoverStyle.BorderWidthRight = 2;
+            hoverStyle.BorderWidthTop = 2;
+            hoverStyle.BorderWidthBottom = 2;
+            hoverStyle.BorderColor = new Color(0.6f, 0.8f, 0.5f);
+            hoverStyle.CornerRadiusTopLeft = 6;
+            hoverStyle.CornerRadiusTopRight = 6;
+            hoverStyle.CornerRadiusBottomLeft = 6;
+            hoverStyle.CornerRadiusBottomRight = 6;
+            hoverStyle.ContentMarginLeft = 12;
+            hoverStyle.ContentMarginRight = 12;
+            hoverStyle.ContentMarginTop = 12;
+            hoverStyle.ContentMarginBottom = 12;
+            cardButton.AddThemeStyleboxOverride("hover", hoverStyle);
+
+            // pressed 样式
+            var pressedStyle = new StyleBoxFlat();
+            pressedStyle.BgColor = new Color(0.18f, 0.25f, 0.2f, 1f);
+            pressedStyle.BorderWidthLeft = 2;
+            pressedStyle.BorderWidthRight = 2;
+            pressedStyle.BorderWidthTop = 2;
+            pressedStyle.BorderWidthBottom = 2;
+            pressedStyle.BorderColor = new Color(0.7f, 1f, 0.6f);
+            pressedStyle.CornerRadiusTopLeft = 6;
+            pressedStyle.CornerRadiusTopRight = 6;
+            pressedStyle.CornerRadiusBottomLeft = 6;
+            pressedStyle.CornerRadiusBottomRight = 6;
+            pressedStyle.ContentMarginLeft = 12;
+            pressedStyle.ContentMarginRight = 12;
+            pressedStyle.ContentMarginTop = 12;
+            pressedStyle.ContentMarginBottom = 12;
+            cardButton.AddThemeStyleboxOverride("pressed", pressedStyle);
+
+            cardButton.Pressed += () => SelectPlayerCard(_cardChoices[cardIndex]);
+            _cardButtonContainer.AddChild(cardButton);
         }
-        sb.AppendLine("按 1/2/3 键选择对应战术卡");
-        _cardLabel.Text = sb.ToString();
-        _cardLabel.Visible = true;
-        GameLog.Debug("[G3] 战术卡选择面板已弹出 — 按1/2/3选择");
+
+        _cardPanel.Visible = true;
+        GameLog.Debug("[G3] 战术卡选择面板已弹出 — 点击卡片或按1/2/3选择");
     }
 
     /// <summary>玩家选择战术卡后应用效果。</summary>
     private void SelectPlayerCard(TacticalCards.CardId card)
     {
         _playerCard = card;
-        _cardLabel.Visible = false;
+        _cardPanel.Visible = false;
         ReplayRecorder.Record(ReplayRecorder.ActionType.SelectCard, new { Card = card.ToString() });
         var info = TacticalCards.Cards[card];
         GameLog.Debug($"[G3] 玩家选择战术卡: {info.Name} — {info.Description}");
@@ -641,9 +708,9 @@ public partial class Main
         {
             sb.AppendLine("战术卡选择即将开始...");
         }
-        else if (_cardLabel.Visible)
+        else if (_cardPanel.Visible)
         {
-            sb.AppendLine("请选择战术卡！(1/2/3)");
+            sb.AppendLine("请选择战术卡！(点击卡片或按1/2/3)");
         }
         else
         {
@@ -661,7 +728,7 @@ public partial class Main
         _cardStatusLabel.Visible = true;
 
         // 3秒后自动隐藏
-        if (!_cardLabel.Visible) // 选择面板不显示时才自动隐藏
+        if (!_cardPanel.Visible) // 选择面板不显示时才自动隐藏
         {
             _cardStatusHideTimer = 3f;
         }

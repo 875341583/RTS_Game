@@ -214,7 +214,9 @@ public partial class Main : Node2D
     private bool _cardSelectionPending = true;
     private float _cardSelectionTimer = 5f; // 游戏开始5秒后弹出
     private TacticalCards.CardId[] _cardChoices = System.Array.Empty<TacticalCards.CardId>();
-    private Label _cardLabel = null!;
+    private Label _cardLabel = null!;           // 战术卡面板内标题
+    private Panel _cardPanel = null!;            // 战术卡选择面板（带军工风背景）
+    private HBoxContainer _cardButtonContainer = null!; // 3张战术卡按钮容器
     private Label _cardStatusLabel = null!;
 
     // G4: 电网分区
@@ -325,6 +327,8 @@ public partial class Main : Node2D
         ApplyDifficultyConfig();
 
         _camera = GetNode<RTSCamera>("Camera2D");
+        // 根据地图大小动态设置相机边界，防止滚出地图
+        RTSCamera.SetMapBounds(MapSize);
         _unitsNode = GetNode<Node2D>("Units");
         _buildingsNode = GetNode<Node2D>("Buildings");
         _resourcesNode = GetNode<Node2D>("Resources");
@@ -560,16 +564,50 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_eraLabel);
         GameLog.Debug("[G2] 时代系统初始化完成 — 按Y打开时代面板");
 
-        // G3: 初始化战术卡面板
+        // G3: 初始化战术卡面板（带背景Panel + 可点击按钮）
+        _cardPanel = new Panel();
+        _cardPanel.Name = "CardPanel";
+        _cardPanel.Position = new Vector2(140, 80);
+        _cardPanel.CustomMinimumSize = new Vector2(700, 420);
+        _cardPanel.Visible = false;
+
+        // 面板背景样式（深色半透明军工风）
+        var cardStyle = new StyleBoxFlat();
+        cardStyle.BgColor = new Color(0.08f, 0.12f, 0.1f, 0.95f);
+        cardStyle.BorderWidthLeft = 2;
+        cardStyle.BorderWidthRight = 2;
+        cardStyle.BorderWidthTop = 2;
+        cardStyle.BorderWidthBottom = 2;
+        cardStyle.BorderColor = new Color(0.3f, 0.5f, 0.35f);
+        cardStyle.CornerRadiusTopLeft = 4;
+        cardStyle.CornerRadiusTopRight = 4;
+        cardStyle.CornerRadiusBottomLeft = 4;
+        cardStyle.CornerRadiusBottomRight = 4;
+        cardStyle.ContentMarginLeft = 16;
+        cardStyle.ContentMarginRight = 16;
+        cardStyle.ContentMarginTop = 16;
+        cardStyle.ContentMarginBottom = 16;
+        _cardPanel.AddThemeStyleboxOverride("panel", cardStyle);
+        GetNode<CanvasLayer>("UI").AddChild(_cardPanel);
+
+        // 战术卡标题
         _cardLabel = new Label();
         _cardLabel.Name = "CardLabel";
-        _cardLabel.Position = new Vector2(180, 100);
-        _cardLabel.Size = new Vector2(580, 350);
-        _cardLabel.Modulate = new Color(1f, 0.95f, 0.8f, 0.97f);
-        _cardLabel.AddThemeFontSizeOverride("font_size", 14);
-        _cardLabel.Visible = false;
-        _cardLabel.Text = "";
-        GetNode<CanvasLayer>("UI").AddChild(_cardLabel);
+        _cardLabel.Position = new Vector2(16, 12);
+        _cardLabel.Size = new Vector2(668, 40);
+        _cardLabel.Modulate = new Color(1f, 0.95f, 0.8f);
+        _cardLabel.AddThemeFontSizeOverride("font_size", 20);
+        _cardLabel.Visible = true;
+        _cardLabel.Text = "════ 战术卡选择 ════";
+        _cardLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _cardPanel.AddChild(_cardLabel);
+
+        // 3张战术卡按钮容器
+        _cardButtonContainer = new HBoxContainer();
+        _cardButtonContainer.Position = new Vector2(16, 60);
+        _cardButtonContainer.CustomMinimumSize = new Vector2(668, 340);
+        _cardButtonContainer.AddThemeConstantOverride("separation", 12);
+        _cardPanel.AddChild(_cardButtonContainer);
 
         _cardStatusLabel = new Label();
         _cardStatusLabel.Name = "CardStatusLabel";

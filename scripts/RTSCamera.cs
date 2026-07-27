@@ -5,6 +5,8 @@ namespace RTSGame;
 /// <summary>
 /// RTS 策略相机：支持 WASD/方向键移动、屏幕边缘滚屏、鼠标滚轮缩放。
 /// 等距视角适配：WASD移动方向映射为等距对角线方向。
+/// 相机边界动态钳制，不会滚出地图范围。
+/// F11 切换全屏。
 /// </summary>
 public partial class RTSCamera : Camera2D
 {
@@ -17,51 +19,43 @@ public partial class RTSCamera : Camera2D
 
     private Vector2 _targetZoom = new(1, 1);
 
+    /// <summary>地图边界（由 Main 在 _Ready 中设置）</summary>
+    public static Rect2 MapBounds { get; set; } = new(-2200f, -500f, 4400f, 3000f);
+
+    /// <summary>是否已设置过地图边界</summary>
+    private static bool _boundsSet = false;
+
+    /// <summary>设置地图边界（供 Main 调用）</summary>
+    public static void SetMapBounds(float mapSize)
+    {
+        // 等距地图的屏幕范围：X方向为 ±mapSize*HalfW，Y方向为 0 到 mapSize*HalfH*2
+        float halfW = (float)IsoCoords.HalfW;
+        float halfH = (float)IsoCoords.HalfH;
+        float xRange = mapSize * halfW;
+        float yRange = mapSize * halfH;
+        MapBounds = new Rect2(-xRange * 0.5f, -yRange * 0.3f, xRange, yRange * 1.3f);
+        _boundsSet = true;
+    }
+
     public override void _Process(double delta)
     {
         var dt = (float)delta;
         var moveVec = Vector2.Zero;
 
-        // 键盘移动（按下为1，按下为-1，不按为0）
+        // 键盘移动
         int up = Input.IsActionPressed("move_up") ? 1 : 0;
         int down = Input.IsActionPressed("move_down") ? 1 : 0;
         int left = Input.IsActionPressed("move_left") ? 1 : 0;
         int right = Input.IsActionPressed("move_right") ? 1 : 0;
 
-        // 等距视角下，WASD映射到对角线方向：
-        // W(上) → 等距北西方向 (screenUp-Left)
-        // S(下) → 等距南东方向 (screenDown-Right)
-        // A(左) → 等距南西方向 (screenDown-Left)
-        // D(右) → 等距北东方向 (screenUp-Right)
-        //
-        // 等距网格方向 → 屏幕方向：
-        // N(0,-1) → screen(-HalfW, -HalfH) = (-32, -16) → normalized
-        // S(0,+1) → screen(+HalfW, +HalfH) = (32, 16)
-        // W(-1,0) → screen(-HalfW, +HalfH) = (-32, 16)
-        // E(+1,0) → screen(+HalfW, -HalfH) = (32, -16)
-        //
-        // W键(上) = 向北移动 → screen dir = (-32, -16)
-        // S键(下) = 向南移动 → screen dir = (32, 16)
-        // A键(左) = 向西移动 → screen dir = (-32, 16)
-        // D键(右) = 向东移动 → screen dir = (32, -16)
-
-        // WASD组合 = 纯方向叠加，组合后可覆盖8个方向
-        float dirX = (right - left) * IsoCoords.HalfW;
-        float dirY = 0;
-        // W+S 控制南北（等距Y轴）
-        dirX += (down - up) * IsoCoords.HalfW;
-        dirY += (down + up) * IsoCoords.HalfH;
-        // A+D 控制东西（等距X轴）
-        dirX += (right - left) * IsoCoords.HalfW; // 已加过，这里需要重新构思
-
-        // 重新计算：清晰的4方向→等距映射
+        // 等距视角下 WASD 映射到对角线方向
         moveVec = Vector2.Zero;
         if (up > 0) moveVec += new Vector2(-IsoCoords.HalfW, -IsoCoords.HalfH);   // W → 北
         if (down > 0) moveVec += new Vector2(IsoCoords.HalfW, IsoCoords.HalfH);    // S → 南
         if (left > 0) moveVec += new Vector2(-IsoCoords.HalfW, IsoCoords.HalfH);   // A → 西
         if (right > 0) moveVec += new Vector2(IsoCoords.HalfW, -IsoCoords.HalfH);  // D → 东
 
-        // 屏幕边缘滚屏（屏幕坐标方向，直接用）
+        // 屏幕边缘滚屏
         var viewportSize = GetViewportRect().Size;
         var mousePos = GetViewport().GetMousePosition();
         var edgeVec = Vector2.Zero;
@@ -82,13 +76,14 @@ public partial class RTSCamera : Camera2D
             moveVec = moveVec.Normalized();
             var speed = (edgeVec != Vector2.Zero) ? EdgePanSpeed : PanSpeed;
             Position += moveVec * speed * dt;
-
-            // 限制相机范围（等距地图边界）
-            Position = new Vector2(
-                Mathf.Clamp(Position.X, -2200f, 2200f),
-                Mathf.Clamp(Position.Y, -500f, 2500f)
-            );
         }
+
+        // 动态钳制相机到地图边界
+        var bounds = _boundsSet ? MapBounds : new Rect2(-2200f, -500f, 4400f, 3000f);
+        Position = new Vector2(
+            Mathf.Clamp(Position.X, bounds.Position.X, bounds.Position.X + bounds.Size.X),
+            Mathf.Clamp(Position.Y, bounds.Position.Y, bounds.Position.Y + bounds.Size.Y)
+        );
 
         // 平滑缩放
         Zoom = Zoom.Lerp(_targetZoom, dt * 10f);
@@ -96,6 +91,16 @@ public partial class RTSCamera : Camera2D
 
     public override void _Input(InputEvent @event)
     {
+        // F11 切换全屏
+        if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.F11)
+        {
+            var mode = DisplayServer.WindowGetMode();
+            if (mode == DisplayServer.WindowMode.Fullscreen)
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
+            else
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+        }
+
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
         {
             if (mouseButton.ButtonIndex == MouseButton.WheelUp)
