@@ -64,11 +64,16 @@ public static class BgmManager
 
         if (!_bgmPaths.TryGetValue(_currentScene, out var path)) return;
 
-        // 尝试加载，文件不存在时静默跳过
+        // 尝试加载，文件不存在或未导入时静默跳过
+        if (!ResourceLoader.Exists(path, "AudioStream"))
+        {
+            GameLog.Debug($"[BgmManager] BGM文件未导入: {path}，跳过");
+            return;
+        }
         var stream = GD.Load<AudioStream>(path);
         if (stream == null)
         {
-            GameLog.Debug($"[BgmManager] BGM文件不存在: {path}，跳过");
+            GameLog.Debug($"[BgmManager] BGM加载失败: {path}，跳过");
             return;
         }
 

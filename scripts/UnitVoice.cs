@@ -96,7 +96,7 @@ public static class UnitVoice
     private static readonly object _cacheLock = new();
 
     /// <summary>
-    /// 播放单位语音。音频文件不存在时静默跳过。
+    /// 播放单位语音。音频文件不存在或未导入时静默跳过。
     /// </summary>
     public static void Play(AudioStreamPlayer player, string unitType, VoiceType voiceType)
     {
@@ -108,6 +108,12 @@ public static class UnitVoice
         {
             if (!_cache.TryGetValue(path, out var stream))
             {
+                // 先检查资源是否存在且可加载，避免未导入文件产生ERROR日志
+                if (!ResourceLoader.Exists(path, "AudioStream"))
+                {
+                    _cache[path] = null!;
+                    return;
+                }
                 stream = GD.Load<AudioStream>(path);
                 _cache[path] = stream!; // null也缓存，避免重复尝试加载
             }
