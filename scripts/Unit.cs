@@ -2008,6 +2008,93 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _hasGuardPosition = true;
     }
 
+    // ---------- P1-5 第4步：UnitData 快照 ----------
+
+    /// <summary>
+    /// 生成当前单位的纯数据快照（无 Godot 节点依赖）。
+    /// 2D/3D 共用数据载体，可用于存档、网络同步、3D 数据共享。
+    /// </summary>
+    public UnitData GetUnitData()
+    {
+        var d = new UnitData
+        {
+            Type = Type,
+            TeamId = TeamId,
+            MaxHealth = MaxHealth,
+            MoveSpeed = MoveSpeed,
+            AttackDamage = AttackDamage,
+            AttackRange = AttackRange,
+            AttackCooldown = AttackCooldown,
+            MinAttackRange = MinAttackRange,
+            SplashRadius = SplashRadius,
+            AggroRange = AggroRange,
+            CanAttackAir = CanAttackAir,
+            IsAirUnit = IsAirUnit,
+            AutoDefend = AutoDefend,
+            AutoAI = AutoAI,
+            MaxPassengers = MaxPassengers,
+            Health = Health,
+            PosX = GlobalPosition.X,
+            PosY = GlobalPosition.Y,
+            IsDead = _isDead,
+            MoveTargetX = _moveTarget.X,
+            MoveTargetY = _moveTarget.Y,
+            HasMoveTarget = _hasMoveTarget,
+            GuardX = _guardPosition.X,
+            GuardY = _guardPosition.Y,
+            HasGuardPosition = _hasGuardPosition,
+            Level = _level,
+            Experience = _experience,
+            Abilities = new List<UnitAbility>(_abilities),
+            HeroSkill = _heroSkill,
+            SpyDisguiseTeam = _spyDisguiseTeam,
+            LastAttackerTeam = _lastAttackerTeam,
+            Passengers = new List<UnitData>(),
+        };
+        foreach (var p in Passengers)
+            if (IsInstanceValid(p))
+                d.Passengers.Add(p.GetUnitData());
+        return d;
+    }
+
+    /// <summary>
+    /// 从 UnitData 快照恢复单位状态（用于读档/3D数据同步）。
+    /// 不改变视觉节点引用，仅恢复数据和位置。调用方需确保类型匹配。
+    /// </summary>
+    public void ApplyUnitData(in UnitData d)
+    {
+        Health = d.Health;
+        MaxHealth = d.MaxHealth;
+        MoveSpeed = d.MoveSpeed;
+        AttackDamage = d.AttackDamage;
+        AttackRange = d.AttackRange;
+        AttackCooldown = d.AttackCooldown;
+        MinAttackRange = d.MinAttackRange;
+        SplashRadius = d.SplashRadius;
+        AggroRange = d.AggroRange;
+        CanAttackAir = d.CanAttackAir;
+        IsAirUnit = d.IsAirUnit;
+        AutoDefend = d.AutoDefend;
+        AutoAI = d.AutoAI;
+        MaxPassengers = d.MaxPassengers;
+        GlobalPosition = new Vector2(d.PosX, d.PosY);
+        _isDead = d.IsDead;
+        _level = d.Level;
+        _experience = d.Experience;
+        _heroSkill = d.HeroSkill;
+        _spyDisguiseTeam = d.SpyDisguiseTeam;
+        _lastAttackerTeam = d.LastAttackerTeam;
+
+        if (d.HasMoveTarget)
+            RestoreMoveTarget(new Vector2(d.MoveTargetX, d.MoveTargetY));
+        if (d.HasGuardPosition)
+            RestoreGuardPosition(new Vector2(d.GuardX, d.GuardY));
+        if (d.Abilities != null)
+            RestoreAbilities(d.Abilities);
+
+        UpdateHealthBarVisibility();
+    }
+
     private void UpdateHealthBarVisibility()
     {
         if (_healthBar != null)
