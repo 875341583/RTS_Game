@@ -1044,7 +1044,11 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (_spyMissionTimer <= 0f)
             {
                 // 任务完成：判定成功/失败
-                bool success = GD.Randf() < SpyMission.SuccessRate;
+                // P0修复: Fac_MindControl（尤里）: 成功率额外+15%（间谍效率增强）
+                float successRate = SpyMission.SuccessRate;
+                if (GetParent()?.GetParent() is Main mainNode0)
+                    successRate *= mainNode0.GetTechSpyEfficiencyMul(TeamId);
+                bool success = GD.Randf() < successRate;
                 var missionType = _spyMission.Value;
                 var target = _spyTargetBuilding;
                 int teamId = TeamId;
@@ -1832,6 +1836,9 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _spyMission = mission;
         _spyTargetBuilding = target;
         _spyMissionTimer = SpyMission.InfiltrateTime;
+        // P0修复: Fac_StealthOps（尤里）: 渗透时间-30%（隐身能力增强）
+        if (GetParent()?.GetParent() is Main mainNode)
+            _spyMissionTimer *= mainNode.GetTechStealthInfiltrateMul(TeamId);
         // 先移动到目标建筑附近
         _moveTarget = target.GlobalPosition;
         _hasMoveTarget = true;

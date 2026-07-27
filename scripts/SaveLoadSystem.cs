@@ -12,7 +12,7 @@ namespace RTSGame
     /// </summary>
     public static class SaveLoadSystem
     {
-        private const int SaveVersion = 1;
+        private const int SaveVersion = 2; // P0修复: 升级到v2并支持v1→v2迁移
         /// <summary>总阵营数量（玩家0 + AI 1-7）。</summary>
         public const int TeamCount = 8;
         /// <summary>AI阵营数量（teamId 1..7）。</summary>
@@ -271,15 +271,46 @@ namespace RTSGame
                 return null;
             }
 
-            // 版本号校验：版本不匹配拒绝加载（未来升级时在此处插入迁移逻辑）
-            if (saveData.Version != SaveVersion)
+            // P0修复: 存档版本迁移 — 支持旧版本存档升级到当前版本
+            if (saveData.Version < SaveVersion)
             {
-                GameLog.Error($"[SaveLoad] 存档版本不兼容: 存档v{saveData.Version} 当前v{SaveVersion}，路径: {filePath}");
+                GameLog.Info($"[SaveLoad] 存档版本迁移: v{saveData.Version} → v{SaveVersion}");
+                saveData = MigrateSaveData(saveData);
+                if (saveData == null)
+                {
+                    GameLog.Error($"[SaveLoad] 存档迁移失败: v{saveData?.Version} → v{SaveVersion}");
+                    return null;
+                }
+            }
+            else if (saveData.Version > SaveVersion)
+            {
+                GameLog.Error($"[SaveLoad] 存档版本过高: 存档v{saveData.Version} 当前v{SaveVersion}，请更新游戏");
                 return null;
             }
 
             GameLog.Info($"[SaveLoad] 存档加载成功: {filePath} (版本{saveData.Version} 建筑{saveData.Buildings.Count} 单位{saveData.Units.Count})");
             return saveData;
+        }
+
+        /// <summary>P0修复: 存档版本迁移 — 逐版本升级旧存档数据结构。</summary>
+        private static SaveData? MigrateSaveData(SaveData data)
+        {
+            while (data.Version < SaveVersion)
+            {
+                switch (data.Version)
+                {
+                    case 1:
+                        // v1→v2: 无结构性变化，仅版本号升级（v1存档完全兼容v2）
+                        // 未来如有字段新增，在此处补全默认值
+                        data.Version = 2;
+                        GameLog.Info("[SaveLoad] 迁移 v1→v2: 版本号升级（无数据变更）");
+                        break;
+                    default:
+                        GameLog.Error($"[SaveLoad] 未知存档版本: v{data.Version}");
+                        return null;
+                }
+            }
+            return data;
         }
 
         // ========== JSON转C#对象 ==========

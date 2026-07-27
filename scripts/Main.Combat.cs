@@ -346,7 +346,9 @@ public partial class Main
 
             case SpyMission.MissionType.StealMoney:
                 // 窃取资金
-                int stolen = Mathf.Min(SpyMission.StealMoneyAmount, GetMoney(target.TeamId));
+                // P0修复: Fac_MindControl（尤里）: 窃取效率+30%
+                float spyMul = GetTechSpyEfficiencyMul(spyTeamId);
+                int stolen = Mathf.Min((int)(SpyMission.StealMoneyAmount * spyMul), GetMoney(target.TeamId));
                 if (stolen > 0)
                 {
                     SpendMoney(target.TeamId, stolen);

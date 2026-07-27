@@ -266,6 +266,9 @@ public partial class Main : Node2D
         FactionManager.Load();
         FactionManager.SetPlayerFaction(GameSession.PlayerFactionId);
 
+        // P0修复: 初始化国际化翻译系统
+        TrManager.Initialize();
+
         // R7: 画质分级 — 自动检测GPU并设置渲染参数
         QualitySettings.AutoDetect();
 

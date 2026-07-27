@@ -6,6 +6,7 @@ namespace RTSGame
     /// <summary>
     /// 栅格A*寻路器（P0-1）。基于TerrainGrid动态尺寸栅格，支持8方向移动、
     /// 动态建筑障碍、地形可通行性检查和路径平滑（视线优化）。
+    /// P0修复：使用PriorityQueue替代List线性搜索，寻路复杂度从O(V²)降至O(E log V)。
     /// 设计目标：消除单位直线移动导致的卡墙/堵路问题。
     /// </summary>
     public class PathFinder : IPathFinder
@@ -27,7 +28,9 @@ namespace RTSGame
     private int[,] _parentY;
     private bool[,] _closed;
     private bool[,] _opened;
-    private List<(int x, int y)> _openList;
+    // P0修复：优先队列替代List线性搜索。F值作为优先级，相同F选H更小（更接近终点）。
+    // 用 (F << 16) | H 组合键实现tie-breaking（假设F和H各不超过65535）。
+    private PriorityQueue<(int x, int y), int> _openQueue;
     private int _gs; // 当前GridSize快照
 
     private void EnsureWorkArrays()
@@ -41,7 +44,7 @@ namespace RTSGame
         _parentY = new int[gs, gs];
         _closed = new bool[gs, gs];
         _opened = new bool[gs, gs];
-        _openList = new List<(int, int)>(gs * gs);
+        _openQueue = new PriorityQueue<(int x, int y), int>(gs * gs);
     }
 
         // 8方向偏移：先直线后对角线
@@ -177,7 +180,7 @@ namespace RTSGame
             // 重置工作数组
             System.Array.Clear(_closed, 0, _closed.Length);
             System.Array.Clear(_opened, 0, _opened.Length);
-            _openList.Clear();
+            _openQueue.Clear();
 
             // 初始化起点
             _gCost[sx, sy] = 0;
@@ -185,34 +188,18 @@ namespace RTSGame
             _parentX[sx, sy] = sx;
             _parentY[sx, sy] = sy;
             _opened[sx, sy] = true;
-            _openList.Add((sx, sy));
+            EnqueueOpen(sx, sy);
 
             int maxIterations = _gs * _gs * 4; // 安全上限
 
-            while (_openList.Count > 0 && maxIterations-- > 0)
+            while (_openQueue.Count > 0 && maxIterations-- > 0)
             {
-                // 找F值最小的节点（线性搜索，大地图时可用优先队列优化）
-                int bestIdx = 0;
-                var (bx, by) = _openList[0];
-                int bestF = _gCost[bx, by] + _hCost[bx, by];
-                int bestH = _hCost[bx, by];
+                // P0修复：O(log n)取最小F值节点（原为O(n)线性扫描）
+                _openQueue.TryDequeue(out var cur, out _);
+                int cx = cur.x, cy = cur.y;
 
-                for (int i = 1; i < _openList.Count; i++)
-                {
-                    var (ix, iy) = _openList[i];
-                    int f = _gCost[ix, iy] + _hCost[ix, iy];
-                    int h = _hCost[ix, iy];
-                    // F相同时选H更小（更接近终点）的节点
-                    if (f < bestF || (f == bestF && h < bestH))
-                    {
-                        bestF = f;
-                        bestH = h;
-                        bestIdx = i;
-                    }
-                }
-
-                var (cx, cy) = _openList[bestIdx];
-                _openList.RemoveAt(bestIdx);
+                // 延迟删除：跳过已被关闭的过时条目
+                if (_closed[cx, cy]) continue;
                 _opened[cx, cy] = false;
 
                 // 到达终点
@@ -257,19 +244,28 @@ namespace RTSGame
                         _parentX[nx, ny] = cx;
                         _parentY[nx, ny] = cy;
                         _opened[nx, ny] = true;
-                        _openList.Add((nx, ny));
+                        EnqueueOpen(nx, ny);
                     }
                     else if (moveCost < _gCost[nx, ny])
                     {
-                        // 找到更短路径→更新
+                        // 找到更短路径→更新gCost并重新入队（旧条目通过_closed标记延迟删除）
                         _gCost[nx, ny] = moveCost;
                         _parentX[nx, ny] = cx;
                         _parentY[nx, ny] = cy;
+                        EnqueueOpen(nx, ny);
                     }
                 }
             }
 
             return null; // 无路径
+        }
+
+        /// <summary>P0修复：将节点加入优先队列，优先级 = (F << 16) | H，实现F相同时选H更小。</summary>
+        private void EnqueueOpen(int x, int y)
+        {
+            int f = _gCost[x, y] + _hCost[x, y];
+            int h = _hCost[x, y];
+            _openQueue.Enqueue((x, y), (f << 16) | h);
         }
 
         private List<(int x, int y)> ReconstructPath(int sx, int sy, int ex, int ey)

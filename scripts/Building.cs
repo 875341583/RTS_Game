@@ -735,6 +735,9 @@ public partial class Building : Area2D, IBuildingEntity
                 effectiveDt *= PowerGrid.OfflineProduceMul;
             // G6: 邻接加成 — 兵营/车厂相邻时生产速度提升
             effectiveDt *= mainNode.GetAdjacencyProduceMul(this);
+            // P0修复: Fac_NavalSupport（同盟军）: 船厂海军生产速度+20%
+            if (Type == BuildingType.Shipyard)
+                effectiveDt *= mainNode.GetTechNavalProduceMul(TeamId);
         }
         // G8: 缴获生产加速（占领后60秒+30%生产速度）
         if (IsCapturedProduceBoost)

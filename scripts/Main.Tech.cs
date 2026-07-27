@@ -222,6 +222,20 @@ public partial class Main
             u.ApplyTechDamageMultiplier(1.15f);
         }
         // Mil_HeroTraining: 英雄成本-30%（通过成本折扣处理，这里不做运行时修改）
+
+        // === P0修复: 阵营专属科技效果实现 ===
+        // Fac_AirSuperiority（同盟军）: 空军伤害+15%
+        if (tech.Contains(TechTree.TechId.Fac_AirSuperiority) && u.IsAirUnit)
+        {
+            u.ApplyTechDamageMultiplier(1.15f);
+        }
+        // Fac_HeavyArmor（苏维埃）: 坦克生命+15%
+        if (tech.Contains(TechTree.TechId.Fac_HeavyArmor) && IsTankType(u.Type))
+        {
+            float ratio = u.Health / u.MaxHealth;
+            u.ApplyTechHealthMultiplier(1.15f);
+            u.SetHealth(u.MaxHealth * ratio);
+        }
     }
 
     /// <summary>将科技效果应用到单个建筑。</summary>
@@ -236,6 +250,12 @@ public partial class Main
         }
         // Def_PowerGrid: 电站+50%发电
         if (tech.Contains(TechTree.TechId.Def_PowerGrid) && b.Type == BuildingType.PowerPlant)
+        {
+            b.ApplyTechPowerMultiplier(1.5f);
+        }
+        // === P0修复: 阵营专属科技效果实现 ===
+        // Fac_NuclearPower（苏维埃）: 电站发电+50%
+        if (tech.Contains(TechTree.TechId.Fac_NuclearPower) && b.Type == BuildingType.PowerPlant)
         {
             b.ApplyTechPowerMultiplier(1.5f);
         }
@@ -293,6 +313,31 @@ public partial class Main
     {
         var tp = _techProgress[teamId];
         return tp != null && tp.Completed.Contains(TechTree.TechId.Def_AdvancedTurrets);
+    }
+
+    /// <summary>P0修复: 阵营专属科技 — Fac_NavalSupport（同盟军）: 海军建筑生产速度+20%。</summary>
+    public float GetTechNavalProduceMul(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 1f;
+        return tp.Completed.Contains(TechTree.TechId.Fac_NavalSupport) ? 1.2f : 1f;
+    }
+
+    /// <summary>P0修复: 阵营专属科技 — Fac_MindControl（尤里）: 间谍/窃贼效率+30%。
+    /// 体现为窃取资金量+30%和间谍任务成功率+15%。</summary>
+    public float GetTechSpyEfficiencyMul(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 1f;
+        return tp.Completed.Contains(TechTree.TechId.Fac_MindControl) ? 1.3f : 1f;
+    }
+
+    /// <summary>P0修复: 阵营专属科技 — Fac_StealthOps（尤里）: 间谍渗透时间-30%（隐身能力增强）。</summary>
+    public float GetTechStealthInfiltrateMul(int teamId)
+    {
+        var tp = _techProgress[teamId];
+        if (tp == null) return 1f;
+        return tp.Completed.Contains(TechTree.TechId.Fac_StealthOps) ? 0.7f : 1f;
     }
 
     // ======== G2: 时代系统方法 ========

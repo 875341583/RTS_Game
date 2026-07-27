@@ -403,6 +403,36 @@ public partial class MainMenu : Control
 
         _pageContainer.AddChild(new Control { CustomMinimumSize = new Vector2(0, 16) });
 
+        // --- 语言 ---
+        var sectionLang = MakeLabel("── 语言 / Language ──", 16, new Color(0.6f, 0.65f, 0.6f));
+        _pageContainer.AddChild(sectionLang);
+
+        var langRow = MakeRowWithLabel("界面语言:");
+        var langOptions = new (string Label, string Code)[]
+        {
+            ("中文", "zh-CN"),
+            ("English", "en"),
+        };
+        foreach (var opt in langOptions)
+        {
+            var btn = new Button();
+            btn.Text = opt.Label + (TrManager.CurrentLang == opt.Code ? " ✓" : "");
+            btn.CustomMinimumSize = new Vector2(80, 32);
+            btn.AddThemeFontSizeOverride("font_size", 14);
+            btn.Pressed += () =>
+            {
+                TrManager.SetLanguage(opt.Code);
+                ShowSettingsPage();
+            };
+            langRow.AddChild(btn);
+        }
+        _pageContainer.AddChild(langRow);
+
+        var langHint = MakeLabel("P0修复: 语言切换（部分文本尚未完全国际化）", 11, new Color(0.45f, 0.5f, 0.45f));
+        _pageContainer.AddChild(langHint);
+
+        _pageContainer.AddChild(new Control { CustomMinimumSize = new Vector2(0, 16) });
+
         // 返回按钮
         var backRow = new HBoxContainer();
         backRow.Alignment = BoxContainer.AlignmentMode.Center;

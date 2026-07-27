@@ -95,8 +95,6 @@ public static class GameConst
     public const float AiThinkInterval = 2.0f;
     /// <summary>战术卡选择倒计时（秒）</summary>
     public const int TacticalCardCountdown = 5;
-    /// <summary>存档版本</summary>
-    public const int SaveVersion = 2;
 
     // === 渲染/UI ===
     /// <summary>等距图块宽度（像素）</summary>
