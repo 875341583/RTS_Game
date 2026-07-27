@@ -169,7 +169,7 @@ public partial class Building : Area2D, IBuildingEntity
         if (_isoBuildingSprites.TryGetValue(Type, out var isoTex) && isoTex != null)
         {
             _body.Texture = isoTex;
-            _body.Scale = new Vector2(1.0f, 1.0f); // 等距精灵图128x128不需要额外放大
+            _body.Scale = new Vector2(0.5f, 0.5f); // 等距精灵图256x256需缩放到128显示尺寸
             _body.Modulate = _teamTint; // 仍用队伍色染色
         }
         else

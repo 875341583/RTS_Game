@@ -7,4 +7,8 @@
     <RootNamespace>RTSGame</RootNamespace>
     <AssemblyName>RTSGame</AssemblyName>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Exclude test files from main game build (tests use xunit which isn't a game dependency) -->
+    <Compile Remove="tests\**" />
+  </ItemGroup>
 </Project>

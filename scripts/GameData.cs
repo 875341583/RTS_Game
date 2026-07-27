@@ -104,9 +104,9 @@ public static class GameConst
     /// <summary>等距图块高度（像素）</summary>
     public const int IsoTileHeight = 60;
     /// <summary>单位精灵尺寸</summary>
-    public const int UnitSpriteSize = 96;
+    public const int UnitSpriteSize = 128;
     /// <summary>建筑精灵尺寸</summary>
-    public const int BuildingSpriteSize = 128;
+    public const int BuildingSpriteSize = 256;
     /// <summary>小地图尺寸</summary>
     public const int MinimapSize = 200;
 }
