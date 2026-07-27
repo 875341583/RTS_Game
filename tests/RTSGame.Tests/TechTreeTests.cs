@@ -10,6 +10,12 @@ namespace RTSGame.Tests;
 /// </summary>
 public class TechTreeTests
 {
+    public TechTreeTests()
+    {
+        // P2-4: 确保在非Godot进程（单元测试）中使用硬编码fallback数据
+        TestAssemblyInitializer.EnsureFallbackDataLoaded();
+    }
+
     // ===== TechTree.CanResearch 前置条件逻辑 =====
 
     [Fact]

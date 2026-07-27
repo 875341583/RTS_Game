@@ -10,6 +10,12 @@ namespace RTSGame.Tests;
 /// </summary>
 public class TechProgressTests
 {
+    public TechProgressTests()
+    {
+        // P2-4: 确保在非Godot进程（单元测试）中使用硬编码fallback数据
+        TestAssemblyInitializer.EnsureFallbackDataLoaded();
+    }
+
     [Fact]
     public void StartResearch_SetsCurrentlyResearchingAndTimer()
     {

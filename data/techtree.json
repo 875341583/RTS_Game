@@ -1,0 +1,134 @@
+[
+  {
+    "id": "Mil_ArmorUpgrade",
+    "name": "装甲强化",
+    "branch": "军事",
+    "tier": 1,
+    "cost": 500,
+    "researchTime": 30.0,
+    "description": "所有坦克类单位血量+15%",
+    "requiresTechCenter": false,
+    "prerequisites": []
+  },
+  {
+    "id": "Mil_AmmoUpgrade",
+    "name": "弹药升级",
+    "branch": "军事",
+    "tier": 2,
+    "cost": 800,
+    "researchTime": 45.0,
+    "description": "所有单位攻击力+15%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Mil_ArmorUpgrade"]
+  },
+  {
+    "id": "Mil_AdvancedTactics",
+    "name": "高级战术",
+    "branch": "军事",
+    "tier": 3,
+    "cost": 1200,
+    "researchTime": 60.0,
+    "description": "火箭炮/导弹车射程+30%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Mil_AmmoUpgrade"]
+  },
+  {
+    "id": "Mil_HeroTraining",
+    "name": "英雄训练",
+    "branch": "军事",
+    "tier": 4,
+    "cost": 1500,
+    "researchTime": 75.0,
+    "description": "英雄生产成本-30%，英雄初始即为Lv2",
+    "requiresTechCenter": true,
+    "prerequisites": ["Mil_AdvancedTactics"]
+  },
+  {
+    "id": "Eco_MiningEfficiency",
+    "name": "采矿效率",
+    "branch": "经济",
+    "tier": 1,
+    "cost": 400,
+    "researchTime": 25.0,
+    "description": "矿车采集速度+30%",
+    "requiresTechCenter": false,
+    "prerequisites": []
+  },
+  {
+    "id": "Eco_MassProduction",
+    "name": "批量生产",
+    "branch": "经济",
+    "tier": 2,
+    "cost": 700,
+    "researchTime": 40.0,
+    "description": "所有单位生产成本-15%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Eco_MiningEfficiency"]
+  },
+  {
+    "id": "Eco_ResourceNetwork",
+    "name": "资源网络",
+    "branch": "经济",
+    "tier": 3,
+    "cost": 1000,
+    "researchTime": 50.0,
+    "description": "战略点占领收入+100%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Eco_MassProduction"]
+  },
+  {
+    "id": "Eco_AdvancedLogistics",
+    "name": "后勤优化",
+    "branch": "经济",
+    "tier": 4,
+    "cost": 1300,
+    "researchTime": 65.0,
+    "description": "单位上限+8",
+    "requiresTechCenter": true,
+    "prerequisites": ["Eco_ResourceNetwork"]
+  },
+  {
+    "id": "Def_Fortification",
+    "name": "筑城术",
+    "branch": "防御",
+    "tier": 1,
+    "cost": 450,
+    "researchTime": 28.0,
+    "description": "所有建筑血量+25%",
+    "requiresTechCenter": false,
+    "prerequisites": []
+  },
+  {
+    "id": "Def_PowerGrid",
+    "name": "电网优化",
+    "branch": "防御",
+    "tier": 2,
+    "cost": 650,
+    "researchTime": 35.0,
+    "description": "电站发电量+50%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Def_Fortification"]
+  },
+  {
+    "id": "Def_AdvancedTurrets",
+    "name": "高级炮塔",
+    "branch": "防御",
+    "tier": 3,
+    "cost": 900,
+    "researchTime": 50.0,
+    "description": "防御建筑射程+20%、伤害+20%",
+    "requiresTechCenter": true,
+    "prerequisites": ["Def_PowerGrid"]
+  },
+  {
+    "id": "Def_RepairSystems",
+    "name": "维修系统",
+    "branch": "防御",
+    "tier": 4,
+    "cost": 1200,
+    "researchTime": 60.0,
+    "description": "所有建筑每秒自动恢复2%血量",
+    "requiresTechCenter": true,
+    "prerequisites": ["Def_AdvancedTurrets"]
+  }
+]
