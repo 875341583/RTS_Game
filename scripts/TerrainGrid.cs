@@ -227,35 +227,72 @@ public class TerrainGrid
         EnsureCellArray();
         int gs = GridSize;
         var rng = new Random((int)(seed & 0x7FFFFFFF));
+        var theme = MapConfig.Theme;
 
-        // 1. 初始化全部为草地+平地
+        // P2-2: 主题影响初始地形
+        // Snow主题：初始为雪地; Desert主题：初始为沙地; City主题：初始为草地（后铺城）; Island主题：初始为深水
         for (int y = 0; y < GridSize; y++)
             for (int x = 0; x < GridSize; x++)
-                _cells[x, y] = TerrainCell.Default;
+            {
+                _cells[x, y] = theme switch
+                {
+                    MapConfig.MapTheme.Snow => new TerrainCell { Type = TerrainType.Snow, Elevation = 1 },
+                    MapConfig.MapTheme.Desert => new TerrainCell { Type = TerrainType.Sand, Elevation = 1 },
+                    MapConfig.MapTheme.Island => new TerrainCell { Type = TerrainType.DeepWater, Elevation = 0 },
+                    _ => TerrainCell.Default,
+                };
+            }
 
-        // 2. 生成山脉（2-3个山脉区域，高海拔3）
-        GenerateMountains(rng);
+        // 2. 生成山脉（主题影响数量）
+        int mountainCount = theme switch
+        {
+            MapConfig.MapTheme.Snow => 4 + rng.Next(3),     // 雪地多山
+            MapConfig.MapTheme.Desert => 1 + rng.Next(2),    // 沙漠少山
+            MapConfig.MapTheme.Island => 1,                   // 海岛极少的山
+            MapConfig.MapTheme.City => 0,                     // 城市无山
+            _ => 2 + rng.Next(2),                             // 默认2-3个
+        };
+        GenerateMountains(rng, mountainCount);
 
-        // 3. 生成丘陵/高地（3-4个区域，海拔2）
-        GenerateHills(rng);
+        // 3. 生成丘陵/高地（主题影响数量）
+        int hillCount = theme switch
+        {
+            MapConfig.MapTheme.Snow => 4 + rng.Next(2),
+            MapConfig.MapTheme.Desert => 2,
+            MapConfig.MapTheme.Island => 1 + rng.Next(2),
+            MapConfig.MapTheme.City => 0,
+            _ => 3 + rng.Next(2),
+        };
+        GenerateHills(rng, hillCount);
 
-        // 4. 生成水域（1-2条河流 + 1-2个湖泊）
-        GenerateWater(rng);
+        // 4. 生成水域（主题影响数量）
+        int lakeCount = theme switch
+        {
+            MapConfig.MapTheme.Snow => 0,                    // 雪地无湖（冰冻）
+            MapConfig.MapTheme.Desert => 1,                   // 沙漠1个绿洲
+            MapConfig.MapTheme.Island => 3 + rng.Next(2),    // 海岛多湖（珊瑚礁）
+            MapConfig.MapTheme.City => 1,                     // 城市1个湖
+            _ => 1 + rng.Next(2),
+        };
+        bool hasRiver = theme != MapConfig.MapTheme.Island && theme != MapConfig.MapTheme.Desert;
+        GenerateWater(rng, lakeCount, hasRiver);
 
-        // 5. 生成雪地（山脉附近高处）
-        GenerateSnow(rng);
+        // 5. 主题特化地形调整
+        ApplyThemeTerrain(rng, theme);
 
-        // 6. 生成沙地（远离水域的低地）
-        GenerateSand(rng);
+        // 6. 生成田地（非沙漠/海岛主题）
+        if (theme != MapConfig.MapTheme.Desert && theme != MapConfig.MapTheme.Island)
+            GenerateFields(rng);
 
-        // 7. 生成田地（平地上的农田区域）
-        GenerateFields(rng);
+        // 7. 生成城市区（地图中部）
+        if (theme != MapConfig.MapTheme.Island)
+            GenerateCity(rng);
 
-        // 8. 生成城市区（地图中部的铺装路面区）
-        GenerateCity(rng);
-
-        // 9. 生成道路（连接关键区域的铺装路面）
+        // 8. 生成道路
         GenerateRoads(rng);
+
+        // 9. Island主题：生成陆地岛屿
+        // (在ApplyThemeTerrain中已处理)
 
         // 10. 确保基地起始位置为平地+草地
         EnsureBaseAreas();
@@ -264,9 +301,8 @@ public class TerrainGrid
         ClassifyDeepWater();
     }
 
-    private void GenerateMountains(Random rng)
+    private void GenerateMountains(Random rng, int numMountains)
     {
-        int numMountains = 2 + rng.Next(2); // 2-3个
         for (int m = 0; m < numMountains; m++)
         {
             int cx = rng.Next(4, GridSize - 4);
@@ -294,9 +330,8 @@ public class TerrainGrid
         }
     }
 
-    private void GenerateHills(Random rng)
+    private void GenerateHills(Random rng, int numHills)
     {
-        int numHills = 3 + rng.Next(2); // 3-4个
         for (int h = 0; h < numHills; h++)
         {
             int cx = rng.Next(3, GridSize - 3);
@@ -325,13 +360,13 @@ public class TerrainGrid
         }
     }
 
-    private void GenerateWater(Random rng)
+    private void GenerateWater(Random rng, int numLakes, bool hasRiver)
     {
-        // 生成1条河流（从地图一侧蜿蜒到另一侧）
-        GenerateRiver(rng);
+        // 生成河流
+        if (hasRiver)
+            GenerateRiver(rng);
 
-        // 生成1-2个湖泊
-        int numLakes = 1 + rng.Next(2);
+        // 生成湖泊
         for (int l = 0; l < numLakes; l++)
         {
             int cx = rng.Next(6, GridSize - 6);
@@ -411,14 +446,14 @@ public class TerrainGrid
 
     private void GenerateSnow(Random rng)
     {
-        // 山脉周围2格范围内的高地变为雪地
+        // 默认主题：山脉周围2格范围内的高地变为雪地
+        if (MapConfig.Theme != MapConfig.MapTheme.Default) return;
         for (int y = 0; y < GridSize; y++)
         {
             for (int x = 0; x < GridSize; x++)
             {
                 if (_cells[x, y].Elevation >= 2 && _cells[x, y].Type == TerrainType.Grass)
                 {
-                    // 检查附近是否有山脉
                     bool nearMountain = false;
                     for (int dy = -2; dy <= 2 && !nearMountain; dy++)
                         for (int dx = -2; dx <= 2 && !nearMountain; dx++)
@@ -435,9 +470,105 @@ public class TerrainGrid
         }
     }
 
+    /// <summary>P2-2: 主题特化地形调整。</summary>
+    private void ApplyThemeTerrain(Random rng, MapConfig.MapTheme theme)
+    {
+        switch (theme)
+        {
+            case MapConfig.MapTheme.Snow:
+                // 雪地主题：山脉自带雪覆盖，低地雪→冻原（Field替代）
+                for (int y = 0; y < GridSize; y++)
+                    for (int x = 0; x < GridSize; x++)
+                        if (_cells[x, y].Type == TerrainType.Snow && _cells[x, y].Elevation <= 1 && rng.NextDouble() < 0.3)
+                            _cells[x, y].Type = TerrainType.Field; // 冻原
+                break;
+
+            case MapConfig.MapTheme.Desert:
+                // 沙漠主题：绿洲区域（少量草地+浅水）
+                int oases = 2 + rng.Next(2);
+                for (int o = 0; o < oases; o++)
+                {
+                    int cx = rng.Next(4, GridSize - 4);
+                    int cy = rng.Next(4, GridSize - 4);
+                    if (IsBaseArea(cx, cy)) continue;
+                    for (int dy = -2; dy <= 2; dy++)
+                        for (int dx = -2; dx <= 2; dx++)
+                        {
+                            int nx = cx + dx, ny = cy + dy;
+                            if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize && !IsBaseArea(nx, ny))
+                            {
+                                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                                if (dist <= 1.5f)
+                                {
+                                    _cells[nx, ny].Type = TerrainType.ShallowWater; // 绿洲中心
+                                    _cells[nx, ny].Elevation = 1;
+                                }
+                                else if (dist <= 2.5f && _cells[nx, ny].Type == TerrainType.Sand)
+                                {
+                                    _cells[nx, ny].Type = TerrainType.Grass; // 绿洲边缘草地
+                                }
+                            }
+                        }
+                }
+                break;
+
+            case MapConfig.MapTheme.City:
+                // 城市主题：大面积铺装+少量建筑废墟（用Field表示）
+                int cityCenter = MapConfig.Center;
+                int cityRadius = GridSize / 4;
+                for (int y = 0; y < GridSize; y++)
+                    for (int x = 0; x < GridSize; x++)
+                    {
+                        int dist = Math.Abs(x - cityCenter) + Math.Abs(y - cityCenter);
+                        if (dist < cityRadius && _cells[x, y].Type == TerrainType.Grass && !IsBaseArea(x, y))
+                        {
+                            if (rng.NextDouble() < 0.6)
+                                _cells[x, y].Type = TerrainType.City;
+                            else if (rng.NextDouble() < 0.15)
+                                _cells[x, y].Type = TerrainType.Field; // 废墟/公园
+                        }
+                    }
+                break;
+
+            case MapConfig.MapTheme.Island:
+                // 海岛主题：在深水基底上生成多个岛屿
+                int numIslands = 3 + rng.Next(3); // 3-5个岛
+                for (int i = 0; i < numIslands; i++)
+                {
+                    int cx, cy;
+                    // 确保岛屿不在角落（基地位置）
+                    do { cx = rng.Next(GridSize / 4, GridSize * 3 / 4); cy = rng.Next(GridSize / 4, GridSize * 3 / 4); }
+                    while (IsBaseArea(cx, cy));
+
+                    int radius = 2 + rng.Next(3); // 2-4格半径
+                    for (int dy = -radius; dy <= radius; dy++)
+                        for (int dx = -radius; dx <= radius; dx++)
+                        {
+                            int nx = cx + dx, ny = cy + dy;
+                            if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize && !IsBaseArea(nx, ny))
+                            {
+                                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                                if (dist <= radius - 1)
+                                {
+                                    _cells[nx, ny].Type = TerrainType.Grass;
+                                    _cells[nx, ny].Elevation = 1;
+                                }
+                                else if (dist <= radius)
+                                {
+                                    _cells[nx, ny].Type = TerrainType.Sand; // 岛屿边缘沙滩
+                                    _cells[nx, ny].Elevation = 1;
+                                }
+                            }
+                        }
+                }
+                break;
+        }
+    }
+
     private void GenerateSand(Random rng)
     {
-        // 在远离水域的低地随机生成沙地斑块
+        // 默认主题：在远离水域的低地随机生成沙地斑块
+        if (MapConfig.Theme != MapConfig.MapTheme.Default) return;
         int sandPatches = 4 + rng.Next(3); // 4-6个
         for (int p = 0; p < sandPatches; p++)
         {

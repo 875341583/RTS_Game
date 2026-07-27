@@ -145,6 +145,39 @@ public partial class MainMenu : Control
         mapSizeHint.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(mapSizeHint);
 
+        // P2-2: 地图主题选择
+        var themeRow = new HBoxContainer();
+        themeRow.AddThemeConstantOverride("separation", 6);
+        var themeLabel = MakeLabel("地图主题:", 14, new Color(0.6f, 0.65f, 0.6f));
+        themeRow.AddChild(themeLabel);
+
+        var themeOptions = new (string Label, MapConfig.MapTheme Theme)[]
+        {
+            ("默认", MapConfig.MapTheme.Default),
+            ("雪地", MapConfig.MapTheme.Snow),
+            ("沙漠", MapConfig.MapTheme.Desert),
+            ("城市", MapConfig.MapTheme.City),
+            ("海岛", MapConfig.MapTheme.Island),
+        };
+        foreach (var opt in themeOptions)
+        {
+            var btn = new Button();
+            btn.Text = opt.Label;
+            btn.AddThemeFontSizeOverride("font_size", 13);
+            btn.CustomMinimumSize = new Vector2(0, 28);
+            btn.Pressed += () =>
+            {
+                GameSession.SelectedMapTheme = opt.Theme;
+                GameLog.Debug($"[MainMenu] 地图主题选择: {opt.Label}");
+            };
+            themeRow.AddChild(btn);
+        }
+        vbox.AddChild(themeRow);
+
+        var themeHint = MakeLabel("主题影响地形生成风格（雪地/沙漠/城市/海岛）", 11, new Color(0.45f, 0.5f, 0.45f));
+        themeHint.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(themeHint);
+
         var spacer2b = new Control { CustomMinimumSize = new Vector2(0, 12) };
         vbox.AddChild(spacer2b);
 

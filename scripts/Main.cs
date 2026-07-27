@@ -246,6 +246,7 @@ public partial class Main : Node2D
         // P2-2: 应用地图尺寸配置（从GameSession读取，支持命令行 --mapsize=32/64/96）
         var args = OS.GetCmdlineArgs();
         MapConfig.SetSize(GameSession.SelectedMapSize);
+        MapConfig.Theme = GameSession.SelectedMapTheme;
         for (int i = 0; i < args.Length; i++)
         {
             string a = args[i];

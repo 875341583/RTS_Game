@@ -135,4 +135,31 @@ public class MapConfigTests
         Assert.Equal((0, 0), bases[0]);
         Assert.Equal((91, 91), bases[1]);
     }
+
+    [Fact]
+    public void DefaultTheme_IsDefault()
+    {
+        Assert.Equal(MapConfig.MapTheme.Default, MapConfig.Theme);
+    }
+
+    [Fact]
+    public void GameSession_DefaultMapTheme_Default()
+    {
+        Assert.Equal(MapConfig.MapTheme.Default, GameSession.SelectedMapTheme);
+    }
+
+    [Fact]
+    public void GameSession_SetMapTheme_Propagates()
+    {
+        GameSession.SelectedMapTheme = MapConfig.MapTheme.Snow;
+        Assert.Equal(MapConfig.MapTheme.Snow, GameSession.SelectedMapTheme);
+        // Reset
+        GameSession.SelectedMapTheme = MapConfig.MapTheme.Default;
+    }
+
+    [Fact]
+    public void MapTheme_HasFiveValues()
+    {
+        Assert.Equal(5, System.Enum.GetValues(typeof(MapConfig.MapTheme)).Length);
+    }
 }

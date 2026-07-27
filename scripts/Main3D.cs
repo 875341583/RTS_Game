@@ -170,6 +170,7 @@ public partial class Main3D : Node3D
 
         // P2-2: 应用地图尺寸配置
         MapConfig.SetSize(GameSession.SelectedMapSize);
+        MapConfig.Theme = GameSession.SelectedMapTheme;
 
         // P1-2: 加载游戏数据（单位/建筑/阵营）
         GameData.Load();

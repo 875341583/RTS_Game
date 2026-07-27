@@ -113,4 +113,19 @@ public static class MapConfig
                 return true;
         return false;
     }
+
+    // ===== 地图主题 =====
+
+    /// <summary>地图主题预设。影响地形生成中各类型地形的权重和面积。</summary>
+    public enum MapTheme
+    {
+        Default,  // 默认：混合地形
+        Snow,     // 雪地：大量雪山+冻原，少量水域
+        Desert,   // 沙漠：大面积沙地+绿洲，少水域
+        City,     // 城市：大量铺装路面+建筑废墟，少自然地形
+        Island,   // 海岛：大量水域+岛屿，陆地面积小
+    }
+
+    /// <summary>P2-2: 当前地图主题（由 GameSession 在场景切换前设置）。</summary>
+    public static MapTheme Theme { get; set; } = MapTheme.Default;
 }

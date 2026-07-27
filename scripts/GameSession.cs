@@ -14,4 +14,7 @@ public static class GameSession
 
     /// <summary>P2-2: 地图尺寸预设。默认 Small(32)。游戏场景 _Ready 时读取并调用 MapConfig.SetSize()。</summary>
     public static MapConfig.SizePreset SelectedMapSize { get; set; } = MapConfig.SizePreset.Small;
+
+    /// <summary>P2-2: 地图主题。默认 Default（混合地形）。</summary>
+    public static MapConfig.MapTheme SelectedMapTheme { get; set; } = MapConfig.MapTheme.Default;
 }
