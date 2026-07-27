@@ -1,99 +1,119 @@
-﻿---
-AIGC:
-  ContentProducer: '001191110102MAD55U9H0F10002'
-  ContentPropagator: '001191110102MAD55U9H0F10002'
-  Label: '1'
-  ProduceID: 'da3c7311-e849-4f32-9307-b1b85b35232e'
-  PropagateID: 'da3c7311-e849-4f32-9307-b1b85b35232e'
-  ReservedCode1: '1c605d8a-319f-485f-8ba2-8297d69e0a88'
-  ReservedCode2: '1c605d8a-319f-485f-8ba2-8297d69e0a88'
+# Iron Curtain RTS (铁幕突袭)
+
+> Isometric 2.5D real-time strategy game inspired by classic RTS, built with Godot 4.7.1 + C# (.NET 8).
+> 15-minute skirmishes. 3 factions. Deep strategy. Military-industrial aesthetic.
+
 ---
 
-# 红警复刻 RTS
+## Features
 
-红警2灵感即时战略游戏，用 Godot 4.7.1 mono + C# (.NET 8) 开发。
+### Core RTS Gameplay
+- Isometric 2.5D rendering (diamond-tile terrain + pre-rendered 8-direction sprites)
+- 3 differentiated factions (Allies / Soviet / Yuri) with exclusive units, buildings, and techs
+- 27 unit types: tanks, infantry, aircraft, naval, plus harvesters, spies, and engineers
+- 12 building types: base, power plant, barracks, war factory, tech center, and superweapons
+- 4 difficulty tiers (Novice / Standard / Hard / Brutal) with data-driven AI parameters
 
-## 特点
+### Civilization-Inspired Depth
+| System | Key | Description |
+|--------|-----|-------------|
+| G1 Tech Tree | Tab | 18-node 3-branch research tree, faction-exclusive techs |
+| G2 Era System | Y/U | 4 eras with escalating bonuses and unit unlocks |
+| G3 Tactical Cards | T | 8 cards for opening strategy (production, speed, combat bonuses) |
+| G4 Power Grid | G | Power plant radius coverage, strategic building placement |
+| G5 Eureka Moments | H | In-game events trigger free research breakthroughs |
+| G6 Adjacency Bonuses | J | Building layout synergies (factory+barracks, etc.) |
+| G7 Espionage | N | 5 spy mission types (sabotage, intel, tech theft...) |
+| G8 Strategic Capture | K | Chain capture of strategic points + defection risk |
 
-- 等距 2.5D 渲染（菱形瓦片地形 + 预渲染8方向精灵图）
-- 8阵营对战（玩家 vs 7个AI），碎片时间15分钟一局
-- 四档难度（新手/标准/困难/残酷）
-- 文明6风格游戏性扩展：
-  - G1 科技树（12节点3分支）
-  - G2 时代系统（4时代进阶）
-  - G3 战术卡（8种卡开局选择）
-  - G4 电网分区（供电半径策略）
-  - G5 尤里卡时刻（游戏事件触发免费科技）
-  - G6 邻接加成（建筑布局策略）
-  - G7 间谍深化（5种间谍任务）
-  - G8 占领强化（连锁占领+叛变风险）
-- 27种单位 / 12种建筑 / 9种地形
-- 程序化地图生成（支持种子复现）
+### Engineering Highlights
+- A* pathfinding on procedural terrain (no wall-stuck, 8-direction movement)
+- Save/Load system with version migration (F5 quick-save / F9 quick-load)
+- Replay system: record and replay full games from command streams
+- Map Editor: visual terrain painting, resource/strategic point placement, save/load `.rmap`
+- Data-driven architecture: unit/building/faction stats in JSON, with ModLoader support
+- 161 xUnit tests (95.5% coverage on pure logic classes)
+- Dynamic map sizes (32/64/96) with 5 terrain themes (Default / Snow / Desert / City / Island)
+- Unit animation: 4320 frames (27 units x 3 actions x 8 directions), custom frame animation engine
+- BGM + unit voice system (5 scene BGMs, 10 unit voice sets)
 
-## 运行要求
+---
 
-- Godot 4.7.1 mono（.NET 8 SDK）
-- Windows / Linux / macOS
+## Quick Start
 
-## 构建
+### Requirements
+- Windows (Linux/macOS experimental)
+- **Pre-built**: Just download and run `IronCurtain-v3.0.exe`
+- **From source**: Godot 4.7.1 (Mono/.NET edition) + .NET 8 SDK
 
+### Build from Source
+```bash
+git clone https://github.com/875341583/RTS_Game.git
+cd RTS_Game
+dotnet build RTSGame.sln
 ```
-dotnet build
-```
 
-在 Godot 编辑器中打开项目，按 F5 运行，或通过 导出 > Windows Desktop 生成可执行文件。
+Open in Godot editor, press F5 to run.
 
-## 测试
+### Download Release
+[**v3.0 Windows Release**](https://github.com/875341583/RTS_Game/releases/download/v3.0/IronCurtain-v3.0.zip) (87 MB)
 
-单元测试项目位于 `tests/RTSGame.Tests/`，使用 xUnit 框架，覆盖可脱离 Godot 运行时的纯逻辑类。
+---
 
-```
+## Controls
+
+| Key | Action |
+|-----|--------|
+| WASD / Arrows | Move camera |
+| Left Mouse | Select / box-select units |
+| Right Mouse | Move / attack command |
+| B / N / M / L / K / O / I | Produce units / buildings |
+| Tab | Tech tree panel |
+| Y / U | Era panel / upgrade |
+| T | Tactical cards panel |
+| G | Power grid panel |
+| H | Eureka panel |
+| J | Adjacency bonus panel |
+| N | Spy mission panel |
+| K | Strategic capture panel |
+| Shift | Batch produce x5 |
+| F5 / F9 | Quick save / quick load |
+| F12 | Screenshot |
+
+---
+
+## Testing
+
+```bash
 cd tests/RTSGame.Tests
 dotnet test
 ```
 
-覆盖率报告（需 coverlet）：
+161 tests covering pure logic classes (TechTree, EraSystem, TacticalCards, MapConfig, TerrainModifiers, ReplayRecorder, etc.).
 
-```
-dotnet test --collect:"XPlat Code Coverage"
-```
+---
 
-当前覆盖的核心纯逻辑类（平均 95.5%）：
+## Tech Stack
 
-| 类 | 覆盖率 | 说明 |
-|----|--------|------|
-| TechTree / TechProgress | 99%+ | 科技研究前置/计时/存档恢复 |
-| EraSystem / EraProgress | 97%+ | 时代加成/门控/升级/存档恢复 |
-| TacticalCards | 84% | 12类战术卡乘数函数 |
+- **Engine**: Godot 4.7.1 mono
+- **Language**: C# 12 (.NET 8)
+- **Rendering**: Isometric 2.5D (CPU-rendered, GPU optional)
+- **Architecture**: Partial class pattern (Main.cs split into 9 controller files)
+- **Data**: JSON-driven with ModLoader framework
+- **Tests**: xUnit + coverlet
+- **CI**: GitHub Actions (build + test + coverage)
 
-继承 Godot Node 的类（Building/Unit/Main 等）需集成测试或 Godot 编辑器内测试，计划后续阶段补充。
+## Version History
 
-## 操作
+| Version | Date | Milestone |
+|---------|------|-----------|
+| v3.0 | 2026-07-27 | Feature-complete: factions, replay, data-driven, dynamic maps, audio |
+| v2.1 | 2026-07-25 | Asset quality overhaul: AI-generated sprites, alpha fixes |
+| v2.0 | 2026-07-24 | Visual upgrade: military-industrial art style |
+| v1.0.0 | 2026-07-15 | Initial release: core RTS gameplay |
 
-| 键 | 功能 |
-|----|------|
-| WASD/方向键 | 移动镜头 |
-| 鼠标左键 | 选择/框选单位 |
-| 鼠标右键 | 移动/攻击 |
-| B/N/M/L/K/O/I | 生产单位/建筑 |
-| Tab | 科技树面板 |
-| Y/U | 时代面板/升级 |
-| T | 战术卡面板 |
-| G | 电网面板 |
-| H | 尤里卡面板 |
-| J | 邻接加成面板 |
-| N | 间谍面板 |
-| K | 占领面板 |
-| Shift | 批量排产5x |
-| F12 | 截图 |
+---
 
-## 技术栈
-
-- 引擎: Godot 4.7.1 mono
-- 语言: C# (.NET 8)
-- 渲染: 等距2.5D（CPU渲染，无需GPU）
-- 版本: v1.0.0
-
-## 许可
+## License
 
 MIT License
