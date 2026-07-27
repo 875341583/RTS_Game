@@ -182,7 +182,7 @@ public class TerrainGrid3D
         };
     }
 
-    // ======== 速度修正查询（与2D版完全一致）========
+    // ======== 速度修正查询（P2-4: 委托给 TerrainModifiers 数据驱动查表）========
 
     public static float GetSpeedModifier(TerrainUnitCategory unitCat, TerrainType terrainType, int elevation, int targetElevation)
     {
@@ -191,130 +191,11 @@ public class TerrainGrid3D
         int elevDiff = targetElevation - elevation;
         if (elevDiff >= 2) return 0f;
 
-        float baseMod = terrainType switch
-        {
-            TerrainType.Road => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 1.2f,
-                TerrainUnitCategory.LightVehicle => 1.3f,
-                TerrainUnitCategory.HeavyVehicle => 1.2f,
-                TerrainUnitCategory.Harvester => 1.2f,
-                TerrainUnitCategory.Engineer => 1.2f,
-                TerrainUnitCategory.EngineerVehicle => 1.2f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 1.0f,
-            },
-            TerrainType.Grass => 1.0f,
-            TerrainType.Sand => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.8f,
-                TerrainUnitCategory.LightVehicle => 0.6f,
-                TerrainUnitCategory.HeavyVehicle => 0.4f,
-                TerrainUnitCategory.Harvester => 0.7f,
-                TerrainUnitCategory.Engineer => 0.8f,
-                TerrainUnitCategory.EngineerVehicle => 0.7f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 0.6f,
-            },
-            TerrainType.Snow => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.7f,
-                TerrainUnitCategory.LightVehicle => 0.5f,
-                TerrainUnitCategory.HeavyVehicle => 0.4f,
-                TerrainUnitCategory.Harvester => 0.6f,
-                TerrainUnitCategory.Engineer => 0.7f,
-                TerrainUnitCategory.EngineerVehicle => 0.6f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 0.5f,
-            },
-            TerrainType.City => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.9f,
-                TerrainUnitCategory.LightVehicle => 0.8f,
-                TerrainUnitCategory.HeavyVehicle => 0.7f,
-                TerrainUnitCategory.Harvester => 0.8f,
-                TerrainUnitCategory.Engineer => 0.9f,
-                TerrainUnitCategory.EngineerVehicle => 0.8f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 0.8f,
-            },
-            TerrainType.Field => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.9f,
-                TerrainUnitCategory.LightVehicle => 0.7f,
-                TerrainUnitCategory.HeavyVehicle => 0.5f,
-                TerrainUnitCategory.Harvester => 0.8f,
-                TerrainUnitCategory.Engineer => 0.9f,
-                TerrainUnitCategory.EngineerVehicle => 0.8f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 0.7f,
-            },
-            TerrainType.ShallowWater => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.3f,
-                TerrainUnitCategory.LightVehicle => 0.2f,
-                TerrainUnitCategory.HeavyVehicle => 0.1f,
-                TerrainUnitCategory.Harvester => 0f,
-                TerrainUnitCategory.Engineer => 0.3f,
-                TerrainUnitCategory.EngineerVehicle => 0.2f,
-                TerrainUnitCategory.Naval => 1.0f,
-                _ => 0.2f,
-            },
-            TerrainType.DeepWater => unitCat switch
-            {
-                TerrainUnitCategory.Naval => 1.0f,
-                _ => 0f,
-            },
-            TerrainType.Mountain => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.3f,
-                TerrainUnitCategory.LightVehicle => 0.2f,
-                TerrainUnitCategory.HeavyVehicle => 0f,
-                TerrainUnitCategory.Harvester => 0f,
-                TerrainUnitCategory.Engineer => 0.3f,
-                TerrainUnitCategory.EngineerVehicle => 0f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 0f,
-            },
-            TerrainType.Cliff => 0f,
-            TerrainType.Bridge => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 1.0f,
-                TerrainUnitCategory.LightVehicle => 1.0f,
-                TerrainUnitCategory.HeavyVehicle => 0.9f,
-                TerrainUnitCategory.Harvester => 1.0f,
-                TerrainUnitCategory.Engineer => 1.0f,
-                TerrainUnitCategory.EngineerVehicle => 1.0f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 1.0f,
-            },
-            TerrainType.Tunnel => unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.9f,
-                TerrainUnitCategory.LightVehicle => 0.9f,
-                TerrainUnitCategory.HeavyVehicle => 0.8f,
-                TerrainUnitCategory.Harvester => 0.9f,
-                TerrainUnitCategory.Engineer => 0.9f,
-                TerrainUnitCategory.EngineerVehicle => 0.9f,
-                TerrainUnitCategory.Naval => 0f,
-                _ => 0.9f,
-            },
-            _ => 1.0f,
-        };
+        float baseMod = TerrainModifiers.GetSpeedMod(terrainType, unitCat);
 
         if (elevDiff == 1 && baseMod > 0f)
         {
-            float slopeMod = unitCat switch
-            {
-                TerrainUnitCategory.Infantry => 0.5f,
-                TerrainUnitCategory.LightVehicle => 0.3f,
-                TerrainUnitCategory.HeavyVehicle => 0.2f,
-                TerrainUnitCategory.Harvester => 0.3f,
-                TerrainUnitCategory.Engineer => 0.5f,
-                TerrainUnitCategory.EngineerVehicle => 0.3f,
-                _ => 0.4f,
-            };
-            baseMod *= slopeMod;
+            baseMod *= TerrainModifiers.GetSlopeMod(unitCat);
         }
 
         return baseMod;

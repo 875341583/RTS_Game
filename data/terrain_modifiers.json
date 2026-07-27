@@ -1,0 +1,25 @@
+{
+  "speedModifiers": {
+    "Road":       { "Infantry": 1.2, "LightVehicle": 1.3, "HeavyVehicle": 1.2, "Harvester": 1.2, "Engineer": 1.2, "EngineerVehicle": 1.2, "Naval": 0.0, "_default": 1.0 },
+    "Grass":      { "_default": 1.0 },
+    "Sand":       { "Infantry": 0.8, "LightVehicle": 0.6, "HeavyVehicle": 0.4, "Harvester": 0.7, "Engineer": 0.8, "EngineerVehicle": 0.7, "Naval": 0.0, "_default": 0.6 },
+    "Snow":       { "Infantry": 0.7, "LightVehicle": 0.5, "HeavyVehicle": 0.4, "Harvester": 0.6, "Engineer": 0.7, "EngineerVehicle": 0.6, "Naval": 0.0, "_default": 0.5 },
+    "City":       { "Infantry": 0.9, "LightVehicle": 0.8, "HeavyVehicle": 0.7, "Harvester": 0.8, "Engineer": 0.9, "EngineerVehicle": 0.8, "Naval": 0.0, "_default": 0.8 },
+    "Field":      { "Infantry": 0.9, "LightVehicle": 0.7, "HeavyVehicle": 0.5, "Harvester": 0.8, "Engineer": 0.9, "EngineerVehicle": 0.8, "Naval": 0.0, "_default": 0.7 },
+    "ShallowWater": { "Infantry": 0.3, "LightVehicle": 0.2, "HeavyVehicle": 0.1, "Harvester": 0.0, "Engineer": 0.3, "EngineerVehicle": 0.2, "Naval": 1.0, "_default": 0.2 },
+    "DeepWater":  { "Naval": 1.0, "_default": 0.0 },
+    "Mountain":   { "Infantry": 0.3, "LightVehicle": 0.2, "HeavyVehicle": 0.0, "Harvester": 0.0, "Engineer": 0.3, "EngineerVehicle": 0.0, "Naval": 0.0, "_default": 0.0 },
+    "Cliff":      { "_default": 0.0 },
+    "Bridge":     { "Infantry": 1.0, "LightVehicle": 1.0, "HeavyVehicle": 0.9, "Harvester": 1.0, "Engineer": 1.0, "EngineerVehicle": 1.0, "Naval": 0.0, "_default": 1.0 },
+    "Tunnel":     { "Infantry": 0.9, "LightVehicle": 0.9, "HeavyVehicle": 0.8, "Harvester": 0.9, "Engineer": 0.9, "EngineerVehicle": 0.9, "Naval": 0.0, "_default": 0.9 }
+  },
+  "slopeModifiers": {
+    "Infantry": 0.5,
+    "LightVehicle": 0.3,
+    "HeavyVehicle": 0.2,
+    "Harvester": 0.3,
+    "Engineer": 0.5,
+    "EngineerVehicle": 0.3,
+    "_default": 0.4
+  }
+}

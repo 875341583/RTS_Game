@@ -22,6 +22,7 @@ public class TestAssemblyInitializer
         EraSystem.SetAlwaysFallback(true);
         SpyMission.SetAlwaysFallback(true);
         DifficultyConfig.SetAlwaysFallback(true);
+        TerrainModifiers.SetAlwaysFallback(true);
 
         // 预加载所有fallback数据
         TechTree.LoadFromJson(forceFallback: true);
@@ -29,5 +30,6 @@ public class TestAssemblyInitializer
         EraSystem.LoadFromJson(forceFallback: true);
         SpyMission.LoadFromJson(forceFallback: true);
         DifficultyConfig.LoadFromJson(forceFallback: true);
+        TerrainModifiers.LoadFromJson(forceFallback: true);
     }
 }
