@@ -87,7 +87,7 @@ public static class ReplayRecorder
         /// <summary>录制时间（ISO 8601）。</summary>
         public string Timestamp { get; set; } = "";
         /// <summary>游戏版本。</summary>
-        public string GameVersion { get; set; } = "2.0";
+        public string GameVersion { get; set; } = "3.0";
     }
 
     /// <summary>完整的回放文件。</summary>
