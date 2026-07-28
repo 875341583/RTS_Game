@@ -469,11 +469,11 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             _heroSkill = (HeroSkill)(GD.Randi() % 5 + 1);
             switch (_heroSkill)
             {
-                case HeroSkill.DoubleShot: UnitName = "英雄·双发"; AttackCooldown = 0.35f; break;
-                case HeroSkill.HealAura: UnitName = "英雄·治疗光环"; break;
-                case HeroSkill.Dash: UnitName = "英雄·冲锋"; MoveSpeed = 260f; break;
-                case HeroSkill.CriticalStrike: UnitName = "英雄·暴击"; break;
-                case HeroSkill.Shield: UnitName = "英雄·护盾"; MaxHealth = 300f; break;
+                case HeroSkill.DoubleShot: UnitName = TrManager.Tr("unit.hero_double_shot"); AttackCooldown = 0.35f; break;
+                case HeroSkill.HealAura: UnitName = TrManager.Tr("unit.hero_heal_aura"); break;
+                case HeroSkill.Dash: UnitName = TrManager.Tr("unit.hero_dash"); MoveSpeed = 260f; break;
+                case HeroSkill.CriticalStrike: UnitName = TrManager.Tr("unit.hero_critical_strike"); break;
+                case HeroSkill.Shield: UnitName = TrManager.Tr("unit.hero_shield"); MaxHealth = 300f; break;
             }
             Health = MaxHealth;
             GameLog.Debug($"[E6b] 英雄技能：{_heroSkill}");
@@ -571,7 +571,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         {
             case UnitType.Sapper:
                 // 工兵→工程车：维修+改造
-                UnitName = "工兵战车";
+                UnitName = TrManager.Tr("unit.merge_engineer_vehicle");
                 AttackDamage = 0f;
                 AttackRange = 0f;
                 MaxHealth = 200f;
@@ -580,7 +580,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.ChiefEngineer:
                 // 高级工程师→高级工程车：高效改造
-                UnitName = "高级工兵战车";
+                UnitName = TrManager.Tr("unit.merge_advanced_engineer_vehicle");
                 AttackDamage = 0f;
                 AttackRange = 0f;
                 MaxHealth = 250f;
@@ -589,7 +589,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.Infantry:
                 // 步兵→武装吉普：轻机枪火力
-                UnitName = "武装吉普";
+                UnitName = TrManager.Tr("unit.merge_armed_jeep");
                 AttackDamage = 12f;
                 AttackRange = 150f;
                 AttackCooldown = 0.5f;
@@ -601,7 +601,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.Grenadier:
                 // 掷弹兵→自走炮：AOE火力
-                UnitName = "自走炮";
+                UnitName = TrManager.Tr("unit.merge_assault_gun");
                 AttackDamage = 25f;
                 AttackRange = 220f;
                 AttackCooldown = 1.5f;
@@ -614,7 +614,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.Sniper:
                 // 狙击手→狙击战车：远程精确火力
-                UnitName = "狙击战车";
+                UnitName = TrManager.Tr("unit.merge_sniper_tank");
                 AttackDamage = 50f;
                 AttackRange = 380f;
                 AttackCooldown = 2.0f;
@@ -627,7 +627,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.FlameInfantry:
                 // 喷火兵→喷火战车：近距高DPS
-                UnitName = "喷火战车";
+                UnitName = TrManager.Tr("unit.merge_flame_tank");
                 AttackDamage = 15f;
                 AttackRange = 100f;
                 AttackCooldown = 0.25f;
@@ -641,7 +641,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             // E6b：特殊单位IFV合体
             case UnitType.Hero:
                 // 英雄→英雄战车：超强火力
-                UnitName = "英雄战车";
+                UnitName = TrManager.Tr("unit.merge_hero_tank");
                 AttackDamage = 40f;
                 AttackRange = 200f;
                 AttackCooldown = 0.5f;
@@ -653,7 +653,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.Spy:
                 // 间谍→间谍车：渗透战车
-                UnitName = "间谍车";
+                UnitName = TrManager.Tr("unit.merge_spy_vehicle");
                 AttackDamage = 0f;
                 AttackRange = 0f;
                 MaxHealth = 180f;
@@ -663,7 +663,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             case UnitType.Thief:
                 // 窃贼→劫掠车：偷钱战车
-                UnitName = "劫掠车";
+                UnitName = TrManager.Tr("unit.merge_raider");
                 AttackDamage = 8f;
                 AttackRange = 120f;
                 AttackCooldown = 0.6f;
@@ -675,7 +675,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 break;
             default:
                 // 其他步兵→轻型武装车
-                UnitName = "轻型武装车";
+                UnitName = TrManager.Tr("unit.merge_light_armed_vehicle");
                 AttackDamage = 10f;
                 AttackRange = 140f;
                 AttackCooldown = 0.7f;
@@ -705,7 +705,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         if (Type == UnitType.TransportHeli)
         {
             // E8：运输直升机恢复
-            UnitName = "运输直升机";
+            UnitName = TrManager.Tr("unit.transport_heli");
             MaxHealth = 180f;
             AttackDamage = 0f;
             AttackRange = 0f;
@@ -719,7 +719,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         }
         else if (Type == UnitType.LandingCraft)
         {
-            UnitName = "登陆艇";
+            UnitName = TrManager.Tr("unit.landing_craft");
             MaxHealth = 120f;
             AttackDamage = 0f;
             AttackRange = 0f;
@@ -733,7 +733,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         }
         else if (Type == UnitType.AircraftCarrier)
         {
-            UnitName = "航母";
+            UnitName = TrManager.Tr("unit.aircraft_carrier");
             MaxHealth = 300f;
             AttackDamage = 0f;
             AttackRange = 0f;
@@ -747,7 +747,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         }
         else
         {
-            UnitName = "运输车";
+            UnitName = TrManager.Tr("unit.transport");
             MaxHealth = 150f;
             AttackDamage = 0f;
             AttackRange = 0f;
@@ -2526,34 +2526,34 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     /// <summary>能力中文名（用于HUD显示）。</summary>
     public static string AbilityName(UnitAbility a) => a switch
     {
-        UnitAbility.ArmorPiercing => "穿甲弹",
-        UnitAbility.DoubleShot => "双发",
-        UnitAbility.Scatter => "散射",
-        UnitAbility.ReactiveArmor => "反应装甲",
-        UnitAbility.SelfRepair => "自修复",
-        UnitAbility.SmokeScreen => "烟幕",
-        UnitAbility.TurboEngine => "涡轮",
-        UnitAbility.ReconVision => "侦察",
-        UnitAbility.BattleFrenzy => "狂热",
-        UnitAbility.Plunder => "掠夺",
-        UnitAbility.Tenacity => "坚韧",
+        UnitAbility.ArmorPiercing => TrManager.Tr("unit.ability_armor_piercing"),
+        UnitAbility.DoubleShot => TrManager.Tr("unit.ability_double_shot"),
+        UnitAbility.Scatter => TrManager.Tr("unit.ability_scatter"),
+        UnitAbility.ReactiveArmor => TrManager.Tr("unit.ability_reactive_armor"),
+        UnitAbility.SelfRepair => TrManager.Tr("unit.ability_self_repair"),
+        UnitAbility.SmokeScreen => TrManager.Tr("unit.ability_smoke_screen"),
+        UnitAbility.TurboEngine => TrManager.Tr("unit.ability_turbo_engine"),
+        UnitAbility.ReconVision => TrManager.Tr("unit.ability_recon_vision"),
+        UnitAbility.BattleFrenzy => TrManager.Tr("unit.ability_battle_frenzy"),
+        UnitAbility.Plunder => TrManager.Tr("unit.ability_plunder"),
+        UnitAbility.Tenacity => TrManager.Tr("unit.ability_tenacity"),
         _ => ""
     };
 
     /// <summary>能力简短描述。</summary>
     public static string AbilityDesc(UnitAbility a) => a switch
     {
-        UnitAbility.ArmorPiercing => "+25%对重甲伤害",
-        UnitAbility.DoubleShot => "+40%射速",
-        UnitAbility.Scatter => "攻击溅射60px",
-        UnitAbility.ReactiveArmor => "-20%受伤",
-        UnitAbility.SelfRepair => "脱战3s自修1%HP/s",
-        UnitAbility.SmokeScreen => "20%闪避",
-        UnitAbility.TurboEngine => "+20%移速",
-        UnitAbility.ReconVision => "+50%视野",
-        UnitAbility.BattleFrenzy => "近敌+20%攻速",
-        UnitAbility.Plunder => "击杀+$10",
-        UnitAbility.Tenacity => "低血+30%防御",
+        UnitAbility.ArmorPiercing => TrManager.Tr("unit.ability_desc_armor_piercing"),
+        UnitAbility.DoubleShot => TrManager.Tr("unit.ability_desc_double_shot"),
+        UnitAbility.Scatter => TrManager.Tr("unit.ability_desc_scatter"),
+        UnitAbility.ReactiveArmor => TrManager.Tr("unit.ability_desc_reactive_armor"),
+        UnitAbility.SelfRepair => TrManager.Tr("unit.ability_desc_self_repair"),
+        UnitAbility.SmokeScreen => TrManager.Tr("unit.ability_desc_smoke_screen"),
+        UnitAbility.TurboEngine => TrManager.Tr("unit.ability_desc_turbo_engine"),
+        UnitAbility.ReconVision => TrManager.Tr("unit.ability_desc_recon_vision"),
+        UnitAbility.BattleFrenzy => TrManager.Tr("unit.ability_desc_battle_frenzy"),
+        UnitAbility.Plunder => TrManager.Tr("unit.ability_desc_plunder"),
+        UnitAbility.Tenacity => TrManager.Tr("unit.ability_desc_tenacity"),
         _ => ""
     };
 }

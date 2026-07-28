@@ -111,55 +111,9 @@ public partial class Main3D : Node3D
     // 截图目录
     private static readonly string ShotDir = OS.GetUserDataDir();
 
-    // 造价表
-    private static readonly Dictionary<BuildingType, int> BuildingCosts = new()
-    {
-        { BuildingType.Base, 3000 },
-        { BuildingType.PowerPlant, 400 },
-        { BuildingType.Barracks, 500 },
-        { BuildingType.WarFactory, 800 },
-        { BuildingType.TechCenter, 1500 },
-        { BuildingType.Turret, 300 },
-        { BuildingType.AntiAirTurret, 400 },
-        { BuildingType.RepairPad, 600 },
-        { BuildingType.Airfield, 700 },
-        { BuildingType.Shipyard, 800 },
-        { BuildingType.NukeSilo, 2500 },
-        { BuildingType.LightningTower, 2000 },
-        { BuildingType.MissileSilo, 1500 },
-    };
-
-    private static readonly Dictionary<UnitType, int> UnitCosts = new()
-    {
-        { UnitType.LightTank, 200 },
-        { UnitType.HeavyTank, 500 },
-        { UnitType.Artillery, 400 },
-        { UnitType.RocketLauncher, 450 },
-        { UnitType.MissileTank, 600 },
-        { UnitType.AntiAir, 300 },
-        { UnitType.Harvester, 500 },
-        { UnitType.Infantry, 100 },
-        { UnitType.Engineer, 300 },
-        { UnitType.Sapper, 150 },
-        { UnitType.ChiefEngineer, 400 },
-        { UnitType.Grenadier, 200 },
-        { UnitType.Sniper, 250 },
-        { UnitType.FlameInfantry, 180 },
-        { UnitType.Transport, 400 },
-        { UnitType.Hero, 600 },
-        { UnitType.Spy, 500 },
-        { UnitType.Thief, 300 },
-        { UnitType.Fighter, 500 },
-        { UnitType.Helicopter, 600 },
-        { UnitType.RocketInfantry, 350 },
-        { UnitType.Bomber, 800 },
-        { UnitType.Scout, 300 },
-        { UnitType.TransportHeli, 600 },
-        { UnitType.Destroyer, 500 },
-        { UnitType.Submarine, 600 },
-        { UnitType.AircraftCarrier, 1000 },
-        { UnitType.LandingCraft, 400 },
-    };
+    // P2-2修复：造价改为从GameData获取，不再使用重复硬编码字典
+    private static int GetBuildingCost(BuildingType type) => GameData.GetBuildingCost(type);
+    private static int GetUnitCost(UnitType type) => GameData.GetUnitCost(type);
 
     // ======== 初始化 ========
 
@@ -572,14 +526,14 @@ public partial class Main3D : Node3D
         // 停电5秒效果（简化：扣钱）
         SpendMoney(targetTeamId, Math.Min(_money[targetTeamId], 200));
         AddResourceForTeam(PlayerTeamId, 200);
-        ShowToast($"间谍渗透成功！窃取$200");
+        ShowToast(TrManager.Tr("ui3d.spy_infiltrate_success"));
     }
 
     public void ThiefStealEffect(int targetTeamId, int amount)
     {
         SpendMoney(targetTeamId, Math.Min(_money[targetTeamId], amount));
         AddResourceForTeam(PlayerTeamId, amount);
-        ShowToast($"窃贼偷取${amount}！");
+        ShowToast(TrManager.Tr("ui3d.thief_steal", amount));
     }
 
     // ======== 电力 ========
@@ -624,7 +578,7 @@ public partial class Main3D : Node3D
         if (building.Type == BuildingType.Base)
         {
             _bases.Remove(building.TeamId);
-            ShowToast($"阵营{building.TeamId}的基地被摧毁！");
+            ShowToast(TrManager.Tr("ui3d.base_destroyed", building.TeamId));
         }
         MarkBuildingsCacheDirty();
     }
@@ -646,7 +600,7 @@ public partial class Main3D : Node3D
                 u.CommandAttackMove(b.GlobalPosition);
             }
         }
-        ShowToast("建筑受到攻击！单位回防中");
+        ShowToast(TrManager.Tr("ui3d.building_attacked"));
     }
 
     // ======== 超武系统 ========
@@ -668,7 +622,7 @@ public partial class Main3D : Node3D
         _nukeEffects.Add(new NukeEffect { Pos = pos, Age = 0, Lifetime = 4f });
         SpawnExplosion(pos, 15f);
         AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.Nuke);
-        ShowToast("核弹打击！");
+        ShowToast(TrManager.Tr("ui3d.nuke_strike"));
     }
 
     public void ApplyLightning(Vector3 pos, int firingTeamId)
@@ -682,7 +636,7 @@ public partial class Main3D : Node3D
             DamageTimer = 0,
         });
         AudioManager.Instance?.PlaySfxForce(AudioManager.Sfx.Lightning);
-        ShowToast("闪电风暴来袭！");
+        ShowToast(TrManager.Tr("ui3d.lightning_storm"));
     }
 
     public void ApplyCruiseMissile(Vector3 pos, int firingTeamId)
@@ -708,7 +662,7 @@ public partial class Main3D : Node3D
             }
         }
         SpawnExplosion(pos, 8f);
-        ShowToast("巡航导弹命中！");
+        ShowToast(TrManager.Tr("ui3d.cruise_missile_hit"));
     }
 
     // ======== 特效 ========
@@ -1430,7 +1384,7 @@ public partial class Main3D : Node3D
 
     private void TryAIBuild(int teamId, BuildingType type)
     {
-        int cost = BuildingCosts.GetValueOrDefault(type, 0);
+        int cost = GetBuildingCost(type);
         if (_money[teamId] < cost + 50) return; // 留50储备
         if (!SpendMoney(teamId, cost)) return;
 
@@ -1455,9 +1409,9 @@ public partial class Main3D : Node3D
         if (harvesterCount < 3)
         {
             var wf = producers.FirstOrDefault(b => b.Type == BuildingType.WarFactory);
-            if (wf != null && _money[teamId] >= UnitCosts[UnitType.Harvester])
+            if (wf != null && _money[teamId] >= GetUnitCost(UnitType.Harvester))
             {
-                if (SpendMoney(teamId, UnitCosts[UnitType.Harvester]))
+                if (SpendMoney(teamId, GetUnitCost(UnitType.Harvester)))
                     wf.EnqueueProduction(ProductionType.Harvester);
                 return;
             }
@@ -1564,7 +1518,7 @@ public partial class Main3D : Node3D
     {
         _gameOverLabel = new Label
         {
-            Text = victory ? "胜利！" : "失败",
+            Text = victory ? TrManager.Tr("ui3d.victory") : TrManager.Tr("ui3d.defeat"),
             Position = new Vector2(540, 300),
             Size = new Vector2(200, 80),
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -1619,7 +1573,7 @@ public partial class Main3D : Node3D
         {
             Position = new Vector2(10, 690),
             Size = new Vector2(800, 30),
-            Text = "左键选择 | 右键命令 | WASD移动相机 | B轻坦 N重坦 M炮兵 H矿车 | P电站 O兵营 I车厂 T科技 | Z核弹 C闪电",
+            Text = TrManager.Tr("ui3d.hint_controls"),
         };
         _hintLabel.AddThemeFontSizeOverride("font_size", 12);
         _hintLabel.AddThemeColorOverride("font_color", new Color(0.8f, 0.8f, 0.8f, 0.8f));
@@ -1636,7 +1590,7 @@ public partial class Main3D : Node3D
         // 开局覆盖
         _startOverlay = new Label
         {
-            Text = "摧毁所有敌方建筑和单位即可获胜！",
+            Text = TrManager.Tr("ui3d.start_overlay"),
             Position = new Vector2(340, 300),
             Size = new Vector2(600, 60),
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -1674,7 +1628,7 @@ public partial class Main3D : Node3D
 
         var titleLbl = new Label
         {
-            Text = "建造 (点击放置)",
+            Text = TrManager.Tr("ui3d.build_panel_title"),
             Position = new Vector2(10, 4),
             Size = new Vector2(180, 20),
         };
@@ -1685,15 +1639,15 @@ public partial class Main3D : Node3D
         // 建筑按钮列表
         var buildButtons = new (string name, BuildingType type)[]
         {
-            ("电站 $400 [P]", BuildingType.PowerPlant),
-            ("兵营 $500 [O]", BuildingType.Barracks),
-            ("车厂 $800 [I]", BuildingType.WarFactory),
-            ("科技 $1500 [T]", BuildingType.TechCenter),
-            ("机枪塔 $300", BuildingType.Turret),
-            ("防空炮 $400", BuildingType.AntiAirTurret),
-            ("维修厂 $600", BuildingType.RepairPad),
-            ("核弹井 $2500", BuildingType.NukeSilo),
-            ("闪电塔 $2000", BuildingType.LightningTower),
+            (TrManager.Tr("ui3d.build_power_plant"), BuildingType.PowerPlant),
+            (TrManager.Tr("ui3d.build_barracks"), BuildingType.Barracks),
+            (TrManager.Tr("ui3d.build_war_factory"), BuildingType.WarFactory),
+            (TrManager.Tr("ui3d.build_tech_center"), BuildingType.TechCenter),
+            (TrManager.Tr("ui3d.build_turret"), BuildingType.Turret),
+            (TrManager.Tr("ui3d.build_anti_air_turret"), BuildingType.AntiAirTurret),
+            (TrManager.Tr("ui3d.build_repair_pad"), BuildingType.RepairPad),
+            (TrManager.Tr("ui3d.build_nuke_silo"), BuildingType.NukeSilo),
+            (TrManager.Tr("ui3d.build_lightning_tower"), BuildingType.LightningTower),
         };
 
         int yOff = 24;
@@ -1715,7 +1669,7 @@ public partial class Main3D : Node3D
         // 单位热键提示 — 右上角
         var unitLabel = new Label
         {
-            Text = "单位: B轻坦 N重坦 M炮兵 H矿车 G步兵\n命令: Q攻击移动 X停止 R维修 V出售\n超武: Z核弹 C闪电",
+            Text = TrManager.Tr("ui3d.unit_hotkeys"),
             Position = new Vector2(1080, 390),
             Size = new Vector2(190, 60),
         };
@@ -1738,7 +1692,7 @@ public partial class Main3D : Node3D
 
         var titleLbl = new Label
         {
-            Text = "生产进度",
+            Text = TrManager.Tr("ui3d.production_progress"),
         };
         titleLbl.AddThemeFontSizeOverride("font_size", 13);
         titleLbl.AddThemeColorOverride("font_color", Colors.White);
@@ -1869,8 +1823,8 @@ public partial class Main3D : Node3D
         {
             int money = GetMoney(PlayerTeamId);
             int power = GetTeamPower(PlayerTeamId);
-            _moneyLabel.Text = $"资金: ${money}";
-            _powerLabel.Text = $"电力: {power}";
+            _moneyLabel.Text = TrManager.Tr("ui3d.money_label", money);
+            _powerLabel.Text = TrManager.Tr("ui3d.power_label", power);
             _powerLabel.AddThemeColorOverride("font_color", power >= 0 ? Colors.Cyan : Colors.Red);
 
             int unitCount = 0, bldgCount = 0;
@@ -1878,7 +1832,7 @@ public partial class Main3D : Node3D
                 if (u.TeamId == PlayerTeamId && !u._isDead) unitCount++;
             foreach (var b in GetAllBuildings())
                 if (b.TeamId == PlayerTeamId && !b._isDead) bldgCount++;
-            _uiLabel.Text = $"单位: {unitCount} | 建筑: {bldgCount} | 时间: {_timeOfDay:F1}h";
+            _uiLabel.Text = TrManager.Tr("ui3d.info_label", unitCount, bldgCount, $"{_timeOfDay:F1}");
         }
 
         if (_startOverlay != null)
@@ -1926,30 +1880,30 @@ public partial class Main3D : Node3D
 
     private static string ProdTypeName(ProductionType pt) => pt switch
     {
-        ProductionType.Infantry => "步兵",
-        ProductionType.Engineer => "工程师",
-        ProductionType.Sapper => "爆破手",
-        ProductionType.ChiefEngineer => "主工",
-        ProductionType.Grenadier => "掷弹兵",
-        ProductionType.Sniper => "狙击手",
-        ProductionType.FlameInfantry => "火焰兵",
-        ProductionType.LightTank => "轻坦",
-        ProductionType.HeavyTank => "重坦",
-        ProductionType.Artillery => "炮兵",
-        ProductionType.RocketLauncher => "火箭炮",
-        ProductionType.MissileTank => "导弹车",
-        ProductionType.AntiAir => "防空",
-        ProductionType.Harvester => "矿车",
-        ProductionType.Transport => "运输车",
-        ProductionType.Hero => "英雄",
-        ProductionType.Spy => "间谍",
-        ProductionType.Thief => "窃贼",
-        ProductionType.Fighter => "战机",
-        ProductionType.Helicopter => "直升机",
-        ProductionType.RocketInfantry => "火箭兵",
-        ProductionType.Bomber => "轰炸机",
-        ProductionType.Scout => "侦察机",
-        ProductionType.TransportHeli => "运输机",
+        ProductionType.Infantry => TrManager.Tr("ui3d.prod_infantry"),
+        ProductionType.Engineer => TrManager.Tr("ui3d.prod_engineer"),
+        ProductionType.Sapper => TrManager.Tr("ui3d.prod_sapper"),
+        ProductionType.ChiefEngineer => TrManager.Tr("ui3d.prod_chief_engineer"),
+        ProductionType.Grenadier => TrManager.Tr("ui3d.prod_grenadier"),
+        ProductionType.Sniper => TrManager.Tr("ui3d.prod_sniper"),
+        ProductionType.FlameInfantry => TrManager.Tr("ui3d.prod_flame_infantry"),
+        ProductionType.LightTank => TrManager.Tr("ui3d.prod_light_tank"),
+        ProductionType.HeavyTank => TrManager.Tr("ui3d.prod_heavy_tank"),
+        ProductionType.Artillery => TrManager.Tr("ui3d.prod_artillery"),
+        ProductionType.RocketLauncher => TrManager.Tr("ui3d.prod_rocket_launcher"),
+        ProductionType.MissileTank => TrManager.Tr("ui3d.prod_missile_tank"),
+        ProductionType.AntiAir => TrManager.Tr("ui3d.prod_anti_air"),
+        ProductionType.Harvester => TrManager.Tr("ui3d.prod_harvester"),
+        ProductionType.Transport => TrManager.Tr("ui3d.prod_transport"),
+        ProductionType.Hero => TrManager.Tr("ui3d.prod_hero"),
+        ProductionType.Spy => TrManager.Tr("ui3d.prod_spy"),
+        ProductionType.Thief => TrManager.Tr("ui3d.prod_thief"),
+        ProductionType.Fighter => TrManager.Tr("ui3d.prod_fighter"),
+        ProductionType.Helicopter => TrManager.Tr("ui3d.prod_helicopter"),
+        ProductionType.RocketInfantry => TrManager.Tr("ui3d.prod_rocket_infantry"),
+        ProductionType.Bomber => TrManager.Tr("ui3d.prod_bomber"),
+        ProductionType.Scout => TrManager.Tr("ui3d.prod_scout"),
+        ProductionType.TransportHeli => TrManager.Tr("ui3d.prod_transport_heli"),
         _ => pt.ToString(),
     };
 
@@ -1976,7 +1930,7 @@ public partial class Main3D : Node3D
 
         if (producers.Count == 0)
         {
-            var idle = new Label { Text = "（无生产中）" };
+            var idle = new Label { Text = TrManager.Tr("ui3d.no_production") };
             idle.AddThemeFontSizeOverride("font_size", 11);
             idle.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f, 0.7f));
             _prodPanel.AddChild(idle);
@@ -1994,7 +1948,7 @@ public partial class Main3D : Node3D
 
             var info = new Label
             {
-                Text = $"{ProdTypeName(pt)} ({bldg.Type})  [队列:{queued}]",
+                Text = TrManager.Tr("ui3d.prod_queue_info", ProdTypeName(pt), bldg.Type, queued),
             };
             info.AddThemeFontSizeOverride("font_size", 10);
             info.AddThemeColorOverride("font_color", Colors.White);
@@ -2306,7 +2260,7 @@ public partial class Main3D : Node3D
                 foreach (var obj in _selected)
                     if (obj is Building3D b && b.TeamId == PlayerTeamId)
                     {
-                        int cost = (int)(BuildingCosts.GetValueOrDefault(b.Type, 0) * (1 - b.Health / b.MaxHealth) * 0.5f);
+                        int cost = (int)(GetBuildingCost(b.Type) * (1 - b.Health / b.MaxHealth) * 0.5f);
                         if (SpendMoney(PlayerTeamId, cost))
                             b.Repair();
                     }
@@ -2316,7 +2270,7 @@ public partial class Main3D : Node3D
                 foreach (var obj in _selected)
                     if (obj is Building3D b && b.TeamId == PlayerTeamId && b.Type != BuildingType.Base)
                     {
-                        int refund = BuildingCosts.GetValueOrDefault(b.Type, 0) / 2;
+                        int refund = GetBuildingCost(b.Type) / 2;
                         AddResourceForTeam(PlayerTeamId, refund);
                         b.QueueFree();
                     }
@@ -2356,7 +2310,7 @@ public partial class Main3D : Node3D
         {
             int squadNum = keyChar - '0';
             _squads[squadNum] = _selected.OfType<Unit3D>().Where(u => !u._isDead).ToList();
-            ShowToast($"编队 {squadNum} 已保存 ({_squads[squadNum].Count} 单位)");
+            ShowToast(TrManager.Tr("ui3d.squad_saved", squadNum, _squads[squadNum].Count));
         }
         else if (!key.CtrlPressed && keyChar >= '1' && keyChar <= '9')
         {
@@ -2381,10 +2335,10 @@ public partial class Main3D : Node3D
 
     private void TrySpawnPlayerUnit(UnitType type)
     {
-        int cost = UnitCosts.GetValueOrDefault(type, 0);
+        int cost = GetUnitCost(type);
         if (_money[PlayerTeamId] < cost)
         {
-            ShowToast("资金不足！");
+            ShowToast(TrManager.Tr("ui3d.insufficient_funds"));
             return;
         }
 
@@ -2401,7 +2355,7 @@ public partial class Main3D : Node3D
 
         if (!HasBuilding(PlayerTeamId, requiredType))
         {
-            ShowToast($"需要{requiredType}");
+            ShowToast(TrManager.Tr("ui3d.need_building", requiredType));
             return;
         }
 
@@ -2451,10 +2405,10 @@ public partial class Main3D : Node3D
 
     private void StartPlacement(BuildingType type)
     {
-        int cost = BuildingCosts.GetValueOrDefault(type, 0);
+        int cost = GetBuildingCost(type);
         if (_money[PlayerTeamId] < cost)
         {
-            ShowToast("资金不足！");
+            ShowToast(TrManager.Tr("ui3d.insufficient_funds"));
             return;
         }
 
@@ -2477,34 +2431,34 @@ public partial class Main3D : Node3D
 
         if (!canBuild)
         {
-            ShowToast("缺少前置建筑！");
+            ShowToast(TrManager.Tr("ui3d.missing_prerequisite"));
             return;
         }
 
         // 电力检查（电站本身不限）
         if (type != BuildingType.PowerPlant && GetTeamPower(PlayerTeamId) < 0)
         {
-            ShowToast("电力不足！");
+            ShowToast(TrManager.Tr("ui3d.insufficient_power"));
             return;
         }
 
         _placementType = type;
         _isPlacing = true;
         AudioManager.Instance?.PlaySfx(AudioManager.Sfx.UiClick);
-        ShowToast($"放置 {type}（点击放置）");
+        ShowToast(TrManager.Tr("ui3d.place_building", type));
     }
 
     private void PlaceBuildingAtMouse()
     {
         var pos = GetMouseWorldPos();
-        int cost = BuildingCosts.GetValueOrDefault(_placementType, 0);
+        int cost = GetBuildingCost(_placementType);
 
         // 检查放置位置（不在水上/山上/悬崖）
         _terrain.WorldToGrid(pos.X, pos.Z, out int gx, out int gy);
         var cell = _terrain.GetCell(gx, gy);
         if (cell.Type == TerrainType.DeepWater || cell.Type == TerrainType.Mountain || cell.Type == TerrainType.Cliff)
         {
-            ShowToast("此地不可建造！");
+            ShowToast(TrManager.Tr("ui3d.cannot_build_here"));
             return;
         }
 
@@ -2513,14 +2467,14 @@ public partial class Main3D : Node3D
         {
             if (b.GlobalPosition.DistanceTo(pos) < TerrainGrid3D.CellSize * 1.5f)
             {
-                ShowToast("离其他建筑太近！");
+                ShowToast(TrManager.Tr("ui3d.too_close_to_building"));
                 return;
             }
         }
 
         if (!SpendMoney(PlayerTeamId, cost))
         {
-            ShowToast("资金不足！");
+            ShowToast(TrManager.Tr("ui3d.insufficient_funds"));
             _isPlacing = false;
             return;
         }
@@ -2682,7 +2636,7 @@ public partial class Main3D : Node3D
         };
         _disasterDuration = 15 + rng.Next(15);
         _disasterAge = 0;
-        ShowToast($"⚠ 灾害来袭：{_currentDisaster}！");
+        ShowToast(TrManager.Tr("ui3d.disaster_incoming", DisasterDisplayName(_currentDisaster)));
 
         switch (_currentDisaster)
         {
@@ -2744,9 +2698,18 @@ public partial class Main3D : Node3D
         }
     }
 
+    /// <summary>将灾害内部名称转换为本地化显示名</summary>
+    private static string DisasterDisplayName(string disaster) => disaster switch
+    {
+        "闪电风暴" => TrManager.Tr("ui3d.disaster_lightning_storm"),
+        "地震" => TrManager.Tr("ui3d.disaster_earthquake"),
+        "暴雨" => TrManager.Tr("ui3d.disaster_rainstorm"),
+        _ => disaster,
+    };
+
     private void EndDisaster()
     {
-        ShowToast($"{_currentDisaster} 已结束");
+        ShowToast(TrManager.Tr("ui3d.disaster_ended", DisasterDisplayName(_currentDisaster)));
         _currentDisaster = "";
 
         // 恢复正常

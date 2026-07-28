@@ -186,56 +186,57 @@ public partial class BuildPanel : Control
 
     private void CreateItems()
     {
+        // P2-2修复：造价从GameData获取，不再使用硬编码字面量
         // 建筑（电站/兵营/车厂/科技/防御设施）
-        AddItem(TrManager.Tr("build.power_plant"), 300, _iPower, true, BuildingType.PowerPlant, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.barracks"), 400, _iBarracks, true, BuildingType.Barracks, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.war_factory"), 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.tech"), 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.power_plant"), GameData.GetBuildingCost(BuildingType.PowerPlant), _iPower, true, BuildingType.PowerPlant, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.barracks"), GameData.GetBuildingCost(BuildingType.Barracks), _iBarracks, true, BuildingType.Barracks, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.war_factory"), GameData.GetBuildingCost(BuildingType.WarFactory), _iWar, true, BuildingType.WarFactory, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.tech"), GameData.GetBuildingCost(BuildingType.TechCenter), _iTech, true, BuildingType.TechCenter, UnitType.Default, false, BuildTab.Buildings);
         // 阶段12-A1+A2 新增建筑
-        AddItem(TrManager.Tr("build.machine_gun_turret"), 400, _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.anti_air_turret"), 600, _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.repair_station"), 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.machine_gun_turret"), GameData.GetBuildingCost(BuildingType.Turret), _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.anti_air_turret"), GameData.GetBuildingCost(BuildingType.AntiAirTurret), _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.repair_station"), GameData.GetBuildingCost(BuildingType.RepairPad), _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
         // E7：机场
-        AddItem(TrManager.Tr("build.airfield"), 700, _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.airfield"), GameData.GetBuildingCost(BuildingType.Airfield), _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
         // E9：船厂
-        AddItem(TrManager.Tr("build.shipyard_panel"), 900, _iShipyard, true, BuildingType.Shipyard, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.shipyard_panel"), GameData.GetBuildingCost(BuildingType.Shipyard), _iShipyard, true, BuildingType.Shipyard, UnitType.Default, false, BuildTab.Buildings);
         // E10：超武建筑
-        AddItem(TrManager.Tr("build.nuke_silo_panel"), 1500, _iNukeSilo, true, BuildingType.NukeSilo, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.lightning_tower_panel"), 1500, _iLightningTower, true, BuildingType.LightningTower, UnitType.Default, false, BuildTab.Buildings);
-        AddItem(TrManager.Tr("build.missile_silo_panel"), 1200, _iMissileSilo, true, BuildingType.MissileSilo, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.nuke_silo_panel"), GameData.GetBuildingCost(BuildingType.NukeSilo), _iNukeSilo, true, BuildingType.NukeSilo, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.lightning_tower_panel"), GameData.GetBuildingCost(BuildingType.LightningTower), _iLightningTower, true, BuildingType.LightningTower, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.missile_silo_panel"), GameData.GetBuildingCost(BuildingType.MissileSilo), _iMissileSilo, true, BuildingType.MissileSilo, UnitType.Default, false, BuildTab.Buildings);
         // 步兵（按价格升序）
-        AddItem(TrManager.Tr("build.infantry_unit"), 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
-        AddItem(TrManager.Tr("build.grenadier"), 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
-        AddItem(TrManager.Tr("build.flame_infantry"), 180, _iFlameInfantry, false, BuildingType.Base, UnitType.FlameInfantry, false, BuildTab.Infantry);
-        AddItem(TrManager.Tr("build.sniper"), 250, _iSniper, false, BuildingType.Base, UnitType.Sniper, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.infantry_unit"), GameData.GetUnitCost(UnitType.Infantry), _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.grenadier"), GameData.GetUnitCost(UnitType.Grenadier), _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.flame_infantry"), GameData.GetUnitCost(UnitType.FlameInfantry), _iFlameInfantry, false, BuildingType.Base, UnitType.FlameInfantry, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.sniper"), GameData.GetUnitCost(UnitType.Sniper), _iSniper, false, BuildingType.Base, UnitType.Sniper, false, BuildTab.Infantry);
         // E6b：特殊步兵
-        AddItem(TrManager.Tr("build.thief"), 300, _iThief, false, BuildingType.Base, UnitType.Thief, false, BuildTab.Infantry);
-        AddItem(TrManager.Tr("build.hero"), 600, _iHero, false, BuildingType.TechCenter, UnitType.Hero, false, BuildTab.Infantry);
-        AddItem(TrManager.Tr("build.spy"), 500, _iSpy, false, BuildingType.TechCenter, UnitType.Spy, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.thief"), GameData.GetUnitCost(UnitType.Thief), _iThief, false, BuildingType.Base, UnitType.Thief, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.hero"), GameData.GetUnitCost(UnitType.Hero), _iHero, false, BuildingType.TechCenter, UnitType.Hero, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.spy"), GameData.GetUnitCost(UnitType.Spy), _iSpy, false, BuildingType.TechCenter, UnitType.Spy, false, BuildTab.Infantry);
         // E7：火箭兵
-        AddItem(TrManager.Tr("build.rocket_infantry"), 350, _iRocketInfantry, false, BuildingType.Barracks, UnitType.RocketInfantry, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.rocket_infantry"), GameData.GetUnitCost(UnitType.RocketInfantry), _iRocketInfantry, false, BuildingType.Barracks, UnitType.RocketInfantry, false, BuildTab.Infantry);
         // 车辆（按价格升序排列：基础→中级→高级）
-        AddItem(TrManager.Tr("build.light_tank"),   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.anti_air_vehicle"), 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.engineer"), 300, _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.transport"), 400, _iTransport, false, BuildingType.WarFactory, UnitType.Transport, false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.artillery"),   400, _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.heavy_tank"),   500, _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.harvester"),   500, _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.rocket_launcher"), 600, _iRocket,  false, BuildingType.Base, UnitType.RocketLauncher, false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.missile_tank"), 800, _iMissile, false, BuildingType.Base, UnitType.MissileTank,    false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.light_tank"),   GameData.GetUnitCost(UnitType.LightTank),   _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.anti_air_vehicle"), GameData.GetUnitCost(UnitType.AntiAir), _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.engineer"), GameData.GetUnitCost(UnitType.Engineer), _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.transport"), GameData.GetUnitCost(UnitType.Transport), _iTransport, false, BuildingType.WarFactory, UnitType.Transport, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.artillery"),   GameData.GetUnitCost(UnitType.Artillery),   _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.heavy_tank"),   GameData.GetUnitCost(UnitType.HeavyTank),   _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.harvester"),   GameData.GetUnitCost(UnitType.Harvester),   _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.rocket_launcher"), GameData.GetUnitCost(UnitType.RocketLauncher), _iRocket,  false, BuildingType.Base, UnitType.RocketLauncher, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.missile_tank"), GameData.GetUnitCost(UnitType.MissileTank), _iMissile, false, BuildingType.Base, UnitType.MissileTank,    false, BuildTab.Vehicles);
         // E7：空军
-        AddItem(TrManager.Tr("build.fighter"), 500, _iFighter, false, BuildingType.Airfield, UnitType.Fighter,       false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.helicopter"), 600, _iHelicopter, false, BuildingType.Airfield, UnitType.Helicopter, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.fighter"), GameData.GetUnitCost(UnitType.Fighter), _iFighter, false, BuildingType.Airfield, UnitType.Fighter,       false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.helicopter"), GameData.GetUnitCost(UnitType.Helicopter), _iHelicopter, false, BuildingType.Airfield, UnitType.Helicopter, false, BuildTab.Vehicles);
         // E8：扩展空军
-        AddItem(TrManager.Tr("build.bomber"), 800, _iBomber, false, BuildingType.Airfield, UnitType.Bomber,         false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.scout"), 300, _iScout, false, BuildingType.Airfield, UnitType.Scout,           false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.transport_heli"),   600, _iTransportHeli, false, BuildingType.Airfield, UnitType.TransportHeli, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.bomber"), GameData.GetUnitCost(UnitType.Bomber), _iBomber, false, BuildingType.Airfield, UnitType.Bomber,         false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.scout"), GameData.GetUnitCost(UnitType.Scout), _iScout, false, BuildingType.Airfield, UnitType.Scout,           false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.transport_heli"),   GameData.GetUnitCost(UnitType.TransportHeli), _iTransportHeli, false, BuildingType.Airfield, UnitType.TransportHeli, false, BuildTab.Vehicles);
         // E9：海军
-        AddItem(TrManager.Tr("build.destroyer"),  500, _iDestroyer,  false, BuildingType.Shipyard, UnitType.Destroyer,     false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.submarine"),    600, _iSubmarine,  false, BuildingType.Shipyard, UnitType.Submarine,      false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.carrier"),   1200, _iCarrier,    false, BuildingType.Shipyard, UnitType.AircraftCarrier, false, BuildTab.Vehicles);
-        AddItem(TrManager.Tr("build.landing_craft"),  400, _iLandingCraft, false, BuildingType.Shipyard, UnitType.LandingCraft,  false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.destroyer"),  GameData.GetUnitCost(UnitType.Destroyer),  _iDestroyer,  false, BuildingType.Shipyard, UnitType.Destroyer,     false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.submarine"),    GameData.GetUnitCost(UnitType.Submarine),  _iSubmarine,  false, BuildingType.Shipyard, UnitType.Submarine,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.carrier"),   GameData.GetUnitCost(UnitType.AircraftCarrier), _iCarrier,    false, BuildingType.Shipyard, UnitType.AircraftCarrier, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.landing_craft"),  GameData.GetUnitCost(UnitType.LandingCraft), _iLandingCraft, false, BuildingType.Shipyard, UnitType.LandingCraft,  false, BuildTab.Vehicles);
     }
 
     private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)

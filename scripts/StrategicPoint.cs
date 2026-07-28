@@ -57,7 +57,7 @@ public partial class StrategicPoint : Area2D
         _label.OffsetRight = 50;
         _label.OffsetBottom = -35;
         _label.HorizontalAlignment = HorizontalAlignment.Center;
-        _label.Text = "战略点";
+        _label.Text = TrManager.Tr("strategic_point.name");
         AddChild(_label);
 
         BodyEntered += OnBodyEntered;
@@ -115,7 +115,7 @@ public partial class StrategicPoint : Area2D
                 _capturingTeam = -1;
                 _captureProgress = 0f;
                 _visual.Texture = GetTeamTexture(soleTeam);
-                _label.Text = $"{GetTeamDisplayName(soleTeam)}控制";
+                _label.Text = $"{GetTeamDisplayName(soleTeam)}{TrManager.Tr("strategic_point.controlled")}";
                 GameLog.Debug($"[StrategicPoint] Team {soleTeam} ({GetTeamDisplayName(soleTeam)}) captured!");
             }
         }
@@ -146,7 +146,7 @@ public partial class StrategicPoint : Area2D
         // Update label with capture progress
         if (_captureProgress > 0f && OwningTeam == -1 && _capturingTeam >= 0)
         {
-            _label.Text = $"占领中 {GetTeamDisplayName(_capturingTeam)} {(int)_captureProgress}%";
+            _label.Text = $"{TrManager.Tr("strategic_point.capturing")} {GetTeamDisplayName(_capturingTeam)} {(int)_captureProgress}%";
         }
     }
 
@@ -194,7 +194,7 @@ public partial class StrategicPoint : Area2D
         {
             // FactionManager 异常时降级
         }
-        return $"阵营{teamId}";
+        return $"{TrManager.Tr("common.faction")}{teamId}";
     }
 
     private static ImageTexture CreatePointTexture(Color fill, Color border)
@@ -241,12 +241,12 @@ public partial class StrategicPoint : Area2D
         if (teamId >= 0 && teamId < MaxTeams)
         {
             _visual.Texture = GetTeamTexture(teamId);
-            _label.Text = $"{GetTeamDisplayName(teamId)}控制";
+            _label.Text = $"{GetTeamDisplayName(teamId)}{TrManager.Tr("strategic_point.controlled")}";
         }
         else
         {
             _visual.Texture = _neutralTex;
-            _label.Text = "战略点";
+            _label.Text = TrManager.Tr("strategic_point.name");
         }
     }
 }

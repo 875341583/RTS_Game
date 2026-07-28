@@ -27,7 +27,7 @@ public partial class Harvester : Unit
 
     public override void _Ready()
     {
-        UnitName = "矿车";
+        UnitName = TrManager.Tr("unit.harvester.name");
         MaxHealth = 120;
         MoveSpeed = 160f;
         AttackRange = 0f;

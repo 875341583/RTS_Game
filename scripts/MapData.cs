@@ -37,7 +37,7 @@ public class MapData
     /// <summary>地图文件格式版本。</summary>
     public int Version = 1;
     /// <summary>地图名称。</summary>
-    public string Name = "新地图";
+    public string Name = TrManager.Tr("map_editor.new_map");
     /// <summary>作者。</summary>
     public string Author = "";
     /// <summary>描述。</summary>

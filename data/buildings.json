@@ -7,7 +7,7 @@
       "cost": 0,
       "_comment_cost": "基地为起始建筑，不可建造",
       "stats2d": { "maxHealth": 1000, "powerProvided": 50, "powerConsumed": 0 },
-      "stats3d": { "maxHealth": 2000, "powerProvided": 0, "powerConsumed": 0 }
+      "stats3d": { "maxHealth": 2000, "powerProvided": 50, "powerConsumed": 0 }
     },
     "PowerPlant": {
       "name": "电站",

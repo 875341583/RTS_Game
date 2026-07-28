@@ -160,9 +160,9 @@ public static class ReplayPlayer
     /// <summary>获取回放进度摘要。</summary>
     public static string GetSummary()
     {
-        if (_file == null) return "未加载回放";
+        if (_file == null) return TrManager.Tr("replay.no_replay_loaded");
         float progress = _file.Records.Count > 0 ? (_currentIndex * 100f / _file.Records.Count) : 0f;
-        return $"状态={_state} 帧={_frameCounter} 进度={progress:F1}% ({_currentIndex}/{_file.Records.Count}) 速度={_playbackSpeed:F1}x";
+        return $"{TrManager.Tr("replay.status")}={_state} {TrManager.Tr("replay.frame")}={_frameCounter} {TrManager.Tr("replay.progress")}={progress:F1}% ({_currentIndex}/{_file.Records.Count}) {TrManager.Tr("replay.speed")}={_playbackSpeed:F1}x";
     }
 
     // ---- 内部方法 ----

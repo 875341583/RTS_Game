@@ -165,12 +165,12 @@ public partial class ResourceNode : Area2D
         if (_captureProgress > 0f && OilOwner == -1)
         {
             if (_amountLabel != null)
-                _amountLabel.Text = $"占领中 {GetTeamDisplayName(presentTeam)} {(int)_captureProgress}%";
+                _amountLabel.Text = $"{TrManager.Tr("resource.oil_field.capturing")} {GetTeamDisplayName(presentTeam)} {(int)_captureProgress}%";
         }
         else if (OilOwner >= 0)
         {
             if (_amountLabel != null)
-                _amountLabel.Text = $"{GetTeamDisplayName(OilOwner)}油田";
+                _amountLabel.Text = $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}";
         }
     }
 
@@ -437,7 +437,7 @@ public partial class ResourceNode : Area2D
         switch (ResourceType)
         {
             case ResourceType.OilField:
-                _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}油田" : "油田";
+                _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}" : TrManager.Tr("resource.oil_field.name");
                 break;
             case ResourceType.RareMineral:
                 _amountLabel.Text = $"★{Amount}";
@@ -467,7 +467,7 @@ public partial class ResourceNode : Area2D
     {
         OilOwner = teamId;
         if (_amountLabel != null && ResourceType == ResourceType.OilField)
-            _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}油田" : "中立油田";
+            _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}" : TrManager.Tr("resource.oil_field.neutral");
     }
 
     // ======== 阵营名称 ========
@@ -488,6 +488,6 @@ public partial class ResourceNode : Area2D
         {
             // FactionManager 异常时降级
         }
-        return $"阵营{teamId}";
+        return $"{TrManager.Tr("common.faction")}{teamId}";
     }
 }

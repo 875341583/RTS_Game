@@ -189,18 +189,18 @@ public static class FactionManager
     {
         var allies = new FactionDef
         {
-            Id = "Allies", Name = "同盟军",
+            Id = "Allies", Name = TrManager.Tr("faction.allies.name"),
             Color = new Color(0.16f, 0.32f, 0.82f)
         };
         var soviet = new FactionDef
         {
-            Id = "Soviet", Name = "苏维埃",
+            Id = "Soviet", Name = TrManager.Tr("faction.soviet.name"),
             Color = new Color(0.82f, 0.16f, 0.16f),
             Multipliers = new FactionDef.StatMultipliers { Health = 1.2f, Damage = 1.1f, Speed = 0.9f }
         };
         var yuri = new FactionDef
         {
-            Id = "Yuri", Name = "尤里军团",
+            Id = "Yuri", Name = TrManager.Tr("faction.yuri.name"),
             Color = new Color(0.44f, 0.18f, 0.72f),
             Multipliers = new FactionDef.StatMultipliers { Health = 0.9f, Speed = 1.1f, Cost = 0.9f }
         };

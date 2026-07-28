@@ -135,43 +135,43 @@ public static class TacticalCards
         _cards.Clear();
         _cards[CardId.BlitzEconomy] = new CardInfo
         {
-            Id = CardId.BlitzEconomy, Name = "闪电经济", Icon = "$",
-            Description = "起始资金+50%，矿车采矿收益+20%"
+            Id = CardId.BlitzEconomy, Name = TrManager.Tr("card.blitz_economy.name"), Icon = "$",
+            Description = TrManager.Tr("card.blitz_economy.desc")
         };
         _cards[CardId.BlitzTactics] = new CardInfo
         {
-            Id = CardId.BlitzTactics, Name = "闪击战术", Icon = ">>",
-            Description = "所有单位移动速度+15%，生产时间-15%"
+            Id = CardId.BlitzTactics, Name = TrManager.Tr("card.blitz_tactics.name"), Icon = ">>",
+            Description = TrManager.Tr("card.blitz_tactics.desc")
         };
         _cards[CardId.IronFlood] = new CardInfo
         {
-            Id = CardId.IronFlood, Name = "钢铁洪流", Icon = "[T]",
-            Description = "坦克类单位血量+20%、攻击力+10%"
+            Id = CardId.IronFlood, Name = TrManager.Tr("card.iron_flood.name"), Icon = "[T]",
+            Description = TrManager.Tr("card.iron_flood.desc")
         };
         _cards[CardId.InfantryAssault] = new CardInfo
         {
-            Id = CardId.InfantryAssault, Name = "步兵突击", Icon = "[I]",
-            Description = "步兵类单位血量+25%、成本-20%"
+            Id = CardId.InfantryAssault, Name = TrManager.Tr("card.infantry_assault.name"), Icon = "[I]",
+            Description = TrManager.Tr("card.infantry_assault.desc")
         };
         _cards[CardId.Fortress] = new CardInfo
         {
-            Id = CardId.Fortress, Name = "要塞防御", Icon = "[F]",
-            Description = "建筑血量+30%，防御建筑射程+15%"
+            Id = CardId.Fortress, Name = TrManager.Tr("card.fortress.name"), Icon = "[F]",
+            Description = TrManager.Tr("card.fortress.desc")
         };
         _cards[CardId.TechLeap] = new CardInfo
         {
-            Id = CardId.TechLeap, Name = "科技跃进", Icon = "^",
-            Description = "研究速度+50%，时代升级速度+30%"
+            Id = CardId.TechLeap, Name = TrManager.Tr("card.tech_leap.name"), Icon = "^",
+            Description = TrManager.Tr("card.tech_leap.desc")
         };
         _cards[CardId.WarMachine] = new CardInfo
         {
-            Id = CardId.WarMachine, Name = "战争机器", Icon = "+",
-            Description = "全单位攻击+15%，但血量-10%"
+            Id = CardId.WarMachine, Name = TrManager.Tr("card.war_machine.name"), Icon = "+",
+            Description = TrManager.Tr("card.war_machine.desc")
         };
         _cards[CardId.RapidDeploy] = new CardInfo
         {
-            Id = CardId.RapidDeploy, Name = "快速部署", Icon = "[]+",
-            Description = "单位上限+10，生产时间-20%"
+            Id = CardId.RapidDeploy, Name = TrManager.Tr("card.rapid_deploy.name"), Icon = "[]+",
+            Description = TrManager.Tr("card.rapid_deploy.desc")
         };
     }
 

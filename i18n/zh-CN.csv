@@ -1,4 +1,4 @@
-# i18n翻译文件 - 简体中文
+﻿# i18n翻译文件 - 简体中文
 # 格式: key,translation
 # key命名规范: 类别.名称 (如 ui.build、unit.light_tank)
 # 修改后需重新导入项目让Godot生成.translation文件
@@ -344,3 +344,362 @@ ui.lightning_target_mode,★ 闪电风暴目标模式：左键发射 | 右键取
 editor.coord,Grid: ({0}, {1})
 editor.coord_label,Grid: (--, --)
 editor.status_mode,模式:{0} 笔刷:{1} 地形:{2} 海拔:{3} │ 修改:{4} 矿点:{5} 战略点:{6} 手动基地:{7} │ 撤销:{8} 重做:{9}
+
+# === 科技树（TechTree.cs 硬编码fallback） ===
+tech.name.mil_armor_upgrade,装甲强化
+tech.desc.mil_armor_upgrade,所有坦克类单位血量+15%
+tech.name.mil_ammo_upgrade,弹药升级
+tech.desc.mil_ammo_upgrade,所有单位攻击力+15%
+tech.name.mil_advanced_tactics,高级战术
+tech.desc.mil_advanced_tactics,火箭炮/导弹车射程+30%
+tech.name.mil_hero_training,英雄训练
+tech.desc.mil_hero_training,英雄生产成本-30%，英雄初始即为Lv2
+tech.name.eco_mining_efficiency,采矿效率
+tech.desc.eco_mining_efficiency,矿车采集速度+30%
+tech.name.eco_mass_production,批量生产
+tech.desc.eco_mass_production,所有单位生产成本-15%
+tech.name.eco_resource_network,资源网络
+tech.desc.eco_resource_network,战略点占领收入+100%
+tech.name.eco_advanced_logistics,后勤优化
+tech.desc.eco_advanced_logistics,单位上限+8
+tech.name.def_fortification,筑城术
+tech.desc.def_fortification,所有建筑血量+25%
+tech.name.def_power_grid,电网优化
+tech.desc.def_power_grid,电站发电量+50%
+tech.name.def_advanced_turrets,高级炮塔
+tech.desc.def_advanced_turrets,防御建筑射程+20%、伤害+20%
+tech.name.def_repair_systems,维修系统
+tech.desc.def_repair_systems,所有建筑每秒自动恢复2%血量
+tech.name.fac_air_superiority,空中优势
+tech.desc.fac_air_superiority,同盟军专属：空军伤害+15%
+tech.name.fac_naval_support,海军支援
+tech.desc.fac_naval_support,同盟军专属：海军生产速度+20%
+tech.name.fac_heavy_armor,重装甲
+tech.desc.fac_heavy_armor,苏维埃专属：坦克生命+15%
+tech.name.fac_nuclear_power,核能
+tech.desc.fac_nuclear_power,苏维埃专属：电站发电+50%
+tech.name.fac_mind_control,心灵控制
+tech.desc.fac_mind_control,尤里专属：间谍/窃贼效率+30%
+tech.name.fac_stealth_ops,隐蔽行动
+tech.desc.fac_stealth_ops,尤里专属：单位隐蔽时间+50%
+
+# === 资源点（ResourceNode.cs） ===
+resource.oil_field.capturing,占领中
+resource.oil_field.name,油田
+resource.oil_field.neutral,中立油田
+
+# === 战略点（StrategicPoint.cs） ===
+strategic_point.name,战略点
+strategic_point.controlled,控制
+strategic_point.capturing,占领中
+
+# === 通用 ===
+common.faction,阵营
+
+# === 阵营名称（FactionDef.cs） ===
+faction.allies.name,同盟军
+faction.soviet.name,苏维埃
+faction.yuri.name,尤里军团
+
+# === 画质（QualitySettings.cs） ===
+quality.low,低画质(省电模式)
+quality.medium,中画质
+quality.high,高画质
+quality.unknown,未知
+
+# === 地图编辑器（MapData.cs） ===
+map_editor.new_map,新地图
+
+# === 回放系统（ReplayPlayer.cs） ===
+replay.no_replay_loaded,未加载回放
+replay.status,状态
+replay.frame,帧
+replay.progress,进度
+replay.speed,速度
+
+# === 单位名称（Harvester.cs） ===
+unit.harvester.name,矿车
+
+# === 补充翻译key ===
+adj.bld_line,{0} → {1}
+adj.bonus_power,发电+{0}%
+adj.bonus_produce,生产+{0}%
+adj.bonus_range,射程+{0}%
+adj.bonus_repair,维修+{0}%
+adj.hint,提示：将同类建筑相邻放置可触发加成{0}
+adj.no_bonus,无加成
+adj.panel_title,═══ 邻接加成系统 ═══
+adj.range_info,邻接范围：{0}格
+adj.research_bonus,研究速度{0}+{1}%{0}
+adj.rule_bar_bar,兵营↔兵营：生产速度+15%
+adj.rule_pp_base,电站↔基地：基地供电范围+20%
+adj.rule_pp_pp,电站↔电站：发电量+10%
+adj.rule_repair_wf,维修厂↔车厂：维修速度+20%
+adj.rule_tech_pp,科技中心↔电站：研究速度+15%
+adj.rule_turret_bar,炮塔↔兵营：攻击射程+15%
+adj.rule_wf_wf,车厂↔车厂：生产速度+10%
+adj.rules_header,── 邻接规则 ──
+adj.section_player,── 我方建筑 ──
+building.base.name,基地
+building.captured,已占领{0}！获得${1}奖励
+building.defected,警告！{0}发生叛变，回归原阵营{1}
+capture.boost,缴获生产加速：{0}秒
+capture.boosted,[生产加速]
+capture.chain_range,连锁占领范围：{0}格
+capture.defection_active,[叛变风险 {0}秒]
+capture.defection_risk,叛变概率：{0}%，持续{1}秒
+capture.line,{0} | 当前阵营{1} | 原属阵营{2} {3}
+capture.none,暂无被占领建筑
+capture.panel_title,═══ 占领系统 ═══
+capture.reward,占领奖励：${0}
+capture.section_captured,── 被占领建筑 ──
+card.ai_card_line,  AI{0}：{1}
+card.ai_cards,── AI战术卡 ──
+card.blitz_economy.desc,矿车采集速度+20%，起始资金×1.5
+card.blitz_economy.name,经济闪电战
+card.blitz_tactics.desc,单位移动速度+15%，生产速度+15%
+card.blitz_tactics.name,闪电战术
+card.button_text,{0} {1}
+{2}
+
+[{3}]
+card.desc,效果：{0}
+card.fortress.desc,建筑血量+30%，防御建筑射程+15%
+card.fortress.name,钢铁堡垒
+card.infantry_assault.desc,步兵血量+25%，步兵成本-20%
+card.infantry_assault.name,步兵突击
+card.iron_flood.desc,坦克血量+20%，坦克攻击力+10%
+card.iron_flood.name,钢铁洪流
+card.none,未选择战术卡
+card.panel_title,═══ 战术卡 ═══
+card.please_select,请选择一张战术卡
+card.rapid_deploy.desc,生产速度+20%，单位上限+10
+card.rapid_deploy.name,快速部署
+card.selection_pending,战术卡选择中...
+card.tech_leap.desc,研究速度+50%，时代升级速度+30%
+card.tech_leap.name,科技飞跃
+card.toast_selected,已选择战术卡：{0}
+card.war_machine.desc,全单位攻击力+15%（生命值-10%）
+card.war_machine.name,战争机器
+card.your_card,你的战术卡：{0} {1}
+era.bonus_summary,时代加成：每升一级，攻击/血量+5%，采集/建造速度+10%
+era.bronze.desc,解锁车厂、机枪塔、防空炮、维修厂
+era.bronze.name,青铜时代
+era.can_advance,✓ 可升级
+era.cannot_advance,✗ 条件不足
+era.era_desc,  {0}
+era.era_line,{0} {1} {2}
+era.hint_hotkey,按Y键升级时代
+era.industrial.desc,解锁科技中心、导弹井、闪电塔
+era.industrial.name,工业时代
+era.information.desc,终极时代，全面解锁所有建筑与单位
+era.information.name,信息时代
+era.no_req,无前置要求
+era.panel_header,当前时代：{0} | 资金：${1}
+era.panel_title,═══ 时代系统 ═══
+era.panel_upgrading,升级中 → {0} ({1}%)
+era.status_current,◀ 当前
+era.status_done,✓ 已完成
+era.stone.desc,初始时代，仅可建造基地、电站、兵营
+era.stone.name,石器时代
+era.toast_entered,进入{0}！
+era.upgrade_cost,升级费用：${0} | 需求：{1} | 时间：{2}秒
+era.upgrade_status,状态：{0}
+eureka.ai_line,AI{0}：击杀{1}/{2} 资金{3}/{4} 建造{5}/{6} 摧毁{7}/{8}
+eureka.panel_title,═══ 尤里卡时刻 ═══
+eureka.player_line1,击杀：{0}/{1}  累计资金：{2}/{3}
+eureka.player_line2,建造：{0}/{1}  摧毁：{2}/{3}
+eureka.reason_build,建造突破
+eureka.reason_destroy,摧毁突破
+eureka.reason_kill,击杀突破
+eureka.reason_money,经济突破
+eureka.section_player,── 玩家进度 ──
+eureka.threshold_build_destroy,建造{0}次或摧毁{1}座建筑 → 触发尤里卡
+eureka.threshold_kill_money,击杀{0}个单位或累计资金{1} → 触发尤里卡
+eureka.toast_free_tech,尤里卡！{0} → 免费获得科技：{1}
+eureka.toast_graduated,尤里卡！{0}（{1}分支已毕业）→ 资金补偿+${2}
+power.bld_line,{0} [{1}] 供电{2} 耗电{3}
+power.detail_line,{0} | 供电半径{1} | 供电{2} 耗电{3} 余量{4}
+power.offline,[断电]
+power.offline_speed,断电建筑生产速度：{0}%
+power.online,[在线]
+power.panel_title,═══ 电力网络 ═══
+power.radius_info,供电半径：电站{0}格 / 基地{1}格
+power.section_detail,── 供电明细 ──
+power.section_player,── 我方建筑 ──
+power.source,[电源]
+power.summary,电站：{0} | 在线：{1} | 断电：{2}
+power.supply_demand,总供电：{0} | 总需求：{1}
+power.warn_offline,⚠ {0}座建筑断电！
+replay.summary.format,地图种子:{0} | 难度:{1} | 尺寸:{2} | 主题:{3} | 记录:{4}条 | 帧数:{5}
+replay.summary.not_recording,未在录制中
+spy.header,成功率：{0}% | 渗透时间：{1}秒
+spy.idle,待命中
+spy.mission.recon.desc,侦察敌方建筑周围区域，获取情报
+spy.mission.recon.name,侦察
+spy.mission.sabotage_power.desc,破坏敌方电站，使其暂时断电{0}秒
+spy.mission.sabotage_power.name,破坏电力
+spy.mission.sabotage_prod.desc,瘫痪敌方兵营或车厂，暂停生产{0}秒
+spy.mission.sabotage_prod.name,瘫痪生产
+spy.mission.steal_money.desc,潜入敌方基地窃取资金${0}
+spy.mission.steal_money.name,窃取资金
+spy.mission.steal_tech.desc,渗透敌方科技中心，免费获得一项科技
+spy.mission.steal_tech.name,窃取科技
+spy.mission.unknown.name,未知任务
+spy.mission_types,── 任务类型 ──
+spy.no_spy,无可用间谍
+spy.none,无
+spy.on_mission,执行中：{0} → 目标：{1} | 剩余{2}秒
+spy.operation_hint,操作：选中间谍，右键点击敌方建筑执行任务
+spy.panel_title,═══ 间谍行动 ═══
+spy.section_player,── 我方间谍 ──
+spy.type_paralyze_prod,瘫痪生产 — 暂停敌方建筑生产
+spy.type_recon,侦察 — 探索敌方区域
+spy.type_sabotage_power,破坏电力 — 切断敌方供电
+spy.type_steal_money,窃取资金 — 偷取敌方资金
+spy.type_steal_tech,窃取科技 — 免费获得一项科技
+tech.branch_header,── {0}分支 ──
+tech.has_no,无
+tech.has_yes,有
+tech.hint_hotkey,按数字键选择科技进行研究
+tech.node_desc,  {0}
+tech.node_line,{0} T{1} {2} [{3}] ${4} {5}秒
+tech.researching,研究中：{0} ({1}%)
+tech.status_available,可研究
+tech.status_done,✓已完成
+tech.status_locked,🔒锁定
+tech.status_researching,研究中{0}%
+tech.toast_era_upgrading,时代升级中：{0}
+tech.toast_research_done,研究完成：{0}
+tech.toast_research_started,开始研究：{0}
+tech.tree_header,资金：${0} | 科技中心：{1} | {2}
+tech.tree_title,═══ 科技树 ═══
+ui3d.base_destroyed,基地被摧毁！阵营{0}失败
+ui3d.build_anti_air_turret,防空炮
+ui3d.build_barracks,兵营
+ui3d.build_lightning_tower,闪电塔
+ui3d.build_nuke_silo,导弹井
+ui3d.build_panel_title,建筑列表
+ui3d.build_power_plant,电站
+ui3d.build_repair_pad,维修厂
+ui3d.build_tech_center,科技中心
+ui3d.build_turret,机枪塔
+ui3d.build_war_factory,车厂
+ui3d.building_attacked,建筑遭到攻击！
+ui3d.cannot_build_here,无法在此处建造
+ui3d.cruise_missile_hit,巡航导弹命中目标！
+ui3d.defeat,失败
+ui3d.disaster_earthquake,地震
+ui3d.disaster_ended,灾害结束：{0}
+ui3d.disaster_incoming,⚠ 灾害来袭：{0}
+ui3d.disaster_lightning_storm,闪电风暴
+ui3d.disaster_rainstorm,暴雨
+ui3d.hint_controls,左键选择 | 右键移动/攻击 | WASD移动视角 | 滚轮缩放 | Ctrl+数字编队
+ui3d.info_label,单位:{0} 建筑:{1} 时间:{2}
+ui3d.insufficient_funds,资金不足
+ui3d.insufficient_power,电力不足
+ui3d.lightning_storm,闪电风暴已释放！
+ui3d.missing_prerequisite,缺少前置科技
+ui3d.money_label,资金: ${0}
+ui3d.need_building,需要建造：{0}
+ui3d.no_production,暂无生产队列
+ui3d.nuke_strike,核弹打击！
+ui3d.place_building,放置建筑：{0}
+ui3d.power_label,电力: {0}
+ui3d.prod_anti_air,防空兵
+ui3d.prod_artillery,炮兵
+ui3d.prod_bomber,轰炸机
+ui3d.prod_chief_engineer,高级工程师
+ui3d.prod_engineer,工程师
+ui3d.prod_fighter,战斗机
+ui3d.prod_flame_infantry,喷火兵
+ui3d.prod_grenadier,掷弹兵
+ui3d.prod_harvester,矿车
+ui3d.prod_heavy_tank,重型坦克
+ui3d.prod_helicopter,武装直升机
+ui3d.prod_hero,英雄
+ui3d.prod_infantry,步兵
+ui3d.prod_light_tank,轻型坦克
+ui3d.prod_missile_tank,导弹车
+ui3d.prod_queue_info,{0} — {1} ×{2}
+ui3d.prod_rocket_infantry,火箭步兵
+ui3d.prod_rocket_launcher,火箭炮
+ui3d.prod_sapper,工兵
+ui3d.prod_scout,侦察兵
+ui3d.prod_sniper,狙击手
+ui3d.prod_spy,间谍
+ui3d.prod_thief,窃贼
+ui3d.prod_transport,运输车
+ui3d.prod_transport_heli,运输直升机
+ui3d.production_progress,生产进度
+ui3d.spy_infiltrate_success,间谍渗透成功！
+ui3d.squad_saved,编队{0}已保存 ({1}个单位)
+ui3d.start_overlay,点击开始游戏
+ui3d.thief_steal,窃贼偷取了${0}！
+ui3d.too_close_to_building,距离其他建筑太近
+ui3d.unit_hotkeys,单位快捷键
+ui3d.victory,胜利
+unit.ability.armor_piercing.desc,攻击无视目标30%护甲
+unit.ability.armor_piercing.name,穿甲弹
+unit.ability.battle_frenzy.desc,生命值低于50%时攻击速度提升50%
+unit.ability.battle_frenzy.name,战斗狂热
+unit.ability.double_shot.desc,每次攻击发射两发弹丸
+unit.ability.double_shot.name,双重射击
+unit.ability.plunder.desc,击杀敌方单位时获得资金
+unit.ability.plunder.name,掠夺
+unit.ability.reactive_armor.desc,受到攻击时概率触发爆炸反应装甲，减少伤害
+unit.ability.reactive_armor.name,反应装甲
+unit.ability.recon_vision.desc,视野范围扩大50%
+unit.ability.recon_vision.name,侦察视野
+unit.ability.scatter.desc,受攻击时概率向周围散射闪避
+unit.ability.scatter.name,散射规避
+unit.ability.self_repair.desc,脱战后每秒恢复2%生命值
+unit.ability.self_repair.name,自我修复
+unit.ability.smoke_screen.desc,被攻击时释放烟雾弹，降低敌方命中率
+unit.ability.smoke_screen.name,烟雾弹
+unit.ability.tenacity.desc,生命值低于30%时受到伤害减少40%
+unit.ability.tenacity.name,坚韧
+unit.ability.turbo_engine.desc,移动速度提升25%
+unit.ability.turbo_engine.name,涡轮引擎
+unit.ability.unknown.name,未知能力
+unit.ability_armor_piercing,穿甲弹
+unit.ability_battle_frenzy,战斗狂热
+unit.ability_desc_armor_piercing,攻击无视目标30%护甲
+unit.ability_desc_battle_frenzy,生命值低于50%时攻击速度提升50%
+unit.ability_desc_double_shot,每次攻击发射两发弹丸
+unit.ability_desc_plunder,击杀敌方单位时获得资金
+unit.ability_desc_reactive_armor,受到攻击时概率触发爆炸反应装甲，减少伤害
+unit.ability_desc_recon_vision,视野范围扩大50%
+unit.ability_desc_scatter,受攻击时概率向周围散射闪避
+unit.ability_desc_self_repair,脱战后每秒恢复2%生命值
+unit.ability_desc_smoke_screen,被攻击时释放烟雾弹，降低敌方命中率
+unit.ability_desc_tenacity,生命值低于30%时受到伤害减少40%
+unit.ability_desc_turbo_engine,移动速度提升25%
+unit.ability_double_shot,双重射击
+unit.ability_plunder,掠夺
+unit.ability_reactive_armor,反应装甲
+unit.ability_recon_vision,侦察视野
+unit.ability_scatter,散射规避
+unit.ability_self_repair,自我修复
+unit.ability_smoke_screen,烟雾弹
+unit.ability_tenacity,坚韧
+unit.ability_turbo_engine,涡轮引擎
+unit.aircraft_carrier,航空母舰
+unit.hero_critical_strike,暴击英雄
+unit.hero_dash,冲锋英雄
+unit.hero_double_shot,连射英雄
+unit.hero_heal_aura,治疗英雄
+unit.hero_shield,护盾英雄
+unit.landing_craft,登陆艇
+unit.merge_advanced_engineer_vehicle,高级工程车
+unit.merge_armed_jeep,武装吉普
+unit.merge_assault_gun,自走炮
+unit.merge_engineer_vehicle,工程车
+unit.merge_flame_tank,喷火战车
+unit.merge_hero_tank,英雄战车
+unit.merge_light_armed_vehicle,轻型武装车
+unit.merge_raider,劫掠车
+unit.merge_sniper_tank,狙击战车
+unit.merge_spy_vehicle,间谍车
+unit.transport,运输车
+unit.transport_heli,运输直升机

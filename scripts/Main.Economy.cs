@@ -146,6 +146,10 @@ public partial class Main
     private int GetTeamPower(int teamId)
     {
         int produced = 0, consumed = 0;
+        // P2-8修复：离线建筑（超出供电半径）仍计耗电但标记为低效运营，
+        // 全局电力 = 所有发电 - 所有耗电（与红警2一致：全局电力池模型）。
+        // 电网分区系统(PowerGrid)独立控制离线建筑的生产速度降为50%。
+        // 这里保持全局池模型不变，但在电网面板中展示分区详情。
         foreach (var c in _buildingsNode.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
@@ -585,82 +589,11 @@ public partial class Main
 
         bool savingForTech = HasBuilding(teamId, BuildingType.WarFactory) && !HasBuilding(teamId, BuildingType.TechCenter);
 
-        // 1. 自动造兵（检查建筑前置 + 电力，不超过上限）
-        var teamUnits = CountUnitsOfTeam(teamId);
-        int teamQueued = CountQueuedUnitsOfTeam(teamId);
-        if (!savingForTech && teamUnits + teamQueued < _unitCap && GetTeamPower(teamId) >= 0)
-        {
-            // 有科技中心时攒钱优先造高级兵种
-            bool hasTech = HasBuilding(teamId, BuildingType.TechCenter);
-            if (!(hasTech && _money[teamId] < GetUnitCost(UnitType.RocketLauncher, teamId) && teamUnits >= 3))
-            {
-                var types = new List<UnitType>();
-                if (HasBuilding(teamId, BuildingType.Barracks))
-                {
-                    types.Add(UnitType.LightTank);
-                    types.Add(UnitType.Infantry);
-                    types.Add(UnitType.Grenadier);       // E6
-                    types.Add(UnitType.FlameInfantry);   // E6
-                    types.Add(UnitType.Sniper);           // E6
-                    types.Add(UnitType.Thief);            // E6b
-                    types.Add(UnitType.RocketInfantry);   // E7
-                    types.Add(UnitType.Fighter);           // E7
-                    types.Add(UnitType.Helicopter);        // E7
-                    types.Add(UnitType.Bomber);            // E8
-                    types.Add(UnitType.Scout);             // E8
-                    types.Add(UnitType.TransportHeli);      // E8
-                    // E9：海军
-                    types.Add(UnitType.Destroyer);
-                    types.Add(UnitType.Submarine);
-                    types.Add(UnitType.LandingCraft);
-                    types.Add(UnitType.AircraftCarrier);
-                }
-                if (HasBuilding(teamId, BuildingType.WarFactory))
-                {
-                    types.Add(UnitType.HeavyTank);
-                    types.Add(UnitType.Artillery);
-                    types.Add(UnitType.AntiAir);
-                    types.Add(UnitType.Engineer);
-                    types.Add(UnitType.Transport);        // E6
-                    types.Add(UnitType.Hero);              // E6b
-                    types.Add(UnitType.Spy);               // E6b
-                    types.Add(UnitType.Thief);             // E6b
-                }
-                if (hasTech)
-                {
-                    types.Add(UnitType.RocketLauncher);
-                    types.Add(UnitType.MissileTank);
-                }
-                if (types.Count > 0)
-                {
-                    types.Sort((a, b) => GetUnitCost(b).CompareTo(GetUnitCost(a)));
-                    // 步兵作为廉价填线兵：35%概率优先生产，保证其稳定出场
-                    if (types.Contains(UnitType.Infantry) && GD.Randf() < 0.35f)
-                    {
-                        types.Remove(UnitType.Infantry);
-                        types.Insert(0, UnitType.Infantry);
-                    }
-                    // 工程车：15%概率优先生产，保证修理/占领功能稳定出场
-                    if (types.Contains(UnitType.Engineer) && GD.Randf() < 0.15f)
-                    {
-                        types.Remove(UnitType.Engineer);
-                        types.Insert(0, UnitType.Engineer);
-                    }
-                    foreach (var t in types)
-                    {
-                        int c = GetUnitCost(t);
-                        if (_money[teamId] >= c)
-                        {
-                            var producer = FindProducerForUnit(t, teamId);
-                            if (producer != null)
-                            {
-                                _money[teamId] -= c;
-                                producer.EnqueueProduction(UnitTypeToProductionType(t));
-                                GameLog.Debug($"[AI] Team {teamId} queued {t}, ${_money[teamId]} left, {producer.BuildingName}队列{producer.QueueCount}");
-                                break;
-        }
+        // 1. 自动造兵（P2-10修复：复用提取的公共方法）
+        if (!savingForTech)
+            AITrainUnits(teamId);
 
-        // 5. G7: AI间谍任务 — 每20秒尝试一次
+        // 5. G7: AI间谍任务 — 每20秒尝试一次（移到生产逻辑外部，确保不受savingForTech/无单位影响）
         if (!_aiSpyCooldowns.TryGetValue(teamId, out int spyCd))
             _aiSpyCooldowns[teamId] = 0;
         _aiSpyCooldowns[teamId]--;
@@ -669,24 +602,9 @@ public partial class Main
             _aiSpyCooldowns[teamId] = 20;
             AISpyMission(teamId);
         }
-        }
-                    }
-                }
-            }
-        }
 
-        // 2. 矿车耗损自动补充（最多 3 辆）
-        var teamHarvesters = CountHarvestersOfTeam(teamId);
-        int harvesterCost = GetUnitCost(UnitType.Harvester, teamId);
-        if (_money[teamId] >= harvesterCost && teamHarvesters < 3)
-        {
-            var harvProducer = FindProducerBuilding(BuildingType.Base, teamId);
-            if (harvProducer != null)
-            {
-                _money[teamId] -= harvesterCost;
-                harvProducer.EnqueueProduction(ProductionType.Harvester);
-            }
-        }
+        // 2. 矿车耗损自动补充（P2-10修复：复用提取的公共方法）
+        AIReplenishHarvesters(teamId);
 
         // 3. 占领战略点
         if (_aiCapturesPoints)
@@ -752,7 +670,109 @@ public partial class Main
         }
         }
 
-    /// <summary>蓝方测试 AI：模拟玩家自动造兵（仅 headless 模式）。</summary>
+    /// <summary>
+    /// P2-10修复：提取AI造兵逻辑为公共方法，消除AITickForTeam和BlueTestAITick的重复代码。
+    /// 构建可生产的单位列表 → 按造价降序 → 概率优先填线兵 → 遍历排队。
+    /// </summary>
+    private void AITrainUnits(int teamId)
+    {
+        // 造兵（检查建筑前置 + 电力）
+        int teamUnits = CountUnitsOfTeam(teamId);
+        int teamQueued = CountQueuedUnitsOfTeam(teamId);
+        if (teamUnits + teamQueued >= _unitCap || GetTeamPower(teamId) < 0) return;
+
+        // 有科技中心时攒钱优先造高级兵种
+        bool hasTech = HasBuilding(teamId, BuildingType.TechCenter);
+        if (hasTech && _money[teamId] < GetUnitCost(UnitType.RocketLauncher, teamId) && teamUnits >= 3) return;
+
+        var types = new List<UnitType>();
+        if (HasBuilding(teamId, BuildingType.Barracks))
+        {
+            types.Add(UnitType.LightTank);
+            types.Add(UnitType.Infantry);
+            types.Add(UnitType.Grenadier);
+            types.Add(UnitType.FlameInfantry);
+            types.Add(UnitType.Sniper);
+            types.Add(UnitType.Thief);
+            types.Add(UnitType.RocketInfantry);
+            types.Add(UnitType.Fighter);
+            types.Add(UnitType.Helicopter);
+            types.Add(UnitType.Bomber);
+            types.Add(UnitType.Scout);
+            types.Add(UnitType.TransportHeli);
+            types.Add(UnitType.Destroyer);
+            types.Add(UnitType.Submarine);
+            types.Add(UnitType.LandingCraft);
+            types.Add(UnitType.AircraftCarrier);
+        }
+        if (HasBuilding(teamId, BuildingType.WarFactory))
+        {
+            types.Add(UnitType.HeavyTank);
+            types.Add(UnitType.Artillery);
+            types.Add(UnitType.AntiAir);
+            types.Add(UnitType.Engineer);
+            types.Add(UnitType.Transport);
+            types.Add(UnitType.Hero);
+            types.Add(UnitType.Spy);
+            types.Add(UnitType.Thief);
+        }
+        if (hasTech)
+        {
+            types.Add(UnitType.RocketLauncher);
+            types.Add(UnitType.MissileTank);
+        }
+        if (types.Count == 0) return;
+
+        types.Sort((a, b) => GetUnitCost(b, teamId).CompareTo(GetUnitCost(a, teamId)));
+        // 步兵作为廉价填线兵：35%概率优先生产
+        if (types.Contains(UnitType.Infantry) && GD.Randf() < 0.35f)
+        {
+            types.Remove(UnitType.Infantry);
+            types.Insert(0, UnitType.Infantry);
+        }
+        // 工程车：15%概率优先生产
+        if (types.Contains(UnitType.Engineer) && GD.Randf() < 0.15f)
+        {
+            types.Remove(UnitType.Engineer);
+            types.Insert(0, UnitType.Engineer);
+        }
+        foreach (var t in types)
+        {
+            int c = GetUnitCost(t, teamId);
+            if (_money[teamId] >= c)
+            {
+                var producer = FindProducerForUnit(t, teamId);
+                if (producer != null)
+                {
+                    _money[teamId] -= c;
+                    producer.EnqueueProduction(UnitTypeToProductionType(t));
+                    GameLog.Debug($"[AI] Team {teamId} queued {t}, ${_money[teamId]} left, {producer.BuildingName}队列{producer.QueueCount}");
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// P2-10修复：提取AI矿车补充逻辑为公共方法。
+    /// </summary>
+    private void AIReplenishHarvesters(int teamId)
+    {
+        int teamHarvesters = CountHarvestersOfTeam(teamId);
+        int harvesterCost = GetUnitCost(UnitType.Harvester, teamId);
+        if (_money[teamId] >= harvesterCost && teamHarvesters < 3)
+        {
+            var harvProducer = FindProducerBuilding(BuildingType.Base, teamId);
+            if (harvProducer != null)
+            {
+                _money[teamId] -= harvesterCost;
+                harvProducer.EnqueueProduction(ProductionType.Harvester);
+            }
+        }
+    }
+
+    /// <summary>蓝方测试 AI：模拟玩家自动造兵（仅 headless 模式）。
+    /// P2-10修复：使用提取的AITrainUnits/AIReplenishHarvesters方法，消除重复代码。</summary>
     private void BlueTestAITick()
     {
         // G4：自动维修血量低于50%的蓝方建筑
@@ -788,85 +808,9 @@ public partial class Main
         bool savingForTech = HasBuilding(0, BuildingType.WarFactory) && !HasBuilding(0, BuildingType.TechCenter);
         if (savingForTech) return;
 
-        int blueUnits = CountUnitsOfTeam(0);
-        // 优先补矿车
-        int blueHarvesters = CountHarvestersOfTeam(0);
-        int blueHarvCost = GetUnitCost(UnitType.Harvester, 0);
-        if (_money[0] >= blueHarvCost && blueHarvesters < 3)
-        {
-            var harvProducer = FindProducerBuilding(BuildingType.Base, 0);
-            if (harvProducer != null)
-            {
-                _money[0] -= blueHarvCost;
-                harvProducer.EnqueueProduction(ProductionType.Harvester);
-                GameLog.Debug($"[BlueAI] Blue queued harvester, ${_money[0]} left");
-                return;
-            }
-        }
-
-        // 造兵（检查建筑前置 + 电力）
-        int blueQueued = CountQueuedUnitsOfTeam(0);
-        if (blueUnits + blueQueued >= _unitCap || GetTeamPower(0) < 0) return;
-
-        // 有科技中心时攒钱优先造高级兵种
-        bool hasTech = HasBuilding(0, BuildingType.TechCenter);
-        if (hasTech && _money[0] < GetUnitCost(UnitType.RocketLauncher, 0) && blueUnits >= 3) return;
-
-        var types = new List<UnitType>();
-        if (HasBuilding(0, BuildingType.Barracks))
-        {
-            types.Add(UnitType.LightTank);
-            types.Add(UnitType.Infantry);
-        }
-        if (HasBuilding(0, BuildingType.WarFactory))
-        {
-            types.Add(UnitType.HeavyTank);
-            types.Add(UnitType.Artillery);
-            types.Add(UnitType.AntiAir);
-            types.Add(UnitType.Engineer);
-        }
-        if (hasTech)
-        {
-            types.Add(UnitType.RocketLauncher);
-            types.Add(UnitType.MissileTank);
-        }
-        // E9：蓝方AI也生产海军
-        if (HasBuilding(0, BuildingType.Shipyard))
-        {
-            types.Add(UnitType.Destroyer);
-            types.Add(UnitType.Submarine);
-            types.Add(UnitType.LandingCraft);
-        }
-        if (types.Count == 0) return;
-
-        types.Sort((a, b) => GetUnitCost(b).CompareTo(GetUnitCost(a)));
-        // 步兵作为廉价填线兵：35%概率优先生产，保证其稳定出场
-        if (types.Contains(UnitType.Infantry) && GD.Randf() < 0.35f)
-        {
-            types.Remove(UnitType.Infantry);
-            types.Insert(0, UnitType.Infantry);
-        }
-        // 工程车：15%概率优先生产，保证修理/占领功能稳定出场
-        if (types.Contains(UnitType.Engineer) && GD.Randf() < 0.15f)
-        {
-            types.Remove(UnitType.Engineer);
-            types.Insert(0, UnitType.Engineer);
-        }
-        foreach (var t in types)
-        {
-            int c = GetUnitCost(t);
-            if (_money[0] >= c)
-            {
-                var producer = FindProducerForUnit(t, 0);
-                if (producer != null)
-                {
-                    _money[0] -= c;
-                    producer.EnqueueProduction(UnitTypeToProductionType(t));
-                    GameLog.Debug($"[BlueAI] Blue queued {t}, ${_money[0]} left, {producer.BuildingName}队列{producer.QueueCount}");
-                }
-                return;
-            }
-        }
+        // 补矿车 + 造兵（复用提取的公共方法）
+        AIReplenishHarvesters(0);
+        AITrainUnits(0);
     }
 
     /// <summary>AI 占领战略点：派最近的己方战斗单位去最近的非己方战略点。</summary>

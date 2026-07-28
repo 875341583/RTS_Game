@@ -24,10 +24,10 @@ public static class QualitySettings
     /// <summary>当前画质等级的中文描述。</summary>
     public static string LevelName => Current switch
     {
-        QualityLevel.Low => "低画质(省电模式)",
-        QualityLevel.Medium => "中画质",
-        QualityLevel.High => "高画质",
-        _ => "未知"
+        QualityLevel.Low => TrManager.Tr("quality.low"),
+        QualityLevel.Medium => TrManager.Tr("quality.medium"),
+        QualityLevel.High => TrManager.Tr("quality.high"),
+        _ => TrManager.Tr("quality.unknown")
     };
 
     /// <summary>

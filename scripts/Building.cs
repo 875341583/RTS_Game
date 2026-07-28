@@ -26,7 +26,7 @@ public partial class Building : Area2D, IBuildingEntity
     public event Action<Building>? Destroyed;
 
     [Export] public float MaxHealth { get; set; } = 1000f;
-    [Export] public string BuildingName { get; set; } = "建造厂";
+    [Export] public string BuildingName { get; set; } = TrManager.Tr("building.base.name");
 
     public float Health { get; private set; }
 
@@ -570,7 +570,7 @@ public partial class Building : Area2D, IBuildingEntity
                 capturedMain.AddResourceForTeam(capturingTeamId, CaptureBonus.CaptureMoneyReward);
                 GameLog.Debug($"[G8] 占领奖励: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
                 capturedMain.ShowToast(capturingTeamId == 0
-                    ? $"占领{BuildingName}! +${CaptureBonus.CaptureMoneyReward}"
+                    ? TrManager.Tr("building.captured", BuildingName, CaptureBonus.CaptureMoneyReward)
                     : "");
             }
 
@@ -641,7 +641,7 @@ public partial class Building : Area2D, IBuildingEntity
                         GameLog.Debug($"[G8] 叛变! {BuildingName} 从 Team {TeamId} 叛变回 Team {_originalTeamId}!");
                         if (GetParent()?.GetParent() is Main capMain)
                             capMain.ShowToast(TeamId == 0
-                                ? $"{BuildingName}叛变! 被Team {_originalTeamId}夺回"
+                                ? TrManager.Tr("building.defected", BuildingName, _originalTeamId)
                                 : "");
                         TeamId = _originalTeamId;
                         _originalTeamId = -1;

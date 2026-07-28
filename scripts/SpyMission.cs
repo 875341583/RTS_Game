@@ -149,11 +149,11 @@ public static class SpyMission
 
         _missions = new Dictionary<MissionType, MissionInfo>
         {
-            [MissionType.StealTech] = new MissionInfo { Id = MissionType.StealTech, Name = "窃取科技", Description = "窃取1个敌方已研究科技(免费完成)" },
-            [MissionType.SabotagePower] = new MissionInfo { Id = MissionType.SabotagePower, Name = "破坏电网", Description = "使电站断电8秒" },
-            [MissionType.StealMoney] = new MissionInfo { Id = MissionType.StealMoney, Name = "窃取资金", Description = "偷取$500" },
-            [MissionType.SabotageProd] = new MissionInfo { Id = MissionType.SabotageProd, Name = "瘫痪生产", Description = "暂停生产10秒" },
-            [MissionType.Recon] = new MissionInfo { Id = MissionType.Recon, Name = "侦察", Description = "揭示敌方建筑/单位信息5秒" },
+            [MissionType.StealTech] = new MissionInfo { Id = MissionType.StealTech, Name = TrManager.Tr("spy.mission.steal_tech.name"), Description = TrManager.Tr("spy.mission.steal_tech.desc") },
+            [MissionType.SabotagePower] = new MissionInfo { Id = MissionType.SabotagePower, Name = TrManager.Tr("spy.mission.sabotage_power.name"), Description = TrManager.Tr("spy.mission.sabotage_power.desc") },
+            [MissionType.StealMoney] = new MissionInfo { Id = MissionType.StealMoney, Name = TrManager.Tr("spy.mission.steal_money.name"), Description = TrManager.Tr("spy.mission.steal_money.desc") },
+            [MissionType.SabotageProd] = new MissionInfo { Id = MissionType.SabotageProd, Name = TrManager.Tr("spy.mission.sabotage_prod.name"), Description = TrManager.Tr("spy.mission.sabotage_prod.desc") },
+            [MissionType.Recon] = new MissionInfo { Id = MissionType.Recon, Name = TrManager.Tr("spy.mission.recon.name"), Description = TrManager.Tr("spy.mission.recon.desc") },
         };
     }
 
@@ -177,7 +177,7 @@ public static class SpyMission
         lock (_dataLock)
         {
             if (_missions.Count == 0) LoadFromJsonCore(_alwaysFallback);
-            return _missions.TryGetValue(type, out var info) ? info.Name : "未知";
+            return _missions.TryGetValue(type, out var info) ? info.Name : TrManager.Tr("spy.mission.unknown.name");
         }
     }
 

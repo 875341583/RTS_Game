@@ -173,129 +173,129 @@ public static class TechTree
         // 军事分支
         _nodes[TechId.Mil_ArmorUpgrade] = new TechNode
         {
-            Id = TechId.Mil_ArmorUpgrade, Name = "装甲强化", Branch = "军事", Tier = 1,
+            Id = TechId.Mil_ArmorUpgrade, Name = TrManager.Tr("tech.name.mil_armor_upgrade"), Branch = "军事", Tier = 1,
             Cost = 500, ResearchTime = 30f, RequiresTechCenter = false,
-            Description = "所有坦克类单位血量+15%"
+            Description = TrManager.Tr("tech.desc.mil_armor_upgrade")
         };
         _nodes[TechId.Mil_AmmoUpgrade] = new TechNode
         {
-            Id = TechId.Mil_AmmoUpgrade, Name = "弹药升级", Branch = "军事", Tier = 2,
+            Id = TechId.Mil_AmmoUpgrade, Name = TrManager.Tr("tech.name.mil_ammo_upgrade"), Branch = "军事", Tier = 2,
             Cost = 800, ResearchTime = 45f,
             Prerequisites = new[]{ TechId.Mil_ArmorUpgrade },
-            Description = "所有单位攻击力+15%"
+            Description = TrManager.Tr("tech.desc.mil_ammo_upgrade")
         };
         _nodes[TechId.Mil_AdvancedTactics] = new TechNode
         {
-            Id = TechId.Mil_AdvancedTactics, Name = "高级战术", Branch = "军事", Tier = 3,
+            Id = TechId.Mil_AdvancedTactics, Name = TrManager.Tr("tech.name.mil_advanced_tactics"), Branch = "军事", Tier = 3,
             Cost = 1200, ResearchTime = 60f,
             Prerequisites = new[]{ TechId.Mil_AmmoUpgrade },
-            Description = "火箭炮/导弹车射程+30%"
+            Description = TrManager.Tr("tech.desc.mil_advanced_tactics")
         };
         _nodes[TechId.Mil_HeroTraining] = new TechNode
         {
-            Id = TechId.Mil_HeroTraining, Name = "英雄训练", Branch = "军事", Tier = 4,
+            Id = TechId.Mil_HeroTraining, Name = TrManager.Tr("tech.name.mil_hero_training"), Branch = "军事", Tier = 4,
             Cost = 1500, ResearchTime = 75f,
             Prerequisites = new[]{ TechId.Mil_AdvancedTactics },
-            Description = "英雄生产成本-30%，英雄初始即为Lv2"
+            Description = TrManager.Tr("tech.desc.mil_hero_training")
         };
 
         // 经济分支
         _nodes[TechId.Eco_MiningEfficiency] = new TechNode
         {
-            Id = TechId.Eco_MiningEfficiency, Name = "采矿效率", Branch = "经济", Tier = 1,
+            Id = TechId.Eco_MiningEfficiency, Name = TrManager.Tr("tech.name.eco_mining_efficiency"), Branch = "经济", Tier = 1,
             Cost = 400, ResearchTime = 25f, RequiresTechCenter = false,
-            Description = "矿车采集速度+30%"
+            Description = TrManager.Tr("tech.desc.eco_mining_efficiency")
         };
         _nodes[TechId.Eco_MassProduction] = new TechNode
         {
-            Id = TechId.Eco_MassProduction, Name = "批量生产", Branch = "经济", Tier = 2,
+            Id = TechId.Eco_MassProduction, Name = TrManager.Tr("tech.name.eco_mass_production"), Branch = "经济", Tier = 2,
             Cost = 700, ResearchTime = 40f,
             Prerequisites = new[]{ TechId.Eco_MiningEfficiency },
-            Description = "所有单位生产成本-15%"
+            Description = TrManager.Tr("tech.desc.eco_mass_production")
         };
         _nodes[TechId.Eco_ResourceNetwork] = new TechNode
         {
-            Id = TechId.Eco_ResourceNetwork, Name = "资源网络", Branch = "经济", Tier = 3,
+            Id = TechId.Eco_ResourceNetwork, Name = TrManager.Tr("tech.name.eco_resource_network"), Branch = "经济", Tier = 3,
             Cost = 1000, ResearchTime = 50f,
             Prerequisites = new[]{ TechId.Eco_MassProduction },
-            Description = "战略点占领收入+100%"
+            Description = TrManager.Tr("tech.desc.eco_resource_network")
         };
         _nodes[TechId.Eco_AdvancedLogistics] = new TechNode
         {
-            Id = TechId.Eco_AdvancedLogistics, Name = "后勤优化", Branch = "经济", Tier = 4,
+            Id = TechId.Eco_AdvancedLogistics, Name = TrManager.Tr("tech.name.eco_advanced_logistics"), Branch = "经济", Tier = 4,
             Cost = 1300, ResearchTime = 65f,
             Prerequisites = new[]{ TechId.Eco_ResourceNetwork },
-            Description = "单位上限+8"
+            Description = TrManager.Tr("tech.desc.eco_advanced_logistics")
         };
 
         // 防御分支
         _nodes[TechId.Def_Fortification] = new TechNode
         {
-            Id = TechId.Def_Fortification, Name = "筑城术", Branch = "防御", Tier = 1,
+            Id = TechId.Def_Fortification, Name = TrManager.Tr("tech.name.def_fortification"), Branch = "防御", Tier = 1,
             Cost = 450, ResearchTime = 28f, RequiresTechCenter = false,
-            Description = "所有建筑血量+25%"
+            Description = TrManager.Tr("tech.desc.def_fortification")
         };
         _nodes[TechId.Def_PowerGrid] = new TechNode
         {
-            Id = TechId.Def_PowerGrid, Name = "电网优化", Branch = "防御", Tier = 2,
+            Id = TechId.Def_PowerGrid, Name = TrManager.Tr("tech.name.def_power_grid"), Branch = "防御", Tier = 2,
             Cost = 650, ResearchTime = 35f,
             Prerequisites = new[]{ TechId.Def_Fortification },
-            Description = "电站发电量+50%"
+            Description = TrManager.Tr("tech.desc.def_power_grid")
         };
         _nodes[TechId.Def_AdvancedTurrets] = new TechNode
         {
-            Id = TechId.Def_AdvancedTurrets, Name = "高级炮塔", Branch = "防御", Tier = 3,
+            Id = TechId.Def_AdvancedTurrets, Name = TrManager.Tr("tech.name.def_advanced_turrets"), Branch = "防御", Tier = 3,
             Cost = 900, ResearchTime = 50f,
             Prerequisites = new[]{ TechId.Def_PowerGrid },
-            Description = "防御建筑射程+20%、伤害+20%"
+            Description = TrManager.Tr("tech.desc.def_advanced_turrets")
         };
         _nodes[TechId.Def_RepairSystems] = new TechNode
         {
-            Id = TechId.Def_RepairSystems, Name = "维修系统", Branch = "防御", Tier = 4,
+            Id = TechId.Def_RepairSystems, Name = TrManager.Tr("tech.name.def_repair_systems"), Branch = "防御", Tier = 4,
             Cost = 1200, ResearchTime = 60f,
             Prerequisites = new[]{ TechId.Def_AdvancedTurrets },
-            Description = "所有建筑每秒自动恢复2%血量"
+            Description = TrManager.Tr("tech.desc.def_repair_systems")
         };
 
         // P1-2: 阵营专属科技（硬编码后备，JSON加载时覆盖）
         _nodes[TechId.Fac_AirSuperiority] = new TechNode
         {
-            Id = TechId.Fac_AirSuperiority, Name = "空中优势", Branch = "阵营专属", Tier = 1,
+            Id = TechId.Fac_AirSuperiority, Name = TrManager.Tr("tech.name.fac_air_superiority"), Branch = "阵营专属", Tier = 1,
             Cost = 800, ResearchTime = 40f, RequiresTechCenter = true,
-            Description = "同盟军专属：空军伤害+15%"
+            Description = TrManager.Tr("tech.desc.fac_air_superiority")
         };
         _nodes[TechId.Fac_NavalSupport] = new TechNode
         {
-            Id = TechId.Fac_NavalSupport, Name = "海军支援", Branch = "阵营专属", Tier = 2,
+            Id = TechId.Fac_NavalSupport, Name = TrManager.Tr("tech.name.fac_naval_support"), Branch = "阵营专属", Tier = 2,
             Cost = 900, ResearchTime = 45f, RequiresTechCenter = true,
             Prerequisites = new[]{ TechId.Fac_AirSuperiority },
-            Description = "同盟军专属：海军生产速度+20%"
+            Description = TrManager.Tr("tech.desc.fac_naval_support")
         };
         _nodes[TechId.Fac_HeavyArmor] = new TechNode
         {
-            Id = TechId.Fac_HeavyArmor, Name = "重装甲", Branch = "阵营专属", Tier = 1,
+            Id = TechId.Fac_HeavyArmor, Name = TrManager.Tr("tech.name.fac_heavy_armor"), Branch = "阵营专属", Tier = 1,
             Cost = 800, ResearchTime = 40f, RequiresTechCenter = true,
-            Description = "苏维埃专属：坦克生命+15%"
+            Description = TrManager.Tr("tech.desc.fac_heavy_armor")
         };
         _nodes[TechId.Fac_NuclearPower] = new TechNode
         {
-            Id = TechId.Fac_NuclearPower, Name = "核能", Branch = "阵营专属", Tier = 2,
+            Id = TechId.Fac_NuclearPower, Name = TrManager.Tr("tech.name.fac_nuclear_power"), Branch = "阵营专属", Tier = 2,
             Cost = 900, ResearchTime = 45f, RequiresTechCenter = true,
             Prerequisites = new[]{ TechId.Fac_HeavyArmor },
-            Description = "苏维埃专属：电站发电+50%"
+            Description = TrManager.Tr("tech.desc.fac_nuclear_power")
         };
         _nodes[TechId.Fac_MindControl] = new TechNode
         {
-            Id = TechId.Fac_MindControl, Name = "心灵控制", Branch = "阵营专属", Tier = 1,
+            Id = TechId.Fac_MindControl, Name = TrManager.Tr("tech.name.fac_mind_control"), Branch = "阵营专属", Tier = 1,
             Cost = 800, ResearchTime = 40f, RequiresTechCenter = true,
-            Description = "尤里专属：间谍/窃贼效率+30%"
+            Description = TrManager.Tr("tech.desc.fac_mind_control")
         };
         _nodes[TechId.Fac_StealthOps] = new TechNode
         {
-            Id = TechId.Fac_StealthOps, Name = "隐蔽行动", Branch = "阵营专属", Tier = 2,
+            Id = TechId.Fac_StealthOps, Name = TrManager.Tr("tech.name.fac_stealth_ops"), Branch = "阵营专属", Tier = 2,
             Cost = 900, ResearchTime = 45f, RequiresTechCenter = true,
             Prerequisites = new[]{ TechId.Fac_MindControl },
-            Description = "尤里专属：单位隐蔽时间+50%"
+            Description = TrManager.Tr("tech.desc.fac_stealth_ops")
         };
     }
 

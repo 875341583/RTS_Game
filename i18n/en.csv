@@ -1,4 +1,4 @@
-# i18n translation file - English
+﻿# i18n translation file - English
 # Format: key,translation
 
 # === UI Common ===
@@ -342,3 +342,362 @@ ui.lightning_target_mode,★ Lightning Target: Left-click to fire | Right-click 
 editor.coord,Grid: ({0}, {1})
 editor.coord_label,Grid: (--, --)
 editor.status_mode,Mode:{0} Brush:{1} Terrain:{2} Elev:{3} │ Mods:{4} Ore:{5} Strategic:{6} Base:{7} │ Undo:{8} Redo:{9}
+
+# === Tech Tree (TechTree.cs hardcoded fallback) ===
+tech.name.mil_armor_upgrade,Armor Upgrade
+tech.desc.mil_armor_upgrade,All tank units +15% HP
+tech.name.mil_ammo_upgrade,Ammo Upgrade
+tech.desc.mil_ammo_upgrade,All units +15% attack
+tech.name.mil_advanced_tactics,Advanced Tactics
+tech.desc.mil_advanced_tactics,Rocket/Missile range +30%
+tech.name.mil_hero_training,Hero Training
+tech.desc.mil_hero_training,Hero cost -30%, starts at Lv2
+tech.name.eco_mining_efficiency,Mining Efficiency
+tech.desc.eco_mining_efficiency,Harvester speed +30%
+tech.name.eco_mass_production,Mass Production
+tech.desc.eco_mass_production,All unit cost -15%
+tech.name.eco_resource_network,Resource Network
+tech.desc.eco_resource_network,Strategic point income +100%
+tech.name.eco_advanced_logistics,Advanced Logistics
+tech.desc.eco_advanced_logistics,Unit cap +8
+tech.name.def_fortification,Fortification
+tech.desc.def_fortification,All buildings +25% HP
+tech.name.def_power_grid,Power Grid
+tech.desc.def_power_grid,Power plant output +50%
+tech.name.def_advanced_turrets,Advanced Turrets
+tech.desc.def_advanced_turrets,Defense range +20%, damage +20%
+tech.name.def_repair_systems,Repair Systems
+tech.desc.def_repair_systems,All buildings auto-repair 2% HP/s
+tech.name.fac_air_superiority,Air Superiority
+tech.desc.fac_air_superiority,Allies: Air damage +15%
+tech.name.fac_naval_support,Naval Support
+tech.desc.fac_naval_support,Allies: Naval production speed +20%
+tech.name.fac_heavy_armor,Heavy Armor
+tech.desc.fac_heavy_armor,Soviet: Tank HP +15%
+tech.name.fac_nuclear_power,Nuclear Power
+tech.desc.fac_nuclear_power,Soviet: Power plant output +50%
+tech.name.fac_mind_control,Mind Control
+tech.desc.fac_mind_control,Yuri: Spy/Thief efficiency +30%
+tech.name.fac_stealth_ops,Stealth Ops
+tech.desc.fac_stealth_ops,Yuri: Unit stealth duration +50%
+
+# === Resource Node (ResourceNode.cs) ===
+resource.oil_field.capturing,Capturing
+resource.oil_field.name,Oil Field
+resource.oil_field.neutral,Neutral Oil Field
+
+# === Strategic Point (StrategicPoint.cs) ===
+strategic_point.name,Strategic Point
+strategic_point.controlled,Controlled
+strategic_point.capturing,Capturing
+
+# === Common ===
+common.faction,Faction
+
+# === Faction Names (FactionDef.cs) ===
+faction.allies.name,Alliance
+faction.soviet.name,Soviet
+faction.yuri.name,Yuri Legion
+
+# === Quality (QualitySettings.cs) ===
+quality.low,Low (Power Saving)
+quality.medium,Medium
+quality.high,High
+quality.unknown,Unknown
+
+# === Map Editor (MapData.cs) ===
+map_editor.new_map,New Map
+
+# === Replay System (ReplayPlayer.cs) ===
+replay.no_replay_loaded,No replay loaded
+replay.status,Status
+replay.frame,Frame
+replay.progress,Progress
+replay.speed,Speed
+
+# === Unit Names (Harvester.cs) ===
+unit.harvester.name,Harvester
+
+# === Additional translation keys ===
+adj.bld_line,{0} → {1}
+adj.bonus_power,Power +{0}%
+adj.bonus_produce,Production +{0}%
+adj.bonus_range,Range +{0}%
+adj.bonus_repair,Repair +{0}%
+adj.hint,Tip: Place similar buildings adjacent to trigger bonuses{0}
+adj.no_bonus,No bonus
+adj.panel_title,═══ Adjacency Bonus System ═══
+adj.range_info,Adjacency range: {0} tiles
+adj.research_bonus,Research speed{0}+{1}%{0}
+adj.rule_bar_bar,Barracks ↔ Barracks: Production speed +15%
+adj.rule_pp_base,Power Plant ↔ Base: Base power range +20%
+adj.rule_pp_pp,Power Plant ↔ Power Plant: Power output +10%
+adj.rule_repair_wf,Repair Pad ↔ War Factory: Repair speed +20%
+adj.rule_tech_pp,Tech Center ↔ Power Plant: Research speed +15%
+adj.rule_turret_bar,Turret ↔ Barracks: Attack range +15%
+adj.rule_wf_wf,War Factory ↔ War Factory: Production speed +10%
+adj.rules_header,── Adjacency Rules ──
+adj.section_player,── Our Buildings ──
+building.base.name,Base
+building.captured,Captured {0}! Reward ${1}
+building.defected,Warning! {0} defected back to original faction {1}
+capture.boost,Captured production boost: {0}s
+capture.boosted,[Production Boost]
+capture.chain_range,Chain capture range: {0} tiles
+capture.defection_active,[Defection Risk {0}s]
+capture.defection_risk,Defection chance: {0}%, duration {1}s
+capture.line,{0} | Current faction {1} | Original faction {2} {3}
+capture.none,No captured buildings
+capture.panel_title,═══ Capture System ═══
+capture.reward,Capture reward: ${0}
+capture.section_captured,── Captured Buildings ──
+card.ai_card_line,  AI{0}: {1}
+card.ai_cards,── AI Tactical Cards ──
+card.blitz_economy.desc,Harvester speed +20%, starting funds x1.5
+card.blitz_economy.name,Blitz Economy
+card.blitz_tactics.desc,Unit move speed +15%, production speed +15%
+card.blitz_tactics.name,Blitz Tactics
+card.button_text,{0} {1}
+{2}
+
+[{3}]
+card.desc,Effect: {0}
+card.fortress.desc,Building HP +30%, defense range +15%
+card.fortress.name,Iron Fortress
+card.infantry_assault.desc,Infantry HP +25%, infantry cost -20%
+card.infantry_assault.name,Infantry Assault
+card.iron_flood.desc,Tank HP +20%, tank attack +10%
+card.iron_flood.name,Iron Flood
+card.none,No tactical card selected
+card.panel_title,═══ Tactical Cards ═══
+card.please_select,Select a tactical card
+card.rapid_deploy.desc,Production speed +20%, unit cap +10
+card.rapid_deploy.name,Rapid Deploy
+card.selection_pending,Card selection pending...
+card.tech_leap.desc,Research speed +50%, era upgrade speed +30%
+card.tech_leap.name,Tech Leap
+card.toast_selected,Tactical card selected: {0}
+card.war_machine.desc,All units attack +15% (HP -10%)
+card.war_machine.name,War Machine
+card.your_card,Your card: {0} {1}
+era.bonus_summary,Era bonus: Each level adds +5% attack/HP, +10% harvest/build speed
+era.bronze.desc,Unlocks War Factory, Turret, AA Turret, Repair Pad
+era.bronze.name,Bronze Age
+era.can_advance,✓ Ready to advance
+era.cannot_advance,✗ Requirements not met
+era.era_desc,  {0}
+era.era_line,{0} {1} {2}
+era.hint_hotkey,Press Y to advance era
+era.industrial.desc,Unlocks Tech Center, Nuke Silo, Lightning Tower
+era.industrial.name,Industrial Age
+era.information.desc,Final era, all buildings and units unlocked
+era.information.name,Information Age
+era.no_req,No prerequisites
+era.panel_header,Current era: {0} | Funds: ${1}
+era.panel_title,═══ Era System ═══
+era.panel_upgrading,Upgrading → {0} ({1}%)
+era.status_current,◀ Current
+era.status_done,✓ Completed
+era.stone.desc,Starting era, only Base, Power Plant, Barracks available
+era.stone.name,Stone Age
+era.toast_entered,Entered {0}!
+era.upgrade_cost,Cost: ${0} | Requires: {1} | Time: {2}s
+era.upgrade_status,Status: {0}
+eureka.ai_line,AI{0}: Kills {1}/{2} Funds {3}/{4} Built {5}/{6} Destroyed {7}/{8}
+eureka.panel_title,═══ Eureka Moment ═══
+eureka.player_line1,Kills: {0}/{1}  Funds accumulated: {2}/{3}
+eureka.player_line2,Built: {0}/{1}  Destroyed: {2}/{3}
+eureka.reason_build,Construction breakthrough
+eureka.reason_destroy,Destruction breakthrough
+eureka.reason_kill,Kill breakthrough
+eureka.reason_money,Economic breakthrough
+eureka.section_player,── Player Progress ──
+eureka.threshold_build_destroy,Build {0} times or destroy {1} buildings → Trigger Eureka
+eureka.threshold_kill_money,Kill {0} units or accumulate {1} funds → Trigger Eureka
+eureka.toast_free_tech,Eureka! {0} → Free tech: {1}
+eureka.toast_graduated,Eureka! {0} ({1} branch graduated) → Fund compensation +${2}
+power.bld_line,{0} [{1}] Supply {2} Demand {3}
+power.detail_line,{0} | Radius {1} | Supply {2} Demand {3} Surplus {4}
+power.offline,[Offline]
+power.offline_speed,Offline production speed: {0}%
+power.online,[Online]
+power.panel_title,═══ Power Grid ═══
+power.radius_info,Supply radius: Power Plant {0} tiles / Base {1} tiles
+power.section_detail,── Supply Details ──
+power.section_player,── Our Buildings ──
+power.source,[Source]
+power.summary,Power Plants: {0} | Online: {1} | Offline: {2}
+power.supply_demand,Total supply: {0} | Total demand: {1}
+power.warn_offline,⚠ {0} buildings offline!
+replay.summary.format,Seed:{0} | Difficulty:{1} | Size:{2} | Theme:{3} | Records:{4} | Frames:{5}
+replay.summary.not_recording,Not recording
+spy.header,Success rate: {0}% | Infiltrate time: {1}s
+spy.idle,Idle
+spy.mission.recon.desc,Scout the area around enemy buildings for intel
+spy.mission.recon.name,Recon
+spy.mission.sabotage_power.desc,Sabotage enemy power plant, disabling power for {0}s
+spy.mission.sabotage_power.name,Sabotage Power
+spy.mission.sabotage_prod.desc,Paralyze enemy barracks or war factory, halting production for {0}s
+spy.mission.sabotage_prod.name,Sabotage Production
+spy.mission.steal_money.desc,Infiltrate enemy base and steal ${0}
+spy.mission.steal_money.name,Steal Money
+spy.mission.steal_tech.desc,Infiltrate enemy tech center, gain a free tech
+spy.mission.steal_tech.name,Steal Tech
+spy.mission.unknown.name,Unknown Mission
+spy.mission_types,── Mission Types ──
+spy.no_spy,No spies available
+spy.none,None
+spy.on_mission,Mission: {0} → Target: {1} | {2}s remaining
+spy.operation_hint,Select a spy, right-click enemy building to execute mission
+spy.panel_title,═══ Spy Operations ═══
+spy.section_player,── Our Spies ──
+spy.type_paralyze_prod,Sabotage Production — Halt enemy building production
+spy.type_recon,Recon — Scout enemy territory
+spy.type_sabotage_power,Sabotage Power — Cut enemy power supply
+spy.type_steal_money,Steal Money — Steal enemy funds
+spy.type_steal_tech,Steal Tech — Gain a free tech
+tech.branch_header,── {0} Branch ──
+tech.has_no,No
+tech.has_yes,Yes
+tech.hint_hotkey,Press number keys to select tech for research
+tech.node_desc,  {0}
+tech.node_line,{0} T{1} {2} [{3}] ${4} {5}s
+tech.researching,Researching: {0} ({1}%)
+tech.status_available,Available
+tech.status_done,✓ Done
+tech.status_locked,🔒 Locked
+tech.status_researching,Researching {0}%
+tech.toast_era_upgrading,Era upgrading: {0}
+tech.toast_research_done,Research complete: {0}
+tech.toast_research_started,Research started: {0}
+tech.tree_header,Funds: ${0} | Tech Center: {1} | {2}
+tech.tree_title,═══ Tech Tree ═══
+ui3d.base_destroyed,Base destroyed! Faction {0} defeated
+ui3d.build_anti_air_turret,AA Turret
+ui3d.build_barracks,Barracks
+ui3d.build_lightning_tower,Lightning Tower
+ui3d.build_nuke_silo,Nuke Silo
+ui3d.build_panel_title,Buildings
+ui3d.build_power_plant,Power Plant
+ui3d.build_repair_pad,Repair Pad
+ui3d.build_tech_center,Tech Center
+ui3d.build_turret,Turret
+ui3d.build_war_factory,War Factory
+ui3d.building_attacked,Building under attack!
+ui3d.cannot_build_here,Cannot build here
+ui3d.cruise_missile_hit,Cruise missile hit target!
+ui3d.defeat,Defeat
+ui3d.disaster_earthquake,Earthquake
+ui3d.disaster_ended,Disaster ended: {0}
+ui3d.disaster_incoming,⚠ Disaster incoming: {0}
+ui3d.disaster_lightning_storm,Lightning Storm
+ui3d.disaster_rainstorm,Rainstorm
+ui3d.hint_controls,Left-click select | Right-click move/attack | WASD pan | Scroll zoom | Ctrl+Number squad
+ui3d.info_label,Units:{0} Buildings:{1} Time:{2}
+ui3d.insufficient_funds,Insufficient funds
+ui3d.insufficient_power,Insufficient power
+ui3d.lightning_storm,Lightning Storm unleashed!
+ui3d.missing_prerequisite,Missing prerequisite tech
+ui3d.money_label,Funds: ${0}
+ui3d.need_building,Need building: {0}
+ui3d.no_production,No production queue
+ui3d.nuke_strike,Nuke strike!
+ui3d.place_building,Placing: {0}
+ui3d.power_label,Power: {0}
+ui3d.prod_anti_air,AA Infantry
+ui3d.prod_artillery,Artillery
+ui3d.prod_bomber,Bomber
+ui3d.prod_chief_engineer,Chief Engineer
+ui3d.prod_engineer,Engineer
+ui3d.prod_fighter,Fighter
+ui3d.prod_flame_infantry,Flame Infantry
+ui3d.prod_grenadier,Grenadier
+ui3d.prod_harvester,Harvester
+ui3d.prod_heavy_tank,Heavy Tank
+ui3d.prod_helicopter,Helicopter
+ui3d.prod_hero,Hero
+ui3d.prod_infantry,Infantry
+ui3d.prod_light_tank,Light Tank
+ui3d.prod_missile_tank,Missile Tank
+ui3d.prod_queue_info,{0} — {1} x{2}
+ui3d.prod_rocket_infantry,Rocket Infantry
+ui3d.prod_rocket_launcher,Rocket Launcher
+ui3d.prod_sapper,Sapper
+ui3d.prod_scout,Scout
+ui3d.prod_sniper,Sniper
+ui3d.prod_spy,Spy
+ui3d.prod_thief,Thief
+ui3d.prod_transport,Transport
+ui3d.prod_transport_heli,Transport Heli
+ui3d.production_progress,Production Progress
+ui3d.spy_infiltrate_success,Spy infiltration successful!
+ui3d.squad_saved,Squad {0} saved ({1} units)
+ui3d.start_overlay,Click to start game
+ui3d.thief_steal,Thief stole ${0}!
+ui3d.too_close_to_building,Too close to another building
+ui3d.unit_hotkeys,Unit Hotkeys
+ui3d.victory,Victory
+unit.ability.armor_piercing.desc,Attacks ignore 30% of target armor
+unit.ability.armor_piercing.name,Armor Piercing
+unit.ability.battle_frenzy.desc,Attack speed +50% when HP below 50%
+unit.ability.battle_frenzy.name,Battle Frenzy
+unit.ability.double_shot.desc,Fires two projectiles per attack
+unit.ability.double_shot.name,Double Shot
+unit.ability.plunder.desc,Gain funds when killing enemy units
+unit.ability.plunder.name,Plunder
+unit.ability.reactive_armor.desc,Chance to trigger explosive reactive armor on hit, reducing damage
+unit.ability.reactive_armor.name,Reactive Armor
+unit.ability.recon_vision.desc,Vision range +50%
+unit.ability.recon_vision.name,Recon Vision
+unit.ability.scatter.desc,Chance to scatter and evade when attacked
+unit.ability.scatter.name,Scatter
+unit.ability.self_repair.desc,Regenerates 2% HP per second out of combat
+unit.ability.self_repair.name,Self Repair
+unit.ability.smoke_screen.desc,Deploys smoke screen when attacked, reducing enemy accuracy
+unit.ability.smoke_screen.name,Smoke Screen
+unit.ability.tenacity.desc,Damage taken reduced 40% when HP below 30%
+unit.ability.tenacity.name,Tenacity
+unit.ability.turbo_engine.desc,Move speed +25%
+unit.ability.turbo_engine.name,Turbo Engine
+unit.ability.unknown.name,Unknown Ability
+unit.ability_armor_piercing,Armor Piercing
+unit.ability_battle_frenzy,Battle Frenzy
+unit.ability_desc_armor_piercing,Attacks ignore 30% of target armor
+unit.ability_desc_battle_frenzy,Attack speed +50% when HP below 50%
+unit.ability_desc_double_shot,Fires two projectiles per attack
+unit.ability_desc_plunder,Gain funds when killing enemy units
+unit.ability_desc_reactive_armor,Chance to trigger explosive reactive armor on hit, reducing damage
+unit.ability_desc_recon_vision,Vision range +50%
+unit.ability_desc_scatter,Chance to scatter and evade when attacked
+unit.ability_desc_self_repair,Regenerates 2% HP per second out of combat
+unit.ability_desc_smoke_screen,Deploys smoke screen when attacked, reducing enemy accuracy
+unit.ability_desc_tenacity,Damage taken reduced 40% when HP below 30%
+unit.ability_desc_turbo_engine,Move speed +25%
+unit.ability_double_shot,Double Shot
+unit.ability_plunder,Plunder
+unit.ability_reactive_armor,Reactive Armor
+unit.ability_recon_vision,Recon Vision
+unit.ability_scatter,Scatter
+unit.ability_self_repair,Self Repair
+unit.ability_smoke_screen,Smoke Screen
+unit.ability_tenacity,Tenacity
+unit.ability_turbo_engine,Turbo Engine
+unit.aircraft_carrier,Aircraft Carrier
+unit.hero_critical_strike,Critical Hero
+unit.hero_dash,Dash Hero
+unit.hero_double_shot,Double Shot Hero
+unit.hero_heal_aura,Heal Aura Hero
+unit.hero_shield,Shield Hero
+unit.landing_craft,Landing Craft
+unit.merge_advanced_engineer_vehicle,Advanced Engineer Vehicle
+unit.merge_armed_jeep,Armed Jeep
+unit.merge_assault_gun,Assault Gun
+unit.merge_engineer_vehicle,Engineer Vehicle
+unit.merge_flame_tank,Flame Tank
+unit.merge_hero_tank,Hero Tank
+unit.merge_light_armed_vehicle,Light Armed Vehicle
+unit.merge_raider,Raider
+unit.merge_sniper_tank,Sniper Tank
+unit.merge_spy_vehicle,Spy Vehicle
+unit.transport,Transport
+unit.transport_heli,Transport Heli

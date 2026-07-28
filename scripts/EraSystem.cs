@@ -153,25 +153,25 @@ public static class EraSystem
         {
             new EraInfo
             {
-                Id = Era.Stone, Name = "石器时代", Description = "起步时代：仅能建造基础建筑和生产步兵",
+                Id = Era.Stone, Name = TrManager.Tr("era.stone.name"), Description = TrManager.Tr("era.stone.desc"),
                 UpgradeCost = 0, UpgradeTime = 0f,
                 RequiredBuildings = System.Array.Empty<BuildingType>()
             },
             new EraInfo
             {
-                Id = Era.Bronze, Name = "青铜时代", Description = "解锁车厂/重坦/炮兵/防御塔/维修厂",
+                Id = Era.Bronze, Name = TrManager.Tr("era.bronze.name"), Description = TrManager.Tr("era.bronze.desc"),
                 UpgradeCost = 800, UpgradeTime = 30f,
                 RequiredBuildings = new[] { BuildingType.Barracks }
             },
             new EraInfo
             {
-                Id = Era.Industrial, Name = "工业时代", Description = "解锁科技中心/火箭炮/导弹车/机场/空军",
+                Id = Era.Industrial, Name = TrManager.Tr("era.industrial.name"), Description = TrManager.Tr("era.industrial.desc"),
                 UpgradeCost = 1500, UpgradeTime = 45f,
                 RequiredBuildings = new[] { BuildingType.WarFactory }
             },
             new EraInfo
             {
-                Id = Era.Information, Name = "信息时代", Description = "解锁船厂/海军/轰炸机/超武/英雄/间谍",
+                Id = Era.Information, Name = TrManager.Tr("era.information.name"), Description = TrManager.Tr("era.information.desc"),
                 UpgradeCost = 2500, UpgradeTime = 60f,
                 RequiredBuildings = new[] { BuildingType.TechCenter }
             },

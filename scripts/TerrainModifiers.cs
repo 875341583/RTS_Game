@@ -15,8 +15,12 @@ public static class TerrainModifiers
 
     /// <summary>地形×单位类别 的速度修正表。</summary>
     private static readonly Dictionary<TerrainType, Dictionary<TerrainUnitCategory, float>> _speedMods = new();
+    /// <summary>每种地形的 _default 速度修正值（与单位类别无关的回退值）。</summary>
+    private static readonly Dictionary<TerrainType, float> _speedDefaults = new();
     /// <summary>缓坡修正（elevDiff==1时乘以基础速度）。</summary>
     private static readonly Dictionary<TerrainUnitCategory, float> _slopeMods = new();
+    /// <summary>缓坡修正的 _default 值（替代之前用 Air 作为哨兵键的方案）。</summary>
+    private static float _slopeDefault = 0.4f;
     private static readonly object _lock = new();
     private static bool _alwaysFallback = false;
 
@@ -39,9 +43,9 @@ public static class TerrainModifiers
             {
                 if (catDict.TryGetValue(unitCat, out float val))
                     return val;
-                // 回退到 _default
-                if (catDict.TryGetValue(TerrainUnitCategory.Air, out float def))
-                    return def; // Air 作为 _default 的占位键（不会到这里，因为Air在调用方已短路）
+                // 回退到 _default（独立存储，不再借用 Air 作为哨兵键）
+                if (_speedDefaults.TryGetValue(terrainType, out float defVal))
+                    return defVal;
             }
             return 1.0f; // 未知地形默认满速
         }
@@ -58,7 +62,7 @@ public static class TerrainModifiers
 
             if (_slopeMods.TryGetValue(unitCat, out float val))
                 return val;
-            return 0.4f; // 默认缓坡修正
+            return _slopeDefault; // 默认缓坡修正（独立存储，不再借用 Air 作为哨兵键）
         }
     }
 
@@ -126,9 +130,8 @@ public static class TerrainModifiers
 
                     if (catStr == "_default")
                     {
-                        // 用一个不可能作为查询键的特殊值存储 default
-                        // 我们用一个哨兵：Air 作为 default（因为Air总在调用方短路，不会查表）
-                        catMap[TerrainUnitCategory.Air] = val;
+                        // P1-8修复：使用独立字典存储 _default，不再借用 Air 作为哨兵键
+                        _speedDefaults[terrainType] = val;
                     }
                     else if (System.Enum.TryParse<TerrainUnitCategory>(catStr, out var unitCat))
                     {
@@ -150,7 +153,7 @@ public static class TerrainModifiers
 
                 if (catStr == "_default")
                 {
-                    _slopeMods[TerrainUnitCategory.Air] = val; // Air 哨兵
+                    _slopeDefault = val;
                 }
                 else if (System.Enum.TryParse<TerrainUnitCategory>(catStr, out var unitCat))
                 {
@@ -166,6 +169,7 @@ public static class TerrainModifiers
     private static void LoadFallback()
     {
         _speedMods.Clear();
+        _speedDefaults.Clear();
         _slopeMods.Clear();
 
         // Road
@@ -178,13 +182,11 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 1.2f,
             [TerrainUnitCategory.EngineerVehicle] = 1.2f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 1.0f, // _default
         };
+        _speedDefaults[TerrainType.Road] = 1.0f;
         // Grass — 所有单位1.0
-        _speedMods[TerrainType.Grass] = new Dictionary<TerrainUnitCategory, float>
-        {
-            [TerrainUnitCategory.Air] = 1.0f, // _default
-        };
+        _speedMods[TerrainType.Grass] = new Dictionary<TerrainUnitCategory, float>();
+        _speedDefaults[TerrainType.Grass] = 1.0f;
         // Sand
         _speedMods[TerrainType.Sand] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -195,8 +197,8 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.8f,
             [TerrainUnitCategory.EngineerVehicle] = 0.7f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 0.6f, // _default
         };
+        _speedDefaults[TerrainType.Sand] = 0.6f;
         // Snow
         _speedMods[TerrainType.Snow] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -207,8 +209,8 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.7f,
             [TerrainUnitCategory.EngineerVehicle] = 0.6f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 0.5f, // _default
         };
+        _speedDefaults[TerrainType.Snow] = 0.5f;
         // City
         _speedMods[TerrainType.City] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -219,8 +221,8 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.9f,
             [TerrainUnitCategory.EngineerVehicle] = 0.8f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 0.8f, // _default
         };
+        _speedDefaults[TerrainType.City] = 0.8f;
         // Field
         _speedMods[TerrainType.Field] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -231,8 +233,8 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.9f,
             [TerrainUnitCategory.EngineerVehicle] = 0.8f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 0.7f, // _default
         };
+        _speedDefaults[TerrainType.Field] = 0.7f;
         // ShallowWater
         _speedMods[TerrainType.ShallowWater] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -243,14 +245,14 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.3f,
             [TerrainUnitCategory.EngineerVehicle] = 0.2f,
             [TerrainUnitCategory.Naval] = 1.0f,
-            [TerrainUnitCategory.Air] = 0.2f, // _default
         };
+        _speedDefaults[TerrainType.ShallowWater] = 0.2f;
         // DeepWater
         _speedMods[TerrainType.DeepWater] = new Dictionary<TerrainUnitCategory, float>
         {
             [TerrainUnitCategory.Naval] = 1.0f,
-            [TerrainUnitCategory.Air] = 0f, // _default
         };
+        _speedDefaults[TerrainType.DeepWater] = 0f;
         // Mountain
         _speedMods[TerrainType.Mountain] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -261,13 +263,11 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.3f,
             [TerrainUnitCategory.EngineerVehicle] = 0f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 0f, // _default
         };
+        _speedDefaults[TerrainType.Mountain] = 0f;
         // Cliff — 所有0
-        _speedMods[TerrainType.Cliff] = new Dictionary<TerrainUnitCategory, float>
-        {
-            [TerrainUnitCategory.Air] = 0f, // _default
-        };
+        _speedMods[TerrainType.Cliff] = new Dictionary<TerrainUnitCategory, float>();
+        _speedDefaults[TerrainType.Cliff] = 0f;
         // Bridge
         _speedMods[TerrainType.Bridge] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -278,8 +278,8 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 1.0f,
             [TerrainUnitCategory.EngineerVehicle] = 1.0f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 1.0f, // _default
         };
+        _speedDefaults[TerrainType.Bridge] = 1.0f;
         // Tunnel
         _speedMods[TerrainType.Tunnel] = new Dictionary<TerrainUnitCategory, float>
         {
@@ -290,8 +290,8 @@ public static class TerrainModifiers
             [TerrainUnitCategory.Engineer] = 0.9f,
             [TerrainUnitCategory.EngineerVehicle] = 0.9f,
             [TerrainUnitCategory.Naval] = 0f,
-            [TerrainUnitCategory.Air] = 0.9f, // _default
         };
+        _speedDefaults[TerrainType.Tunnel] = 0.9f;
 
         // Slope modifiers
         _slopeMods[TerrainUnitCategory.Infantry] = 0.5f;
@@ -300,6 +300,6 @@ public static class TerrainModifiers
         _slopeMods[TerrainUnitCategory.Harvester] = 0.3f;
         _slopeMods[TerrainUnitCategory.Engineer] = 0.5f;
         _slopeMods[TerrainUnitCategory.EngineerVehicle] = 0.3f;
-        _slopeMods[TerrainUnitCategory.Air] = 0.4f; // _default
+        _slopeDefault = 0.4f;
     }
 }

@@ -214,7 +214,7 @@ public static class ReplayRecorder
     /// <summary>获取录制统计摘要。</summary>
     public static string GetSummary()
     {
-        if (_header == null) return "未录制";
-        return $"种子={_header.MapSeed} 难度={_header.Difficulty} 尺寸={_header.MapSize} 主题={_header.MapTheme} 记录数={_records.Count} 帧数={_frameCounter}";
+        if (_header == null) return TrManager.Tr("replay.summary.not_recording");
+        return TrManager.Tr("replay.summary.format", _header.MapSeed, _header.Difficulty, _header.MapSize, _header.MapTheme, _records.Count, _frameCounter);
     }
 }

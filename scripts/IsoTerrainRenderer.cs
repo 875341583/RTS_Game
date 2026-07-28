@@ -31,11 +31,6 @@ public static class IsoTerrainRenderer
     {
         int gs = TerrainGrid.GridSize;
         // 等距地图边界框
-        // 最大X = (gs-1 - 0) * HalfW = (gs-1) * 32
-        // 最小X = (0 - (gs-1)) * HalfW = -(gs-1) * 32
-        // 宽度 = (2*(gs-1)+1) * HalfW ≈ 2*gs*HalfW
-        // 最大Y = (gs-1 + gs-1) * HalfH + MaxElevPx = 2*(gs-1)*16 + 24
-        // 高度 = (2*(gs-1)+1) * HalfH + MaxElevPx
         int imgW = (gs * 2 + 1) * (int)IsoCoords.HalfW;
         int imgH = (gs * 2 + 1) * (int)IsoCoords.HalfH + MaxElevPx + 4;
         // 偏移：让最小X对应到 imgX=0
@@ -45,6 +40,10 @@ public static class IsoTerrainRenderer
         var img = Image.CreateEmpty(imgW, imgH, false, Image.Format.Rgba8);
         // 透明背景
         img.Fill(new Color(0, 0, 0, 0));
+
+        // P2-11优化：提取原始字节缓冲区，避免逐像素GetPixel/SetPixel调用开销
+        byte[] imgData = img.GetData();
+        int imgStride = imgW * 4; // 每行字节数（Rgba8 = 4字节/像素）
 
         // 确保地形贴图已加载
         EnsureTerrainTextures();
@@ -59,6 +58,24 @@ public static class IsoTerrainRenderer
         var cityImgs = LoadImageArray(_cityTexs);
         var fieldImgs = LoadImageArray(_fieldTexs);
 
+        // 预提取tile贴图的字节缓冲区（避免在循环内重复GetPixel）
+        var tileBuffers = new Dictionary<Image, (byte[] data, int w, int h)>();
+        System.Func<Image, (byte[], int, int)> getTileBuf = (tileImg) =>
+        {
+            if (tileImg == null) return (null!, 0, 0);
+            if (!tileBuffers.TryGetValue(tileImg, out var buf))
+            {
+                buf = (tileImg.GetData(), tileImg.GetWidth(), tileImg.GetHeight());
+                tileBuffers[tileImg] = buf;
+            }
+            return buf;
+        };
+
+        int halfW = (int)IsoCoords.HalfW;
+        int halfH = (int)IsoCoords.HalfH;
+        int tileW = (int)IsoCoords.TileWidth;
+        int tileH = (int)IsoCoords.TileHeight;
+
         // 按等距渲染顺序：从后往前（gx+gy越小越在后面）
         for (int sum = 0; sum <= 2 * (gs - 1); sum++)
         {
@@ -70,11 +87,12 @@ public static class IsoTerrainRenderer
                 var cell = terrain.GetCell(gx, gy);
                 var screenPos = IsoCoords.GridToScreen(gx, gy);
                 int cx = offX + (int)screenPos.X;
-                int cy = offY + (int)screenPos.Y + MaxElevPx; // 顶部留空给最高海拔侧面
+                int cy = offY + (int)screenPos.Y + MaxElevPx;
 
                 // 获取顶面贴图
                 Image topImg = GetTileImage(cell, terrain, gx, gy, rng, grassImgs, sandImgs,
                     shallowImgs, deepImgs, mountainImgs, snowImgs, cityImgs, fieldImgs);
+                var (tileData, tileImgW, tileImgH) = getTileBuf(topImg);
 
                 // 计算侧面高度
                 int sidePx = cell.Elevation >= 0 && cell.Elevation < ElevSidePx.Length
@@ -82,22 +100,24 @@ public static class IsoTerrainRenderer
 
                 // 先画侧面（在顶面下方）
                 if (sidePx > 0)
-                {
-                    DrawDiamondSide(img, cx, cy, sidePx, cell, rng);
-                }
+                    DrawDiamondSideFast(imgData, imgStride, imgW, imgH, cx, cy, sidePx, cell);
 
-                // 画顶面（菱形裁剪）
-                DrawDiamondTop(img, cx, cy, topImg, cell, rng);
+                // 画顶面（菱形裁剪）—— 快速字节版
+                if (tileData != null)
+                    DrawDiamondTopFast(imgData, imgStride, imgW, imgH, cx, cy,
+                        tileData, tileImgW, tileImgH, cell, halfW, halfH, tileW, tileH);
 
                 // 画水面波纹（仅水面类型）
                 if (cell.Type == TerrainType.ShallowWater || cell.Type == TerrainType.DeepWater)
-                    DrawWaterRipples(img, cx, cy, cell, rng);
+                    DrawWaterRipplesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, rng, halfW, halfH);
 
                 // 画悬崖（高差≥2的边缘画深色陡崖）
                 DrawCliffEdges(img, cx, cy, cell, terrain, gx, gy);
             }
         }
 
+        // 将修改后的字节数组写回Image
+        img.SetData(imgW, imgH, false, Image.Format.Rgba8, imgData);
         return img;
     }
 
@@ -106,6 +126,173 @@ public static class IsoTerrainRenderer
     {
         int gs = TerrainGrid.GridSize;
         return (gs * (int)IsoCoords.HalfW, 0);
+    }
+
+    // ======== P2-11优化：快速字节缓冲区绘制方法 ========
+
+    /// <summary>直接操作字节数组绘制菱形顶面，避免逐像素GetPixel/SetPixel开销。</summary>
+    private static void DrawDiamondTopFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        int cx, int cy, byte[] tileData, int tileW, int tileH,
+        TerrainCell cell, int halfW, int halfH, int tileSW, int tileSH)
+    {
+        float brightness = cell.Elevation switch
+        {
+            2 => 1.08f,
+            3 => 1.15f,
+            _ => 1.0f,
+        };
+        bool isShallow = cell.Type == TerrainType.ShallowWater;
+        bool isDeep = cell.Type == TerrainType.DeepWater;
+
+        for (int py = -halfH; py <= halfH; py++)
+        {
+            float ratio = 1f - Math.Abs(py) / (float)halfH;
+            int rowHalfW = (int)(halfW * ratio);
+
+            for (int px = -rowHalfW; px <= rowHalfW; px++)
+            {
+                int imgX = cx + px;
+                int imgY = cy + py;
+                if (imgX < 0 || imgX >= imgW || imgY < 0 || imgY >= imgH) continue;
+
+                // 从源图采样（直接读字节）
+                int srcX = (int)((px + halfW) / (float)tileSW * tileW);
+                int srcY = (int)((py + halfH) / (float)tileSH * tileH);
+                srcX = Math.Clamp(srcX, 0, tileW - 1);
+                srcY = Math.Clamp(srcY, 0, tileH - 1);
+                int srcIdx = (srcY * tileW + srcX) * 4;
+
+                byte a = tileData[srcIdx + 3];
+                if (a < 3) continue; // alpha < ~0.01f
+
+                float r = tileData[srcIdx] / 255f;
+                float g = tileData[srcIdx + 1] / 255f;
+                float b = tileData[srcIdx + 2] / 255f;
+
+                // 亮度调整
+                if (brightness != 1.0f)
+                {
+                    r = Math.Min(r * brightness, 1f);
+                    g = Math.Min(g * brightness, 1f);
+                    b = Math.Min(b * brightness, 1f);
+                }
+
+                // 水面处理
+                if (isShallow)
+                {
+                    r *= 0.85f; g *= 0.9f; a = 224;
+                }
+                else if (isDeep)
+                {
+                    r *= 0.7f; g *= 0.75f; b *= 0.95f; a = 235;
+                }
+
+                int dstIdx = imgY * imgStride + imgX * 4;
+                imgData[dstIdx]     = (byte)Math.Clamp(r * 255f, 0, 255);
+                imgData[dstIdx + 1] = (byte)Math.Clamp(g * 255f, 0, 255);
+                imgData[dstIdx + 2] = (byte)Math.Clamp(b * 255f, 0, 255);
+                imgData[dstIdx + 3] = a;
+            }
+        }
+    }
+
+    /// <summary>直接操作字节数组绘制菱形侧面。</summary>
+    private static void DrawDiamondSideFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        int cx, int cy, int sidePx, TerrainCell cell)
+    {
+        Color baseColor = cell.Type switch
+        {
+            TerrainType.Mountain => new Color(0.42f, 0.35f, 0.26f, 1f),
+            TerrainType.Snow => new Color(0.58f, 0.58f, 0.63f, 1f),
+            TerrainType.Sand => new Color(0.50f, 0.42f, 0.28f, 1f),
+            TerrainType.Grass => new Color(0.36f, 0.30f, 0.20f, 1f),
+            _ => new Color(0.34f, 0.28f, 0.20f, 1f),
+        };
+
+        float leftShade = 0.75f;
+        float rightShade = 1.0f;
+        int halfW = (int)IsoCoords.HalfW;
+        int halfH = (int)IsoCoords.HalfH;
+
+        for (int py = 0; py < sidePx; py++)
+        {
+            int y = cy + halfH + py;
+            if (y < 0 || y >= imgH) continue;
+
+            float t = (float)py / sidePx;
+            float dim = 1f - t * 0.3f;
+
+            int leftBound, rightBound;
+            if (halfH + py < sidePx)
+            {
+                leftBound = -halfW;
+                rightBound = halfW;
+            }
+            else
+            {
+                float vt = (float)(halfH + py - sidePx) / halfH;
+                leftBound = -(int)(halfW * (1f - vt));
+                rightBound = (int)(halfW * (1f - vt));
+            }
+
+            int rowOffset = y * imgStride;
+            for (int px = leftBound; px <= rightBound; px++)
+            {
+                int imgX = cx + px;
+                if (imgX < 0 || imgX >= imgW) continue;
+
+                float faceShade = px < 0 ? leftShade : rightShade;
+                float noise = ((px * 37 + py * 53 + cx * 7) % 23) / 23f * 0.15f - 0.075f;
+                float layerLine = (py % 4 == 0) ? 0.88f : 1.0f;
+
+                float r = Math.Clamp(baseColor.R * dim * faceShade * layerLine + noise, 0f, 1f);
+                float g = Math.Clamp(baseColor.G * dim * faceShade * layerLine + noise, 0f, 1f);
+                float b = Math.Clamp(baseColor.B * dim * faceShade * layerLine + noise, 0f, 1f);
+
+                int dstIdx = rowOffset + imgX * 4;
+                imgData[dstIdx]     = (byte)(r * 255f);
+                imgData[dstIdx + 1] = (byte)(g * 255f);
+                imgData[dstIdx + 2] = (byte)(b * 255f);
+                imgData[dstIdx + 3] = 255;
+            }
+        }
+    }
+
+    /// <summary>直接操作字节数组绘制水面波纹。</summary>
+    private static void DrawWaterRipplesFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        int cx, int cy, TerrainCell cell, Random rng, int halfW, int halfH)
+    {
+        float rippleR = cell.Type == TerrainType.DeepWater ? 0.5f : 0.6f;
+        float rippleG = cell.Type == TerrainType.DeepWater ? 0.6f : 0.7f;
+        float rippleB = cell.Type == TerrainType.DeepWater ? 0.8f : 0.85f;
+
+        int rippleCount = 2 + rng.Next(2);
+        for (int i = 0; i < rippleCount; i++)
+        {
+            int ry = rng.Next(-halfH + 2, halfH - 1);
+            int rw = (int)(halfW * (1f - Math.Abs(ry) / (float)halfW)) - 2;
+            if (rw <= 0) continue;
+            int startX = rng.Next(-rw, rw - 3);
+            int len = rng.Next(3, Math.Min(8, rw * 2));
+
+            for (int dx = 0; dx < len && startX + dx < rw; dx++)
+            {
+                int px = startX + dx;
+                int imgX = cx + px;
+                int imgY = cy + ry;
+                if (imgX >= 0 && imgX < imgW && imgY >= 0 && imgY < imgH)
+                {
+                    int dstIdx = imgY * imgStride + imgX * 4;
+                    byte ea = imgData[dstIdx + 3];
+                    if (ea > 128)
+                    {
+                        imgData[dstIdx]     = (byte)Math.Min(imgData[dstIdx]     + rippleR * 76.5f, 255);
+                        imgData[dstIdx + 1] = (byte)Math.Min(imgData[dstIdx + 1] + rippleG * 76.5f, 255);
+                        imgData[dstIdx + 2] = (byte)Math.Min(imgData[dstIdx + 2] + rippleB * 76.5f, 255);
+                    }
+                }
+            }
+        }
     }
 
     // ======== 内部渲染方法 ========

@@ -41,7 +41,7 @@ public partial class Main
         tp.StartResearch(techId);
         ReplayRecorder.Record(ReplayRecorder.ActionType.ResearchTech, new { TechId = techId.ToString() });
         GameLog.Debug($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[0]}");
-        ShowToast($"开始研究: {node.Name}");
+        ShowToast(TrManager.Tr("tech.toast_research_started", node.Name));
     }
 
     /// <summary>更新科技树面板显示文本。</summary>
@@ -49,15 +49,20 @@ public partial class Main
     {
         var tp = _techProgress[0];
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══════════ 科技树 ═══════════ (Tab关闭)");
-        sb.AppendLine($"资金: ${_money[0]}  科技中心: {(HasBuilding(0, BuildingType.TechCenter) ? "有" : "无")}  研究中: {(tp.CurrentlyResearching.HasValue ? $"{TechTree.Nodes[tp.CurrentlyResearching.Value].Name} {tp.Progress*100:F0}%" : "无")}");
+        sb.AppendLine(TrManager.Tr("tech.tree_title"));
+        sb.AppendLine(TrManager.Tr("tech.tree_header",
+            _money[0],
+            HasBuilding(0, BuildingType.TechCenter) ? TrManager.Tr("tech.has_yes") : TrManager.Tr("tech.has_no"),
+            tp.CurrentlyResearching.HasValue
+                ? TrManager.Tr("tech.researching", TechTree.Nodes[tp.CurrentlyResearching.Value].Name, $"{tp.Progress*100:F0}")
+                : TrManager.Tr("tech.has_no")));
         sb.AppendLine();
 
         string[] branches = { "军事", "经济", "防御" };
         int techIdx = 0;
         foreach (var branch in branches)
         {
-            sb.AppendLine($"【{branch}分支】");
+            sb.AppendLine(TrManager.Tr("tech.branch_header", branch));
             for (int tier = 1; tier <= 4; tier++)
             {
                 var node = TechTree.GetByBranchTier(branch, tier);
@@ -65,15 +70,15 @@ public partial class Main
                 bool done = tp.Completed.Contains(node.Id);
                 bool researching = tp.CurrentlyResearching == node.Id;
                 bool available = TechTree.CanResearch(tp.Completed, node.Id, HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter, _money[0], FactionManager.GetFactionForTeam(0).Id);
-                string status = done ? "[已完成]" : researching ? $"[研究中{tp.Progress*100:F0}%]" : available ? "[可研究]" : "[锁定]";
+                string status = done ? TrManager.Tr("tech.status_done") : researching ? TrManager.Tr("tech.status_researching", $"{tp.Progress*100:F0}") : available ? TrManager.Tr("tech.status_available") : TrManager.Tr("tech.status_locked");
                 string keyHint = done ? "  " : $"({techIdx})";
-                sb.AppendLine($"  {keyHint} T{tier} {node.Name} {status} — ${node.Cost} / {node.ResearchTime:F0}s");
-                sb.AppendLine($"       {node.Description}");
+                sb.AppendLine(TrManager.Tr("tech.node_line", keyHint, tier, node.Name, status, node.Cost, $"{node.ResearchTime:F0}"));
+                sb.AppendLine(TrManager.Tr("tech.node_desc", node.Description));
                 techIdx++;
             }
             sb.AppendLine();
         }
-        sb.AppendLine("按数字键0-9/-= 研究对应科技");
+        sb.AppendLine(TrManager.Tr("tech.hint_hotkey"));
         _techTreeLabel.Text = sb.ToString();
     }
 
@@ -88,7 +93,7 @@ public partial class Main
         {
             var node = TechTree.Nodes[completed.Value];
             GameLog.Debug($"[G1] 科技研究完成: {node.Name} — {node.Description}");
-            ShowToast($"科技完成: {node.Name}");
+            ShowToast(TrManager.Tr("tech.toast_research_done", node.Name));
             ApplyTechEffects(0);
             if (_techTreePanelVisible) UpdateTechTreePanel();
         }
@@ -374,7 +379,7 @@ public partial class Main
         ep.StartUpgrade();
         ReplayRecorder.Record(ReplayRecorder.ActionType.AdvanceEra, new { FromEra = ep.CurrentEra.ToString() });
         GameLog.Debug($"[G2] 开始时代升级：{EraSystem.Eras[(int)ep.CurrentEra].Name} → {next.Name} (成本${next.UpgradeCost}，{next.UpgradeTime:F0}秒)");
-        ShowToast($"时代升级中: → {next.Name}");
+        ShowToast(TrManager.Tr("tech.toast_era_upgrading", next.Name));
     }
 
     /// <summary>更新时代面板显示。</summary>
@@ -382,12 +387,13 @@ public partial class Main
     {
         var ep = _eraProgress[0];
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══════════ 时代系统 ═══════════ (Y关闭)");
-        sb.AppendLine($"当前时代: {EraSystem.Eras[(int)ep.CurrentEra].Name}  资金: ${_money[0]}");
+        sb.AppendLine(TrManager.Tr("era.panel_title"));
+        sb.AppendLine(TrManager.Tr("era.panel_header",
+            EraSystem.Eras[(int)ep.CurrentEra].Name, _money[0]));
         if (ep.IsUpgrading)
         {
             var next = EraSystem.GetNextEra(ep.CurrentEra);
-            sb.AppendLine($"升级中: → {next?.Name} ({ep.Progress*100:F0}%)");
+            sb.AppendLine(TrManager.Tr("era.panel_upgrading", next?.Name ?? "", $"{ep.Progress*100:F0}"));
         }
         sb.AppendLine();
 
@@ -395,23 +401,23 @@ public partial class Main
         {
             var era = EraSystem.Eras[i];
             string marker = era.Id == ep.CurrentEra ? "▶" : (int)era.Id < (int)ep.CurrentEra ? "✓" : " ";
-            string status = era.Id == ep.CurrentEra ? "[当前]" : (int)era.Id < (int)ep.CurrentEra ? "[已完成]" : "";
-            sb.AppendLine($"{marker} {era.Name} {status}");
-            sb.AppendLine($"  {era.Description}");
+            string status = era.Id == ep.CurrentEra ? TrManager.Tr("era.status_current") : (int)era.Id < (int)ep.CurrentEra ? TrManager.Tr("era.status_done") : "";
+            sb.AppendLine(TrManager.Tr("era.era_line", marker, era.Name, status));
+            sb.AppendLine(TrManager.Tr("era.era_desc", era.Description));
             if ((int)era.Id == (int)ep.CurrentEra + 1 && !ep.IsUpgrading)
             {
                 bool canAdv = EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(0, t), _money[0]);
                 string reqStr = era.RequiredBuildings.Length > 0
                     ? string.Join("/", System.Array.ConvertAll(era.RequiredBuildings, b => b.ToString()))
-                    : "无";
-                sb.AppendLine($"  升级条件: ${era.UpgradeCost} + {reqStr} + {era.UpgradeTime:F0}秒");
-                sb.AppendLine($"  状态: {(canAdv ? "[可升级] 按U键升级" : "[条件不足]")}");
+                    : TrManager.Tr("era.no_req");
+                sb.AppendLine(TrManager.Tr("era.upgrade_cost", era.UpgradeCost, reqStr, $"{era.UpgradeTime:F0}"));
+                sb.AppendLine(TrManager.Tr("era.upgrade_status", canAdv ? TrManager.Tr("era.can_advance") : TrManager.Tr("era.cannot_advance")));
             }
             sb.AppendLine();
         }
 
-        sb.AppendLine("时代加成: 每时代 +5%攻击/+5%血量/+10%采矿/+10%建造");
-        sb.AppendLine("按U键升级时代");
+        sb.AppendLine(TrManager.Tr("era.bonus_summary"));
+        sb.AppendLine(TrManager.Tr("era.hint_hotkey"));
         _eraLabel.Text = sb.ToString();
     }
 
@@ -425,7 +431,7 @@ public partial class Main
         {
             var eraInfo = EraSystem.Eras[(int)ep.CurrentEra];
             GameLog.Debug($"[G2] 时代升级完成: {eraInfo.Name} — {eraInfo.Description}");
-            ShowToast($"进入{eraInfo.Name}!");
+            ShowToast(TrManager.Tr("era.toast_entered", eraInfo.Name));
             ApplyEraEffects(0);
             if (_eraPanelVisible) UpdateEraPanel();
         }
@@ -545,7 +551,7 @@ public partial class Main
 
             var cardButton = new Button
             {
-                Text = $"{card.Icon} {card.Name}\n\n{card.Description}\n\n[按 {i + 1} 或点击选择]",
+                Text = TrManager.Tr("card.button_text", card.Icon, card.Name, card.Description, i + 1),
                 CustomMinimumSize = new Vector2(210, 320),
                 Alignment = HorizontalAlignment.Center,
                 ClipText = false,
@@ -625,7 +631,7 @@ public partial class Main
         ReplayRecorder.Record(ReplayRecorder.ActionType.SelectCard, new { Card = card.ToString() });
         var info = TacticalCards.Cards[card];
         GameLog.Debug($"[G3] 玩家选择战术卡: {info.Name} — {info.Description}");
-        ShowToast($"战术卡: {info.Name}");
+        ShowToast(TrManager.Tr("card.toast_selected", info.Name));
 
         // 应用即时效果
         // 闪电经济：起始资金+50%（额外加钱）
@@ -742,32 +748,32 @@ public partial class Main
     private void ShowCardStatus()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("════ 战术卡 ════ (T关闭)");
+        sb.AppendLine(TrManager.Tr("card.panel_title"));
         if (_playerCard.HasValue)
         {
             var card = TacticalCards.Cards[_playerCard.Value];
-            sb.AppendLine($"你的卡: {card.Icon} {card.Name}");
-            sb.AppendLine($"  {card.Description}");
+            sb.AppendLine(TrManager.Tr("card.your_card", card.Icon, card.Name));
+            sb.AppendLine(TrManager.Tr("card.desc", card.Description));
         }
         else if (_cardSelectionPending)
         {
-            sb.AppendLine("战术卡选择即将开始...");
+            sb.AppendLine(TrManager.Tr("card.selection_pending"));
         }
         else if (_cardPanel.Visible)
         {
-            sb.AppendLine("请选择战术卡！(点击卡片或按1/2/3)");
+            sb.AppendLine(TrManager.Tr("card.please_select"));
         }
         else
         {
-            sb.AppendLine("未选择战术卡");
+            sb.AppendLine(TrManager.Tr("card.none"));
         }
         sb.AppendLine();
-        sb.AppendLine("AI战术卡:");
+        sb.AppendLine(TrManager.Tr("card.ai_cards"));
         for (int i = 1; i <= 7; i++)
         {
             var aiCard = _aiCards[i - 1];
             if (aiCard.HasValue)
-                sb.AppendLine($"  Team{i}: {TacticalCards.Cards[aiCard.Value].Name}");
+                sb.AppendLine(TrManager.Tr("card.ai_card_line", i, TacticalCards.Cards[aiCard.Value].Name));
         }
         _cardStatusLabel.Text = sb.ToString();
         _cardStatusLabel.Visible = true;
@@ -836,9 +842,9 @@ public partial class Main
     private void UpdatePowerGridPanel()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══════════ 电网分区 ═══════════ (G关闭)");
-        sb.AppendLine($"电站供电半径: {PowerGrid.PowerRadius}px  基地自供电: {PowerGrid.BasePowerRadius}px");
-        sb.AppendLine($"离线建筑生产速度: {PowerGrid.OfflineProduceMul*100:F0}%");
+        sb.AppendLine(TrManager.Tr("power.panel_title"));
+        sb.AppendLine(TrManager.Tr("power.radius_info", PowerGrid.PowerRadius, PowerGrid.BasePowerRadius));
+        sb.AppendLine(TrManager.Tr("power.offline_speed", $"{PowerGrid.OfflineProduceMul*100:F0}"));
         sb.AppendLine();
 
         var buildings = GetTeamBuildings(0);
@@ -848,21 +854,36 @@ public partial class Main
         int totalSupply = 0;
         int totalDemand = 0;
 
-        sb.AppendLine("【玩家方建筑供电状态】");
+        sb.AppendLine(TrManager.Tr("power.section_player"));
         foreach (var b in buildings)
         {
             bool isOnline = IsBuildingPowered(b);
             string status = b.Type == BuildingType.PowerPlant || b.Type == BuildingType.Base
-                ? "供电源" : isOnline ? "在线" : "离线!";
+                ? TrManager.Tr("power.source") : isOnline ? TrManager.Tr("power.online") : TrManager.Tr("power.offline");
             if (b.Type == BuildingType.PowerPlant) { powerPlants++; totalSupply += b.PowerProvided; }
             if (b.PowerConsumed > 0) { totalDemand += b.PowerConsumed; if (isOnline) powered++; else offline++; }
-            sb.AppendLine($"  {b.BuildingName} [{status}] 供{b.PowerProvided} 耗{b.PowerConsumed}");
+            sb.AppendLine(TrManager.Tr("power.bld_line", b.BuildingName, status, b.PowerProvided, b.PowerConsumed));
         }
         sb.AppendLine();
-        sb.AppendLine($"电站: {powerPlants}  在线耗电建筑: {powered}  离线: {offline}");
-        sb.AppendLine($"总供电: {totalSupply}  总需求: {totalDemand}");
+        sb.AppendLine(TrManager.Tr("power.summary", powerPlants, powered, offline));
+        sb.AppendLine(TrManager.Tr("power.supply_demand", totalSupply, totalDemand));
+
+        // P2-8修复：使用PowerGrid.CalculateGridPower展示每个供电源的分区电力
+        var powerSources = buildings.Where(b => b.Type == BuildingType.PowerPlant || b.Type == BuildingType.Base).ToList();
+        if (powerSources.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine(TrManager.Tr("power.section_detail"));
+            foreach (var ps in powerSources)
+            {
+                var (supplied, gridConsumed) = PowerGrid.CalculateGridPower(ps, buildings);
+                float radius = ps.Type == BuildingType.Base ? PowerGrid.BasePowerRadius : PowerGrid.PowerRadius;
+                sb.AppendLine(TrManager.Tr("power.detail_line", ps.BuildingName, $"{radius:F0}", supplied, gridConsumed, supplied - gridConsumed));
+            }
+        }
+
         if (offline > 0)
-            sb.AppendLine($"⚠ {offline}个建筑离线！建造电站靠近它们");
+            sb.AppendLine(TrManager.Tr("power.warn_offline", offline));
         _powerGridLabel.Text = sb.ToString();
     }
 
@@ -909,21 +930,21 @@ public partial class Main
     private void UpdateAdjacencyPanel()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══════════ 邻接加成 ═══════════ (J关闭)");
-        sb.AppendLine($"邻接范围: {AdjacencyBonus.AdjacencyRange}px");
+        sb.AppendLine(TrManager.Tr("adj.panel_title"));
+        sb.AppendLine(TrManager.Tr("adj.range_info", AdjacencyBonus.AdjacencyRange));
         sb.AppendLine();
-        sb.AppendLine("加成规则:");
-        sb.AppendLine("  电站+电站 → +15%发电/座");
-        sb.AppendLine("  电站+基地 → +10%发电");
-        sb.AppendLine("  兵营+兵营 → +10%生产/座");
-        sb.AppendLine("  车厂+车厂 → +10%生产/座");
-        sb.AppendLine("  炮塔+兵营 → +15%射程");
-        sb.AppendLine("  维修厂+车厂 → +25%维修速度");
-        sb.AppendLine("  科技+电站 → +15%研究速度");
+        sb.AppendLine(TrManager.Tr("adj.rules_header"));
+        sb.AppendLine(TrManager.Tr("adj.rule_pp_pp"));
+        sb.AppendLine(TrManager.Tr("adj.rule_pp_base"));
+        sb.AppendLine(TrManager.Tr("adj.rule_bar_bar"));
+        sb.AppendLine(TrManager.Tr("adj.rule_wf_wf"));
+        sb.AppendLine(TrManager.Tr("adj.rule_turret_bar"));
+        sb.AppendLine(TrManager.Tr("adj.rule_repair_wf"));
+        sb.AppendLine(TrManager.Tr("adj.rule_tech_pp"));
         sb.AppendLine();
 
         var buildings = GetTeamBuildings(0);
-        sb.AppendLine("【玩家方建筑邻接状态】");
+        sb.AppendLine(TrManager.Tr("adj.section_player"));
         bool anyBonus = false;
         foreach (var b in buildings)
         {
@@ -935,7 +956,7 @@ public partial class Main
                 float powMul = AdjacencyBonus.GetPowerMultiplier(buildings, b);
                 if (powMul > 1f)
                 {
-                    bonuses.Add($"+{(powMul - 1f) * 100:F0}%发电");
+                    bonuses.Add(TrManager.Tr("adj.bonus_power", $"{(powMul - 1f) * 100:F0}"));
                     anyBonus = true;
                 }
             }
@@ -944,7 +965,7 @@ public partial class Main
                 float prodMul = AdjacencyBonus.GetProduceSpeedMultiplier(buildings, b);
                 if (prodMul > 1f)
                 {
-                    bonuses.Add($"+{(prodMul - 1f) * 100:F0}%生产");
+                    bonuses.Add(TrManager.Tr("adj.bonus_produce", $"{(prodMul - 1f) * 100:F0}"));
                     anyBonus = true;
                 }
             }
@@ -953,7 +974,7 @@ public partial class Main
                 float rangeMul = AdjacencyBonus.GetAttackRangeMultiplier(buildings, b);
                 if (rangeMul > 1f)
                 {
-                    bonuses.Add($"+{(rangeMul - 1f) * 100:F0}%射程");
+                    bonuses.Add(TrManager.Tr("adj.bonus_range", $"{(rangeMul - 1f) * 100:F0}"));
                     anyBonus = true;
                 }
             }
@@ -962,22 +983,22 @@ public partial class Main
                 float repMul = AdjacencyBonus.GetRepairSpeedMultiplier(buildings, b);
                 if (repMul > 1f)
                 {
-                    bonuses.Add($"+{(repMul - 1f) * 100:F0}%维修");
+                    bonuses.Add(TrManager.Tr("adj.bonus_repair", $"{(repMul - 1f) * 100:F0}"));
                     anyBonus = true;
                 }
             }
 
-            string bonusStr = bonuses.Count > 0 ? string.Join(" ", bonuses) : "无加成";
-            sb.AppendLine($"  {b.BuildingName} [{bonusStr}]");
+            string bonusStr = bonuses.Count > 0 ? string.Join(" ", bonuses) : TrManager.Tr("adj.no_bonus");
+            sb.AppendLine(TrManager.Tr("adj.bld_line", b.BuildingName, bonusStr));
         }
 
         if (!anyBonus)
-            sb.AppendLine("\n提示: 将同类型建筑建在一起获得加成！");
+            sb.AppendLine(TrManager.Tr("adj.hint", "\n"));
 
         // 研究速度加成
         float resMul = AdjacencyBonus.GetResearchMultiplier(buildings, 0);
         if (resMul > 1f)
-            sb.AppendLine($"\n研究速度加成: +{(resMul - 1f) * 100:F0}% (科技中心靠近电站)");
+            sb.AppendLine(TrManager.Tr("adj.research_bonus", "\n", $"{(resMul - 1f) * 100:F0}"));
 
         _adjacencyLabel.Text = sb.ToString();
     }
@@ -986,21 +1007,21 @@ public partial class Main
     private void UpdateSpyMissionPanel()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══ 间谍任务 ═══ (N关闭)");
-        sb.AppendLine($"成功率: {(int)(SpyMission.SuccessRate * 100)}% | 渗透: {(int)SpyMission.InfiltrateTime}秒");
+        sb.AppendLine(TrManager.Tr("spy.panel_title"));
+        sb.AppendLine(TrManager.Tr("spy.header", (int)(SpyMission.SuccessRate * 100), (int)SpyMission.InfiltrateTime));
         sb.AppendLine();
-        sb.AppendLine("任务类型:");
-        sb.AppendLine("  窃取科技 → 科技中心");
-        sb.AppendLine("  破坏电网 → 电站");
-        sb.AppendLine("  窃取资金 → 基地");
-        sb.AppendLine("  瘫痪生产 → 兵营/车厂");
-        sb.AppendLine("  侦察 → 任意建筑");
+        sb.AppendLine(TrManager.Tr("spy.mission_types"));
+        sb.AppendLine(TrManager.Tr("spy.type_steal_tech"));
+        sb.AppendLine(TrManager.Tr("spy.type_sabotage_power"));
+        sb.AppendLine(TrManager.Tr("spy.type_steal_money"));
+        sb.AppendLine(TrManager.Tr("spy.type_paralyze_prod"));
+        sb.AppendLine(TrManager.Tr("spy.type_recon"));
         sb.AppendLine();
-        sb.AppendLine("操作: 选中间谍 + 右键敌方建筑");
+        sb.AppendLine(TrManager.Tr("spy.operation_hint"));
         sb.AppendLine();
 
         // 显示玩家方间谍状态
-        sb.AppendLine("【玩家方间谍状态】");
+        sb.AppendLine(TrManager.Tr("spy.section_player"));
         bool anySpy = false;
         foreach (var c in _unitsNode.GetChildren())
         {
@@ -1009,18 +1030,18 @@ public partial class Main
                 anySpy = true;
                 if (u.IsSpyOnMission)
                 {
-                    string mName = u._spyMission.HasValue ? SpyMission.MissionName(u._spyMission.Value) : "无";
+                    string mName = u._spyMission.HasValue ? SpyMission.MissionName(u._spyMission.Value) : TrManager.Tr("spy.none");
                     string target = u._spyTargetBuilding != null && IsInstanceValid(u._spyTargetBuilding)
                         ? u._spyTargetBuilding.BuildingName : "?";
-                    sb.AppendLine($"  间谍 → {mName}({target}) 剩余{u._spyMissionTimer:F1}秒");
+                    sb.AppendLine(TrManager.Tr("spy.on_mission", mName, target, $"{u._spyMissionTimer:F1}"));
                 }
                 else
                 {
-                    sb.AppendLine($"  间谍 → 待命");
+                    sb.AppendLine(TrManager.Tr("spy.idle"));
                 }
             }
         }
-        if (!anySpy) sb.AppendLine("  (无间谍单位)");
+        if (!anySpy) sb.AppendLine(TrManager.Tr("spy.no_spy"));
 
         _spyMissionLabel.Text = sb.ToString();
     }
@@ -1029,15 +1050,15 @@ public partial class Main
     private void UpdateCapturePanel()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("════ 占领强化 ════ (K关闭)");
-        sb.AppendLine($"占领奖励: +${CaptureBonus.CaptureMoneyReward}");
-        sb.AppendLine($"缴获加速: +30%生产/{(int)CaptureBonus.CapturedProduceDuration}秒");
-        sb.AppendLine($"连锁范围: {CaptureBonus.ChainRange}px (+50%占领速)");
-        sb.AppendLine($"叛变风险: {(int)(CaptureBonus.DefectionChance * 100)}%持续{(int)CaptureBonus.DefectionRiskDuration}秒");
+        sb.AppendLine(TrManager.Tr("capture.panel_title"));
+        sb.AppendLine(TrManager.Tr("capture.reward", CaptureBonus.CaptureMoneyReward));
+        sb.AppendLine(TrManager.Tr("capture.boost", (int)CaptureBonus.CapturedProduceDuration));
+        sb.AppendLine(TrManager.Tr("capture.chain_range", CaptureBonus.ChainRange));
+        sb.AppendLine(TrManager.Tr("capture.defection_risk", (int)(CaptureBonus.DefectionChance * 100), (int)CaptureBonus.DefectionRiskDuration));
         sb.AppendLine();
 
         // 显示被占领建筑状态
-        sb.AppendLine("【被占领建筑状态】");
+        sb.AppendLine(TrManager.Tr("capture.section_captured"));
         bool any = false;
         foreach (var c in _buildingsNode.GetChildren())
         {
@@ -1045,12 +1066,12 @@ public partial class Main
             {
                 any = true;
                 string status = "";
-                if (b.IsCapturedProduceBoost) status += " 缴获加速";
-                if (b.IsDefectionRisk) status += $" 叛变风险{(int)b._defectionTimer}s";
-                sb.AppendLine($"  {b.BuildingName}(T{b.TeamId}) 原:T{b._originalTeamId}{status}");
+                if (b.IsCapturedProduceBoost) status += TrManager.Tr("capture.boosted");
+                if (b.IsDefectionRisk) status += TrManager.Tr("capture.defection_active", (int)b._defectionTimer);
+                sb.AppendLine(TrManager.Tr("capture.line", b.BuildingName, b.TeamId, b._originalTeamId, status));
             }
         }
-        if (!any) sb.AppendLine("  (无被占领建筑)");
+        if (!any) sb.AppendLine(TrManager.Tr("capture.none"));
 
         _captureLabel.Text = sb.ToString();
     }
@@ -1063,7 +1084,7 @@ public partial class Main
         if (teamId < 0 || teamId >= _eureka.Length) return;
         if (_eureka[teamId] == null) return;
         if (!_eureka[teamId].OnKill()) return;
-        TriggerEureka(teamId, "军事", "击杀尤里卡");
+        TriggerEureka(teamId, "军事", TrManager.Tr("eureka.reason_kill"));
     }
 
     /// <summary>建造建筑触发尤里卡（防御分支）。</summary>
@@ -1072,7 +1093,7 @@ public partial class Main
         if (teamId < 0 || teamId >= _eureka.Length) return;
         if (_eureka[teamId] == null) return;
         if (!_eureka[teamId].OnBuild()) return;
-        TriggerEureka(teamId, "防御", "建造尤里卡");
+        TriggerEureka(teamId, "防御", TrManager.Tr("eureka.reason_build"));
     }
 
     /// <summary>采集资金触发尤里卡（经济分支）。</summary>
@@ -1082,7 +1103,7 @@ public partial class Main
         if (_eureka[teamId] == null) return;
         int triggers = _eureka[teamId].OnMoneyGained(amount);
         for (int i = 0; i < triggers; i++)
-            TriggerEureka(teamId, "经济", "采集尤里卡");
+            TriggerEureka(teamId, "经济", TrManager.Tr("eureka.reason_money"));
     }
 
     /// <summary>击毁敌方建筑触发尤里卡（随机分支）。</summary>
@@ -1093,7 +1114,7 @@ public partial class Main
         if (!_eureka[teamId].OnDestroy()) return;
         // 击毁建筑触发随机分支尤里卡
         string[] branches = { "军事", "经济", "防御" };
-        TriggerEureka(teamId, branches[GD.RandRange(0, 2)], "摧毁尤里卡");
+        TriggerEureka(teamId, branches[GD.RandRange(0, 2)], TrManager.Tr("eureka.reason_destroy"));
     }
 
     /// <summary>执行尤里卡：找到该分支未研究的科技并直接完成。</summary>
@@ -1110,7 +1131,7 @@ public partial class Main
             int compensation = 200;
             _money[teamId] += compensation;
             if (teamId == 0)
-                ShowToast($"★ {reason}: {branch}分支已毕业！+${compensation}补偿", new Color(1f, 0.85f, 0.3f));
+                ShowToast(TrManager.Tr("eureka.toast_graduated", reason, branch, compensation), new Color(1f, 0.85f, 0.3f));
             GameLog.Debug($"[G5] Team {teamId} {reason}({branch}) — 分支已毕业，+${compensation}补偿");
             return;
         }
@@ -1124,7 +1145,7 @@ public partial class Main
         ApplyTechEffects(teamId);
 
         if (teamId == 0)
-            ShowToast($"★ {reason}！免费获得科技: {node.Name}", new Color(0.7f, 1f, 0.7f));
+            ShowToast(TrManager.Tr("eureka.toast_free_tech", reason, node.Name), new Color(0.7f, 1f, 0.7f));
         GameLog.Debug($"[G5] Team {teamId} {reason} — 免费获得{branch}科技: {node.Name}");
 
         // 刷新UI
@@ -1136,23 +1157,23 @@ public partial class Main
     private void UpdateEurekaPanel()
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("═══════════ 尤里卡时刻 ═══════════ (H关闭)");
-        sb.AppendLine($"击杀{EurekaSystem.KillThreshold}单位→军事 | 采集${EurekaSystem.MoneyThreshold}→经济");
-        sb.AppendLine($"建造{EurekaSystem.BuildThreshold}建筑→防御 | 摧毁{EurekaSystem.DestroyThreshold}建筑→随机");
+        sb.AppendLine(TrManager.Tr("eureka.panel_title"));
+        sb.AppendLine(TrManager.Tr("eureka.threshold_kill_money", EurekaSystem.KillThreshold, EurekaSystem.MoneyThreshold));
+        sb.AppendLine(TrManager.Tr("eureka.threshold_build_destroy", EurekaSystem.BuildThreshold, EurekaSystem.DestroyThreshold));
         sb.AppendLine();
 
         // 玩家方
         var p = _eureka[0];
-        sb.AppendLine("【玩家方】");
-        sb.AppendLine($"  击杀: {p.KillCounter}/{EurekaSystem.KillThreshold}  采集: ${p.MoneyAccumulated}/{EurekaSystem.MoneyThreshold}");
-        sb.AppendLine($"  建造: {p.BuildCounter}/{EurekaSystem.BuildThreshold}  摧毁: {p.DestroyCounter}/{EurekaSystem.DestroyThreshold}");
+        sb.AppendLine(TrManager.Tr("eureka.section_player"));
+        sb.AppendLine(TrManager.Tr("eureka.player_line1", p.KillCounter, EurekaSystem.KillThreshold, p.MoneyAccumulated, EurekaSystem.MoneyThreshold));
+        sb.AppendLine(TrManager.Tr("eureka.player_line2", p.BuildCounter, EurekaSystem.BuildThreshold, p.DestroyCounter, EurekaSystem.DestroyThreshold));
         sb.AppendLine();
 
         // AI方（活跃阵营）
         for (int t = 1; t <= _activeAiCount; t++)
         {
             var a = _eureka[t];
-            sb.AppendLine($"【AI Team {t}】 杀{a.KillCounter}/{EurekaSystem.KillThreshold} 钱${a.MoneyAccumulated}/{EurekaSystem.MoneyThreshold} 建造{a.BuildCounter}/{EurekaSystem.BuildThreshold} 摧毁{a.DestroyCounter}/{EurekaSystem.DestroyThreshold}");
+            sb.AppendLine(TrManager.Tr("eureka.ai_line", t, a.KillCounter, EurekaSystem.KillThreshold, a.MoneyAccumulated, EurekaSystem.MoneyThreshold, a.BuildCounter, EurekaSystem.BuildThreshold, a.DestroyCounter, EurekaSystem.DestroyThreshold));
         }
 
         _eurekaLabel.Text = sb.ToString();
