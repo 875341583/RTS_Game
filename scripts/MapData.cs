@@ -52,6 +52,8 @@ public class MapData
     public List<ResourceNodeSave> ResourceNodes = new();
     /// <summary>战略点放置列表。</summary>
     public List<StrategicPointSave> StrategicPoints = new();
+    /// <summary>用户手动指定的基地出生点列表（编辑器放置）。</summary>
+    public List<Vector2I> CustomBasePositions = new();
 
     /// <summary>矿点数据。</summary>
     public class ResourceNodeSave
@@ -119,6 +121,18 @@ public class MapData
         }
         d["strategicPoints"] = points;
 
+        // 手动放置的基地出生点
+        var bases = new Godot.Collections.Array();
+        foreach (var b in CustomBasePositions)
+        {
+            bases.Add(new Godot.Collections.Dictionary
+            {
+                ["x"] = b.X,
+                ["y"] = b.Y
+            });
+        }
+        d["customBasePositions"] = bases;
+
         return d;
     }
 
@@ -180,6 +194,20 @@ public class MapData
                     Gx = (int)p["gx"].AsInt32(),
                     Gy = (int)p["gy"].AsInt32()
                 });
+            }
+        }
+
+        // 反序列化手动基地出生点
+        if (d.ContainsKey("customBasePositions"))
+        {
+            var arr = d["customBasePositions"].AsGodotArray();
+            foreach (var item in arr)
+            {
+                var b = item.AsGodotDictionary();
+                data.CustomBasePositions.Add(new Vector2I(
+                    (int)b["x"].AsInt32(),
+                    (int)b["y"].AsInt32()
+                ));
             }
         }
 
@@ -321,6 +349,46 @@ public class MapData
         TerrainMods.Clear();
         ResourceNodes.Clear();
         StrategicPoints.Clear();
+        CustomBasePositions.Clear();
+    }
+
+    /// <summary>深拷贝当前 MapData（用于撤销/重做快照）。</summary>
+    public MapData Clone()
+    {
+        var copy = new MapData
+        {
+            Version = Version,
+            Name = Name,
+            Author = Author,
+            Description = Description,
+            Seed = Seed,
+            BaseCount = BaseCount,
+        };
+
+        // 深拷贝地形修改列表
+        foreach (var m in TerrainMods)
+            copy.TerrainMods.Add(new SaveLoadSystem.TerrainModSave
+            {
+                Gx = m.Gx, Gy = m.Gy,
+                TerrainType = m.TerrainType,
+                Elevation = m.Elevation,
+                HasBridge = m.HasBridge,
+                HasTunnel = m.HasTunnel,
+            });
+
+        // 深拷贝矿点
+        foreach (var r in ResourceNodes)
+            copy.ResourceNodes.Add(new ResourceNodeSave { Gx = r.Gx, Gy = r.Gy, Amount = r.Amount });
+
+        // 深拷贝战略点
+        foreach (var p in StrategicPoints)
+            copy.StrategicPoints.Add(new StrategicPointSave { Gx = p.Gx, Gy = p.Gy });
+
+        // 深拷贝手动基地出生点
+        foreach (var b in CustomBasePositions)
+            copy.CustomBasePositions.Add(new Vector2I(b.X, b.Y));
+
+        return copy;
     }
 }
 

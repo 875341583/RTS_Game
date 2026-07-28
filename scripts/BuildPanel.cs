@@ -123,9 +123,9 @@ public partial class BuildPanel : Control
 
         var tabs = new HBoxContainer();
         tabs.AddThemeConstantOverride("separation", 3);
-        _tabBuildings = MakeTabButton("建筑", BuildTab.Buildings);
-        _tabInfantry  = MakeTabButton("步兵", BuildTab.Infantry);
-        _tabVehicles  = MakeTabButton("车辆", BuildTab.Vehicles);
+        _tabBuildings = MakeTabButton(TrManager.Tr("build.tab_buildings"), BuildTab.Buildings);
+        _tabInfantry  = MakeTabButton(TrManager.Tr("build.tab_infantry"), BuildTab.Infantry);
+        _tabVehicles  = MakeTabButton(TrManager.Tr("build.tab_vehicles"), BuildTab.Vehicles);
         tabs.AddChild(_tabBuildings);
         tabs.AddChild(_tabInfantry);
         tabs.AddChild(_tabVehicles);
@@ -187,55 +187,55 @@ public partial class BuildPanel : Control
     private void CreateItems()
     {
         // 建筑（电站/兵营/车厂/科技/防御设施）
-        AddItem("电站", 300, _iPower, true, BuildingType.PowerPlant, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("兵营", 400, _iBarracks, true, BuildingType.Barracks, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("车厂", 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("科技", 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.power_plant"), 300, _iPower, true, BuildingType.PowerPlant, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.barracks"), 400, _iBarracks, true, BuildingType.Barracks, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.war_factory"), 600, _iWar, true, BuildingType.WarFactory, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.tech"), 800, _iTech, true, BuildingType.TechCenter, UnitType.Default, false, BuildTab.Buildings);
         // 阶段12-A1+A2 新增建筑
-        AddItem("机枪塔", 400, _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("防空炮", 600, _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("维修厂", 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.machine_gun_turret"), 400, _iTurret, true, BuildingType.Turret, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.anti_air_turret"), 600, _iAntiAir, true, BuildingType.AntiAirTurret, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.repair_station"), 500, _iRepairPad, true, BuildingType.RepairPad, UnitType.Default, false, BuildTab.Buildings);
         // E7：机场
-        AddItem("机场", 700, _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.airfield"), 700, _iAirfield, true, BuildingType.Airfield, UnitType.Default, false, BuildTab.Buildings);
         // E9：船厂
-        AddItem("船厂", 900, _iShipyard, true, BuildingType.Shipyard, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.shipyard_panel"), 900, _iShipyard, true, BuildingType.Shipyard, UnitType.Default, false, BuildTab.Buildings);
         // E10：超武建筑
-        AddItem("核弹井", 1500, _iNukeSilo, true, BuildingType.NukeSilo, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("闪电塔", 1500, _iLightningTower, true, BuildingType.LightningTower, UnitType.Default, false, BuildTab.Buildings);
-        AddItem("导弹井", 1200, _iMissileSilo, true, BuildingType.MissileSilo, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.nuke_silo_panel"), 1500, _iNukeSilo, true, BuildingType.NukeSilo, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.lightning_tower_panel"), 1500, _iLightningTower, true, BuildingType.LightningTower, UnitType.Default, false, BuildTab.Buildings);
+        AddItem(TrManager.Tr("build.missile_silo_panel"), 1200, _iMissileSilo, true, BuildingType.MissileSilo, UnitType.Default, false, BuildTab.Buildings);
         // 步兵（按价格升序）
-        AddItem("步兵", 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
-        AddItem("掷弹兵", 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
-        AddItem("喷火兵", 180, _iFlameInfantry, false, BuildingType.Base, UnitType.FlameInfantry, false, BuildTab.Infantry);
-        AddItem("狙击手", 250, _iSniper, false, BuildingType.Base, UnitType.Sniper, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.infantry_unit"), 100, _iInfantry, false, BuildingType.Base, UnitType.Infantry, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.grenadier"), 200, _iGrenadier, false, BuildingType.Base, UnitType.Grenadier, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.flame_infantry"), 180, _iFlameInfantry, false, BuildingType.Base, UnitType.FlameInfantry, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.sniper"), 250, _iSniper, false, BuildingType.Base, UnitType.Sniper, false, BuildTab.Infantry);
         // E6b：特殊步兵
-        AddItem("窃贼", 300, _iThief, false, BuildingType.Base, UnitType.Thief, false, BuildTab.Infantry);
-        AddItem("英雄", 600, _iHero, false, BuildingType.TechCenter, UnitType.Hero, false, BuildTab.Infantry);
-        AddItem("间谍", 500, _iSpy, false, BuildingType.TechCenter, UnitType.Spy, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.thief"), 300, _iThief, false, BuildingType.Base, UnitType.Thief, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.hero"), 600, _iHero, false, BuildingType.TechCenter, UnitType.Hero, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.spy"), 500, _iSpy, false, BuildingType.TechCenter, UnitType.Spy, false, BuildTab.Infantry);
         // E7：火箭兵
-        AddItem("火箭兵", 350, _iRocketInfantry, false, BuildingType.Barracks, UnitType.RocketInfantry, false, BuildTab.Infantry);
+        AddItem(TrManager.Tr("build.rocket_infantry"), 350, _iRocketInfantry, false, BuildingType.Barracks, UnitType.RocketInfantry, false, BuildTab.Infantry);
         // 车辆（按价格升序排列：基础→中级→高级）
-        AddItem("轻坦",   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
-        AddItem("防空车", 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
-        AddItem("工程车", 300, _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
-        AddItem("运输车", 400, _iTransport, false, BuildingType.WarFactory, UnitType.Transport, false, BuildTab.Vehicles);
-        AddItem("炮兵",   400, _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
-        AddItem("重坦",   500, _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
-        AddItem("矿车",   500, _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
-        AddItem("火箭炮", 600, _iRocket,  false, BuildingType.Base, UnitType.RocketLauncher, false, BuildTab.Vehicles);
-        AddItem("导弹车", 800, _iMissile, false, BuildingType.Base, UnitType.MissileTank,    false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.light_tank"),   200, _iLight,   false, BuildingType.Base, UnitType.LightTank,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.anti_air_vehicle"), 300, _iAntiAirUnit, false, BuildingType.Base, UnitType.AntiAir,        false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.engineer"), 300, _iEngineer,false, BuildingType.Base, UnitType.Engineer,       false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.transport"), 400, _iTransport, false, BuildingType.WarFactory, UnitType.Transport, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.artillery"),   400, _iArt,     false, BuildingType.Base, UnitType.Artillery,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.heavy_tank"),   500, _iHeavy,   false, BuildingType.Base, UnitType.HeavyTank,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.harvester"),   500, _iHarv,    false, BuildingType.Base, UnitType.Default,       true,  BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.rocket_launcher"), 600, _iRocket,  false, BuildingType.Base, UnitType.RocketLauncher, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.missile_tank"), 800, _iMissile, false, BuildingType.Base, UnitType.MissileTank,    false, BuildTab.Vehicles);
         // E7：空军
-        AddItem("战斗机", 500, _iFighter, false, BuildingType.Airfield, UnitType.Fighter,       false, BuildTab.Vehicles);
-        AddItem("直升机", 600, _iHelicopter, false, BuildingType.Airfield, UnitType.Helicopter, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.fighter"), 500, _iFighter, false, BuildingType.Airfield, UnitType.Fighter,       false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.helicopter"), 600, _iHelicopter, false, BuildingType.Airfield, UnitType.Helicopter, false, BuildTab.Vehicles);
         // E8：扩展空军
-        AddItem("轰炸机", 800, _iBomber, false, BuildingType.Airfield, UnitType.Bomber,         false, BuildTab.Vehicles);
-        AddItem("侦察机", 300, _iScout, false, BuildingType.Airfield, UnitType.Scout,           false, BuildTab.Vehicles);
-        AddItem("运直",   600, _iTransportHeli, false, BuildingType.Airfield, UnitType.TransportHeli, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.bomber"), 800, _iBomber, false, BuildingType.Airfield, UnitType.Bomber,         false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.scout"), 300, _iScout, false, BuildingType.Airfield, UnitType.Scout,           false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.transport_heli"),   600, _iTransportHeli, false, BuildingType.Airfield, UnitType.TransportHeli, false, BuildTab.Vehicles);
         // E9：海军
-        AddItem("驱逐舰",  500, _iDestroyer,  false, BuildingType.Shipyard, UnitType.Destroyer,     false, BuildTab.Vehicles);
-        AddItem("潜艇",    600, _iSubmarine,  false, BuildingType.Shipyard, UnitType.Submarine,      false, BuildTab.Vehicles);
-        AddItem("航母",   1200, _iCarrier,    false, BuildingType.Shipyard, UnitType.AircraftCarrier, false, BuildTab.Vehicles);
-        AddItem("登陆艇",  400, _iLandingCraft, false, BuildingType.Shipyard, UnitType.LandingCraft,  false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.destroyer"),  500, _iDestroyer,  false, BuildingType.Shipyard, UnitType.Destroyer,     false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.submarine"),    600, _iSubmarine,  false, BuildingType.Shipyard, UnitType.Submarine,      false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.carrier"),   1200, _iCarrier,    false, BuildingType.Shipyard, UnitType.AircraftCarrier, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.landing_craft"),  400, _iLandingCraft, false, BuildingType.Shipyard, UnitType.LandingCraft,  false, BuildTab.Vehicles);
     }
 
     private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)
@@ -537,17 +537,17 @@ public partial class BuildPanel : Control
 
     private void RefreshVisuals()
     {
-        var powerWarn = _power < 0 ? " [color=#ff5555]不足![/color]" : "";
-        _infoLabel.Text = $"[color=#ffd54f]{DifficultyName}[/color]  科技Lv{_playerTechLevel}\n" +
-                          $"[color=#ffd24f][b]${_money}[/b][/color]   {_unitCount}/{_unitCap} 单位\n" +
-                          $"[color={(_power < 0 ? "#ff5555" : "#88ccff")}]电力 {_power}{powerWarn}[/color]";
+        var powerWarn = _power < 0 ? $" [color=#ff5555]{TrManager.Tr("build.lock_power_low")}![/color]" : "";
+        _infoLabel.Text = $"[color=#ffd54f]{DifficultyName}[/color]  {TrManager.Tr("build.tech")}Lv{_playerTechLevel}\n" +
+                          $"[color=#ffd24f][b]${_money}[/b][/color]   {_unitCount}/{_unitCap} {TrManager.Tr("build.tab_infantry")}\n" +
+                          $"[color={(_power < 0 ? "#ff5555" : "#88ccff")}]{TrManager.Tr("ui.power_label", _power)}{powerWarn}[/color]";
 
         foreach (var it in _items)
         {
             if (it.PanelNode == null) continue;
             Color bg;
             bool placementActive = (it.IsBuilding && ActivePlacement == it.BType);
-            if (it.IsLocked || !it.CanAfford && it.LockReason == "资金不足" && false)
+            if (it.IsLocked || !it.CanAfford && it.LockReason == "资金不足")
                 bg = CLocked;
             else if (placementActive)
                 bg = CSelected;
@@ -614,11 +614,11 @@ public partial class BuildPanel : Control
         {
             var h = _hoverItem;
             string status = h.IsLocked ? $"[color=#ff7777]{h.LockReason}[/color]"
-                          : !h.CanAfford ? "[color=#ffaa55]资金不足[/color]"
-                          : "[color=#77ff77]可建造[/color]";
+                          : !h.CanAfford ? $"[color=#ffaa55]{TrManager.Tr("build.lock_money_low")}[/color]"
+                          : $"[color=#77ff77]{TrManager.Tr("build.hint_can_build")}[/color]";
             string queueInfo = h.QueueCount > 0
-                ? $"\n[color=#88ff88]队列: {h.QueueCount}  进度: {h.ProdProgress * 100:F0}%"
-                + (h._timeRemaining > 0f ? $"  剩余{h._timeRemaining:F1}s[/color]"
+                ? $"\n[color=#88ff88]{TrManager.Tr("build.hint_queue", h.QueueCount, $"{h.ProdProgress * 100:F0}")}"
+                + (h._timeRemaining > 0f ? $"  {TrManager.Tr("build.hint_remaining", $"{h._timeRemaining:F1}")}[/color]"
                 : "[/color]")
                 : "";
             _hintLabel.Text = $"{h.Name}  ${h.Cost}\n{GetItemDesc(h)}\n{status}{queueInfo}";
@@ -626,8 +626,8 @@ public partial class BuildPanel : Control
         else
         {
             _hintLabel.Text = ActivePlacement != null
-                ? $"[color=#66ff99]放置模式[/color]\n左键放置 {ActivePlacement}\n右键/Esc 取消"
-                : "点击图标建造\n左键拖框选单位\n右键移动/攻击";
+                ? $"[color=#66ff99]{TrManager.Tr("build.hint_place_mode")}[/color]\n{TrManager.Tr("build.hint_place_click", ActivePlacement)}\n{TrManager.Tr("build.hint_cancel")}"
+                : $"{TrManager.Tr("build.hint_click_build")}\n{TrManager.Tr("build.hint_drag_select")}\n{TrManager.Tr("build.hint_right_move")}";
         }
     }
 
@@ -637,50 +637,50 @@ public partial class BuildPanel : Control
         {
             return it.BType switch
             {
-                BuildingType.PowerPlant => "提供+100电力",
-                BuildingType.Barracks => "解锁步兵/轻坦生产",
-                BuildingType.WarFactory => "解锁重坦/炮兵/防空车/工程车",
-                BuildingType.TechCenter => "解锁火箭炮/导弹车",
-                BuildingType.Turret => "自动对地防御塔，射程犴18，快射速",
-                BuildingType.AntiAirTurret => "重型防御塔，高伤害犴25大范围",
-                BuildingType.RepairPad => "每秒自动修复220范围内友方单位+25HP",
-                BuildingType.Airfield => "解锁空军单位，需科技中心",
-                BuildingType.Shipyard => "解锁海军单位，需科技中心",
-                BuildingType.NukeSilo => "核弹发射井，Z键释放核弹，5分钟冷却",
-                BuildingType.LightningTower => "闪电风暴塔，C键释放闪电风暴，4分钟冷却",
-                BuildingType.MissileSilo => "导弹发射井，Shift+V巡航导弹，3分钟冷却",
+                BuildingType.PowerPlant => TrManager.Tr("build.desc_power_plant"),
+                BuildingType.Barracks => TrManager.Tr("build.desc_barracks"),
+                BuildingType.WarFactory => TrManager.Tr("build.desc_war_factory"),
+                BuildingType.TechCenter => TrManager.Tr("build.desc_tech_center"),
+                BuildingType.Turret => TrManager.Tr("build.desc_turret"),
+                BuildingType.AntiAirTurret => TrManager.Tr("build.desc_anti_air_turret"),
+                BuildingType.RepairPad => TrManager.Tr("build.desc_repair_pad"),
+                BuildingType.Airfield => TrManager.Tr("build.desc_airfield"),
+                BuildingType.Shipyard => TrManager.Tr("build.desc_shipyard"),
+                BuildingType.NukeSilo => TrManager.Tr("build.desc_nuke_silo"),
+                BuildingType.LightningTower => TrManager.Tr("build.desc_lightning_tower"),
+                BuildingType.MissileSilo => TrManager.Tr("build.desc_missile_silo"),
                 _ => ""
             };
         }
-        if (it.IsHarvester) return "自动采矿赚钱";
+        if (it.IsHarvester) return TrManager.Tr("build.desc_harvester");
         return it.UType switch
         {
-            UnitType.Infantry => "便宜、脆、人多势众",
-            UnitType.LightTank => "快、脆、便宜",
-            UnitType.HeavyTank => "慢、硬、主力",
-            UnitType.Artillery => "远程高伤，不能近战",
-            UnitType.AntiAir => "高射速，对地补位",
-            UnitType.Engineer => "修复友军建筑/单位，多功能辅助",
-            UnitType.Grenadier => "AOE溅射，克制密集步兵",
-            UnitType.Sniper => "超远程精确射击，脆皮",
-            UnitType.FlameInfantry => "近距高射速喷火，灼烧区域",
-            UnitType.Transport => "搭载步兵变战车，IFV合体系统",
-            UnitType.Hero => "强力步兵，随机技能(双发/治疗/冲锋/暴击/护盾)",
-            UnitType.Spy => "渗透敌方建筑，停电+偷钱",
-            UnitType.Thief => "潜入偷取敌方资金",
-            UnitType.Fighter => "高速空战，需机场",
-            UnitType.Helicopter => "空中火力支援，需机场",
-            UnitType.RocketInfantry => "防空火箭步兵，对空专精",
-            UnitType.Bomber => "高空大范围轰炸，溅射100",
-            UnitType.Scout => "超高速侦察，600视野",
-            UnitType.TransportHeli => "空中搭载4名步兵",
+            UnitType.Infantry => TrManager.Tr("build.desc_infantry"),
+            UnitType.LightTank => TrManager.Tr("build.desc_light_tank"),
+            UnitType.HeavyTank => TrManager.Tr("build.desc_heavy_tank"),
+            UnitType.Artillery => TrManager.Tr("build.desc_artillery"),
+            UnitType.AntiAir => TrManager.Tr("build.desc_anti_air_unit"),
+            UnitType.Engineer => TrManager.Tr("build.desc_engineer"),
+            UnitType.Grenadier => TrManager.Tr("build.desc_grenadier"),
+            UnitType.Sniper => TrManager.Tr("build.desc_sniper"),
+            UnitType.FlameInfantry => TrManager.Tr("build.desc_flame_infantry"),
+            UnitType.Transport => TrManager.Tr("build.desc_transport"),
+            UnitType.Hero => TrManager.Tr("build.desc_hero"),
+            UnitType.Spy => TrManager.Tr("build.desc_spy"),
+            UnitType.Thief => TrManager.Tr("build.desc_thief"),
+            UnitType.Fighter => TrManager.Tr("build.desc_fighter"),
+            UnitType.Helicopter => TrManager.Tr("build.desc_helicopter"),
+            UnitType.RocketInfantry => TrManager.Tr("build.desc_rocket_infantry"),
+            UnitType.Bomber => TrManager.Tr("build.desc_bomber"),
+            UnitType.Scout => TrManager.Tr("build.desc_scout"),
+            UnitType.TransportHeli => TrManager.Tr("build.desc_transport_heli"),
             // E9：海军描述
-            UnitType.Destroyer => "水面主力战舰，对海对陆",
-            UnitType.Submarine => "隐身潜艇，鱼雷高伤",
-            UnitType.AircraftCarrier => "搭载4架战斗机的海上基地",
-            UnitType.LandingCraft => "水面运兵3名，两栖登陆",
-            UnitType.RocketLauncher => "溅射伤害，需科技",
-            UnitType.MissileTank => "超远程爆发，需科技",
+            UnitType.Destroyer => TrManager.Tr("build.desc_destroyer"),
+            UnitType.Submarine => TrManager.Tr("build.desc_submarine"),
+            UnitType.AircraftCarrier => TrManager.Tr("build.desc_carrier"),
+            UnitType.LandingCraft => TrManager.Tr("build.desc_landing_craft"),
+            UnitType.RocketLauncher => TrManager.Tr("build.desc_rocket_launcher"),
+            UnitType.MissileTank => TrManager.Tr("build.desc_missile_tank"),
             _ => ""
         };
     }

@@ -72,7 +72,7 @@ public static class TacticalCards
         lock (_cardsLock)
         {
             if (_cards.Count > 0) return; // 已加载，无论fallback还是JSON都跳过
-            LoadFromJsonCore(forceFallback && _cards.Count == 0);
+            LoadFromJsonCore(forceFallback);
         }
     }
 

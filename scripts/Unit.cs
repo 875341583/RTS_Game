@@ -1942,6 +1942,9 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             actualDmg *= 0.7f;
         Health -= actualDmg;
         _hitFlashTimer = 0.08f; // Q5：受击闪白
+        // P1-6: 命中音效——受击时播放
+        if (GetParent()?.GetParent() is Main mainNode)
+            mainNode.PlayHitSfx();
         if (_healthBar != null)
             _healthBar.Value = Mathf.Max(0, Health);
         UpdateHealthBarVisibility();

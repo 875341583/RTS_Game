@@ -76,8 +76,8 @@ public partial class ResourceNode : Area2D
     private const float CaptureSpeed = 25f;
     /// <summary>油田每秒产出金额。</summary>
     private const float OilIncomePerSecond = 8f;
-    /// <summary>占领方在场单位计数（0方/1方）。</summary>
-    private int _blueCount, _redCount;
+    /// <summary>占领方在场单位计数（支持最多8个阵营）。</summary>
+    private int[] _teamCounts = new int[8];
     private float _oilIncomeTimer;
     /// <summary>油田是否被占领（持续产钱中）。</summary>
     public bool IsOilCaptured => ResourceType == ResourceType.OilField && OilOwner >= 0;
@@ -106,20 +106,14 @@ public partial class ResourceNode : Area2D
 
     private void OnBodyEntered(Node body)
     {
-        if (body is Unit u && u.AttackDamage > 0f)
-        {
-            if (u.TeamId == 0) _blueCount++;
-            else _redCount++;
-        }
+        if (body is Unit u && u.AttackDamage > 0f && u.TeamId >= 0 && u.TeamId < _teamCounts.Length)
+            _teamCounts[u.TeamId]++;
     }
 
     private void OnBodyExited(Node body)
     {
-        if (body is Unit u && u.AttackDamage > 0f)
-        {
-            if (u.TeamId == 0) _blueCount = Mathf.Max(0, _blueCount - 1);
-            else _redCount = Mathf.Max(0, _redCount - 1);
-        }
+        if (body is Unit u && u.AttackDamage > 0f && u.TeamId >= 0 && u.TeamId < _teamCounts.Length)
+            _teamCounts[u.TeamId] = Mathf.Max(0, _teamCounts[u.TeamId] - 1);
     }
 
     /// <summary>油田每帧处理占领和产钱逻辑。由 Main._Process 调用。</summary>
@@ -127,31 +121,31 @@ public partial class ResourceNode : Area2D
     {
         if (ResourceType != ResourceType.OilField) return;
 
-        // 占领逻辑
-        if (_blueCount > 0 && _redCount == 0 && OilOwner != 0)
+        // 找出有单位在场的阵营
+        int presentTeam = -1;
+        int presentCount = 0;
+        for (int i = 0; i < _teamCounts.Length; i++)
+        {
+            if (_teamCounts[i] > 0)
+            {
+                presentTeam = i;
+                presentCount++;
+            }
+        }
+
+        // 占领逻辑：唯一一个阵营在场且不是当前拥有者时推进占领
+        if (presentCount == 1 && OilOwner != presentTeam)
         {
             _captureProgress += dt * CaptureSpeed;
             if (_captureProgress >= 100f)
             {
-                OilOwner = 0;
+                OilOwner = presentTeam;
                 _captureProgress = 0f;
-                GameLog.Debug($"[OilField] Blue captured oil at {GlobalPosition}!");
-                // 重绘视觉为蓝方占领
+                GameLog.Debug($"[OilField] Team {presentTeam} captured oil at {GlobalPosition}!");
                 RegenerateOreImage();
             }
         }
-        else if (_redCount > 0 && _blueCount == 0 && OilOwner != 1)
-        {
-            _captureProgress += dt * CaptureSpeed;
-            if (_captureProgress >= 100f)
-            {
-                OilOwner = 1;
-                _captureProgress = 0f;
-                GameLog.Debug($"[OilField] Red captured oil at {GlobalPosition}!");
-                RegenerateOreImage();
-            }
-        }
-        else if (_blueCount == 0 && _redCount == 0)
+        else if (presentCount == 0)
         {
             _captureProgress = Mathf.Max(0f, _captureProgress - dt * CaptureSpeed * 0.5f);
         }
@@ -171,12 +165,12 @@ public partial class ResourceNode : Area2D
         if (_captureProgress > 0f && OilOwner == -1)
         {
             if (_amountLabel != null)
-                _amountLabel.Text = $"占领中 {(_blueCount > 0 ? "蓝" : "红")} {(int)_captureProgress}%";
+                _amountLabel.Text = $"占领中 {GetTeamDisplayName(presentTeam)} {(int)_captureProgress}%";
         }
         else if (OilOwner >= 0)
         {
             if (_amountLabel != null)
-                _amountLabel.Text = OilOwner == 0 ? "蓝方油田" : "红方油田";
+                _amountLabel.Text = $"{GetTeamDisplayName(OilOwner)}油田";
         }
     }
 
@@ -354,9 +348,7 @@ public partial class ResourceNode : Area2D
             }
 
         // 阵营色标记（占领后）
-        Color teamColor = Colors.White;
-        if (OilOwner == 0) teamColor = new Color(0.3f, 0.6f, 1.0f, 0.9f);
-        else if (OilOwner == 1) teamColor = new Color(1.0f, 0.35f, 0.35f, 0.9f);
+        Color teamColor = OilOwner >= 0 ? GameData.GetTeamColor(OilOwner) : Colors.White;
         if (OilOwner >= 0)
         {
             // 底座颜色环
@@ -445,12 +437,7 @@ public partial class ResourceNode : Area2D
         switch (ResourceType)
         {
             case ResourceType.OilField:
-                _amountLabel.Text = OilOwner switch
-                {
-                    0 => "蓝方油田",
-                    1 => "红方油田",
-                    _ => "油田",
-                };
+                _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}油田" : "油田";
                 break;
             case ResourceType.RareMineral:
                 _amountLabel.Text = $"★{Amount}";
@@ -479,15 +466,28 @@ public partial class ResourceNode : Area2D
     public void SetOilOwner(int teamId)
     {
         OilOwner = teamId;
-        // 更新标签：油田的视觉标签在_Process中维护，这里仅刷新一次
         if (_amountLabel != null && ResourceType == ResourceType.OilField)
+            _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}油田" : "中立油田";
+    }
+
+    // ======== 阵营名称 ========
+
+    /// <summary>获取 teamId 的显示名。优先走 FactionManager，不可用时回退到 "阵营{teamId}"。</summary>
+    private static string GetTeamDisplayName(int teamId)
+    {
+        try
         {
-            _amountLabel.Text = OilOwner switch
+            if (FactionManager.IsLoaded && teamId >= 0 && teamId < FactionManager.Count)
             {
-                0 => "蓝方油田",
-                1 => "红方油田",
-                _ => "中立油田"
-            };
+                var name = FactionManager.GetFactionForTeam(teamId).Name;
+                if (!string.IsNullOrEmpty(name))
+                    return name;
+            }
         }
+        catch
+        {
+            // FactionManager 异常时降级
+        }
+        return $"阵营{teamId}";
     }
 }

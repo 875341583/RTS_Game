@@ -207,6 +207,8 @@ public partial class Main : Node2D
     private bool _eraPanelVisible = false;
     private Label _eraLabel = null!;
     private float _aiEraTimer = 0f;
+    /// <summary>P1-6: 警报BGM超时计时器（8秒无攻击切回战斗BGM）</summary>
+    private float _alertBgmTimer = 0f;
 
     // G3: 战术卡系统
     private TacticalCards.CardId? _playerCard = null;
@@ -730,6 +732,18 @@ public partial class Main : Node2D
     public override void _Process(double delta)
     {
         var dt = (float)delta;
+
+        // P1-5: 缓存刷新——每帧标记脏，首次GetAllUnits/GetAllBuildings调用时重建
+        _unitsCacheDirty = true;
+        _buildingsCacheDirty = true;
+
+        // P1-6: 警报BGM超时切回战斗BGM（无攻击8秒后恢复）
+        if (BgmManager.CurrentScene == BgmManager.BgmScene.Alert)
+        {
+            _alertBgmTimer -= dt;
+            if (_alertBgmTimer <= 0f)
+                BgmManager.SwitchScene(BgmManager.BgmScene.Battle);
+        }
 
         // P3-1: 回放帧计数器
         ReplayRecorder.Tick();

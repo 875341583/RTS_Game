@@ -256,20 +256,4 @@ public static class ReplayPlayer
             GameLog.Warning($"[Replay] 执行操作失败: {record.Action} — {ex.Message}");
         }
     }
-
-    // ---- JSON 参数解析辅助 ----
-
-    /// <summary>从 JSON 参数中解析坐标。</summary>
-    private static Vector2 ParseXY(string? json)
-    {
-        if (string.IsNullOrEmpty(json)) return Vector2.Zero;
-        try
-        {
-            var doc = JsonDocument.Parse(json);
-            float x = doc.RootElement.TryGetProperty("X", out var xe) ? xe.GetSingle() : 0f;
-            float y = doc.RootElement.TryGetProperty("Y", out var ye) ? ye.GetSingle() : 0f;
-            return new Vector2(x, y);
-        }
-        catch { return Vector2.Zero; }
-    }
 }

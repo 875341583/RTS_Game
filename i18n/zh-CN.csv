@@ -26,6 +26,59 @@ menu.prototype_3d,3D原型预览
 menu.play_3d,3D正式游戏
 menu.difficulty,难度选择
 menu.seed,种子
+menu.skirmish,遭遇战
+menu.skirmish_desc,选择地图、阵营和难度，与AI对战
+menu.settings_desc,画质、音量、分辨率、全屏
+menu.map_editor_desc,创建和编辑自定义地图
+menu.prototype_3d_desc,2.5D/全3D模式实验
+menu.quit_game,退出游戏
+menu.section_map,── 地图设置 ──
+menu.map_size,地图尺寸:
+menu.map_small,小 (32×32)
+menu.map_medium,中 (64×64)
+menu.map_large,大 (96×96)
+menu.map_theme,地图主题:
+menu.map_seed,地图种子:
+menu.seed_placeholder,留空 = 随机种子
+menu.seed_hint,相同种子可复现同一张地图
+menu.section_faction,── 阵营选择 ──
+menu.player_faction,玩家阵营:
+menu.section_difficulty,── 难度选择 ──
+menu.back,← 返回
+menu.start_game,开始游戏 ▶
+menu.back_to_main,← 返回主菜单
+menu.section_quality,── 画质 ──
+menu.quality_level,画质等级:
+menu.quality_low,低 (省电)
+menu.quality_medium,中
+menu.quality_high,高
+menu.section_display,── 显示 ──
+menu.fullscreen,全屏模式:
+menu.fullscreen_on,开启 ✓
+menu.fullscreen_off,关闭
+menu.f11_hint,游戏中按 F11 切换全屏/窗口
+menu.section_audio,── 音频 ──
+menu.master_volume,主音量:
+menu.section_language,── 语言 / Language ──
+menu.ui_language,界面语言:
+menu.lang_partial_hint,P0修复: 语言切换（部分文本尚未完全国际化）
+
+# === 地图主题 ===
+theme.default,默认
+theme.snow,雪地
+theme.desert,沙漠
+theme.city,城市
+theme.island,海岛
+
+# === 难度卡片 ===
+diff.easy_title,Easy - 新手
+diff.easy_desc,AI 14s · 蓝方 $3000 · 仅兵营 · 上限12
+diff.normal_title,Normal - 标准
+diff.normal_desc,AI 10s · 蓝方 $2700 · 车厂 · 上限16
+diff.hard_title,Hard - 困难
+diff.hard_desc,AI 7s · 蓝方 $2500 · 科技中心 · 上限20
+diff.brutal_title,Brutal - 残酷
+diff.brutal_desc,AI 4s · 蓝方 $2200 · 科技中心 · 上限24
 
 # === 建造面板 ===
 build.power_plant,电站
@@ -42,6 +95,108 @@ build.lightning_tower,闪电塔
 build.missile_silo,导弹井
 build.super_weapon,超级武器
 build.walls,围墙
+build.tab_buildings,建筑
+build.tab_infantry,步兵
+build.tab_vehicles,车辆
+build.machine_gun_turret,机枪塔
+build.anti_air_turret,防空炮
+build.repair_station,维修厂
+build.shipyard_panel,船厂
+build.infantry_unit,步兵
+build.grenadier,掷弹兵
+build.flame_infantry,喷火兵
+build.sniper,狙击手
+build.thief,窃贼
+build.hero,英雄
+build.spy,间谍
+build.rocket_infantry,火箭兵
+build.light_tank,轻坦
+build.anti_air_vehicle,防空车
+build.engineer,工程车
+build.transport,运输车
+build.artillery,炮兵
+build.heavy_tank,重坦
+build.harvester,矿车
+build.rocket_launcher,火箭炮
+build.missile_tank,导弹车
+build.fighter,战斗机
+build.helicopter,直升机
+build.bomber,轰炸机
+build.scout,侦察机
+build.transport_heli,运直
+build.destroyer,驱逐舰
+build.submarine,潜艇
+build.carrier,航母
+build.landing_craft,登陆艇
+build.tech,科技
+build.airfield_panel,机场
+build.nuke_silo_panel,核弹井
+build.lightning_tower_panel,闪电塔
+build.missile_silo_panel,导弹井
+
+# === 建造面板锁定原因（UI显示用） ===
+build.lock_need_base,需要建造厂
+build.lock_need_power,需要电站
+build.lock_need_barracks,需要兵营
+build.lock_need_warfactory,需要车厂
+build.lock_need_techcenter,需要科技中心
+build.lock_need_airfield,需要机场
+build.lock_need_shipyard,需要船厂
+build.lock_power_low,电力不足
+build.lock_unit_full,单位已满
+build.lock_difficulty,难度未解锁
+build.lock_money_low,资金不足
+
+# === 建造面板描述 ===
+build.desc_power_plant,提供+100电力
+build.desc_barracks,解锁步兵/轻坦生产
+build.desc_war_factory,解锁重坦/炮兵/防空车/工程车
+build.desc_tech_center,解锁火箭炮/导弹车
+build.desc_turret,自动对地防御塔，射程18，快射速
+build.desc_anti_air_turret,重型防御塔，高伤害25大范围
+build.desc_repair_pad,每秒自动修复220范围内友方单位+25HP
+build.desc_airfield,解锁空军单位，需科技中心
+build.desc_shipyard,解锁海军单位，需科技中心
+build.desc_nuke_silo,核弹发射井，Z键释放核弹，5分钟冷却
+build.desc_lightning_tower,闪电风暴塔，C键释放闪电风暴，4分钟冷却
+build.desc_missile_silo,导弹发射井，Shift+V巡航导弹，3分钟冷却
+build.desc_harvester,自动采矿赚钱
+build.desc_infantry,便宜、脆、人多势众
+build.desc_light_tank,快、脆、便宜
+build.desc_heavy_tank,慢、硬、主力
+build.desc_artillery,远程高伤，不能近战
+build.desc_anti_air_unit,高射速，对地补位
+build.desc_engineer,修复友军建筑/单位，多功能辅助
+build.desc_grenadier,AOE溅射，克制密集步兵
+build.desc_sniper,超远程精确射击，脆皮
+build.desc_flame_infantry,近距高射速喷火，灼烧区域
+build.desc_transport,搭载步兵变战车，IFV合体系统
+build.desc_hero,强力步兵，随机技能(双发/治疗/冲锋/暴击/护盾)
+build.desc_spy,渗透敌方建筑，停电+偷钱
+build.desc_thief,潜入偷取敌方资金
+build.desc_fighter,高速空战，需机场
+build.desc_helicopter,空中火力支援，需机场
+build.desc_rocket_infantry,防空火箭步兵，对空专精
+build.desc_bomber,高空大范围轰炸，溅射100
+build.desc_scout,超高速侦察，600视野
+build.desc_transport_heli,空中搭载4名步兵
+build.desc_destroyer,水面主力战舰，对海对陆
+build.desc_submarine,隐身潜艇，鱼雷高伤
+build.desc_carrier,搭载4架战斗机的海上基地
+build.desc_landing_craft,水面运兵3名，两栖登陆
+build.desc_rocket_launcher,溅射伤害，需科技
+build.desc_missile_tank,超远程爆发，需科技
+
+# === 建造面板提示 ===
+build.hint_place_mode,放置模式
+build.hint_place_click,左键放置 {0}
+build.hint_cancel,右键/Esc 取消
+build.hint_click_build,点击图标建造
+build.hint_drag_select,左键拖框选单位
+build.hint_right_move,右键移动/攻击
+build.hint_can_build,可建造
+build.hint_queue,队列: {0}  进度: {1}%
+build.hint_remaining,剩余{0}s
 
 # === 难度 ===
 difficulty.casual,休闲
@@ -82,3 +237,110 @@ log.no_war_factory,需要车厂
 log.no_tech_center,需要科技中心
 log.no_airfield,需要机场
 log.no_shipyard,需要船坞
+
+# === 游戏UI（Main.UIRender） ===
+ui.power_low_warn,  [电力不足!]
+ui.no_tech_center,无科技中心
+ui.no_missile_silo,无导弹井
+ui.cooldown,冷却 {0}:{1:D2}
+ui.ready_star,就绪 ★
+ui.nuke_line,
+☢ 核弹: {0}
+ui.lightning_line, | ⚡ 闪电: {0}
+ui.missile_line, | 🚀 导弹: {0}
+ui.game_objective,目标：消灭所有敌方阵营（8色对战，玩家为红色方）
+ui.era_upgrade, (升级中{0}%)
+ui.card_display, | 卡:{0}
+ui.difficulty_label,难度: {0}
+ui.era_label,[时代: {0}{1}]
+ui.tech_cap,(科技Lv{0} | 上限{1})
+ui.money_label,资金: ${0}
+ui.ai_money_label,AI合计资金: ${0}
+ui.power_label,电力: {0}
+ui.ai_power_label,AI合计电力: {0}
+ui.player_units_label,玩家方: {0} 单位 / {1}
+ui.ai_units_label,AI合计: {0} 单位 (7阵营)
+ui.ore_remaining,地图剩余矿点: {0}
+ui.status_star,
+★ {0}
+ui.quality_gpu_detected,检测到
+ui.quality_gpu_not_detected,未检测到(软件渲染)
+ui.quality_current,当前: {0} — GPU: {1}
+
+# === 建筑列表 ===
+building.base,基地
+building.power,电站
+building.barracks,兵营
+building.war,车厂
+building.tech,科技
+building.none,0建筑
+
+# === 地图编辑器 ===
+editor.title,地图编辑器
+editor.section_place_mode,── 放置模式 ──
+editor.place_terrain,地形笔刷
+editor.place_resource,矿点
+editor.place_strategic,战略点
+editor.place_base,基地出生点
+editor.section_brush_size,── 笔刷大小 ──
+editor.section_terrain,── 地形类型 ──
+editor.section_elevation,── 海拔等级 ──
+editor.section_resource_amount,── 矿点数量 ──
+editor.section_map_info,── 地图信息 ──
+editor.name_label,名称:
+editor.seed_label,种子:
+editor.apply,应用
+editor.section_map_size,── 地图大小 ──
+editor.new_map,新建
+editor.save_map,保存
+editor.load_map,加载
+editor.back_to_menu,← 返回主菜单 (Esc)
+editor.new_map_name,新地图
+editor.no_saved_maps,暂无已保存地图
+editor.no_rmap_files,暂无.rmap文件
+editor.no_undo,无可撤销操作
+editor.no_redo,无可重做操作
+editor.undo_done,已撤销 (撤销栈:{0}, 重做栈:{1})
+editor.redo_done,已重做 (撤销栈:{0}, 重做栈:{1})
+editor.saved_to,已保存到: {0}
+editor.map_size_changed,地图大小已切换为 {0}×{1}
+editor.screenshot,截图: {0}
+editor.bridge,桥梁
+editor.tunnel,隧道
+
+# === 地形类型 ===
+terrain.grass,草地
+terrain.sand,沙地
+terrain.snow,雪地
+terrain.city,城市路面
+terrain.field,田地
+terrain.shallow,浅水
+terrain.deep,深水
+terrain.mountain,山脉
+terrain.road,道路
+terrain.cliff,悬崖
+terrain.bridge,桥梁
+terrain.tunnel,隧道
+
+# === 笔刷模式 ===
+brush.single,单格
+brush.square3,3×3方形
+brush.circle5,5格圆形
+brush.fill,填充
+brush.eraser,橡皮擦
+
+# === 海拔 ===
+elevation.0,0 - 水面/深水
+elevation.1,1 - 平地/浅水
+elevation.2,2 - 丘陵
+elevation.3,3 - 山顶
+
+# === 游戏模式提示 ===
+ui.attack_move_mode,★ 攻击移动模式：左键点地发起 | 右键/Esc 取消
+ui.nuke_target_mode,★ 核弹目标模式：左键发射 | 右键取消
+ui.lightning_target_mode,★ 闪电风暴目标模式：左键发射 | 右键取消
+
+# === 地图编辑器补充 ===
+editor.coord,Grid: ({0}, {1})
+editor.coord_label,Grid: (--, --)
+editor.status_mode,模式:{0} 笔刷:{1} 地形:{2} 海拔:{3} │ 修改:{4} 矿点:{5} 战略点:{6} 手动基地:{7} │ 撤销:{8} 重做:{9}

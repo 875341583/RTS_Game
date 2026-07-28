@@ -24,6 +24,59 @@ menu.prototype_3d,3D Prototype
 menu.play_3d,3D Game
 menu.difficulty,Difficulty
 menu.seed,Seed
+menu.skirmish,Skirmish
+menu.skirmish_desc,Select map, faction and difficulty to fight AI
+menu.settings_desc,Graphics, volume, resolution, fullscreen
+menu.map_editor_desc,Create and edit custom maps
+menu.prototype_3d_desc,2.5D/full 3D mode experiment
+menu.quit_game,Quit Game
+menu.section_map,── Map Settings ──
+menu.map_size,Map Size:
+menu.map_small,Small (32×32)
+menu.map_medium,Medium (64×64)
+menu.map_large,Large (96×96)
+menu.map_theme,Map Theme:
+menu.map_seed,Map Seed:
+menu.seed_placeholder,Empty = random seed
+menu.seed_hint,Same seed reproduces the same map
+menu.section_faction,── Faction Selection ──
+menu.player_faction,Player Faction:
+menu.section_difficulty,── Difficulty Selection ──
+menu.back,← Back
+menu.start_game,Start Game ▶
+menu.back_to_main,← Back to Main Menu
+menu.section_quality,── Graphics ──
+menu.quality_level,Quality Level:
+menu.quality_low,Low (Power Saving)
+menu.quality_medium,Medium
+menu.quality_high,High
+menu.section_display,── Display ──
+menu.fullscreen,Fullscreen:
+menu.fullscreen_on,On ✓
+menu.fullscreen_off,Off
+menu.f11_hint,Press F11 in-game to toggle fullscreen
+menu.section_audio,── Audio ──
+menu.master_volume,Master Volume:
+menu.section_language,── Language ──
+menu.ui_language,UI Language:
+menu.lang_partial_hint,P0 fix: Language switch (some texts not yet fully i18n)
+
+# === Map Themes ===
+theme.default,Default
+theme.snow,Snow
+theme.desert,Desert
+theme.city,City
+theme.island,Island
+
+# === Difficulty Cards ===
+diff.easy_title,Easy - Novice
+diff.easy_desc,AI 14s · Blue $3000 · Barracks only · Cap 12
+diff.normal_title,Normal - Standard
+diff.normal_desc,AI 10s · Blue $2700 · War Factory · Cap 16
+diff.hard_title,Hard
+diff.hard_desc,AI 7s · Blue $2500 · Tech Center · Cap 20
+diff.brutal_title,Brutal
+diff.brutal_desc,AI 4s · Blue $2200 · Tech Center · Cap 24
 
 # === Build Panel ===
 build.power_plant,Power Plant
@@ -40,6 +93,108 @@ build.lightning_tower,Lightning Tower
 build.missile_silo,Missile Silo
 build.super_weapon,Super Weapon
 build.walls,Walls
+build.tab_buildings,Buildings
+build.tab_infantry,Infantry
+build.tab_vehicles,Vehicles
+build.machine_gun_turret,MG Turret
+build.anti_air_turret,Anti-Air Gun
+build.repair_station,Repair Station
+build.shipyard_panel,Shipyard
+build.infantry_unit,Infantry
+build.grenadier,Grenadier
+build.flame_infantry,Flame Infantry
+build.sniper,Sniper
+build.thief,Thief
+build.hero,Hero
+build.spy,Spy
+build.rocket_infantry,Rocket Infantry
+build.light_tank,Light Tank
+build.anti_air_vehicle,AA Vehicle
+build.engineer,Engineer
+build.transport,Transport
+build.artillery,Artillery
+build.heavy_tank,Heavy Tank
+build.harvester,Harvester
+build.rocket_launcher,Rocket Launcher
+build.missile_tank,Missile Tank
+build.fighter,Fighter
+build.helicopter,Helicopter
+build.bomber,Bomber
+build.scout,Scout
+build.transport_heli,Transport Heli
+build.destroyer,Destroyer
+build.submarine,Submarine
+build.carrier,Aircraft Carrier
+build.landing_craft,Landing Craft
+build.tech,Tech
+build.airfield_panel,Airfield
+build.nuke_silo_panel,Nuke Silo
+build.lightning_tower_panel,Lightning Tower
+build.missile_silo_panel,Missile Silo
+
+# === Build Panel Lock Reasons (UI Display) ===
+build.lock_need_base,Need Base
+build.lock_need_power,Need Power Plant
+build.lock_need_barracks,Need Barracks
+build.lock_need_warfactory,Need War Factory
+build.lock_need_techcenter,Need Tech Center
+build.lock_need_airfield,Need Airfield
+build.lock_need_shipyard,Need Shipyard
+build.lock_power_low,Low Power
+build.lock_unit_full,Unit Cap Reached
+build.lock_difficulty,Locked by Difficulty
+build.lock_money_low,Insufficient Funds
+
+# === Build Panel Descriptions ===
+build.desc_power_plant,Provides +100 Power
+build.desc_barracks,Unlocks Infantry/Light Tank production
+build.desc_war_factory,Unlocks Heavy Tank/Artillery/AA/Engineer
+build.desc_tech_center,Unlocks Rocket Launcher/Missile Tank
+build.desc_turret,Auto ground defense tower, range 18, fast fire rate
+build.desc_anti_air_turret,Heavy defense tower, high damage range 25
+build.desc_repair_pad,Auto-repairs friendly units within 220 range +25HP/s
+build.desc_airfield,Unlocks air units, requires Tech Center
+build.desc_shipyard,Unlocks naval units, requires Tech Center
+build.desc_nuke_silo,Nuke launch silo, Z key to fire, 5 min cooldown
+build.desc_lightning_tower,Lightning storm tower, C key to fire, 4 min cooldown
+build.desc_missile_silo,Missile launch silo, Shift+V cruise missile, 3 min cooldown
+build.desc_harvester,Auto-mining income
+build.desc_infantry,Cheap, fragile, strength in numbers
+build.desc_light_tank,Fast, fragile, cheap
+build.desc_heavy_tank,Slow, tough, main force
+build.desc_artillery,Long range high damage, no close combat
+build.desc_anti_air_unit,High fire rate, ground cover
+build.desc_engineer,Repair friendly buildings/units, multi-role
+build.desc_grenadier,AOE splash, counters dense infantry
+build.desc_sniper,Super long range precision, fragile
+build.desc_flame_infantry,Close range rapid flamethrower, burn area
+build.desc_transport,Embark infantry to IFV combo system
+build.desc_hero,Powerful infantry, random skills (double fire/heal/charge/crit/shield)
+build.desc_spy,Infiltrate enemy buildings, blackout + steal money
+build.desc_thief,Sneak in and steal enemy funds
+build.desc_fighter,High-speed air combat, requires Airfield
+build.desc_helicopter,Air fire support, requires Airfield
+build.desc_rocket_infantry,Anti-air rocket infantry, air specialist
+build.desc_bomber,High-altitude wide bombing, splash 100
+build.desc_scout,Ultra-fast recon, 600 vision
+build.desc_transport_heli,Air transport 4 infantry
+build.desc_destroyer,Surface main warship, sea & land
+build.desc_submarine,Stealth submarine, high-damage torpedoes
+build.desc_carrier,Sea base carrying 4 fighters
+build.desc_landing_craft,Amphibious transport 3 infantry
+build.desc_rocket_launcher,Splash damage, requires Tech
+build.desc_missile_tank,Super long range burst, requires Tech
+
+# === Build Panel Hints ===
+build.hint_place_mode,Placement Mode
+build.hint_place_click,Left-click to place {0}
+build.hint_cancel,Right-click/Esc to cancel
+build.hint_click_build,Click icon to build
+build.hint_drag_select,Left-drag to select units
+build.hint_right_move,Right-click to move/attack
+build.hint_can_build,Ready to build
+build.hint_queue,Queue: {0}  Progress: {1}%
+build.hint_remaining,{0}s remaining
 
 # === Difficulty ===
 difficulty.casual,Casual
@@ -80,3 +235,110 @@ log.no_war_factory,Need War Factory
 log.no_tech_center,Need Tech Center
 log.no_airfield,Need Airfield
 log.no_shipyard,Need Shipyard
+
+# === Game UI (Main.UIRender) ===
+ui.power_low_warn,  [Low Power!]
+ui.no_tech_center,No Tech Center
+ui.no_missile_silo,No Missile Silo
+ui.cooldown,Cooldown {0}:{1:D2}
+ui.ready_star,Ready ★
+ui.nuke_line,
+☢ Nuke: {0}
+ui.lightning_line, | ⚡ Lightning: {0}
+ui.missile_line, | 🚀 Missile: {0}
+ui.game_objective,Objective: Eliminate all enemy factions (8-color battle, player is Red)
+ui.era_upgrade, (Upgrading {0}%)
+ui.card_display, | Card:{0}
+ui.difficulty_label,Difficulty: {0}
+ui.era_label,[Era: {0}{1}]
+ui.tech_cap,(Tech Lv{0} | Cap {1})
+ui.money_label,Funds: ${0}
+ui.ai_money_label,AI Funds: ${0}
+ui.power_label,Power: {0}
+ui.ai_power_label,AI Power: {0}
+ui.player_units_label,Player: {0} units / {1}
+ui.ai_units_label,AI: {0} units (7 factions)
+ui.ore_remaining,Remaining ore: {0}
+ui.status_star,
+★ {0}
+ui.quality_gpu_detected,Detected
+ui.quality_gpu_not_detected,Not detected (software render)
+ui.quality_current,Current: {0} — GPU: {1}
+
+# === Building List ===
+building.base,Base
+building.power,Power
+building.barracks,Barracks
+building.war,War Fac
+building.tech,Tech
+building.none,0 Buildings
+
+# === Map Editor ===
+editor.title,Map Editor
+editor.section_place_mode,── Place Mode ──
+editor.place_terrain,Terrain Brush
+editor.place_resource,Ore Deposit
+editor.place_strategic,Strategic Point
+editor.place_base,Base Spawn
+editor.section_brush_size,── Brush Size ──
+editor.section_terrain,── Terrain Type ──
+editor.section_elevation,── Elevation ──
+editor.section_resource_amount,── Ore Amount ──
+editor.section_map_info,── Map Info ──
+editor.name_label,Name:
+editor.seed_label,Seed:
+editor.apply,Apply
+editor.section_map_size,── Map Size ──
+editor.new_map,New
+editor.save_map,Save
+editor.load_map,Load
+editor.back_to_menu,← Back to Menu (Esc)
+editor.new_map_name,New Map
+editor.no_saved_maps,No saved maps
+editor.no_rmap_files,No .rmap files
+editor.no_undo,Nothing to undo
+editor.no_redo,Nothing to redo
+editor.undo_done,Undone (undo:{0}, redo:{1})
+editor.redo_done,Redone (undo:{0}, redo:{1})
+editor.saved_to,Saved to: {0}
+editor.map_size_changed,Map size changed to {0}×{1}
+editor.screenshot,Screenshot: {0}
+editor.bridge,Bridge
+editor.tunnel,Tunnel
+
+# === Terrain Types ===
+terrain.grass,Grass
+terrain.sand,Sand
+terrain.snow,Snow
+terrain.city,City Road
+terrain.field,Field
+terrain.shallow,Shallow Water
+terrain.deep,Deep Water
+terrain.mountain,Mountain
+terrain.road,Road
+terrain.cliff,Cliff
+terrain.bridge,Bridge
+terrain.tunnel,Tunnel
+
+# === Brush Modes ===
+brush.single,Single
+brush.square3,3×3 Square
+brush.circle5,5 Circle
+brush.fill,Fill
+brush.eraser,Eraser
+
+# === Elevation ===
+elevation.0,0 - Water/Deep
+elevation.1,1 - Flat/Shallow
+elevation.2,2 - Hill
+elevation.3,3 - Peak
+
+# === Game Mode Hints ===
+ui.attack_move_mode,★ Attack Move: Left-click ground | Right-click/Esc to cancel
+ui.nuke_target_mode,★ Nuke Target: Left-click to fire | Right-click to cancel
+ui.lightning_target_mode,★ Lightning Target: Left-click to fire | Right-click to cancel
+
+# === Map Editor Extra ===
+editor.coord,Grid: ({0}, {1})
+editor.coord_label,Grid: (--, --)
+editor.status_mode,Mode:{0} Brush:{1} Terrain:{2} Elev:{3} │ Mods:{4} Ore:{5} Strategic:{6} Base:{7} │ Undo:{8} Redo:{9}

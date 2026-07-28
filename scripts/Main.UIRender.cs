@@ -339,14 +339,13 @@ public partial class Main
     /// <summary>检查世界坐标是否距离基地位置太近。</summary>
     private bool IsTooCloseToBasePos(Vector2 pos, float minDist)
     {
-        var basePositions = new Vector2[TotalTeamCount]
+        // P1-3修复：使用MapConfig.BasePositions替代硬编码坐标，适配任意地图尺寸
+        var bpArray = MapConfig.BasePositions;
+        float tileW = MapConfig.TileSize;
+        for (int i = 0; i < bpArray.Length; i++)
         {
-            new(200, 200), new(1800, 1800), new(1800, 200), new(200, 1800),
-            new(1000, 200), new(1000, 1800), new(200, 1000), new(1800, 1000),
-        };
-        foreach (var bp in basePositions)
-        {
-            if (pos.DistanceTo(bp) < minDist) return true;
+            var worldPos = new Vector2(bpArray[i].x * tileW, bpArray[i].y * tileW);
+            if (pos.DistanceTo(worldPos) < minDist) return true;
         }
         return false;
     }
@@ -449,7 +448,21 @@ public partial class Main
             if (c is ResourceNode && IsInstanceValid((Node)c)) oreCount++;
 
         string playerBuildings = GetBuildingList(PlayerTeamId);
-        string powerWarn = playerPower < 0 ? "  [电力不足!]" : "";
+        string powerWarn = playerPower < 0 ? TrManager.Tr("ui.power_low_warn") : "";
+        // P1-6: 电力不足警告音效（节流：每5秒最多播放一次）
+        if (playerPower < 0)
+        {
+            _lowPowerNotifyCooldown -= (float)GetProcessDeltaTime();
+            if (_lowPowerNotifyCooldown <= 0f)
+            {
+                _audio?.PlaySfxForce(AudioManager.Sfx.NotifyLowPower);
+                _lowPowerNotifyCooldown = 5f;
+            }
+        }
+        else
+        {
+            _lowPowerNotifyCooldown = 0f;
+        }
 
         // 汇总 7 个 AI 阵营（总单位、总资金、总电力）
         int aiTotalUnits = 0, aiTotalMoney = 0, aiTotalPower = 0;
@@ -463,48 +476,48 @@ public partial class Main
         // 阶段12-A4：核弹状态行
         bool hasTech = HasBuilding(PlayerTeamId, BuildingType.TechCenter);
         string nukeStatus;
-        if (!hasTech) nukeStatus = "无科技中心";
+        if (!hasTech) nukeStatus = TrManager.Tr("ui.no_tech_center");
         else if (_playerNukeCooldown > 0f)
         {
             int sec = Mathf.CeilToInt(_playerNukeCooldown);
-            nukeStatus = $"冷却 {sec / 60}:{sec % 60:D2}";
+            nukeStatus = TrManager.Tr("ui.cooldown", sec / 60, sec % 60);
         }
-        else nukeStatus = "就绪 ★";
-        string nukeLine = $"\n☢ 核弹: {nukeStatus}";
+        else nukeStatus = TrManager.Tr("ui.ready_star");
+        string nukeLine = $"\n{TrManager.Tr("ui.nuke_line", nukeStatus)}";
 
         // 阶段12-A4：闪电风暴状态行
         string lightStatus;
-        if (!hasTech) lightStatus = "无科技中心";
+        if (!hasTech) lightStatus = TrManager.Tr("ui.no_tech_center");
         else if (_playerLightningCooldown > 0f)
         {
             int sec2 = Mathf.CeilToInt(_playerLightningCooldown);
-            lightStatus = $"冷却 {sec2 / 60}:{sec2 % 60:D2}";
+            lightStatus = TrManager.Tr("ui.cooldown", sec2 / 60, sec2 % 60);
         }
-        else lightStatus = "就绪 ★";
-        string lightLine = $" | ⚡ 闪电: {lightStatus}";
+        else lightStatus = TrManager.Tr("ui.ready_star");
+        string lightLine = TrManager.Tr("ui.lightning_line", lightStatus);
 
         // E10：巡航导弹状态
         string missileStatus;
         if (!HasBuilding(PlayerTeamId, BuildingType.MissileSilo))
-            missileStatus = "无导弹井";
+            missileStatus = TrManager.Tr("ui.no_missile_silo");
         else if (_playerMissileCooldown > 0f)
         {
             int sec3 = Mathf.CeilToInt(_playerMissileCooldown);
-            missileStatus = $"冷却 {sec3 / 60}:{sec3 % 60:D2}";
+            missileStatus = TrManager.Tr("ui.cooldown", sec3 / 60, sec3 % 60);
         }
-        else missileStatus = "就绪 ★";
-        string missileLine = $" | 🚀 导弹: {missileStatus}";
+        else missileStatus = TrManager.Tr("ui.ready_star");
+        string missileLine = TrManager.Tr("ui.missile_line", missileStatus);
 
-        string status = _gameOver ? _gameResult : "目标：消灭所有敌方阵营（8色对战，玩家为红色方）";
+        string status = _gameOver ? _gameResult : TrManager.Tr("ui.game_objective");
         string eraName = EraSystem.Eras[(int)_eraProgress[0].CurrentEra].Name;
-        string eraUpgradeStr = _eraProgress[0].IsUpgrading ? $" (升级中{_eraProgress[0].Progress*100:F0}%)" : "";
-        string cardStr = _playerCard.HasValue ? $" | 卡:{TacticalCards.Cards[_playerCard.Value].Name}" : "";
-        _uiLabel.Text = $"难度: {_difficulty} [时代: {eraName}{eraUpgradeStr}]{cardStr} (科技Lv{_playerTechLevel} | 上限{_unitCap + GetTechUnitCapBonus(0) + GetCardUnitCapBonus(0)})    资金: ${_money[0]}    |    AI合计资金: ${aiTotalMoney}    [{QualitySettings.LevelName}]\n" +
-                        $"电力: {playerPower}{powerWarn}    |    AI合计电力: {aiTotalPower}\n" +
-                        $"玩家方: {playerUnits} 单位 / {playerBuildings}  · " +
-                        $"AI合计: {aiTotalUnits} 单位 (7阵营)\n" +
-                        $"地图剩余矿点: {oreCount}{nukeLine}{lightLine}{missileLine}\n" +
-                        (string.IsNullOrEmpty(status) ? "" : $"\n★ {status}");
+        string eraUpgradeStr = _eraProgress[0].IsUpgrading ? TrManager.Tr("ui.era_upgrade", $"{_eraProgress[0].Progress*100:F0}") : "";
+        string cardStr = _playerCard.HasValue ? TrManager.Tr("ui.card_display", TacticalCards.Cards[_playerCard.Value].Name) : "";
+        _uiLabel.Text = $"{TrManager.Tr("ui.difficulty_label", _difficulty)} {TrManager.Tr("ui.era_label", eraName, eraUpgradeStr)}{cardStr} {TrManager.Tr("ui.tech_cap", _playerTechLevel, _unitCap + GetTechUnitCapBonus(0) + GetCardUnitCapBonus(0))}    {TrManager.Tr("ui.money_label", _money[0])}    |    {TrManager.Tr("ui.ai_money_label", aiTotalMoney)}    [{QualitySettings.LevelName}]\n" +
+                        $"{TrManager.Tr("ui.power_label", playerPower)}{powerWarn}    |    {TrManager.Tr("ui.ai_power_label", aiTotalPower)}\n" +
+                        $"{TrManager.Tr("ui.player_units_label", playerUnits, playerBuildings)}  · " +
+                        $"{TrManager.Tr("ui.ai_units_label", aiTotalUnits)}\n" +
+                        $"{TrManager.Tr("ui.ore_remaining", oreCount)}{nukeLine}{lightLine}{missileLine}\n" +
+                        (string.IsNullOrEmpty(status) ? "" : TrManager.Tr("ui.status_star", status));
 
         _hintLabel.Text = "WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点\n" +
                           "Q 攻击移动 | X 停止 | R 维修建筑 | V 出售建筑(回收50%) | Ctrl+1~9 编队 | 1~9 选编队\n" +
@@ -525,11 +538,11 @@ public partial class Main
                           "G7: N 查看间谍任务 | 选中间谍右键敌方建筑执行任务\n" +
                           "G8: K 查看占领状态 | 占领获$300+缴获加速+连锁+叛变风险";
         if (_attackMoveMode)
-            _hintLabel.Text = "★ 攻击移动模式：左键点地发起 | 右键/Esc 取消";
+            _hintLabel.Text = TrManager.Tr("ui.attack_move_mode");
         if (_nukeTargetMode)
-            _hintLabel.Text = "★ 核弹目标模式：左键发射 | 右键取消";
+            _hintLabel.Text = TrManager.Tr("ui.nuke_target_mode");
         if (_lightningTargetMode)
-            _hintLabel.Text = "★ 闪电风暴目标模式：左键发射 | 右键取消";
+            _hintLabel.Text = TrManager.Tr("ui.lightning_target_mode");
     }
 
     private string GetBuildingList(int teamId)
@@ -550,12 +563,15 @@ public partial class Main
             }
         }
         var parts = new List<string>();
-        if (baseN > 0) parts.Add($"基地{baseN}");
-        if (power > 0) parts.Add($"电站{power}");
-        if (barrack > 0) parts.Add($"兵营{barrack}");
-        if (war > 0) parts.Add($"车厂{war}");
-        if (tech > 0) parts.Add($"科技{tech}");
-        return parts.Count > 0 ? string.Join(" ", parts) : "0建筑";
+        if (baseN > 0) parts.Add($"{TrManager.Tr("building.base")}{baseN}");
+        if (power > 0) parts.Add($"{TrManager.Tr("building.power")}{power}");
+        if (barrack > 0) parts.Add($"{TrManager.Tr("building.barracks")}{barrack}");
+        if (war > 0) parts.Add($"{TrManager.Tr("building.war")}{war}");
+        if (tech > 0) parts.Add($"{TrManager.Tr("building.tech")}{tech}");
+        return parts.Count > 0 ? string.Join(" ", parts) : TrManager.Tr("building.none");
     }
+
+    /// <summary>P1-6: 低电量通知节流计时器</summary>
+    private float _lowPowerNotifyCooldown;
 
 }

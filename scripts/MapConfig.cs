@@ -73,7 +73,7 @@ public static class MapConfig
     /// Small(32): 四角+四边中点
     /// Medium/Large: 按比例分布
     /// </summary>
-    public static (int x, int)[] BasePositions
+    public static (int x, int y)[] BasePositions
     {
         get
         {

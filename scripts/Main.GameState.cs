@@ -71,9 +71,10 @@ public partial class Main
     // ---------- G5 游戏结束 UI ----------
     private void ShowGameOverUI()
     {
-        // 阶段12-C：游戏结束音效
+        // 阶段12-C：游戏结束音效 + P1-6: BGM切换
         bool win = _gameResult.StartsWith("胜利");
         _audio?.PlaySfxForce(win ? AudioManager.Sfx.NotifyVictory : AudioManager.Sfx.NotifyDefeat);
+        BgmManager.SwitchScene(win ? BgmManager.BgmScene.Victory : BgmManager.BgmScene.Defeat);
 
         var layer = new CanvasLayer { Name = "GameOverUI" };
         AddChild(layer);

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace RTSGame;
@@ -5,23 +6,30 @@ namespace RTSGame;
 /// <summary>
 /// 战略要地：单位停留 4 秒可占领，占领后每秒提供 $5 被动收入。
 /// 只有战斗单位（AttackDamage > 0）能占领。
+/// 支持 8 阵营（teamId 0-7）动态占领与染色：仅当唯一一方战斗单位在场时推进占领，
+/// 颜色取自 GameData.GetTeamColor，名称取自 FactionManager（回退 "阵营{teamId}"）。
 /// </summary>
 public partial class StrategicPoint : Area2D
 {
+    /// <summary>支持的最大阵营数（teamId 0..MaxTeams-1）。</summary>
+    private const int MaxTeams = 8;
+
     public int OwningTeam { get; private set; } = -1; // -1 = neutral
 
     private Sprite2D _visual = null!;
     private Label _label = null!;
-    private int _blueCount;
-    private int _redCount;
+    /// <summary>各阵营当前在场战斗单位计数，索引=teamId。</summary>
+    private readonly int[] _teamCounts = new int[MaxTeams];
+    /// <summary>当前正在推进占领的阵营（-1=无/对峙中）。</summary>
+    private int _capturingTeam = -1;
     private float _captureProgress; // 0-100
     private float _incomeTimer;
     private const float CaptureSpeed = 25f;   // 4 seconds to capture
     private const float IncomePerSecond = 5f;
 
     private static ImageTexture? _neutralTex;
-    private static ImageTexture? _blueTex;
-    private static ImageTexture? _redTex;
+    /// <summary>阵营色纹理缓存，key=teamId。颜色由 GameData.GetTeamColor 动态生成。</summary>
+    private static readonly Dictionary<int, ImageTexture> _teamTexCache = new();
 
     public override void _Ready()
     {
@@ -37,7 +45,7 @@ public partial class StrategicPoint : Area2D
         AddChild(shape);
 
         // Visual
-        EnsureTextures();
+        EnsureNeutralTexture();
         _visual = new Sprite2D();
         _visual.Texture = _neutralTex;
         AddChild(_visual);
@@ -60,19 +68,18 @@ public partial class StrategicPoint : Area2D
 
     private void OnBodyEntered(Node body)
     {
-        if (body is Unit u && u.AttackDamage > 0f)
+        if (body is Unit u && u.AttackDamage > 0f && u.TeamId >= 0 && u.TeamId < MaxTeams)
         {
-            if (u.TeamId == 0) _blueCount++;
-            else _redCount++;
+            _teamCounts[u.TeamId]++;
         }
     }
 
     private void OnBodyExited(Node body)
     {
-        if (body is Unit u && u.AttackDamage > 0f)
+        if (body is Unit u && u.AttackDamage > 0f && u.TeamId >= 0 && u.TeamId < MaxTeams)
         {
-            if (u.TeamId == 0) _blueCount = Mathf.Max(0, _blueCount - 1);
-            else _redCount = Mathf.Max(0, _redCount - 1);
+            if (_teamCounts[u.TeamId] > 0)
+                _teamCounts[u.TeamId]--;
         }
     }
 
@@ -80,38 +87,53 @@ public partial class StrategicPoint : Area2D
     {
         var dt = (float)delta;
 
-        // Capture logic
-        if (_blueCount > 0 && _redCount == 0 && OwningTeam != 0)
+        // 统计在场战斗阵营：仅当唯一一方有战斗单位时推进占领。
+        int soleTeam = -1;
+        int teamsPresent = 0;
+        for (int i = 0; i < MaxTeams; i++)
         {
+            if (_teamCounts[i] > 0)
+            {
+                teamsPresent++;
+                soleTeam = i;
+                if (teamsPresent > 1) break;
+            }
+        }
+
+        if (teamsPresent == 1 && soleTeam != OwningTeam)
+        {
+            // 切换推进方时重置进度（例如从蓝切到红）
+            if (_capturingTeam != soleTeam)
+            {
+                _capturingTeam = soleTeam;
+                _captureProgress = 0f;
+            }
             _captureProgress += dt * CaptureSpeed;
             if (_captureProgress >= 100f)
             {
-                OwningTeam = 0;
+                OwningTeam = soleTeam;
+                _capturingTeam = -1;
                 _captureProgress = 0f;
-                _visual.Texture = _blueTex;
-                _label.Text = "蓝方控制";
-                GameLog.Debug("[StrategicPoint] Blue captured!");
+                _visual.Texture = GetTeamTexture(soleTeam);
+                _label.Text = $"{GetTeamDisplayName(soleTeam)}控制";
+                GameLog.Debug($"[StrategicPoint] Team {soleTeam} ({GetTeamDisplayName(soleTeam)}) captured!");
             }
         }
-        else if (_redCount > 0 && _blueCount == 0 && OwningTeam != 1)
+        else if (teamsPresent == 0)
         {
-            _captureProgress += dt * CaptureSpeed;
-            if (_captureProgress >= 100f)
-            {
-                OwningTeam = 1;
-                _captureProgress = 0f;
-                _visual.Texture = _redTex;
-                _label.Text = "红方控制";
-                GameLog.Debug("[StrategicPoint] Red captured!");
-            }
-        }
-        else if (_blueCount == 0 && _redCount == 0)
-        {
+            // 无人在场：进度衰减
             _captureProgress = Mathf.Max(0f, _captureProgress - dt * CaptureSpeed * 0.5f);
+            if (_captureProgress <= 0f)
+                _capturingTeam = -1;
+        }
+        else
+        {
+            // 多方对峙：进度暂停，等待局势明朗
+            _capturingTeam = -1;
         }
 
         // Income（受难度开关控制）
-        if (OwningTeam >= 0 && GetParent().GetParent() is Main main2 && main2.StrategicPointIncomeEnabled)
+        if (OwningTeam >= 0 && GetParent()?.GetParent() is Main main2 && main2.StrategicPointIncomeEnabled)
         {
             _incomeTimer += dt;
             if (_incomeTimer >= 1f)
@@ -122,19 +144,57 @@ public partial class StrategicPoint : Area2D
         }
 
         // Update label with capture progress
-        if (_captureProgress > 0f && OwningTeam == -1)
+        if (_captureProgress > 0f && OwningTeam == -1 && _capturingTeam >= 0)
         {
-            _label.Text = $"占领中 {(_blueCount > 0 ? "蓝" : "红")} {(int)_captureProgress}%";
+            _label.Text = $"占领中 {GetTeamDisplayName(_capturingTeam)} {(int)_captureProgress}%";
         }
     }
 
-    private static void EnsureTextures()
+    private static void EnsureNeutralTexture()
     {
         if (_neutralTex != null) return;
-
         _neutralTex = CreatePointTexture(new Color(0.8f, 0.75f, 0.3f, 0.5f), new Color(0.6f, 0.55f, 0.2f, 0.9f));
-        _blueTex = CreatePointTexture(new Color(0.3f, 0.6f, 1.0f, 0.5f), new Color(0.2f, 0.5f, 0.9f, 0.9f));
-        _redTex = CreatePointTexture(new Color(1.0f, 0.35f, 0.35f, 0.5f), new Color(0.8f, 0.2f, 0.2f, 0.9f));
+    }
+
+    /// <summary>获取指定阵营的战略点纹理（缓存）。颜色由 GameData.GetTeamColor 动态生成。</summary>
+    private static ImageTexture GetTeamTexture(int teamId)
+    {
+        if (_teamTexCache.TryGetValue(teamId, out var cached))
+            return cached;
+
+        var baseColor = GameData.GetTeamColor(teamId);
+        var fill = new Color(baseColor.R, baseColor.G, baseColor.B, 0.5f);
+        var border = new Color(
+            Mathf.Max(0f, baseColor.R - 0.15f),
+            Mathf.Max(0f, baseColor.G - 0.15f),
+            Mathf.Max(0f, baseColor.B - 0.15f),
+            0.9f);
+        var tex = CreatePointTexture(fill, border);
+        _teamTexCache[teamId] = tex;
+        return tex;
+    }
+
+    /// <summary>
+    /// 获取 teamId 的显示名。优先走 FactionManager（即 GameData 阵营体系），
+    /// 不可用时回退到 "阵营{teamId}"。
+    /// 注：GameData 暂未提供 GetTeamName，此处直接使用其底层的 FactionManager。
+    /// </summary>
+    private static string GetTeamDisplayName(int teamId)
+    {
+        try
+        {
+            if (FactionManager.IsLoaded && teamId >= 0 && teamId < FactionManager.Count)
+            {
+                var name = FactionManager.GetFactionForTeam(teamId).Name;
+                if (!string.IsNullOrEmpty(name))
+                    return name;
+            }
+        }
+        catch
+        {
+            // FactionManager 异常时降级
+        }
+        return $"阵营{teamId}";
     }
 
     private static ImageTexture CreatePointTexture(Color fill, Color border)
@@ -171,24 +231,22 @@ public partial class StrategicPoint : Area2D
     /// <summary>获取当前所有者阵营ID（-1=中立）。</summary>
     public int GetOwningTeam() => OwningTeam;
 
-    /// <summary>P0-2 读档：直接设置所有者阵营并刷新视觉。</summary>
+    /// <summary>P0-2 读档：直接设置所有者阵营并刷新视觉。支持任意 teamId。</summary>
     public void SetOwningTeam(int teamId)
     {
-        // 通过属性 backer 设置——OwningTeam的private set由本类可访问
         OwningTeam = teamId;
         _captureProgress = 0f;
-        EnsureTextures();
-        _visual.Texture = teamId switch
+        _capturingTeam = -1;
+        EnsureNeutralTexture();
+        if (teamId >= 0 && teamId < MaxTeams)
         {
-            0 => _blueTex,
-            1 => _redTex,
-            _ => _neutralTex
-        };
-        _label.Text = teamId switch
+            _visual.Texture = GetTeamTexture(teamId);
+            _label.Text = $"{GetTeamDisplayName(teamId)}控制";
+        }
+        else
         {
-            0 => "蓝方控制",
-            1 => "红方控制",
-            _ => "战略点"
-        };
+            _visual.Texture = _neutralTex;
+            _label.Text = "战略点";
+        }
     }
 }

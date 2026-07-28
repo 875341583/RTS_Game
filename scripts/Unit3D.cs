@@ -780,7 +780,6 @@ public partial class Unit3D : CharacterBody3D
         // 烟囱
         AddCylinder(_modelRoot, 0.15f, 0.18f, 0.4f, new Vector3(0, 1.5f, -0.8f), new Vector3(0, 0, 0), metalMat);
 
-        IsNavalUnit_test = true;
     }
 
     protected void BuildSubmarineModel(Color bodyColor, Color darkColor)
@@ -824,9 +823,6 @@ public partial class Unit3D : CharacterBody3D
 
         _turretNode.Visible = false;
     }
-
-    // 兼容字段
-    private bool IsNavalUnit_test;
 
     // ======== InitAsType: 27种兵种数值初始化（从data/units.json加载）========
 

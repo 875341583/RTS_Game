@@ -55,6 +55,14 @@ public partial class MapEditor : Control
     private bool _isPanning = false;
     private Vector2 _panStart = Vector2.Zero;
 
+    // ======== 拖拽连续绘制状态 ========
+    private bool _isPainting = false;
+
+    // ======== 撤销/重做 ========
+    private readonly Stack<MapData> _undoStack = new();
+    private readonly Stack<MapData> _redoStack = new();
+    private const int MaxUndoStack = 50;  // 最多保留50步历史
+
     // ======== 当前指针所在的网格坐标 ========
     private int _hoverGx = -1, _hoverGy = -1;
 
@@ -73,30 +81,30 @@ public partial class MapEditor : Control
 
     private PlaceMode _placeMode = PlaceMode.Terrain;
 
-    // ======== 地形类型显示名 ========
-    private static readonly (TerrainType type, string name)[] TerrainOptions =
+    // ======== 地形类型显示名（存储i18n key，显示时翻译） ========
+    private static readonly (TerrainType type, string key)[] TerrainOptions =
     {
-        (TerrainType.Grass,       "草地"),
-        (TerrainType.Sand,        "沙地"),
-        (TerrainType.Snow,        "雪地"),
-        (TerrainType.City,        "城市路面"),
-        (TerrainType.Field,       "田地"),
-        (TerrainType.ShallowWater,"浅水"),
-        (TerrainType.DeepWater,   "深水"),
-        (TerrainType.Mountain,    "山脉"),
-        (TerrainType.Road,        "道路"),
-        (TerrainType.Cliff,       "悬崖"),
-        (TerrainType.Bridge,      "桥梁"),
-        (TerrainType.Tunnel,      "隧道"),
+        (TerrainType.Grass,       "terrain.grass"),
+        (TerrainType.Sand,        "terrain.sand"),
+        (TerrainType.Snow,        "terrain.snow"),
+        (TerrainType.City,        "terrain.city"),
+        (TerrainType.Field,       "terrain.field"),
+        (TerrainType.ShallowWater,"terrain.shallow"),
+        (TerrainType.DeepWater,   "terrain.deep"),
+        (TerrainType.Mountain,    "terrain.mountain"),
+        (TerrainType.Road,        "terrain.road"),
+        (TerrainType.Cliff,       "terrain.cliff"),
+        (TerrainType.Bridge,      "terrain.bridge"),
+        (TerrainType.Tunnel,      "terrain.tunnel"),
     };
 
-    private static readonly string[] BrushModeNames =
+    private static readonly string[] BrushModeKeys =
     {
-        "单格",
-        "3×3方形",
-        "5格圆形",
-        "填充",
-        "橡皮擦",
+        "brush.single",
+        "brush.square3",
+        "brush.circle5",
+        "brush.fill",
+        "brush.eraser",
     };
 
     // ====================================================================
@@ -116,7 +124,7 @@ public partial class MapEditor : Control
 
         // 初始化数据
         _terrain = new TerrainGrid();
-        _mapData = new MapData { Name = "新地图", Seed = 42 };
+        _mapData = new MapData { Name = TrManager.Tr("editor.new_map_name"), Seed = 42 };
 
         if (loadPath != null && System.IO.File.Exists(loadPath))
         {
@@ -176,9 +184,23 @@ public partial class MapEditor : Control
             }
 
             // 左键绘制
-            if (mb.ButtonIndex == MouseButton.Left && mb.Pressed)
+            if (mb.ButtonIndex == MouseButton.Left)
             {
-                HandlePaint();
+                if (mb.Pressed)
+                {
+                    // 按下左键 → 开始绘制并执行一次
+                    _isPainting = true;
+                    // 记录初始绘制位置，避免连续绘制重复处理首格
+                    var (px, py) = MouseToGrid();
+                    _lastPaintGx = px;
+                    _lastPaintGy = py;
+                    HandlePaint();
+                }
+                else
+                {
+                    // 松开左键 → 停止连续绘制
+                    _isPainting = false;
+                }
             }
         }
 
@@ -197,13 +219,6 @@ public partial class MapEditor : Control
                 int idx = (int)(key.Keycode - Key.Kp1);
                 _brushModeSelect.Selected = idx;
                 MapEditorBrush.CurrentMode = (MapEditorBrush.BrushMode)idx;
-            }
-            // 普通数字键
-            int digit = (int)key.Keycode - (int)Key.Kp1;
-            if (digit >= 0 && digit <= 4)
-            {
-                _brushModeSelect.Selected = digit;
-                MapEditorBrush.CurrentMode = (MapEditorBrush.BrushMode)digit;
             }
 
             // Ctrl+S 保存
@@ -224,6 +239,32 @@ public partial class MapEditor : Control
                 AcceptEvent();
                 OnNewPressed();
             }
+            // Ctrl+Z 撤销
+            if (key.Keycode == Key.Z && (key.CtrlPressed || key.MetaPressed) && !key.ShiftPressed)
+            {
+                AcceptEvent();
+                Undo();
+            }
+            // Ctrl+Y 或 Ctrl+Shift+Z 重做
+            if ((key.Keycode == Key.Y && (key.CtrlPressed || key.MetaPressed)) ||
+                (key.Keycode == Key.Z && (key.CtrlPressed || key.MetaPressed) && key.ShiftPressed))
+            {
+                AcceptEvent();
+                Redo();
+            }
+            // Ctrl+Z 撤销
+            if (key.Keycode == Key.Z && (key.CtrlPressed || key.MetaPressed) && !key.ShiftPressed)
+            {
+                AcceptEvent();
+                Undo();
+            }
+            // Ctrl+Y 或 Ctrl+Shift+Z 重做
+            if ((key.Keycode == Key.Y && (key.CtrlPressed || key.MetaPressed)) ||
+                (key.Keycode == Key.Z && (key.CtrlPressed || key.MetaPressed) && key.ShiftPressed))
+            {
+                AcceptEvent();
+                Redo();
+            }
             // Escape 返回主菜单
             if (key.Keycode == Key.Escape)
             {
@@ -237,7 +278,7 @@ public partial class MapEditor : Control
                 img.SavePng(path);
                 string abs = ProjectSettings.GlobalizePath(path);
                 GameLog.Info($"[MapEditor] 截图已保存: {abs}");
-                _statusLabel.Text = $"截图: {abs}";
+                _statusLabel.Text = TrManager.Tr("editor.screenshot", abs);
             }
         }
     }
@@ -246,6 +287,12 @@ public partial class MapEditor : Control
     {
         // 更新悬停坐标显示
         UpdateHoverCoord();
+
+        // 拖拽连续绘制：按住左键时逐帧执行绘制
+        if (_isPainting && _placeMode == PlaceMode.Terrain)
+        {
+            HandlePaintContinuous();
+        }
     }
 
     // ====================================================================
@@ -273,18 +320,18 @@ public partial class MapEditor : Control
         sidebar.AddChild(vbox);
 
         // ── 标题
-        var title = MakeLabel("地图编辑器", 22, Colors.White);
+        var title = MakeLabel(TrManager.Tr("editor.title"), 22, Colors.White);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(title);
         vbox.AddChild(MakeLabel("P1-3 · v1", 11, new Color(0.45f, 0.5f, 0.45f)));
 
         // ── 放置模式
-        vbox.AddChild(MakeLabel("── 放置模式 ──", 13, new Color(0.7f, 0.75f, 0.7f)));
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_place_mode"), 13, new Color(0.7f, 0.75f, 0.7f)));
         _placeModeSelect = new OptionButton();
-        _placeModeSelect.AddItem("地形笔刷", (int)PlaceMode.Terrain);
-        _placeModeSelect.AddItem("矿点", (int)PlaceMode.Resource);
-        _placeModeSelect.AddItem("战略点", (int)PlaceMode.Strategic);
-        _placeModeSelect.AddItem("基地出生点", (int)PlaceMode.Base);
+        _placeModeSelect.AddItem(TrManager.Tr("editor.place_terrain"), (int)PlaceMode.Terrain);
+        _placeModeSelect.AddItem(TrManager.Tr("editor.place_resource"), (int)PlaceMode.Resource);
+        _placeModeSelect.AddItem(TrManager.Tr("editor.place_strategic"), (int)PlaceMode.Strategic);
+        _placeModeSelect.AddItem(TrManager.Tr("editor.place_base"), (int)PlaceMode.Base);
         _placeModeSelect.Selected = (int)PlaceMode.Terrain;
         _placeModeSelect.ItemSelected += (idx) =>
         {
@@ -295,10 +342,10 @@ public partial class MapEditor : Control
         vbox.AddChild(_placeModeSelect);
 
         // ── 笔刷模式（仅地形模式有效）
-        vbox.AddChild(MakeLabel("── 笔刷大小 ──", 13, new Color(0.7f, 0.75f, 0.7f)));
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_brush_size"), 13, new Color(0.7f, 0.75f, 0.7f)));
         _brushModeSelect = new OptionButton();
-        for (int i = 0; i < BrushModeNames.Length; i++)
-            _brushModeSelect.AddItem(BrushModeNames[i], i);
+        for (int i = 0; i < BrushModeKeys.Length; i++)
+            _brushModeSelect.AddItem(TrManager.Tr(BrushModeKeys[i]), i);
         _brushModeSelect.Selected = (int)MapEditorBrush.CurrentMode;
         _brushModeSelect.ItemSelected += (idx) =>
         {
@@ -308,10 +355,10 @@ public partial class MapEditor : Control
         vbox.AddChild(_brushModeSelect);
 
         // ── 地形选择
-        vbox.AddChild(MakeLabel("── 地形类型 ──", 13, new Color(0.7f, 0.75f, 0.7f)));
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_terrain"), 13, new Color(0.7f, 0.75f, 0.7f)));
         _terrainSelect = new OptionButton();
         for (int i = 0; i < TerrainOptions.Length; i++)
-            _terrainSelect.AddItem(TerrainOptions[i].name, i);
+            _terrainSelect.AddItem(TrManager.Tr(TerrainOptions[i].key), i);
         _terrainSelect.Selected = (int)MapEditorBrush.SelectedTerrain;
         _terrainSelect.ItemSelected += (idx) =>
         {
@@ -321,12 +368,12 @@ public partial class MapEditor : Control
         vbox.AddChild(_terrainSelect);
 
         // ── 海拔选择
-        vbox.AddChild(MakeLabel("── 海拔等级 ──", 13, new Color(0.7f, 0.75f, 0.7f)));
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_elevation"), 13, new Color(0.7f, 0.75f, 0.7f)));
         _elevationSelect = new OptionButton();
-        _elevationSelect.AddItem("0 - 水面/深水", 0);
-        _elevationSelect.AddItem("1 - 平地/浅水", 1);
-        _elevationSelect.AddItem("2 - 丘陵", 2);
-        _elevationSelect.AddItem("3 - 山顶", 3);
+        _elevationSelect.AddItem(TrManager.Tr("elevation.0"), 0);
+        _elevationSelect.AddItem(TrManager.Tr("elevation.1"), 1);
+        _elevationSelect.AddItem(TrManager.Tr("elevation.2"), 2);
+        _elevationSelect.AddItem(TrManager.Tr("elevation.3"), 3);
         _elevationSelect.Selected = MapEditorBrush.SelectedElevation;
         _elevationSelect.ItemSelected += (idx) =>
         {
@@ -338,16 +385,16 @@ public partial class MapEditor : Control
         // ── 桥梁/隧道
         var bridgeRow = new HBoxContainer();
         bridgeRow.AddThemeConstantOverride("separation", 16);
-        _bridgeCheck = new CheckBox { Text = "桥梁", ButtonPressed = MapEditorBrush.PaintBridge };
+        _bridgeCheck = new CheckBox { Text = TrManager.Tr("editor.bridge"), ButtonPressed = MapEditorBrush.PaintBridge };
         _bridgeCheck.Toggled += (on) => MapEditorBrush.PaintBridge = on;
         bridgeRow.AddChild(_bridgeCheck);
-        _tunnelCheck = new CheckBox { Text = "隧道", ButtonPressed = MapEditorBrush.PaintTunnel };
+        _tunnelCheck = new CheckBox { Text = TrManager.Tr("editor.tunnel"), ButtonPressed = MapEditorBrush.PaintTunnel };
         _tunnelCheck.Toggled += (on) => MapEditorBrush.PaintTunnel = on;
         bridgeRow.AddChild(_tunnelCheck);
         vbox.AddChild(bridgeRow);
 
         // ── 矿石数量（矿点模式有效）
-        vbox.AddChild(MakeLabel("── 矿点数量 ──", 13, new Color(0.7f, 0.75f, 0.7f)));
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_resource_amount"), 13, new Color(0.7f, 0.75f, 0.7f)));
         _resourceAmountBox = new SpinBox();
         _resourceAmountBox.MinValue = 500;
         _resourceAmountBox.MaxValue = 50000;
@@ -357,10 +404,10 @@ public partial class MapEditor : Control
         vbox.AddChild(_resourceAmountBox);
 
         // ── 地图信息
-        vbox.AddChild(MakeLabel("── 地图信息 ──", 13, new Color(0.7f, 0.75f, 0.7f)));
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_map_info"), 13, new Color(0.7f, 0.75f, 0.7f)));
         var nameRow = new HBoxContainer();
         nameRow.AddThemeConstantOverride("separation", 8);
-        nameRow.AddChild(MakeLabel("名称:", 12, new Color(0.6f, 0.65f, 0.6f)));
+        nameRow.AddChild(MakeLabel(TrManager.Tr("editor.name_label"), 12, new Color(0.6f, 0.65f, 0.6f)));
         _mapNameInput = new LineEdit { CustomMinimumSize = new Vector2(160, 0) };
         _mapNameInput.Text = _mapData.Name;
         _mapNameInput.TextChanged += (txt) => _mapData.Name = txt;
@@ -369,11 +416,11 @@ public partial class MapEditor : Control
 
         var seedRow = new HBoxContainer();
         seedRow.AddThemeConstantOverride("separation", 8);
-        seedRow.AddChild(MakeLabel("种子:", 12, new Color(0.6f, 0.65f, 0.6f)));
+        seedRow.AddChild(MakeLabel(TrManager.Tr("editor.seed_label"), 12, new Color(0.6f, 0.65f, 0.6f)));
         _seedInput = new LineEdit { CustomMinimumSize = new Vector2(160, 0) };
         _seedInput.Text = _currentSeed.ToString();
         seedRow.AddChild(_seedInput);
-        var seedBtn = new Button { Text = "应用" };
+        var seedBtn = new Button { Text = TrManager.Tr("editor.apply") };
         seedBtn.Pressed += () =>
         {
             if (ulong.TryParse(_seedInput.Text.Trim(), out var s))
@@ -392,19 +439,48 @@ public partial class MapEditor : Control
         seedRow.AddChild(seedBtn);
         vbox.AddChild(seedRow);
 
+        // ── 地图大小
+        vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_map_size"), 13, new Color(0.7f, 0.75f, 0.7f)));
+        var sizeRow = new HBoxContainer();
+        sizeRow.AddThemeConstantOverride("separation", 8);
+        var sizeSelect = new OptionButton();
+        sizeSelect.AddItem("32 × 32", 0);
+        sizeSelect.AddItem("64 × 64", 1);
+        sizeSelect.AddItem("96 × 96", 2);
+        sizeSelect.Selected = MapConfig.GridSize switch
+        {
+            32 => 0,
+            64 => 1,
+            96 => 2,
+            _ => 0,
+        };
+        sizeSelect.ItemSelected += (idx) =>
+        {
+            int newSize = (int)idx switch
+            {
+                0 => 32,
+                1 => 64,
+                2 => 96,
+                _ => 32,
+            };
+            ChangeMapSize(newSize);
+        };
+        sizeRow.AddChild(sizeSelect);
+        vbox.AddChild(sizeRow);
+
         // ── 操作按钮
         var spacer = new Control { CustomMinimumSize = new Vector2(0, 8) };
         vbox.AddChild(spacer);
 
         var btnRow1 = new HBoxContainer();
         btnRow1.AddThemeConstantOverride("separation", 8);
-        var newBtn = new Button { Text = "新建", CustomMinimumSize = new Vector2(80, 32) };
+        var newBtn = new Button { Text = TrManager.Tr("editor.new_map"), CustomMinimumSize = new Vector2(80, 32) };
         newBtn.Pressed += OnNewPressed;
         btnRow1.AddChild(newBtn);
-        var saveBtn = new Button { Text = "保存", CustomMinimumSize = new Vector2(80, 32) };
+        var saveBtn = new Button { Text = TrManager.Tr("editor.save_map"), CustomMinimumSize = new Vector2(80, 32) };
         saveBtn.Pressed += OnSavePressed;
         btnRow1.AddChild(saveBtn);
-        var loadBtn = new Button { Text = "加载", CustomMinimumSize = new Vector2(80, 32) };
+        var loadBtn = new Button { Text = TrManager.Tr("editor.load_map"), CustomMinimumSize = new Vector2(80, 32) };
         loadBtn.Pressed += OnLoadPressed;
         btnRow1.AddChild(loadBtn);
         vbox.AddChild(btnRow1);
@@ -413,7 +489,7 @@ public partial class MapEditor : Control
         // 用文件路径输入而非原生对话框（更可靠）
 
         // ── 返回按钮
-        var backBtn = new Button { Text = "← 返回主菜单 (Esc)", CustomMinimumSize = new Vector2(0, 36) };
+        var backBtn = new Button { Text = TrManager.Tr("editor.back_to_menu"), CustomMinimumSize = new Vector2(0, 36) };
         backBtn.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
         vbox.AddChild(backBtn);
 
@@ -432,7 +508,7 @@ public partial class MapEditor : Control
         _statusLabel = MakeLabel("", 12, new Color(0.8f, 0.85f, 0.8f));
         statusHbox.AddChild(_statusLabel);
 
-        _coordLabel = MakeLabel("Grid: (--, --)", 12, new Color(0.7f, 0.8f, 0.7f));
+        _coordLabel = MakeLabel(TrManager.Tr("editor.coord_label"), 12, new Color(0.7f, 0.8f, 0.7f));
         statusHbox.AddChild(_coordLabel);
 
         UpdateStatus();
@@ -529,7 +605,7 @@ public partial class MapEditor : Control
         DrawBaseSpawns();
     }
 
-    /// <summary>绘制默认基地出生点（基地数决定角点数，对称分布）。</summary>
+    /// <summary>绘制基地出生点：自动对称分布的点位 + 手动放置的点位。</summary>
     private void DrawBaseSpawns()
     {
         int gs = TerrainGrid.GridSize;
@@ -563,12 +639,29 @@ public partial class MapEditor : Control
             corners.Add((margin, mid));
         }
 
+        // 自动对称分布的点位：红色菱形
         foreach (var (x, y) in corners)
         {
             var pos = IsoCoords.GridToScreen(x, y);
             var marker = MakeDiamondMarker(new Color(1f, 0.3f, 0.3f), 16);
             marker.Position = pos;
             _markerLayer.AddChild(marker);
+        }
+
+        // 手动放置的点位：橙红色菱形（外圈带白色描边以区分）
+        foreach (var b in _mapData.CustomBasePositions)
+        {
+            if (b.X < 0 || b.X >= gs || b.Y < 0 || b.Y >= gs)
+                continue;
+            var pos = IsoCoords.GridToScreen(b.X, b.Y);
+            var marker = MakeDiamondMarker(new Color(1f, 0.6f, 0.1f), 18);
+            marker.Position = pos;
+            _markerLayer.AddChild(marker);
+
+            // 添加"M"标签标记手动放置
+            var lbl = MakeLabel("M", 10, Colors.White);
+            lbl.Position = pos + new Vector2(-3, -20);
+            _markerLayer.AddChild(lbl);
         }
     }
 
@@ -637,9 +730,9 @@ public partial class MapEditor : Control
         }
 
         if (gx >= 0 && gx < TerrainGrid.GridSize && gy >= 0 && gy < TerrainGrid.GridSize)
-            _coordLabel.Text = $"Grid: ({gx}, {gy})";
+            _coordLabel.Text = TrManager.Tr("editor.coord", gx, gy);
         else
-            _coordLabel.Text = "Grid: (--, --)";
+            _coordLabel.Text = TrManager.Tr("editor.coord_label");
     }
 
     /// <summary>重绘笔刷预览覆盖层。</summary>
@@ -699,7 +792,7 @@ public partial class MapEditor : Control
         _overlayLayer.AddChild(poly);
     }
 
-    /// <summary>处理左键点击的绘制操作。</summary>
+    /// <summary>处理左键点击的绘制操作（含撤销快照）。</summary>
     private void HandlePaint()
     {
         var (gx, gy) = MouseToGrid();
@@ -711,20 +804,24 @@ public partial class MapEditor : Control
         switch (_placeMode)
         {
             case PlaceMode.Terrain:
+                // 保存撤销快照
+                PushUndo();
                 MapEditorBrush.ApplyBrush(gx, gy, _terrain, _mapData);
                 ApplyMapDataToTerrain();
                 changed = true;
                 break;
 
             case PlaceMode.Resource:
-                // 左键放置，按住不拖动只放一个
+                // 左键放置，Shift+左键删除
                 if (!IsKeyPressed(Key.Shift))
                 {
+                    PushUndo();
                     _mapData.AddResourceNode(gx, gy, (int)_resourceAmountBox.Value);
                     changed = true;
                 }
                 else
                 {
+                    PushUndo();
                     _mapData.RemoveResourceNode(gx, gy);
                     changed = true;
                 }
@@ -733,19 +830,38 @@ public partial class MapEditor : Control
             case PlaceMode.Strategic:
                 if (!IsKeyPressed(Key.Shift))
                 {
+                    PushUndo();
                     _mapData.AddStrategicPoint(gx, gy);
                     changed = true;
                 }
                 else
                 {
+                    PushUndo();
                     _mapData.RemoveStrategicPoint(gx, gy);
                     changed = true;
                 }
                 break;
 
             case PlaceMode.Base:
-                // 基地出生点暂时由BaseCount决定（对称分布），未来可手动指定
-                // 当前模式仅显示，不修改
+                // 左键放置基地出生点，Shift+左键移除最近的手动出生点
+                if (!IsKeyPressed(Key.Shift))
+                {
+                    PushUndo();
+                    // 避免重复放置同一位置
+                    if (!_mapData.CustomBasePositions.Exists(b => b.X == gx && b.Y == gy))
+                    {
+                        _mapData.CustomBasePositions.Add(new Vector2I(gx, gy));
+                    }
+                    changed = true;
+                }
+                else
+                {
+                    PushUndo();
+                    // 移除点击位置附近（1格内）的手动出生点
+                    _mapData.CustomBasePositions.RemoveAll(b =>
+                        System.Math.Abs(b.X - gx) <= 1 && System.Math.Abs(b.Y - gy) <= 1);
+                    changed = true;
+                }
                 break;
         }
 
@@ -758,6 +874,33 @@ public partial class MapEditor : Control
             UpdateStatus();
         }
     }
+
+    /// <summary>拖拽连续绘制：仅地形模式，每次绘制到新格子时压栈。</summary>
+    private void HandlePaintContinuous()
+    {
+        var (gx, gy) = MouseToGrid();
+        if (gx < 0 || gx >= TerrainGrid.GridSize || gy < 0 || gy >= TerrainGrid.GridSize)
+            return;
+
+        // 仅当鼠标移到新格子时才绘制，避免同一格重复操作
+        if (gx == _lastPaintGx && gy == _lastPaintGy)
+            return;
+
+        _lastPaintGx = gx;
+        _lastPaintGy = gy;
+
+        // 连续绘制时直接调用 ApplyBrush，每次都压栈（用户可逐步撤销）
+        PushUndo();
+        MapEditorBrush.ApplyBrush(gx, gy, _terrain, _mapData);
+        ApplyMapDataToTerrain();
+        RefreshGround();
+        RefreshMarkers();
+        RedrawOverlay();
+        UpdateStatus();
+    }
+
+    // 追踪连续绘制时上一次绘制的格子，避免重复
+    private int _lastPaintGx = -1, _lastPaintGy = -1;
 
     /// <summary>检查修饰键是否按下。</summary>
     private static bool IsKeyPressed(Key key)
@@ -794,7 +937,7 @@ public partial class MapEditor : Control
 
     private void OnNewPressed()
     {
-        _mapData = new MapData { Name = "新地图", Seed = _currentSeed };
+        _mapData = new MapData { Name = TrManager.Tr("editor.new_map_name"), Seed = _currentSeed };
         _mapNameInput.Text = _mapData.Name;
         _terrain.GenerateFromSeed(_currentSeed);
         ApplyMapDataToTerrain();
@@ -818,7 +961,7 @@ public partial class MapEditor : Control
             GameLog.Info($"[MapEditor] 地图已保存: {path}");
             // 也显示系统绝对路径
             string absPath = ProjectSettings.GlobalizePath(path);
-            _statusLabel.Text = $"已保存到: {absPath}";
+            _statusLabel.Text = TrManager.Tr("editor.saved_to", absPath);
         }
     }
 
@@ -828,7 +971,7 @@ public partial class MapEditor : Control
         string dir = "user://maps";
         if (!Godot.DirAccess.DirExistsAbsolute(dir))
         {
-            _statusLabel.Text = "暂无已保存地图";
+            _statusLabel.Text = TrManager.Tr("editor.no_saved_maps");
             return;
         }
 
@@ -845,7 +988,7 @@ public partial class MapEditor : Control
 
         if (latest == null)
         {
-            _statusLabel.Text = "暂无.rmap文件";
+            _statusLabel.Text = TrManager.Tr("editor.no_rmap_files");
             return;
         }
 
@@ -867,15 +1010,139 @@ public partial class MapEditor : Control
     }
 
     // ====================================================================
+    //                          撤销/重做
+    // ====================================================================
+
+    /// <summary>将当前 MapData 的快照压入撤销栈（执行修改前调用）。</summary>
+    private void PushUndo()
+    {
+        _undoStack.Push(_mapData.Clone());
+        // 限制栈大小
+        while (_undoStack.Count > MaxUndoStack)
+        {
+            // 移除最底部的（转数组后跳过第一个）
+            var arr = _undoStack.ToArray();
+            _undoStack.Clear();
+            for (int i = arr.Length - 2; i >= 0; i--)
+                _undoStack.Push(arr[i]);
+        }
+        // 执行新操作时清空重做栈
+        _redoStack.Clear();
+    }
+
+    /// <summary>撤销：恢复到上一个快照。</summary>
+    private void Undo()
+    {
+        if (_undoStack.Count == 0)
+        {
+            _statusLabel.Text = TrManager.Tr("editor.no_undo");
+            return;
+        }
+
+        // 当前状态压入重做栈
+        _redoStack.Push(_mapData.Clone());
+        // 恢复快照
+        _mapData = _undoStack.Pop();
+        // 同步UI和渲染
+        _mapNameInput.Text = _mapData.Name;
+        _seedInput.Text = _mapData.Seed.ToString();
+        _currentSeed = _mapData.Seed;
+        _terrain.GenerateFromSeed(_currentSeed);
+        _rng = new Random((int)(_currentSeed & 0x7FFFFFFF));
+        ApplyMapDataToTerrain();
+        RefreshGround();
+        RefreshMarkers();
+        RedrawOverlay();
+        UpdateStatus();
+        _statusLabel.Text = TrManager.Tr("editor.undo_done", _undoStack.Count, _redoStack.Count);
+        GameLog.Info($"[MapEditor] Undo → 撤销栈:{_undoStack.Count}, 重做栈:{_redoStack.Count}");
+    }
+
+    /// <summary>重做：恢复最近撤销的操作。</summary>
+    private void Redo()
+    {
+        if (_redoStack.Count == 0)
+        {
+            _statusLabel.Text = TrManager.Tr("editor.no_redo");
+            return;
+        }
+
+        // 当前状态压入撤销栈
+        _undoStack.Push(_mapData.Clone());
+        // 恢复快照
+        _mapData = _redoStack.Pop();
+        // 同步UI和渲染
+        _mapNameInput.Text = _mapData.Name;
+        _seedInput.Text = _mapData.Seed.ToString();
+        _currentSeed = _mapData.Seed;
+        _terrain.GenerateFromSeed(_currentSeed);
+        _rng = new Random((int)(_currentSeed & 0x7FFFFFFF));
+        ApplyMapDataToTerrain();
+        RefreshGround();
+        RefreshMarkers();
+        RedrawOverlay();
+        UpdateStatus();
+        _statusLabel.Text = TrManager.Tr("editor.redo_done", _undoStack.Count, _redoStack.Count);
+        GameLog.Info($"[MapEditor] Redo → 撤销栈:{_undoStack.Count}, 重做栈:{_redoStack.Count}");
+    }
+
+    // ====================================================================
+    //                          地图大小调整
+    // ====================================================================
+
+    /// <summary>切换地图大小，尽可能保留当前编辑数据。</summary>
+    private void ChangeMapSize(int newSize)
+    {
+        int oldSize = TerrainGrid.GridSize;
+        if (newSize == oldSize)
+            return;
+
+        // 保存撤销快照
+        PushUndo();
+
+        // 更新全局配置
+        MapConfig.SetSize(newSize);
+
+        // 重建地形网格
+        _terrain.GenerateFromSeed(_currentSeed);
+
+        // 过滤掉超出新地图范围的修改数据
+        var oldMods = _mapData.TerrainMods;
+        _mapData.TerrainMods = new List<SaveLoadSystem.TerrainModSave>();
+        foreach (var m in oldMods)
+            if (m.Gx >= 0 && m.Gx < newSize && m.Gy >= 0 && m.Gy < newSize)
+                _mapData.TerrainMods.Add(m);
+
+        // 过滤矿点
+        _mapData.ResourceNodes.RemoveAll(r => r.Gx >= newSize || r.Gy >= newSize);
+
+        // 过滤战略点
+        _mapData.StrategicPoints.RemoveAll(p => p.Gx >= newSize || p.Gy >= newSize);
+
+        // 过滤手动基地出生点
+        _mapData.CustomBasePositions.RemoveAll(b => b.X >= newSize || b.Y >= newSize);
+
+        // 应用到地形并刷新
+        ApplyMapDataToTerrain();
+        RefreshGround();
+        RefreshMarkers();
+        RedrawOverlay();
+        UpdateStatus();
+        _statusLabel.Text = TrManager.Tr("editor.map_size_changed", newSize, newSize);
+        GameLog.Info($"[MapEditor] 地图大小 {oldSize}→{newSize}, 保留修改:{_mapData.TerrainMods.Count}项");
+    }
+
+    // ====================================================================
     //                          工具方法
     // ====================================================================
 
     private void UpdateStatus()
     {
-        _statusLabel.Text = $"模式:{_placeMode} 笔刷:{MapEditorBrush.CurrentMode} " +
-                            $"地形:{MapEditorBrush.SelectedTerrain} 海拔:{MapEditorBrush.SelectedElevation} " +
-                            $"│ 修改:{_mapData.TerrainMods.Count} 矿点:{_mapData.ResourceNodes.Count} " +
-                            $"战略点:{_mapData.StrategicPoints.Count}";
+        _statusLabel.Text = TrManager.Tr("editor.status_mode", _placeMode, MapEditorBrush.CurrentMode,
+                                          MapEditorBrush.SelectedTerrain, MapEditorBrush.SelectedElevation,
+                                          _mapData.TerrainMods.Count, _mapData.ResourceNodes.Count,
+                                          _mapData.StrategicPoints.Count, _mapData.CustomBasePositions.Count,
+                                          _undoStack.Count, _redoStack.Count);
     }
 
     private static string SanitizeFileName(string s)

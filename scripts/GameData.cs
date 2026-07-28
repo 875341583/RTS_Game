@@ -197,7 +197,7 @@ public static class GameData
     {
         if (FactionManager.IsLoaded && teamId < FactionManager.Count)
             return FactionManager.GetFactionForTeam(teamId).Color;
-        return TeamPalette[teamId % TeamPalette.Length];
+        return TeamPalette[((teamId % TeamPalette.Length) + TeamPalette.Length) % TeamPalette.Length];
     }
 
     // ======== 缓存 ========

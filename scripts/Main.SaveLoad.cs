@@ -49,24 +49,47 @@ public partial class Main
         return arr;
     }
 
-    /// <summary>获取场景中全部建筑（含敌方）的有效引用列表。</summary>
+    /// <summary>获取场景中全部建筑（缓存版本，每帧最多遍历一次）。</summary>
     public List<Building> GetAllBuildings()
     {
-        var list = new List<Building>();
-        if (_buildingsNode == null) return list;
-        foreach (var c in _buildingsNode.GetChildren())
-            if (c is Building b && IsInstanceValid(b)) list.Add(b);
-        return list;
+        if (_buildingsCacheDirty)
+        {
+            _cachedBuildings.Clear();
+            if (_buildingsNode != null)
+            {
+                foreach (var c in _buildingsNode.GetChildren())
+                    if (c is Building b && IsInstanceValid(b) && !b.IsDead) _cachedBuildings.Add(b);
+            }
+            _buildingsCacheDirty = false;
+        }
+        return _cachedBuildings;
     }
 
-    /// <summary>获取场景中全部单位（含敌方、含运输车乘客外）的有效引用列表。</summary>
+    // ======== 缓存系统（P1-5性能优化）========
+    private List<Unit> _cachedUnits = new(128);
+    private List<Building> _cachedBuildings = new(64);
+    private bool _unitsCacheDirty = true;
+    private bool _buildingsCacheDirty = true;
+
+    /// <summary>标记单位缓存需要刷新（单位创建/销毁时调用）。</summary>
+    public void MarkUnitsCacheDirty() => _unitsCacheDirty = true;
+    /// <summary>标记建筑缓存需要刷新（建筑创建/销毁时调用）。</summary>
+    public void MarkBuildingsCacheDirty() => _buildingsCacheDirty = true;
+
+    /// <summary>获取场景中全部单位（缓存版本，每帧最多遍历一次）。</summary>
     public List<Unit> GetAllUnits()
     {
-        var list = new List<Unit>();
-        if (_unitsNode == null) return list;
-        foreach (var c in _unitsNode.GetChildren())
-            if (c is Unit u && IsInstanceValid(u)) list.Add(u);
-        return list;
+        if (_unitsCacheDirty)
+        {
+            _cachedUnits.Clear();
+            if (_unitsNode != null)
+            {
+                foreach (var c in _unitsNode.GetChildren())
+                    if (c is Unit u && IsInstanceValid(u) && !u.IsDead) _cachedUnits.Add(u);
+            }
+            _unitsCacheDirty = false;
+        }
+        return _cachedUnits;
     }
 
     /// <summary>获取场景中全部资源点的有效引用列表。</summary>

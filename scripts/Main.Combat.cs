@@ -293,6 +293,12 @@ public partial class Main
         _audio?.PlaySfxForce(AudioManager.Sfx.BigExplosion);
     }
 
+    /// <summary>P1-6: 命中音效（单位受击时调用）。</summary>
+    public void PlayHitSfx()
+    {
+        _audio?.PlaySfx(AudioManager.Sfx.Hit, 0.6f);
+    }
+
     /// <summary>G7: 执行间谍任务效果（成功时由Unit.ProcessSpyInfiltrate调用）。</summary>
     public void ExecuteSpyMission(SpyMission.MissionType mission, Building target, int spyTeamId)
     {
@@ -462,9 +468,14 @@ public partial class Main
         int teamId = b.TeamId;
         Vector2 bPos = b.GlobalPosition;
 
-        // Q6：建筑受袭事件通知
+        // Q6：建筑受袭事件通知 + P1-6: 攻击通知音效+BGM切换
         if (teamId == 0)
+        {
             ShowToast($"⚠ {b.BuildingName}正在遭受攻击！", new Color(1f, 0.5f, 0.3f));
+            _audio?.PlaySfxForce(AudioManager.Sfx.NotifyAttack);
+            BgmManager.SwitchScene(BgmManager.BgmScene.Alert);
+            _alertBgmTimer = 8f; // 8秒无攻击后切回战斗BGM
+        }
         foreach (var child in _unitsNode.GetChildren())
         {
             if (child is Unit u && u.TeamId == teamId && IsInstanceValid(u)

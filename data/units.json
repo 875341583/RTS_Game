@@ -29,7 +29,7 @@
     "MissileTank": {
       "name": "导弹车",
       "cost": 800,
-      "stats2d": { "maxHealth": 70, "moveSpeed": 130, "attackDamage": 80, "attackRange": 420, "attackCooldown": 4.0, "minAttackRange": 150, "aggroRange": 440 },
+      "stats2d": { "maxHealth": 70, "moveSpeed": 130, "attackDamage": 100, "attackRange": 420, "attackCooldown": 4.0, "minAttackRange": 150, "aggroRange": 440 },
       "stats3d": { "maxHealth": 100, "moveSpeed": 8, "attackDamage": 40, "attackRange": 22, "attackCooldown": 3.0 }
     },
     "AntiAir": {
@@ -52,8 +52,8 @@
     },
     "Engineer": {
       "name": "工程车",
-      "cost": 300,
-      "stats2d": { "maxHealth": 120, "moveSpeed": 240, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0 },
+      "cost": 250,
+      "stats2d": { "maxHealth": 80, "moveSpeed": 240, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0 },
       "stats3d": { "maxHealth": 60, "moveSpeed": 8, "attackDamage": 5, "attackRange": 5, "attackCooldown": 1.0 }
     },
     "Sapper": {
@@ -76,14 +76,14 @@
     },
     "Sniper": {
       "name": "狙击手",
-      "cost": 250,
-      "stats2d": { "maxHealth": 30, "moveSpeed": 80, "attackDamage": 45, "attackRange": 350, "attackCooldown": 2.5, "minAttackRange": 80, "aggroRange": 380 },
+      "cost": 200,
+      "stats2d": { "maxHealth": 40, "moveSpeed": 80, "attackDamage": 45, "attackRange": 350, "attackCooldown": 2.5, "minAttackRange": 80, "aggroRange": 380 },
       "stats3d": { "maxHealth": 45, "moveSpeed": 8, "attackDamage": 30, "attackRange": 18, "attackCooldown": 2.0 }
     },
     "FlameInfantry": {
       "name": "喷火兵",
       "cost": 180,
-      "stats2d": { "maxHealth": 50, "moveSpeed": 85, "attackDamage": 8, "attackRange": 80, "attackCooldown": 0.3, "splashRadius": 40, "aggroRange": 120 },
+      "stats2d": { "maxHealth": 50, "moveSpeed": 85, "attackDamage": 8, "attackRange": 80, "attackCooldown": 0.5, "splashRadius": 40, "aggroRange": 120 },
       "stats3d": { "maxHealth": 60, "moveSpeed": 8, "attackDamage": 12, "attackRange": 6, "attackCooldown": 0.3, "splashRadius": 1.5 }
     },
     "Transport": {
