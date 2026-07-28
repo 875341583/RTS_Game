@@ -568,8 +568,10 @@ public partial class Main
             if (friendlyUnits.Any(u => Unit.IsInfantryType(u.Type)))
                 return; // 有步兵上车命令，不执行移动
         }
-        // 普通移动：保持简易队形
+        // 普通移动：保持队形（以目标点为中心展开，间距48px配合分离力）
         int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(friendlyUnits.Count)));
+        float spacing = 48f;
+        float halfWidth = (cols - 1) * spacing * 0.5f;
         // E4：工程单位右键不可通行地形 → 触发地形改造
         var terrainCell = _terrain.GetCellAtWorld(worldPos.X, worldPos.Y);
         Unit.TerrainModType modType = DetectTerrainMod(terrainCell);
@@ -578,15 +580,15 @@ public partial class Main
             bool hasEngineer = friendlyUnits.Any(u => u.IsEngineerUnit);
             if (hasEngineer)
                 ReplayRecorder.Record(ReplayRecorder.ActionType.CommandTerrainMod, new { ModType = modType.ToString(), X = worldPos.X, Y = worldPos.Y });
-            // 仅工程单位执行地形改造，非工程单位仍正常移动
             for (int i = 0; i < friendlyUnits.Count; i++)
             {
                 int col = i % cols;
                 int row = i / cols;
+                var offset = new Vector2(col * spacing - halfWidth, row * spacing - halfWidth);
                 if (friendlyUnits[i].IsEngineerUnit)
-                    friendlyUnits[i].CommandTerrainMod(modType, worldPos + new Vector2(col * 40, row * 40));
+                    friendlyUnits[i].CommandTerrainMod(modType, worldPos + offset);
                 else
-                    friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
+                    friendlyUnits[i].CommandMove(worldPos + offset);
             }
         }
         else
@@ -595,7 +597,8 @@ public partial class Main
             {
                 int col = i % cols;
                 int row = i / cols;
-                friendlyUnits[i].CommandMove(worldPos + new Vector2(col * 40, row * 40));
+                var offset = new Vector2(col * spacing - halfWidth, row * spacing - halfWidth);
+                friendlyUnits[i].CommandMove(worldPos + offset);
             }
             ReplayRecorder.Record(ReplayRecorder.ActionType.CommandMove, new { X = worldPos.X, Y = worldPos.Y });
         }

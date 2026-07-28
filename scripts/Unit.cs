@@ -1544,7 +1544,18 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                     }
                 }
 
-                Velocity = direction * MoveSpeed * speedMult;
+                // P0-4: 单位分离力——防止单位重叠堆叠
+                Vector2 separation = ComputeSeparationForce();
+                if (separation != Vector2.Zero)
+                {
+                    // 分离力叠加到移动方向上：移动方向占主导，分离力做偏移
+                    Vector2 blended = (direction * 0.7f + separation * 0.3f).Normalized();
+                    Velocity = blended * MoveSpeed * speedMult;
+                }
+                else
+                {
+                    Velocity = direction * MoveSpeed * speedMult;
+                }
                 MoveAndSlide();
                 if (direction != Vector2.Zero)
                 {
@@ -1574,8 +1585,76 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         }
         else
         {
-            Velocity = Vector2.Zero;
+            // P0-4: 静止单位也应用分离力——如果其他单位挤过来了，自动让开
+            Vector2 separation = ComputeSeparationForce();
+            if (separation != Vector2.Zero)
+            {
+                Velocity = separation * MoveSpeed * 0.5f; // 以半速退开
+                MoveAndSlide();
+            }
+            else
+            {
+                Velocity = Vector2.Zero;
+            }
         }
+    }
+
+    /// <summary>
+    /// P0-4: 计算单位分离力——查询附近友方单位，产生排斥向量防止单位重叠堆叠。
+    /// 空军单位跳过（可重叠飞行）。静止单位也应用分离力以推开叠在上面的其他单位。
+    /// 性能：只遍历同父节点的兄弟单位，用DistanceSquaredTo避免开方。
+    /// </summary>
+    private Vector2 ComputeSeparationForce()
+    {
+        // 空军单位不需要分离力
+        if (IsAirUnit) return Vector2.Zero;
+
+        // 分离半径：单位碰撞框为32×32，理想间距设为36
+        const float separationRadius = 36f;
+        const float separationRadiusSq = separationRadius * separationRadius;
+
+        Vector2 force = Vector2.Zero;
+        int neighborCount = 0;
+
+        // 从父节点获取兄弟单位（性能远优于GetAllUnits全量遍历）
+        var parent = GetParent();
+        if (parent == null) return Vector2.Zero;
+
+        foreach (var sibling in parent.GetChildren())
+        {
+            if (sibling is not Unit other) continue;
+            if (other == this) continue;
+            if (!IsInstanceValid(other)) continue;
+            if (other._isDead) continue;
+            // 空军单位不参与地面分离
+            if (other.IsAirUnit) continue;
+
+            var diff = GlobalPosition - other.GlobalPosition;
+            float distSq = diff.LengthSquared();
+
+            if (distSq < separationRadiusSq && distSq > 0.01f)
+            {
+                // 距离越近排斥力越大（反比归一化）
+                float dist = Mathf.Sqrt(distSq);
+                float strength = (separationRadius - dist) / separationRadius;
+                force += (diff / dist) * strength;
+                neighborCount++;
+            }
+            else if (distSq <= 0.01f)
+            {
+                // 完全重叠：随机方向推开
+                force += new Vector2(1f, 0.5f).Normalized();
+                neighborCount++;
+            }
+        }
+
+        if (neighborCount > 0)
+        {
+            // 取平均方向并归一化
+            force = (force / neighborCount).Normalized();
+        }
+
+        return force;
     }
 
     /// <summary>
