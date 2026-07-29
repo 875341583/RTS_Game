@@ -421,7 +421,7 @@ public partial class Main
         CancelPlacement();
     }
 
-    private void AIBuildLogic(int teamId)
+    private void AIBuildLogic(int teamId, AIStrategy strategy = AIStrategy.Expand)
     {
         if (!_bases.TryGetValue(teamId, out var baseB) || baseB == null || !IsInstanceValid(baseB)) return;
 
@@ -430,6 +430,38 @@ public partial class Main
         bool hasBarracks = HasBuilding(teamId, BuildingType.Barracks);
         bool hasWarFactory = HasBuilding(teamId, BuildingType.WarFactory);
         bool hasTechCenter = HasBuilding(teamId, BuildingType.TechCenter);
+
+        // === 策略影响：Defend时防御塔优先 ===
+        // Defend策略：优先补防御塔（提升上限到4座）和防空炮
+        if (strategy == AIStrategy.Defend)
+        {
+            // 防御塔上限提升到4座（正常2座）
+            int turretCountDef = CountBuildingOfType(teamId, BuildingType.Turret);
+            if (hasBarracks && turretCountDef < 4
+                && _money[teamId] >= GetBuildingCost(BuildingType.Turret, teamId) + 100 && power >= 0
+                && IsBuildingUnlockedByEra(teamId, BuildingType.Turret))
+            {
+                _money[teamId] -= GetBuildingCost(BuildingType.Turret, teamId);
+                SpawnBuilding(BuildingType.Turret, GetAIBuildPosition(teamId, BuildingType.Turret), teamId);
+                GameLog.Debug($"[AI] Team {teamId} built Turret (Defend) #{turretCountDef + 1}, ${_money[teamId]} left");
+                return;
+            }
+            // 防空炮上限提升到3座
+            int aaCountDef = CountBuildingOfType(teamId, BuildingType.AntiAirTurret);
+            if (hasWarFactory && aaCountDef < 3
+                && _money[teamId] >= GetBuildingCost(BuildingType.AntiAirTurret, teamId) + 100 && power >= 0
+                && IsBuildingUnlockedByEra(teamId, BuildingType.AntiAirTurret))
+            {
+                _money[teamId] -= GetBuildingCost(BuildingType.AntiAirTurret, teamId);
+                SpawnBuilding(BuildingType.AntiAirTurret, GetAIBuildPosition(teamId, BuildingType.AntiAirTurret), teamId);
+                GameLog.Debug($"[AI] Team {teamId} built AntiAirTurret (Defend) #{aaCountDef + 1}, ${_money[teamId]} left");
+                return;
+            }
+        }
+
+        // === 策略影响：Attack时减少建筑投入（只补关键防御） ===
+        // Attack策略：跳过非关键建筑建造，把资金留给造兵
+        bool skipNonEssentialBuildings = (strategy == AIStrategy.Attack);
 
         // 优先级1：没电站就建电站（基地消耗50电，必须建电站）
         if (!hasPower && _money[teamId] >= GetBuildingCost(BuildingType.PowerPlant, teamId))
@@ -489,7 +521,8 @@ public partial class Main
 
         // ---- 阶段12-A1+A2：防御建筑与维修厂 ----
         // 优先级7：建造维修厂（已建车厂且无维修厂且资金充裕）
-        if (hasWarFactory && !HasBuilding(teamId, BuildingType.RepairPad)
+        // Attack策略跳过非关键建筑
+        if (!skipNonEssentialBuildings && hasWarFactory && !HasBuilding(teamId, BuildingType.RepairPad)
             && _money[teamId] >= GetBuildingCost(BuildingType.RepairPad, teamId) + 200 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.RepairPad))
         {
@@ -500,8 +533,9 @@ public partial class Main
         }
 
         // 优先级8：建造机枪塔（已建兵营，每阵营最多2座，资金充裕）
+        // Attack策略跳过（资金留给造兵），Defend策略已在上方提前处理
         int turretCount = CountBuildingOfType(teamId, BuildingType.Turret);
-        if (hasBarracks && turretCount < 2
+        if (!skipNonEssentialBuildings && hasBarracks && turretCount < 2
             && _money[teamId] >= GetBuildingCost(BuildingType.Turret, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.Turret))
         {
@@ -512,8 +546,9 @@ public partial class Main
         }
 
         // 优先级9：建造防空炮（已建车厂，每阵营最多2座）
+        // Attack策略跳过
         int aaCount = CountBuildingOfType(teamId, BuildingType.AntiAirTurret);
-        if (hasWarFactory && aaCount < 2
+        if (!skipNonEssentialBuildings && hasWarFactory && aaCount < 2
             && _money[teamId] >= GetBuildingCost(BuildingType.AntiAirTurret, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.AntiAirTurret))
         {
@@ -524,7 +559,8 @@ public partial class Main
         }
 
         // E7：优先级10：建造机场（已建科技中心，每阵营最多1座）
-        if (hasTechCenter && !HasBuilding(teamId, BuildingType.Airfield)
+        // Attack策略跳过
+        if (!skipNonEssentialBuildings && hasTechCenter && !HasBuilding(teamId, BuildingType.Airfield)
             && _money[teamId] >= GetBuildingCost(BuildingType.Airfield, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.Airfield))
         {
@@ -534,7 +570,8 @@ public partial class Main
             return;
         }
         // E9：优先级11：建造船厂（已建科技中心，每阵营最多1座）
-        if (hasTechCenter && !HasBuilding(teamId, BuildingType.Shipyard)
+        // Attack策略跳过
+        if (!skipNonEssentialBuildings && hasTechCenter && !HasBuilding(teamId, BuildingType.Shipyard)
             && _money[teamId] >= GetBuildingCost(BuildingType.Shipyard, teamId) + 300 && power >= 0
             && IsBuildingUnlockedByEra(teamId, BuildingType.Shipyard))
         {
@@ -544,7 +581,8 @@ public partial class Main
             return;
         }
         // E10：优先级12-14：超武建筑（已建科技中心）
-        if (hasTechCenter && !HasBuilding(teamId, BuildingType.NukeSilo)
+        // Attack策略跳过（资金留给造兵加速进攻）
+        if (!skipNonEssentialBuildings && hasTechCenter && !HasBuilding(teamId, BuildingType.NukeSilo)
             && _money[teamId] >= GetBuildingCost(BuildingType.NukeSilo, teamId) + 300 && power >= 0)
         {
             _money[teamId] -= GetBuildingCost(BuildingType.NukeSilo, teamId);
@@ -552,7 +590,7 @@ public partial class Main
             GameLog.Debug($"[AI] Team {teamId} built NukeSilo, ${_money[teamId]} left");
             return;
         }
-        if (hasTechCenter && !HasBuilding(teamId, BuildingType.LightningTower)
+        if (!skipNonEssentialBuildings && hasTechCenter && !HasBuilding(teamId, BuildingType.LightningTower)
             && _money[teamId] >= GetBuildingCost(BuildingType.LightningTower, teamId) + 300 && power >= 0)
         {
             _money[teamId] -= GetBuildingCost(BuildingType.LightningTower, teamId);
@@ -560,7 +598,7 @@ public partial class Main
             GameLog.Debug($"[AI] Team {teamId} built LightningTower, ${_money[teamId]} left");
             return;
         }
-        if (hasTechCenter && !HasBuilding(teamId, BuildingType.MissileSilo)
+        if (!skipNonEssentialBuildings && hasTechCenter && !HasBuilding(teamId, BuildingType.MissileSilo)
             && _money[teamId] >= GetBuildingCost(BuildingType.MissileSilo, teamId) + 300 && power >= 0)
         {
             _money[teamId] -= GetBuildingCost(BuildingType.MissileSilo, teamId);
@@ -588,14 +626,27 @@ public partial class Main
         // 0. 该阵营基地已灭则跳过
         if (!_bases.TryGetValue(teamId, out var teamBase) || !IsInstanceValid(teamBase)) return;
 
-        // 0. 建筑建造优先
-        AIBuildLogic(teamId);
+        // 0a. 策略状态机更新（按策略检查间隔限流，不是每tick都检查）
+        ref var stratState = ref _aiStrategyStates[teamId];
+        stratState.StrategyCooldown -= 1; // 每个 tick 递减
+        if (stratState.StrategyCooldown <= 0)
+        {
+            stratState.StrategyCooldown = GetStrategyCheckInterval() / _aiThinkInterval;
+            UpdateAIStrategy(teamId);
+        }
+
+        // 0b. Attack策略时执行集结逻辑
+        if (stratState.Strategy == AIStrategy.Attack)
+            AIAssaultRally(teamId);
+
+        // 0. 建筑建造优先（根据策略动态调整优先级）
+        AIBuildLogic(teamId, stratState.Strategy);
 
         bool savingForTech = HasBuilding(teamId, BuildingType.WarFactory) && !HasBuilding(teamId, BuildingType.TechCenter);
 
-        // 1. 自动造兵（P2-10修复：复用提取的公共方法）
+        // 1. 自动造兵（P2-10修复：复用提取的公共方法），根据策略调整造兵倾向
         if (!savingForTech)
-            AITrainUnits(teamId);
+            AITrainUnits(teamId, stratState.Strategy);
 
         // 5. G7: AI间谍任务 — 每20秒尝试一次（移到生产逻辑外部，确保不受savingForTech/无单位影响）
         if (!_aiSpyCooldowns.TryGetValue(teamId, out int spyCd))
@@ -677,17 +728,21 @@ public partial class Main
     /// <summary>
     /// P2-10修复：提取AI造兵逻辑为公共方法，消除AITickForTeam和BlueTestAITick的重复代码。
     /// 构建可生产的单位列表 → 按造价降序 → 概率优先填线兵 → 遍历排队。
+    /// 策略影响：Defend时步兵优先50%，Attack时重装甲优先，Expand时矿车优先。
     /// </summary>
-    private void AITrainUnits(int teamId)
+    private void AITrainUnits(int teamId, AIStrategy strategy = AIStrategy.Expand)
     {
         // 造兵（检查建筑前置 + 电力）
         int teamUnits = CountUnitsOfTeam(teamId);
         int teamQueued = CountQueuedUnitsOfTeam(teamId);
-        if (teamUnits + teamQueued >= _unitCap || GetTeamPower(teamId) < 0) return;
+        // === 策略影响：Expand策略降低造兵优先级，攒钱发展经济 ===
+        int effectiveCap = (strategy == AIStrategy.Expand) ? Mathf.Max(4, _unitCap - 4) : _unitCap;
+        if (teamUnits + teamQueued >= effectiveCap || GetTeamPower(teamId) < 0) return;
 
         // 有科技中心时攒钱优先造高级兵种
         bool hasTech = HasBuilding(teamId, BuildingType.TechCenter);
-        if (hasTech && _money[teamId] < GetUnitCost(UnitType.RocketLauncher, teamId) && teamUnits >= 3) return;
+        // Attack策略不攒钱，有多少钱造多少兵
+        if (strategy != AIStrategy.Attack && hasTech && _money[teamId] < GetUnitCost(UnitType.RocketLauncher, teamId) && teamUnits >= 3) return;
 
         var types = new List<UnitType>();
         if (HasBuilding(teamId, BuildingType.Barracks))
@@ -728,14 +783,33 @@ public partial class Main
         if (types.Count == 0) return;
 
         types.Sort((a, b) => GetUnitCost(b, teamId).CompareTo(GetUnitCost(a, teamId)));
-        // 步兵作为廉价填线兵：35%概率优先生产
-        if (types.Contains(UnitType.Infantry) && GD.Randf() < 0.35f)
+        // === 策略影响：不同策略调整造兵概率 ===
+        float infantryChance = 0.35f;
+        float engineerChance = 0.15f;
+        if (strategy == AIStrategy.Defend)
+        {
+            // 防御时步兵填线优先
+            infantryChance = 0.50f;
+        }
+        else if (strategy == AIStrategy.Attack)
+        {
+            // 进攻时重装甲优先，少造步兵
+            infantryChance = 0.15f;
+            // 重坦克优先排到前面
+            if (types.Contains(UnitType.HeavyTank))
+            {
+                types.Remove(UnitType.HeavyTank);
+                types.Insert(0, UnitType.HeavyTank);
+            }
+        }
+        // 步兵作为廉价填线兵
+        if (types.Contains(UnitType.Infantry) && GD.Randf() < infantryChance)
         {
             types.Remove(UnitType.Infantry);
             types.Insert(0, UnitType.Infantry);
         }
-        // 工程车：15%概率优先生产
-        if (types.Contains(UnitType.Engineer) && GD.Randf() < 0.15f)
+        // 工程车
+        if (types.Contains(UnitType.Engineer) && GD.Randf() < engineerChance)
         {
             types.Remove(UnitType.Engineer);
             types.Insert(0, UnitType.Engineer);

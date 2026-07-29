@@ -162,6 +162,11 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     /// <summary>AI保护期剩余时间（秒）。>0时AI单位不主动搜敌进攻，给玩家发展空间。由Main每帧递减。</summary>
     public static float AiGraceRemaining = 0f;
 
+    /// <summary>AI集结模式：true=正在前往集结点，不执行全图搜敌。由Main.AI策略系统控制。</summary>
+    public bool AiRallyMode = false;
+    /// <summary>AI集结点坐标（AiRallyMode=true时生效）。</summary>
+    public Vector2 AiRallyPoint = Vector2.Zero;
+
     // 节点引用
     protected Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
@@ -1272,6 +1277,32 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 {
                     _attackUnitTarget = nearbyEnemy;
                     _attackBuildingTarget = null;
+                }
+                return;
+            }
+
+            // 集结模式：正在前往集结点等待进攻命令，不执行全图搜敌
+            // 只反击进入AggroRange的敌人，保持向集结点移动
+            if (AiRallyMode)
+            {
+                var rallyEnemy = FindNearestEnemyUnitInRange(AggroRange);
+                if (rallyEnemy != null)
+                {
+                    _attackUnitTarget = rallyEnemy;
+                    _attackBuildingTarget = null;
+                }
+                else
+                {
+                    // 没有近距离敌人时，保持向集结点移动
+                    if (GlobalPosition.DistanceTo(AiRallyPoint) > 30f)
+                    {
+                        _moveTarget = AiRallyPoint;
+                        _hasMoveTarget = true;
+                    }
+                    else
+                    {
+                        _hasMoveTarget = false;
+                    }
                 }
                 return;
             }

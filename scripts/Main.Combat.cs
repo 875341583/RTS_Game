@@ -620,7 +620,8 @@ public partial class Main
         }
     }
 
-    /// <summary>建筑被攻击时调用：命令附近己方 AutoDefend 单位回防（有冷却避免频繁触发）。</summary>
+    /// <summary>建筑被攻击时调用：命令附近己方 AutoDefend 单位回防（有冷却避免频繁触发）。
+    /// 同时通知AI策略系统切换到Defend状态。</summary>
     public void OnBuildingAttacked(Building b)
     {
         if (b == null || !IsInstanceValid(b)) return;
@@ -639,6 +640,10 @@ public partial class Main
             BgmManager.SwitchScene(BgmManager.BgmScene.Alert);
             _alertBgmTimer = 8f; // 8秒无攻击后切回战斗BGM
         }
+
+        // 通知AI策略系统：建筑被攻击 → 触发Defend策略
+        NotifyBuildingAttackedForStrategy(teamId);
+
         foreach (var child in _unitsNode.GetChildren())
         {
             if (child is Unit u && u.TeamId == teamId && IsInstanceValid(u)

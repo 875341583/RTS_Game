@@ -947,6 +947,10 @@ public partial class Main : Node2D
             }
         }
 
+        // AI策略状态机计时器更新（每帧）
+        if (!_gameOver)
+            UpdateAIStrategyTimers(dt);
+
         // ---- 阶段12-A4：核弹冷却递减 + 视觉特效更新 ----
         if (_playerNukeCooldown > 0f)
         {
