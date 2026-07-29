@@ -765,6 +765,10 @@ input.lightning_ready,⚡ Lightning Storm ready: left-click target / right-click
 input.missile_unavailable,🚀 Missile unavailable: need to build Missile Silo
 input.missile_cooldown,🚀 Missile on cooldown: {0}:{1:D2}
 input.missile_ready,🚀 Cruise Missile ready: left-click target / right-click to cancel
+# === i18n: ui.command_mode ===
+ui.force_attack_mode,🔥 Force Attack mode: left-click target / right-click to cancel
+ui.patrol_mode,🔁 Patrol mode: left-click patrol endpoint / right-click to cancel
+ui.formation_mode,📐 Formation move mode: right-click to move in formation / right-click to cancel
 # === i18n: start.* ===
 start.objective,★ Objective: Destroy all enemy buildings and units to win!
 start.build_advice,★ Build order: Power Plant → Barracks → War Factory → Tech Center

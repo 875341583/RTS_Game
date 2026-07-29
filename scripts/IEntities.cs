@@ -53,6 +53,24 @@ public interface IUnitEntity : IRenderable
     /// <summary>下达攻击移动命令（到指定位置，遇敌自动攻击）。</summary>
     void CommandAttackMove(Vector2 target);
 
+    /// <summary>下达强制攻击命令（对目标点开火，无视友方判断）。</summary>
+    void CommandForceAttack(Vector2 target);
+
+    /// <summary>下达散开命令（向四周随机散开）。</summary>
+    void CommandScatter();
+
+    /// <summary>下达巡逻命令（在两点之间来回巡逻）。</summary>
+    void CommandPatrol(Vector2 from, Vector2 to);
+
+    /// <summary>下达守卫命令（原地不动，只射程内反击）。</summary>
+    void CommandHoldPosition();
+
+    /// <summary>下达阵型移动命令（保持相对位置移动到目标）。</summary>
+    void CommandFormationMove(Vector2 target);
+
+    /// <summary>追加路径点到行军路线。</summary>
+    void EnqueueWaypoint(Vector2 waypoint);
+
     /// <summary>停止当前所有命令。</summary>
     void CommandStop();
 

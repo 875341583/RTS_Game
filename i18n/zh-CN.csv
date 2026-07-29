@@ -767,6 +767,10 @@ input.lightning_ready,⚡ 闪电风暴已就绪：左键点击目标 / 右键取
 input.missile_unavailable,🚀 导弹不可用：需建造导弹发射井
 input.missile_cooldown,🚀 导弹冷却中：{0}:{1:D2}
 input.missile_ready,🚀 巡航导弹已就绪：左键点击目标 / 右键取消
+# === i18n: ui.command_mode ===
+ui.force_attack_mode,🔥 强制攻击模式：左键点击目标 / 右键取消
+ui.patrol_mode,🔁 巡逻模式：左键点击巡逻终点 / 右键取消
+ui.formation_mode,📐 阵型移动模式：右键移动保持阵型 / 右键取消
 # === i18n: start.* ===
 start.objective,★ 游戏目标：摧毁敌方所有建筑和单位即获胜！
 start.build_advice,★ 建造建议：电站→兵营→车厂→科技中心

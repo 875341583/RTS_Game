@@ -198,6 +198,24 @@ public static class ReplayPlayer
                 case ReplayRecorder.ActionType.CommandTerrainMod:
                     _main.ReplayCommandTerrainMod(parms);
                     break;
+                case ReplayRecorder.ActionType.ForceAttack:
+                    _main.ReplayForceAttack(parms);
+                    break;
+                case ReplayRecorder.ActionType.Scatter:
+                    _main.ReplayScatter();
+                    break;
+                case ReplayRecorder.ActionType.Patrol:
+                    _main.ReplayPatrol(parms);
+                    break;
+                case ReplayRecorder.ActionType.HoldPosition:
+                    _main.ReplayHoldPosition();
+                    break;
+                case ReplayRecorder.ActionType.Waypoint:
+                    _main.ReplayWaypoint(parms);
+                    break;
+                case ReplayRecorder.ActionType.FormationMove:
+                    _main.ReplayFormationMove(parms);
+                    break;
                 case ReplayRecorder.ActionType.SaveSquad:
                     _main.ReplaySaveSquad(parms);
                     break;

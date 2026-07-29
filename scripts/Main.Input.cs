@@ -11,6 +11,13 @@ namespace RTSGame;
 /// </summary>
 public partial class Main
 {
+    // ======== 命令模式标志 ========
+    /// <summary>强制攻击模式（A键开启，左键确认目标）。</summary>
+    private bool _forceAttackMode;
+    /// <summary>巡逻模式（P键开启，左键设置巡逻终点）。</summary>
+    private bool _patrolMode;
+    /// <summary>阵型移动模式（F键开启，右键保持阵型）。</summary>
+    private bool _formationMode;
 
     /// <summary>L1修复: 检查是否有任何信息面板处于打开状态（面板打开时禁用生产热键避免冲突）。</summary>
     private bool AnyPanelOpen()
@@ -78,6 +85,32 @@ public partial class Main
                     return;
                 }
                 if (mouseOverPanel) return;
+                // 强制攻击模式：A键+左键点击目标位置
+                if (_forceAttackMode && GetSelectedFriendlyUnits().Count > 0 && !mouseOverPanel)
+                {
+                    var sel = GetSelectedFriendlyUnits();
+                    int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(sel.Count)));
+                    for (int i = 0; i < sel.Count; i++)
+                    {
+                        int col = i % cols, row = i / cols;
+                        sel[i].CommandForceAttack(worldPos + new Vector2(col * 40, row * 40));
+                    }
+                    ReplayRecorder.Record(ReplayRecorder.ActionType.ForceAttack, new { X = worldPos.X, Y = worldPos.Y });
+                    _forceAttackMode = false;
+                    GameLog.Debug($"[操控] 强制攻击 -> {worldPos} ({sel.Count} 单位)");
+                    return;
+                }
+                // 巡逻模式：P键+左键点击设置巡逻终点
+                if (_patrolMode && GetSelectedFriendlyUnits().Count > 0 && !mouseOverPanel)
+                {
+                    var sel = GetSelectedFriendlyUnits();
+                    foreach (var u in sel)
+                        u.CommandPatrol(u.GlobalPosition, worldPos);
+                    ReplayRecorder.Record(ReplayRecorder.ActionType.Patrol, new { X = worldPos.X, Y = worldPos.Y });
+                    _patrolMode = false;
+                    GameLog.Debug($"[操控] 巡逻 -> {worldPos} ({sel.Count} 单位)");
+                    return;
+                }
                 // G1：攻击移动模式，左键点地发起攻击移动
                 if (_attackMoveMode && GetSelectedFriendlyUnits().Count > 0)
                 {
@@ -96,6 +129,8 @@ public partial class Main
                 if (_missileTargetMode) { _missileTargetMode = false; QueueRedraw(); return; }
                 if (_placementMode != null) { CancelPlacement(); return; }
                 if (_attackMoveMode) { _attackMoveMode = false; return; }
+                if (_forceAttackMode) { _forceAttackMode = false; return; }
+                if (_patrolMode) { _patrolMode = false; return; }
                 if (GetSelectedFriendlyUnits().Count > 0) HandleRightClick(worldPos);
             }
         }
@@ -164,9 +199,20 @@ public partial class Main
             return;
         }
 
-        // G5: H键查看尤里卡进度
+        // G5: Shift+H=守卫/驻守，H=查看尤里卡进度
         if (kc == Key.H)
         {
+            if (Input.IsKeyPressed(Key.Shift))
+            {
+                var sel = GetSelectedFriendlyUnits();
+                if (sel.Count > 0)
+                {
+                    foreach (var u in sel) u.CommandHoldPosition();
+                    ReplayRecorder.Record(ReplayRecorder.ActionType.HoldPosition);
+                    GameLog.Debug($"[操控] 守卫/驻守 ({sel.Count} 单位)");
+                }
+                return;
+            }
             _eurekaLabel.Visible = !_eurekaLabel.Visible;
             if (_eurekaLabel.Visible) UpdateEurekaPanel();
             return;
@@ -263,6 +309,57 @@ public partial class Main
         else if (kc == Key.Escape)
         {
             _attackMoveMode = false;
+            _forceAttackMode = false;
+            _patrolMode = false;
+            _formationMode = false;
+        }
+        // A键：强制攻击模式
+        else if (kc == Key.A)
+        {
+            if (GetSelectedFriendlyUnits().Count > 0)
+            {
+                _forceAttackMode = !_forceAttackMode;
+                if (_forceAttackMode)
+                {
+                    _attackMoveMode = false;
+                    _patrolMode = false;
+                }
+                GameLog.Debug($"[操控] 强制攻击模式 {(_forceAttackMode ? "开启 - 左键点击目标" : "关闭")}");
+            }
+        }
+        // D键：散开
+        else if (kc == Key.D)
+        {
+            var sel = GetSelectedFriendlyUnits();
+            if (sel.Count > 0)
+            {
+                foreach (var u in sel) u.CommandScatter();
+                ReplayRecorder.Record(ReplayRecorder.ActionType.Scatter);
+                GameLog.Debug($"[操控] 散开 ({sel.Count} 单位)");
+            }
+        }
+        // P键：巡逻模式
+        else if (kc == Key.P)
+        {
+            if (GetSelectedFriendlyUnits().Count > 0)
+            {
+                _patrolMode = !_patrolMode;
+                if (_patrolMode)
+                {
+                    _attackMoveMode = false;
+                    _forceAttackMode = false;
+                }
+                GameLog.Debug($"[操控] 巡逻模式 {(_patrolMode ? "开启 - 左键点击设置巡逻终点" : "关闭")}");
+            }
+        }
+        // F键：阵型移动模式
+        else if (kc == Key.F)
+        {
+            if (GetSelectedFriendlyUnits().Count > 0)
+            {
+                _formationMode = !_formationMode;
+                GameLog.Debug($"[操控] 阵型移动模式 {(_formationMode ? "开启 - 右键移动保持阵型" : "关闭")}");
+            }
         }
         else if (kc == Key.R)
         {
@@ -572,6 +669,49 @@ public partial class Main
         int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(friendlyUnits.Count)));
         float spacing = 48f;
         float halfWidth = (cols - 1) * spacing * 0.5f;
+
+        // Shift+右键：追加路径点到行军路线
+        if (Input.IsKeyPressed(Key.Shift))
+        {
+            for (int i = 0; i < friendlyUnits.Count; i++)
+            {
+                int col = i % cols;
+                int row = i / cols;
+                var offset = new Vector2(col * spacing - halfWidth, row * spacing - halfWidth);
+                friendlyUnits[i].EnqueueWaypoint(worldPos + offset);
+            }
+            ReplayRecorder.Record(ReplayRecorder.ActionType.Waypoint, new { X = worldPos.X, Y = worldPos.Y });
+            GameLog.Debug($"[操控] 追加路径点 -> {worldPos} ({friendlyUnits.Count} 单位)");
+            _audio?.PlaySfx(AudioManager.Sfx.Move);
+            var wpMover = friendlyUnits.FirstOrDefault();
+            if (wpMover != null)
+                _audio?.PlayUnitVoice(wpMover.Type, UnitVoice.VoiceType.Move);
+            return;
+        }
+
+        // 阵型移动模式：保持各单位相对当前位置的偏移
+        if (_formationMode)
+        {
+            // 计算选中单位的中心点
+            var center = Vector2.Zero;
+            foreach (var u in friendlyUnits) center += u.GlobalPosition;
+            center /= Mathf.Max(1, friendlyUnits.Count);
+
+            for (int i = 0; i < friendlyUnits.Count; i++)
+            {
+                var offset = friendlyUnits[i].GlobalPosition - center;
+                friendlyUnits[i].CommandFormationMove(worldPos + offset);
+            }
+            ReplayRecorder.Record(ReplayRecorder.ActionType.FormationMove, new { X = worldPos.X, Y = worldPos.Y });
+            GameLog.Debug($"[操控] 阵型移动 -> {worldPos} ({friendlyUnits.Count} 单位)");
+            _formationMode = false; // 单次使用后关闭
+            _audio?.PlaySfx(AudioManager.Sfx.Move);
+            var fmMover = friendlyUnits.FirstOrDefault();
+            if (fmMover != null)
+                _audio?.PlayUnitVoice(fmMover.Type, UnitVoice.VoiceType.Move);
+            return;
+        }
+
         // E4：工程单位右键不可通行地形 → 触发地形改造
         var terrainCell = _terrain.GetCellAtWorld(worldPos.X, worldPos.Y);
         Unit.TerrainModType modType = DetectTerrainMod(terrainCell);

@@ -537,6 +537,12 @@ public partial class Main
                           TrManager.Tr("hint.capture_keys");
         if (_attackMoveMode)
             _hintLabel.Text = TrManager.Tr("ui.attack_move_mode");
+        if (_forceAttackMode)
+            _hintLabel.Text = TrManager.Tr("ui.force_attack_mode");
+        if (_patrolMode)
+            _hintLabel.Text = TrManager.Tr("ui.patrol_mode");
+        if (_formationMode)
+            _hintLabel.Text = TrManager.Tr("ui.formation_mode");
         if (_nukeTargetMode)
             _hintLabel.Text = TrManager.Tr("ui.nuke_target_mode");
         if (_lightningTargetMode)

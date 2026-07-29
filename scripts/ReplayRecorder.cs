@@ -30,6 +30,12 @@ public static class ReplayRecorder
         CommandStop,           // 停止
         CommandSpyMission,     // 间谍任务
         CommandTerrainMod,     // 地形改造
+        ForceAttack,           // 强制攻击
+        Scatter,               // 散开
+        Patrol,                // 巡逻
+        HoldPosition,          // 守卫/驻守
+        Waypoint,              // 路径点追加
+        FormationMove,         // 阵型移动
 
         // 选择/编队
         SaveSquad,             // 保存编队

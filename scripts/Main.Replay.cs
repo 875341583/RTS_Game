@@ -110,6 +110,72 @@ public partial class Main
         GameLog.Debug($"[Replay] 地形改造 @ {pos}");
     }
 
+    /// <summary>回放：强制攻击。</summary>
+    public void ReplayForceAttack(string? parms)
+    {
+        var pos = ParseReplayXY(parms);
+        var friendlyUnits = GetSelectedFriendlyUnits();
+        int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(friendlyUnits.Count)));
+        for (int i = 0; i < friendlyUnits.Count; i++)
+        {
+            int col = i % cols, row = i / cols;
+            friendlyUnits[i].CommandForceAttack(pos + new Vector2(col * 40, row * 40));
+        }
+        GameLog.Debug($"[Replay] 强制攻击 @ {pos}");
+    }
+
+    /// <summary>回放：散开。</summary>
+    public void ReplayScatter()
+    {
+        var friendlyUnits = GetSelectedFriendlyUnits();
+        foreach (var u in friendlyUnits) u.CommandScatter();
+        GameLog.Debug($"[Replay] 散开 ({friendlyUnits.Count} 单位)");
+    }
+
+    /// <summary>回放：巡逻。</summary>
+    public void ReplayPatrol(string? parms)
+    {
+        var pos = ParseReplayXY(parms);
+        var friendlyUnits = GetSelectedFriendlyUnits();
+        foreach (var u in friendlyUnits)
+            u.CommandPatrol(u.GlobalPosition, pos);
+        GameLog.Debug($"[Replay] 巡逻 -> {pos}");
+    }
+
+    /// <summary>回放：守卫/驻守。</summary>
+    public void ReplayHoldPosition()
+    {
+        var friendlyUnits = GetSelectedFriendlyUnits();
+        foreach (var u in friendlyUnits) u.CommandHoldPosition();
+        GameLog.Debug("[Replay] 守卫/驻守");
+    }
+
+    /// <summary>回放：路径点追加。</summary>
+    public void ReplayWaypoint(string? parms)
+    {
+        var pos = ParseReplayXY(parms);
+        var friendlyUnits = GetSelectedFriendlyUnits();
+        foreach (var u in friendlyUnits) u.EnqueueWaypoint(pos);
+        GameLog.Debug($"[Replay] 路径点追加 @ {pos}");
+    }
+
+    /// <summary>回放：阵型移动。</summary>
+    public void ReplayFormationMove(string? parms)
+    {
+        var pos = ParseReplayXY(parms);
+        var friendlyUnits = GetSelectedFriendlyUnits();
+        // 计算阵型偏移（与Main.Input.cs中FormationMove逻辑一致）
+        var center = Vector2.Zero;
+        foreach (var u in friendlyUnits) center += u.GlobalPosition;
+        center /= Mathf.Max(1, friendlyUnits.Count);
+        for (int i = 0; i < friendlyUnits.Count; i++)
+        {
+            var offset = friendlyUnits[i].GlobalPosition - center;
+            friendlyUnits[i].CommandFormationMove(pos + offset);
+        }
+        GameLog.Debug($"[Replay] 阵型移动 -> {pos}");
+    }
+
     /// <summary>回放：保存编队。</summary>
     public void ReplaySaveSquad(string? parms)
     {

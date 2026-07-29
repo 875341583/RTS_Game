@@ -77,6 +77,20 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     private Vector2 _guardPosition;
     private bool _hasGuardPosition;
 
+    // ======== 命令系统字段 ========
+    /// <summary>强制攻击目标坐标。</summary>
+    private Vector2 _forceAttackTargetPos;
+    private bool _hasForceAttackTarget;
+    /// <summary>守卫模式：原地不动，只射程内反击，不追击。</summary>
+    private bool _holdPosition;
+    /// <summary>巡逻模式字段。</summary>
+    private bool _isPatrolling;
+    private Vector2 _patrolA;
+    private Vector2 _patrolB;
+    private bool _patrolToB = true; // true=去B, false=去A
+    /// <summary>路径点队列（行军路线）。</summary>
+    private readonly Queue<Vector2> _waypointQueue = new();
+
     /// <summary>运输车内搭载的乘客（步兵类单位）。</summary>
     public List<Unit> Passengers { get; } = new();
     /// <summary>运输车最大搭载人数。</summary>
@@ -1281,6 +1295,105 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             return;
         }
 
+        // 强制攻击：移动到目标位置后持续对目标点开火（无视友方判断）
+        if (_hasForceAttackTarget)
+        {
+            float distToTarget = GlobalPosition.DistanceTo(_forceAttackTargetPos);
+            if (distToTarget <= AttackRange && distToTarget >= MinAttackRange)
+            {
+                // 在射程内，持续对目标点开火
+                _hasMoveTarget = false;
+                _attackTimer -= dt;
+                if (_attackTimer <= 0f)
+                {
+                    // 对目标点地面开火：生成特效
+                    SpawnFireEffects(_forceAttackTargetPos);
+                    TriggerAttackAnimation();
+                    // 溅射伤害：对目标点周围的任何单位造成伤害（强制攻击不区分敌友）
+                    if (GetParent() is Node2D parent)
+                    {
+                        foreach (var child in parent.GetChildren())
+                        {
+                            if (child is Unit u && u != this && !u._isDead
+                                && u.GlobalPosition.DistanceTo(_forceAttackTargetPos) <= Mathf.Max(SplashRadius, 30f))
+                            {
+                                u.TakeDamage(AttackDamage);
+                            }
+                        }
+                    }
+                    _attackTimer = AttackCooldown;
+                }
+            }
+            else if (distToTarget < MinAttackRange)
+            {
+                // 太近了，后退
+                var away = (GlobalPosition - _forceAttackTargetPos).Normalized();
+                _moveTarget = GlobalPosition + away * (MinAttackRange - distToTarget + 50f);
+                _hasMoveTarget = true;
+            }
+            else
+            {
+                // 不在射程内，移动到目标
+                _moveTarget = _forceAttackTargetPos;
+                _hasMoveTarget = true;
+            }
+            return;
+        }
+
+        // 巡逻逻辑：在两点之间来回移动，遇敌接敌后继续巡逻
+        if (_isPatrolling)
+        {
+            _aiThinkTimer -= dt;
+            if (_aiThinkTimer <= 0f)
+            {
+                _aiThinkTimer = 0.25f;
+                // 巡逻途中遇敌自动接敌
+                var enemy2 = FindNearestEnemyUnitInRange(AggroRange);
+                if (enemy2 != null) _attackUnitTarget = enemy2;
+                else
+                {
+                    var bld = FindNearestEnemyBuildingInRange(AggroRange);
+                    if (bld != null) _attackBuildingTarget = bld;
+                }
+            }
+
+            // 如果正在战斗，不更新巡逻移动
+            if (_attackUnitTarget == null && _attackBuildingTarget == null)
+            {
+                var patrolTarget = _patrolToB ? _patrolB : _patrolA;
+                if (GlobalPosition.DistanceTo(patrolTarget) < 20f)
+                {
+                    // 到达巡逻点，切换方向
+                    _patrolToB = !_patrolToB;
+                    var nextTarget = _patrolToB ? _patrolB : _patrolA;
+                    _moveTarget = nextTarget;
+                    _hasMoveTarget = true;
+                    ClearPath();
+                }
+                else if (!_hasMoveTarget)
+                {
+                    // 开始向当前巡逻目标移动
+                    _moveTarget = _patrolToB ? _patrolB : _patrolA;
+                    _hasMoveTarget = true;
+                    ClearPath();
+                }
+            }
+            // 战斗结束后（目标死亡），ProcessAI后续的AutoDefend会触发，
+            // 但由于_isPatrolling=true，AutoDefend不会覆盖巡逻路线
+            // 只在敌人被消灭后重新移动到巡逻目标
+            if (_attackUnitTarget == null && _attackBuildingTarget == null && _isPatrolling)
+            {
+                var curTarget = _patrolToB ? _patrolB : _patrolA;
+                if (!_hasMoveTarget || _moveTarget.DistanceTo(curTarget) > 30f)
+                {
+                    _moveTarget = curTarget;
+                    _hasMoveTarget = true;
+                    ClearPath();
+                }
+            }
+            return;
+        }
+
         // 攻击移动：移动到目标，途中遇敌自动接敌，消灭后继续向目标前进
         if (_hasAttackMoveTarget)
         {
@@ -1288,13 +1401,13 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (_aiThinkTimer <= 0f)
             {
                 _aiThinkTimer = 0.25f;
-                var enemy = FindNearestEnemyUnitInRange(AggroRange * 1.5f);
-                if (enemy != null) _attackUnitTarget = enemy;
+                var enemy3 = FindNearestEnemyUnitInRange(AggroRange * 1.5f);
+                if (enemy3 != null) _attackUnitTarget = enemy3;
                 else
                 {
-                    var bld = FindNearestEnemyBuilding();
-                    if (bld != null && GlobalPosition.DistanceTo(bld.GlobalPosition) < AggroRange * 1.5f)
-                        _attackBuildingTarget = bld;
+                    var bld3 = FindNearestEnemyBuilding();
+                    if (bld3 != null && GlobalPosition.DistanceTo(bld3.GlobalPosition) < AggroRange * 1.5f)
+                        _attackBuildingTarget = bld3;
                 }
             }
             if (_attackUnitTarget == null && _attackBuildingTarget == null)
@@ -1306,6 +1419,44 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             {
                 _hasAttackMoveTarget = false;
                 _hasMoveTarget = false;
+            }
+            return;
+        }
+
+        // 守卫/驻守模式：原地不动，只在射程内反击，不追击
+        if (_holdPosition)
+        {
+            // 守卫模式下不移动，不追击
+            _hasMoveTarget = false;
+            // 自动反击射程内的敌人（不更新_attackUnitTarget到远处敌人——让ResolveCombat在射程内处理）
+            if (AutoDefend && AttackDamage > 0f && _attackUnitTarget == null && _attackBuildingTarget == null)
+            {
+                _aiThinkTimer -= dt;
+                if (_aiThinkTimer <= 0f)
+                {
+                    _aiThinkTimer = 0.3f;
+                    // 只搜索射程内的敌人，不追击
+                    var holdEnemy = FindNearestEnemyUnitInRange(AttackRange);
+                    if (holdEnemy != null)
+                        _attackUnitTarget = holdEnemy;
+                    else
+                    {
+                        var holdBld = FindNearestEnemyBuildingInRange(AttackRange);
+                        if (holdBld != null)
+                            _attackBuildingTarget = holdBld;
+                    }
+                }
+            }
+            // 守卫模式：如果攻击目标超出射程，放弃追击
+            if (_attackUnitTarget != null && IsInstanceValid(_attackUnitTarget)
+                && GlobalPosition.DistanceTo(_attackUnitTarget.GlobalPosition) > AttackRange)
+            {
+                _attackUnitTarget = null;
+            }
+            if (_attackBuildingTarget != null && IsInstanceValid(_attackBuildingTarget)
+                && GlobalPosition.DistanceTo(_attackBuildingTarget.GlobalPosition) > AttackRange)
+            {
+                _attackBuildingTarget = null;
             }
             return;
         }
@@ -1328,18 +1479,18 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (_hasMoveTarget) return;
 
             // 搜索警戒范围内的敌人
-            var enemy = FindNearestEnemyUnitInRange(AggroRange);
-            if (enemy != null)
+            var enemy4 = FindNearestEnemyUnitInRange(AggroRange);
+            if (enemy4 != null)
             {
-                _attackUnitTarget = enemy;
+                _attackUnitTarget = enemy4;
             }
             else
             {
                 // 没有敌方单位时，搜索附近敌方建筑并攻击（单位开进敌方家会自动打建筑）
-                var enemyBld = FindNearestEnemyBuildingInRange(AggroRange);
-                if (enemyBld != null)
+                var enemyBld4 = FindNearestEnemyBuildingInRange(AggroRange);
+                if (enemyBld4 != null)
                 {
-                    _attackBuildingTarget = enemyBld;
+                    _attackBuildingTarget = enemyBld4;
                 }
                 else if (_hasGuardPosition && GlobalPosition.DistanceTo(_guardPosition) > 60f)
                 {
@@ -1593,6 +1744,14 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                     Velocity = Vector2.Zero;
                     _hasMoveTarget = false;
                     _hasPath = false;
+                    // 检查路径点队列，自动前往下一个路径点
+                    if (_waypointQueue.Count > 0)
+                    {
+                        var nextWp = _waypointQueue.Dequeue();
+                        _moveTarget = nextWp;
+                        _hasMoveTarget = true;
+                        ClearPath();
+                    }
                 }
             }
         }
@@ -1879,6 +2038,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _attackUnitTarget = null;
         _attackBuildingTarget = null;
         _hasAttackMoveTarget = false; // 普通移动取消攻击移动
+        _hasForceAttackTarget = false; // 普通移动取消强制攻击
+        _holdPosition = false; // 普通移动取消守卫
+        _isPatrolling = false; // 普通移动取消巡逻
+        _waypointQueue.Clear(); // 普通移动清空路径点队列
         // 玩家下令时更新守卫位置为新的目的地
         _guardPosition = target;
         _hasGuardPosition = true;
@@ -1909,8 +2072,99 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         Velocity = Vector2.Zero;
         _guardPosition = GlobalPosition;
         _hasGuardPosition = true;
+        // 清除新命令状态
+        _hasForceAttackTarget = false;
+        _holdPosition = false;
+        _isPatrolling = false;
+        _waypointQueue.Clear();
         // P0-1: 清除路径，保留冷却避免误重算
         ClearPathKeepCooldown();
+    }
+
+    /// <summary>强制攻击：对目标坐标持续开火，无视友方判断。</summary>
+    public void CommandForceAttack(Vector2 target)
+    {
+        _forceAttackTargetPos = target;
+        _hasForceAttackTarget = true;
+        _attackUnitTarget = null;
+        _attackBuildingTarget = null;
+        _hasAttackMoveTarget = false;
+        _holdPosition = false;
+        _isPatrolling = false;
+        _waypointQueue.Clear();
+        _moveTarget = target;
+        _hasMoveTarget = true;
+        ClearPath();
+    }
+
+    /// <summary>散开：向四周随机方向散开100~200px。</summary>
+    public void CommandScatter()
+    {
+        float angle = (float)(GD.RandRange(0, 360) * Mathf.Pi / 180.0);
+        float dist = (float)GD.RandRange(100, 200);
+        var offset = new Vector2(Mathf.Cos(angle) * dist, Mathf.Sin(angle) * dist);
+        var target = GlobalPosition + offset;
+        _moveTarget = target;
+        _hasMoveTarget = true;
+        _attackUnitTarget = null;
+        _attackBuildingTarget = null;
+        _hasAttackMoveTarget = false;
+        _hasForceAttackTarget = false;
+        _holdPosition = false;
+        _isPatrolling = false;
+        _waypointQueue.Clear();
+        ClearPath();
+    }
+
+    /// <summary>巡逻：在两点之间来回巡逻，遇敌自动接敌后继续。</summary>
+    public void CommandPatrol(Vector2 from, Vector2 to)
+    {
+        _isPatrolling = true;
+        _patrolA = from;
+        _patrolB = to;
+        _patrolToB = true;
+        _moveTarget = to;
+        _hasMoveTarget = true;
+        _attackUnitTarget = null;
+        _attackBuildingTarget = null;
+        _hasAttackMoveTarget = false;
+        _hasForceAttackTarget = false;
+        _holdPosition = false;
+        _waypointQueue.Clear();
+        ClearPath();
+    }
+
+    /// <summary>守卫/驻守：原地不动，只射程内反击，不追击。</summary>
+    public void CommandHoldPosition()
+    {
+        _holdPosition = true;
+        _hasMoveTarget = false;
+        _hasAttackMoveTarget = false;
+        _hasForceAttackTarget = false;
+        _isPatrolling = false;
+        _waypointQueue.Clear();
+        Velocity = Vector2.Zero;
+        _guardPosition = GlobalPosition;
+        _hasGuardPosition = true;
+        ClearPathKeepCooldown();
+    }
+
+    /// <summary>阵型移动：移动到目标位置，由外部计算偏移后调用CommandMove。</summary>
+    public void CommandFormationMove(Vector2 target)
+    {
+        CommandMove(target);
+    }
+
+    /// <summary>追加路径点到行军路线。</summary>
+    public void EnqueueWaypoint(Vector2 waypoint)
+    {
+        // 如果没有移动目标，直接移动到该路径点
+        if (!_hasMoveTarget && _waypointQueue.Count == 0)
+        {
+            CommandMove(waypoint);
+            return;
+        }
+        _waypointQueue.Enqueue(waypoint);
     }
 
     public virtual void CommandAttack(Unit target)
