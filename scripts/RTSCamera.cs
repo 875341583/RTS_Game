@@ -19,6 +19,25 @@ public partial class RTSCamera : Camera2D
 
     private Vector2 _targetZoom = new(1, 1);
 
+    // Phase1: 屏幕震动
+    private float _shakeIntensity = 0f;
+    private float _shakeDuration = 0f;
+    private float _shakeTotalDuration = 0f;
+
+    /// <summary>触发屏幕震动。
+    /// intensity: 像素偏移最大值（4=轻微，8=中等，16=核弹级）
+    /// duration: 持续时间（秒）</summary>
+    public void Shake(float intensity, float duration)
+    {
+        // 新震动如果更强则覆盖旧的
+        if (intensity > _shakeIntensity || _shakeDuration <= 0f)
+        {
+            _shakeIntensity = intensity;
+            _shakeDuration = duration;
+            _shakeTotalDuration = duration;
+        }
+    }
+
     /// <summary>地图边界（由 Main 在 _Ready 中设置）</summary>
     public static Rect2 MapBounds { get; set; } = new(-2200f, -500f, 4400f, 3000f);
 
@@ -87,6 +106,23 @@ public partial class RTSCamera : Camera2D
 
         // 平滑缩放
         Zoom = Zoom.Lerp(_targetZoom, dt * 10f);
+
+        // Phase1: 屏幕震动
+        if (_shakeDuration > 0f)
+        {
+            _shakeDuration -= dt;
+            float falloff = Mathf.Max(0f, _shakeDuration / _shakeTotalDuration);
+            float currentIntensity = _shakeIntensity * falloff;
+            Offset = new Vector2(
+                (float)(GD.RandRange(-1.0, 1.0) * currentIntensity),
+                (float)(GD.RandRange(-1.0, 1.0) * currentIntensity)
+            );
+            if (_shakeDuration <= 0f)
+            {
+                Offset = Vector2.Zero;
+                _shakeIntensity = 0f;
+            }
+        }
     }
 
     public override void _Input(InputEvent @event)

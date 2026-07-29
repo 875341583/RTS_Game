@@ -222,6 +222,15 @@ public partial class Main : Node2D
     private Label _cardStatusLabel = null!;
 
     // G4: 电网分区
+
+    /// <summary>Phase1: 触发屏幕震动。intensity=像素偏移, duration=秒。</summary>
+    public void ScreenShake(float intensity, float duration)
+    {
+        if (_camera != null && IsInstanceValid(_camera))
+            _camera.Shake(intensity, duration);
+    }
+
+    // G4: 电网分区 (原)
     private bool _powerGridPanelVisible = false;
     private Label _powerGridLabel = null!;
     private float _powerGridRefreshTimer = 0f;

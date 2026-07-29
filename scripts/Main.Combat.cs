@@ -110,6 +110,10 @@ public partial class Main
         // 阶段12-C：核弹音效
         _audio?.PlaySfxForce(AudioManager.Sfx.Nuke);
         _audio?.PlaySfxForce(AudioManager.Sfx.BigExplosion);
+
+        // Phase1: 核弹屏幕震动（强震）
+        ScreenShake(16f, 0.8f);
+
         QueueRedraw();
     }
 
@@ -155,6 +159,10 @@ public partial class Main
 
         // 阶段12-C：闪电风暴音效
         _audio?.PlaySfxForce(AudioManager.Sfx.Lightning);
+
+        // Phase1: 闪电风暴屏幕震动（中震）
+        ScreenShake(8f, 0.4f);
+
         QueueRedraw();
     }
 

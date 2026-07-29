@@ -2222,9 +2222,50 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             main.AddChild(effect);
         }
 
+        // Phase1: 单位死亡残骸 — 留下烧焦痕迹，8秒后淡出消失
+        if (GetParent()?.GetParent() is Node2D wreckParent)
+        {
+            var wreck = new Sprite2D();
+            // 用程序化生成的暗色椭圆作为残骸
+            var wreckImg = Image.CreateEmpty(48, 32, false, Image.Format.Rgba8);
+            wreckImg.Fill(new Color(0, 0, 0, 0));
+            for (int wx = 0; wx < 48; wx++)
+            {
+                for (int wy = 0; wy < 32; wy++)
+                {
+                    float dx = (wx - 24f) / 24f;
+                    float dy = (wy - 16f) / 16f;
+                    float dist = dx * dx + dy * dy;
+                    if (dist < 1f)
+                    {
+                        // 中心暗黑，边缘暗灰，带随机烧焦纹理
+                        float darkness = 0.05f + (float)GD.RandRange(0, 0.1);
+                        float alpha = (1f - dist) * 0.7f;
+                        wreckImg.SetPixel(wx, wy, new Color(darkness, darkness, darkness, alpha));
+                    }
+                }
+            }
+            var wreckTex = ImageTexture.CreateFromImage(wreckImg);
+            wreck.Texture = wreckTex;
+            wreck.GlobalPosition = GlobalPosition;
+            wreck.ZIndex = RenderLayer.Terrain + 10; // 在地形之上，单位之下
+            wreckParent.AddChild(wreck);
+
+            // 8秒后淡出消失
+            var fadeTween = wreck.CreateTween();
+            fadeTween.TweenInterval(6f); // 6秒不动
+            fadeTween.TweenProperty(wreck, "modulate:a", 0f, 2f); // 2秒淡出
+            fadeTween.TweenCallback(Callable.From(() => { if (IsInstanceValid(wreck)) wreck.QueueFree(); }));
+        }
+
         // 阶段12-C：单位死亡音效
         if (GetParent()?.GetParent() is Main mainNode)
+        {
             mainNode.PlayUnitDeathSfx(Type);
+            // Phase1: 重型单位死亡屏幕震动
+            if (Type == UnitType.HeavyTank)
+                mainNode.ScreenShake(4f, 0.2f);
+        }
 
         // G5: 尤里卡 — 击杀者获得尤里卡进度
         if (GetParent()?.GetParent() is Main eurekaMain && _lastAttackerTeam >= 0)

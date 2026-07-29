@@ -89,6 +89,19 @@ public partial class Building : Area2D, IBuildingEntity
     private ProgressBar _healthBar = null!;
     private float _hitFlashTimer;
 
+    // Phase1: 受损冒烟粒子系统
+    private struct SmokeParticle
+    {
+        public Vector2 Offset;
+        public Vector2 Velocity;
+        public float Age;
+        public float Lifetime;
+        public float StartRadius;
+    }
+    private readonly List<SmokeParticle> _smokeParticles = new();
+    private float _smokeSpawnTimer = 0f;
+    private static readonly Random _smokeRng = new();
+
     private static Texture2D? _baseTex;
     private static Texture2D? _powerTex;
     private static Texture2D? _barracksTex;
@@ -198,6 +211,20 @@ public partial class Building : Area2D, IBuildingEntity
         _healthBar.MaxValue = MaxHealth;
         _healthBar.Value = Health;
         _healthBar.Visible = false;
+
+        // Phase1: 建造入场动画 — 从0缩放到目标大小，淡入
+        var targetScale = _body.Scale;
+        _body.Scale = Vector2.Zero;
+        _body.Modulate = new Color(_teamTint.R, _teamTint.G, _teamTint.B, 0f);
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(_body, "scale", targetScale, 0.4f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(_body, "modulate:a", 1f, 0.3f);
+        tween.Chain();
+        // 动画结束后恢复modulate为teamTint（避免alpha值残留）
+        tween.TweenCallback(Callable.From(() => _body.Modulate = _teamTint));
 
         // 8阵营色染色：向白色混合30%，让阵营色占主体（75%），8色强烈区分同时保留建筑手绘明暗细节
         _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
@@ -334,6 +361,9 @@ public partial class Building : Area2D, IBuildingEntity
             // Q5：建筑被摧毁爆炸
             if (GetParent()?.GetParent() is Node2D parentNode)
                 parentNode.AddChild(BattleEffect.BigExplosion(GlobalPosition));
+            // Phase1: 建筑被摧毁时屏幕震动
+            if (GetParent()?.GetParent() is Main shakeMain)
+                shakeMain.ScreenShake(6f, 0.3f);
             // 阶段12-C：建筑被毁音效
             if (GetParent()?.GetParent() is Main mainNode)
                 mainNode.PlayBuildingDestroyedSfx();
@@ -605,6 +635,45 @@ public partial class Building : Area2D, IBuildingEntity
             _body.Modulate = _teamTint; // 恢复队伍色调
         }
 
+        // Phase1: 受损冒烟 — 血量低于60%开始冒烟，低于30%浓烟
+        if (Health > 0f && Health < MaxHealth * 0.6f)
+        {
+            float damageRatio = Health / MaxHealth;
+            // 受损越严重冒烟越密（0.4s间隔 → 0.15s间隔）
+            float spawnInterval = damageRatio < 0.3f ? 0.15f : 0.4f;
+            _smokeSpawnTimer -= dt;
+            if (_smokeSpawnTimer <= 0f)
+            {
+                _smokeSpawnTimer = spawnInterval;
+                // 随机选一个建筑顶部冒烟点
+                float offX = (float)(_smokeRng.NextDouble() - 0.5) * 30;
+                float offY = -20f - (float)_smokeRng.NextDouble() * 15;
+                _smokeParticles.Add(new SmokeParticle
+                {
+                    Offset = new Vector2(offX, offY),
+                    Velocity = new Vector2(
+                        (float)(_smokeRng.NextDouble() - 0.5) * 8,
+                        -15f - (float)_smokeRng.NextDouble() * 10),
+                    Age = 0f,
+                    Lifetime = 1.2f + (float)_smokeRng.NextDouble() * 0.6f,
+                    StartRadius = damageRatio < 0.3f ? 8f : 5f,
+                });
+            }
+        }
+        // 更新烟雾粒子
+        for (int i = _smokeParticles.Count - 1; i >= 0; i--)
+        {
+            var p = _smokeParticles[i];
+            p.Age += dt;
+            p.Offset += p.Velocity * dt;
+            p.Velocity *= 0.96f; // 减速
+            if (p.Age >= p.Lifetime)
+                _smokeParticles.RemoveAt(i);
+            else
+                _smokeParticles[i] = p;
+        }
+        if (_smokeParticles.Count > 0) QueueRedraw();
+
         // 工程车占领衰减：无工程车附近时自动回退进度
         if (!_captureTickThisFrame && CaptureProgress > 0f)
         {
@@ -819,6 +888,21 @@ public partial class Building : Area2D, IBuildingEntity
             {
                 DrawArc(Vector2.Zero, AttackRange, 0f, Mathf.Tau, 48,
                     new Color(1f, 0.4f, 0.2f, 0.35f), 1.5f);
+            }
+        }
+
+        // Phase1: 受损冒烟粒子（在建筑之上绘制）
+        if (_smokeParticles.Count > 0)
+        {
+            foreach (var p in _smokeParticles)
+            {
+                float t = p.Age / p.Lifetime;
+                float radius = p.StartRadius * (1f + t * 1.5f);
+                float alpha = (1f - t) * 0.6f;
+                // 暗灰色烟雾，低血量时偏黑
+                float damageRatio = Health / MaxHealth;
+                float gray = damageRatio < 0.3f ? 0.15f : 0.3f;
+                DrawCircle(p.Offset, radius, new Color(gray, gray, gray, alpha));
             }
         }
 
