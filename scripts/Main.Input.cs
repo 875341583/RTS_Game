@@ -327,13 +327,13 @@ public partial class Main
             // E10：核弹需核弹发射井建筑
             if (!HasBuilding(PlayerTeamId, BuildingType.NukeSilo))
             {
-                ShowToast("☢ 核弹不可用：需建造核弹发射井", new Color(1f, 0.5f, 0.3f));
+                ShowToast(TrManager.Tr("input.nuke_unavailable"), new Color(1f, 0.5f, 0.3f));
                 GameLog.Debug("[核弹] 不可用：需核弹发射井");
             }
             else if (_playerNukeCooldown > 0f)
             {
                 int sec = Mathf.CeilToInt(_playerNukeCooldown);
-                ShowToast($"☢ 核弹冷却中：{sec / 60}:{sec % 60:D2}", new Color(1f, 0.6f, 0.3f));
+                ShowToast(TrManager.Tr("input.nuke_cooldown", sec / 60, sec % 60), new Color(1f, 0.6f, 0.3f));
                 GameLog.Debug($"[核弹] 冷却中：{sec}s");
             }
             else
@@ -342,7 +342,7 @@ public partial class Main
                 if (_nukeTargetMode) _lightningTargetMode = false; // 与闪电风暴互斥
                 if (_nukeTargetMode) _missileTargetMode = false;   // 与巡航导弹互斥
                 if (_nukeTargetMode)
-                    ShowToast("☢ 核弹已就绪：左键点击目标 / 右键取消", new Color(1f, 0.3f, 0.2f));
+                    ShowToast(TrManager.Tr("input.nuke_ready"), new Color(1f, 0.3f, 0.2f));
                 GameLog.Debug($"[核弹] 目标选择模式 {(_nukeTargetMode ? "开启" : "关闭")}");
                 QueueRedraw();
             }
@@ -354,13 +354,13 @@ public partial class Main
             // E10：闪电风暴需闪电风暴塔建筑
             if (!HasBuilding(PlayerTeamId, BuildingType.LightningTower))
             {
-                ShowToast("⚡ 闪电不可用：需建造闪电风暴塔", new Color(0.5f, 0.7f, 1f));
+                ShowToast(TrManager.Tr("input.lightning_unavailable"), new Color(0.5f, 0.7f, 1f));
                 GameLog.Debug("[闪电] 不可用：需闪电风暴塔");
             }
             else if (_playerLightningCooldown > 0f)
             {
                 int sec = Mathf.CeilToInt(_playerLightningCooldown);
-                ShowToast($"⚡ 闪电风暴冷却中：{sec / 60}:{sec % 60:D2}", new Color(0.5f, 0.7f, 1f));
+                ShowToast(TrManager.Tr("input.lightning_cooldown", sec / 60, sec % 60), new Color(0.5f, 0.7f, 1f));
                 GameLog.Debug($"[闪电] 冷却中：{sec}s");
             }
             else
@@ -369,7 +369,7 @@ public partial class Main
                 if (_lightningTargetMode) _nukeTargetMode = false; // 与核弹互斥
                 if (_lightningTargetMode) _missileTargetMode = false; // 与导弹互斥
                 if (_lightningTargetMode)
-                    ShowToast("⚡ 闪电风暴已就绪：左键点击目标 / 右键取消", new Color(0.5f, 0.8f, 1f));
+                    ShowToast(TrManager.Tr("input.lightning_ready"), new Color(0.5f, 0.8f, 1f));
                 GameLog.Debug($"[闪电] 目标选择模式 {(_lightningTargetMode ? "开启" : "关闭")}");
                 QueueRedraw();
             }
@@ -379,13 +379,13 @@ public partial class Main
         {
             if (!HasBuilding(PlayerTeamId, BuildingType.MissileSilo))
             {
-                ShowToast("🚀 导弹不可用：需建造导弹发射井", new Color(1f, 0.8f, 0.3f));
+                ShowToast(TrManager.Tr("input.missile_unavailable"), new Color(1f, 0.8f, 0.3f));
                 GameLog.Debug("[导弹] 不可用：需导弹发射井");
             }
             else if (_playerMissileCooldown > 0f)
             {
                 int sec = Mathf.CeilToInt(_playerMissileCooldown);
-                ShowToast($"🚀 导弹冷却中：{sec / 60}:{sec % 60:D2}", new Color(1f, 0.8f, 0.5f));
+                ShowToast(TrManager.Tr("input.missile_cooldown", sec / 60, sec % 60), new Color(1f, 0.8f, 0.5f));
                 GameLog.Debug($"[导弹] 冷却中：{sec}s");
             }
             else
@@ -394,7 +394,7 @@ public partial class Main
                 if (_missileTargetMode) _nukeTargetMode = false;
                 if (_missileTargetMode) _lightningTargetMode = false;
                 if (_missileTargetMode)
-                    ShowToast("🚀 巡航导弹已就绪：左键点击目标 / 右键取消", new Color(1f, 0.8f, 0.3f));
+                    ShowToast(TrManager.Tr("input.missile_ready"), new Color(1f, 0.8f, 0.3f));
                 GameLog.Debug($"[导弹] 目标选择模式 {(_missileTargetMode ? "开启" : "关闭")}");
                 QueueRedraw();
             }
@@ -471,7 +471,7 @@ public partial class Main
             img.SavePng(path);
             GameLog.Debug($"[截图] 已保存: {ProjectSettings.GlobalizePath(path)} 尺寸={img.GetSize()}");
         }
-        catch (Exception ex) { GameLog.Error($"[截图] 失败: {ex.Message}"); }
+        catch (Exception ex) { GameLog.Error(TrManager.Tr("log.screenshot_failed", ex.Message)); }
     }
 
     // ---------- 右键命令 ----------

@@ -519,24 +519,22 @@ public partial class Main
                         $"{TrManager.Tr("ui.ore_remaining", oreCount)}{nukeLine}{lightLine}{missileLine}\n" +
                         (string.IsNullOrEmpty(status) ? "" : TrManager.Tr("ui.status_star", status));
 
-        _hintLabel.Text = "WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点\n" +
-                          "Q 攻击移动 | X 停止 | R 维修建筑 | V 出售建筑(回收50%) | Ctrl+1~9 编队 | 1~9 选编队\n" +
-                          "选中建筑右键设集结点 | 选中受损建筑按R维修 | 选中建筑(非基地)按V出售\n" +
-                          "B 轻坦$" + GetUnitCost(UnitType.LightTank) + " | N 重坦$" + GetUnitCost(UnitType.HeavyTank) +
-                          " | M 炮兵$" + GetUnitCost(UnitType.Artillery) + " | H 矿车$" + GetUnitCost(UnitType.Harvester) + "\n" +
-                          "K 火箭炮$" + GetUnitCost(UnitType.RocketLauncher) + " | L 导弹车$" + GetUnitCost(UnitType.MissileTank) + " (需科技中心)\n" +
-                          "P 电站$" + GetBuildingCost(BuildingType.PowerPlant) + " | O 兵营$" + GetBuildingCost(BuildingType.Barracks) +
-                          " | I 车厂$" + GetBuildingCost(BuildingType.WarFactory) + " | T 科技$" + GetBuildingCost(BuildingType.TechCenter) + " (需前置建筑)\n" +
-                          "Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)\n" +
-                          "E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)\n" +
-                          "G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)\n" +
-                          "G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)\n" +
-                          "G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)\n" +
-                          "G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率\n" +
-                          "G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技\n" +
-                          "G6: J 查看邻接加成 | 同类建筑紧邻建造获得加成\n" +
-                          "G7: N 查看间谍任务 | 选中间谍右键敌方建筑执行任务\n" +
-                          "G8: K 查看占领状态 | 占领获$300+缴获加速+连锁+叛变风险";
+        _hintLabel.Text = TrManager.Tr("hint.controls_basic") + "\n" +
+                          TrManager.Tr("hint.controls_cmd") + "\n" +
+                          TrManager.Tr("hint.controls_building") + "\n" +
+                          TrManager.Tr("hint.units_line", GetUnitCost(UnitType.LightTank), GetUnitCost(UnitType.HeavyTank), GetUnitCost(UnitType.Artillery), GetUnitCost(UnitType.Harvester)) + "\n" +
+                          TrManager.Tr("hint.units_tech_line", GetUnitCost(UnitType.RocketLauncher), GetUnitCost(UnitType.MissileTank)) + "\n" +
+                          TrManager.Tr("hint.buildings_line", GetBuildingCost(BuildingType.PowerPlant), GetBuildingCost(BuildingType.Barracks), GetBuildingCost(BuildingType.WarFactory), GetBuildingCost(BuildingType.TechCenter)) + "\n" +
+                          TrManager.Tr("hint.super_weapon_keys") + "\n" +
+                          TrManager.Tr("hint.exp_system") + "\n" +
+                          TrManager.Tr("hint.tech_tree_keys") + "\n" +
+                          TrManager.Tr("hint.era_keys") + "\n" +
+                          TrManager.Tr("hint.card_keys") + "\n" +
+                          TrManager.Tr("hint.power_grid_keys") + "\n" +
+                          TrManager.Tr("hint.eureka_keys") + "\n" +
+                          TrManager.Tr("hint.adjacency_keys") + "\n" +
+                          TrManager.Tr("hint.spy_keys") + "\n" +
+                          TrManager.Tr("hint.capture_keys");
         if (_attackMoveMode)
             _hintLabel.Text = TrManager.Tr("ui.attack_move_mode");
         if (_nukeTargetMode)

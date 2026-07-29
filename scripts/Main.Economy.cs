@@ -136,6 +136,10 @@ public partial class Main
             UnitType.Submarine => HasBuilding(teamId, BuildingType.Shipyard),
             UnitType.AircraftCarrier => HasBuilding(teamId, BuildingType.Shipyard),
             UnitType.LandingCraft => HasBuilding(teamId, BuildingType.Shipyard),
+            UnitType.ApocalypseTank => HasBuilding(teamId, BuildingType.WarFactory) && HasBuilding(teamId, BuildingType.TechCenter),
+            UnitType.PrismTank => HasBuilding(teamId, BuildingType.WarFactory) && HasBuilding(teamId, BuildingType.TechCenter),
+            UnitType.KirovAirship => HasBuilding(teamId, BuildingType.Airfield) && HasBuilding(teamId, BuildingType.TechCenter),
+            UnitType.TeslaTrooper => HasBuilding(teamId, BuildingType.Barracks) && HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.RocketLauncher => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.MissileTank => HasBuilding(teamId, BuildingType.TechCenter),
             UnitType.ChiefEngineer => HasBuilding(teamId, BuildingType.TechCenter),
@@ -1029,6 +1033,10 @@ public partial class Main
             UnitType.Submarine => BuildingType.Shipyard,
             UnitType.AircraftCarrier => BuildingType.Shipyard,
             UnitType.LandingCraft => BuildingType.Shipyard,
+            UnitType.ApocalypseTank => BuildingType.WarFactory,
+            UnitType.PrismTank => BuildingType.WarFactory,
+            UnitType.KirovAirship => BuildingType.Airfield,
+            UnitType.TeslaTrooper => BuildingType.Barracks,
         UnitType.RocketLauncher => BuildingType.TechCenter,
         UnitType.MissileTank => BuildingType.TechCenter,
         _ => BuildingType.Base
@@ -1099,6 +1107,10 @@ public partial class Main
         UnitType.Submarine => ProductionType.Submarine,
         UnitType.AircraftCarrier => ProductionType.AircraftCarrier,
         UnitType.LandingCraft => ProductionType.LandingCraft,
+        UnitType.ApocalypseTank => ProductionType.ApocalypseTank,
+        UnitType.PrismTank => ProductionType.PrismTank,
+        UnitType.KirovAirship => ProductionType.KirovAirship,
+        UnitType.TeslaTrooper => ProductionType.TeslaTrooper,
         _ => ProductionType.LightTank
     };
 
@@ -1130,6 +1142,10 @@ public partial class Main
         ProductionType.Submarine => UnitType.Submarine,
         ProductionType.AircraftCarrier => UnitType.AircraftCarrier,
         ProductionType.LandingCraft => UnitType.LandingCraft,
+        ProductionType.ApocalypseTank => UnitType.ApocalypseTank,
+        ProductionType.PrismTank => UnitType.PrismTank,
+        ProductionType.KirovAirship => UnitType.KirovAirship,
+        ProductionType.TeslaTrooper => UnitType.TeslaTrooper,
         _ => UnitType.Default
     };
 

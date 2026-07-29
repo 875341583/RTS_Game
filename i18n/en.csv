@@ -126,6 +126,10 @@ build.destroyer,Destroyer
 build.submarine,Submarine
 build.carrier,Aircraft Carrier
 build.landing_craft,Landing Craft
+build.apocalypse_tank,Apocalypse Tank
+build.prism_tank,Prism Tank
+build.kirov_airship,Kirov Airship
+build.tesla_trooper,Tesla Trooper
 build.tech,Tech
 build.airfield_panel,Airfield
 build.nuke_silo_panel,Nuke Silo
@@ -184,6 +188,10 @@ build.desc_carrier,Sea base carrying 4 fighters
 build.desc_landing_craft,Amphibious transport 3 infantry
 build.desc_rocket_launcher,Splash damage, requires Tech
 build.desc_missile_tank,Super long range burst, requires Tech
+build.desc_apocalypse_tank,Heavy dual-cannon tank, anti-air+ground, needs WF+Tech
+build.desc_prism_tank,Long-range beam splash, needs WF+Tech
+build.desc_kirov_airship,Heavy air bomber, splash 120, needs Airfield+Tech
+build.desc_tesla_trooper,Electric infantry, splash 30, needs Barracks+Tech
 
 # === Build Panel Hints ===
 build.hint_place_mode,Placement Mode
@@ -701,3 +709,90 @@ unit.merge_sniper_tank,Sniper Tank
 unit.merge_spy_vehicle,Spy Vehicle
 unit.transport,Transport
 unit.transport_heli,Transport Heli
+unit.apocalypse_tank,Apocalypse Tank
+unit.prism_tank,Prism Tank
+unit.kirov_airship,Kirov Airship
+unit.tesla_trooper,Tesla Trooper
+# === i18n: hint.* ===
+hint.controls_basic,WASD move camera | Scroll zoom | Left-drag select | Right-click move/attack/rally
+hint.controls_cmd,Q attack-move | X stop | R repair building | V sell building (50% refund) | Ctrl+1~9 group | 1~9 select group
+hint.controls_building,Right-click selected building to set rally point | R to repair damaged building | V to sell building (not base)
+hint.units_line,B Light Tank ${0} | N Heavy Tank ${1} | M Artillery ${2} | H Harvester ${3}
+hint.units_tech_line,K Rocket Launcher ${0} | L Missile Tank ${1} (needs Tech Center)
+hint.buildings_line,P Power Plant ${0} | O Barracks ${1} | I War Factory ${2} | T Tech ${3} (needs prerequisites)
+hint.super_weapon_keys,Z Nuke (needs Silo) | C Lightning (needs Tower) | Shift+V Missile (needs Silo)
+hint.exp_system,E11: Units gain XP from combat→level up→random abilities (AP rounds/dual shot/scatter/reactive armor/self-repair/smoke/turbo/scout/frenzy/loot/toughness)
+hint.tech_tree_keys,G1: Tab opens Tech Tree | Number keys to research (Military/Economy/Defense branches)
+hint.era_keys,G2: Y opens Era panel | U to upgrade era (Stone→Bronze→Industrial→Information)
+hint.card_keys,G3: T view Tactical Cards | Auto-select card 5s after start (1/2/3)
+hint.power_grid_keys,G4: G view Power Grid | Buildings need to be within 280px of a Power Plant for full power
+hint.eureka_keys,G5: H view Eureka progress | Kills/gathering/building/destroying triggers free tech
+hint.adjacency_keys,G6: J view Adjacency Bonus | Same-type buildings adjacent gain bonuses
+hint.spy_keys,G7: N view Spy Missions | Select spy, right-click enemy building to execute
+hint.capture_keys,G8: K view Capture Status | Capture grants $300+production boost+chain+defection risk
+# === i18n: combat.* ===
+combat.our_side,Our forces
+combat.enemy_team,Enemy Team {0}
+combat.nuke_launched,☢ {0} nuke launched! Impact imminent...
+combat.lightning_charging,⚡ {0} Lightning Storm charging! About to strike...
+combat.nuke_hit,☢ {0} nuke detonated! Hit {1} units / {2} buildings
+combat.lightning_hit,⚡ {0} Lightning Storm released! Initial hits {1} enemy targets, lasting {2}s
+combat.building_attacked,⚠ {0} is under attack!
+# === i18n: spy.* (toast/recon) ===
+spy.toast_steal_tech,Spy stole: {0}
+spy.toast_ai_steal_tech,AI Team {0} spy stole tech
+spy.toast_no_tech,Spy: No tech to steal, $300 compensation
+spy.toast_sabotage_power,Spy sabotaged: {0} power down
+spy.toast_steal_money,Spy stole: ${0}
+spy.toast_sabotage_prod,Spy paralyzed: {0} production halted
+spy.recon_title,Recon: {0} (Team {1})
+spy.recon_hp,  HP: {0}/{1}
+spy.recon_power,  Power: +{0}/-{1}
+spy.recon_nearby,  Nearby enemy units: {0}
+# === i18n: game_state.* ===
+game_state.defeat,Defeat! Your base has been destroyed.
+game_state.victory,Victory! All enemy factions have been eliminated.
+game_state.difficulty_display,Difficulty: {0}
+game_state.restart_same_difficulty,Restart (same difficulty)
+game_state.return_to_menu,Return to Main Menu
+# === i18n: input.* ===
+input.nuke_unavailable,☢ Nuke unavailable: need to build Nuke Silo
+input.nuke_cooldown,☢ Nuke on cooldown: {0}:{1:D2}
+input.nuke_ready,☢ Nuke ready: left-click target / right-click to cancel
+input.lightning_unavailable,⚡ Lightning unavailable: need to build Lightning Tower
+input.lightning_cooldown,⚡ Lightning Storm on cooldown: {0}:{1:D2}
+input.lightning_ready,⚡ Lightning Storm ready: left-click target / right-click to cancel
+input.missile_unavailable,🚀 Missile unavailable: need to build Missile Silo
+input.missile_cooldown,🚀 Missile on cooldown: {0}:{1:D2}
+input.missile_ready,🚀 Cruise Missile ready: left-click target / right-click to cancel
+# === i18n: start.* ===
+start.objective,★ Objective: Destroy all enemy buildings and units to win!
+start.build_advice,★ Build order: Power Plant → Barracks → War Factory → Tech Center
+start.harvester,★ Harvesters auto-mine. Select base to produce more ($500)
+start.oilfield,★ E5 Oil Field: Combat units occupy after 4s, generates $8/s
+start.rare_mineral,★ E5 Rare Ore (purple): Harvester yield x2 | Land veins: widespread but low
+start.active_hint_dormant,★ Opponents: {0} active AI factions ({1} total, {2} dormant)
+start.active_hint_all,★ Opponents: {0} AI factions all active
+start.grace_hint,★ AI Grace Period: AI won't attack for first {0}s. Build up!
+start.attack_hint,★ Select units, right-click enemy building/unit to attack
+start.rally_repair_sell,★ Select building, right-click for rally | R repair | V sell
+start.nuke_hint,★ ☢ Build Tech Center then press Z to launch nuke (5min cooldown)
+start.lightning_hint,★ ⚡ Press C to release Lightning Storm (5s AoE / 4min cooldown)
+start.seed_hint,★ Map Seed: {0} (--seed={0} to reproduce this map)
+start.ai_grace_ended,⚠ AI Grace Period ended! Enemy is attacking!
+# === i18n: card.* ===
+card.select_panel_title,════ Tactical Card Selection ════
+# === i18n: log.* ===
+log.screenshot_failed,[Screenshot] Failed: {0}
+log.map_load_failed,[Map] Custom map load failed: {0}, falling back to seed generation
+# === i18n: saveload.* ===
+saveload.saved,Saved: {0}
+saveload.save_failed,Save failed!
+saveload.no_saves,No saves available
+saveload.load_corrupted,Load failed: data corrupted
+saveload.loaded,Loaded: {0}
+saveload.load_failed,Load failed!
+# === i18n: tech.branch_* ===
+tech.branch_military,Military
+tech.branch_economy,Economy
+tech.branch_defense,Defense

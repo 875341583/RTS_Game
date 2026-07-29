@@ -36,13 +36,13 @@
     "Turret": {
       "name": "机枪塔",
       "cost": 400,
-      "stats2d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 25, "isDefensive": true, "attackDamage": 18, "attackRange": 180, "attackCooldown": 0.6 },
+      "stats2d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 25, "isDefensive": true, "attackDamage": 12, "attackRange": 180, "attackCooldown": 0.8 },
       "stats3d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 20, "isDefensive": true, "attackDamage": 15, "attackRange": 12, "attackCooldown": 0.3 }
     },
     "AntiAirTurret": {
       "name": "防空炮",
       "cost": 600,
-      "stats2d": { "maxHealth": 350, "powerProvided": 0, "powerConsumed": 40, "isDefensive": true, "attackDamage": 30, "attackRange": 220, "attackCooldown": 1.0 },
+      "stats2d": { "maxHealth": 350, "powerProvided": 0, "powerConsumed": 40, "isDefensive": true, "attackDamage": 22, "attackRange": 220, "attackCooldown": 1.1 },
       "stats3d": { "maxHealth": 400, "powerProvided": 0, "powerConsumed": 30, "isDefensive": true, "attackDamage": 12, "attackRange": 18, "attackCooldown": 0.2 }
     },
     "RepairPad": {

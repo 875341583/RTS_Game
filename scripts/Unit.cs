@@ -7,7 +7,7 @@ namespace RTSGame;
 /// <summary>
 /// 兵种类型枚举。
 /// </summary>
-public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Harvester, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft, Default }
+public enum UnitType { LightTank, HeavyTank, Artillery, RocketLauncher, MissileTank, AntiAir, Harvester, Infantry, Engineer, Sapper, ChiefEngineer, Grenadier, Sniper, FlameInfantry, Transport, Hero, Spy, Thief, Fighter, Helicopter, RocketInfantry, Bomber, Scout, TransportHeli, Destroyer, Submarine, AircraftCarrier, LandingCraft, ApocalypseTank, PrismTank, KirovAirship, TeslaTrooper, Default }
 
 /// <summary>
 /// RTS 单位基类：支持选中和移动命令，带血量和简单攻击。
@@ -296,6 +296,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.Submarine => "submarine",
         UnitType.AircraftCarrier => "carrier",
         UnitType.LandingCraft => "landing_craft",
+        UnitType.ApocalypseTank => "heavy",
+        UnitType.PrismTank => "rocket",
+        UnitType.KirovAirship => "bomber",
+        UnitType.TeslaTrooper => "infantry",
         UnitType.Transport => "transport_vehicle",
         UnitType.Engineer => "engineer_vehicle",
         _ => "infantry"
@@ -410,6 +414,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.Submarine => _submarineHull!,
         UnitType.AircraftCarrier => _carrierHull!,
         UnitType.LandingCraft => _landingCraftHull!,
+        UnitType.ApocalypseTank => _hullHeavy!,
+        UnitType.PrismTank => _hullRocket!,
+        UnitType.KirovAirship => _bomberHull!,
+        UnitType.TeslaTrooper => _infantryHull!,
         _ => _harvesterHull!
     };
 
@@ -438,6 +446,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.Submarine => null!,
         UnitType.AircraftCarrier => null!,
         UnitType.LandingCraft => null!,
+        UnitType.ApocalypseTank => _turretHeavy!,
+        UnitType.PrismTank => _turretRocket!,
+        UnitType.KirovAirship => null!,
+        UnitType.TeslaTrooper => null!,
         _ => null!
     };
 
@@ -505,6 +517,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.Spy => true,
         UnitType.Thief => true,
         UnitType.RocketInfantry => true,  // E7
+        UnitType.TeslaTrooper => true,
         _ => false,
     };
 
@@ -1763,6 +1776,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.Submarine => TerrainUnitCategory.Naval,
         UnitType.AircraftCarrier => TerrainUnitCategory.Naval,
         UnitType.LandingCraft => TerrainUnitCategory.Naval,
+        UnitType.ApocalypseTank => TerrainUnitCategory.HeavyVehicle,
+        UnitType.PrismTank => TerrainUnitCategory.HeavyVehicle,
+        UnitType.KirovAirship => TerrainUnitCategory.HeavyVehicle,
+        UnitType.TeslaTrooper => TerrainUnitCategory.Infantry,
         _ => TerrainUnitCategory.HeavyVehicle,
     };
 

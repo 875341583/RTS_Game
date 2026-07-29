@@ -337,7 +337,7 @@ public partial class Main : Node2D
             }
             else
             {
-                GameLog.Error($"[Map] 自定义地图加载失败: {_customMapPath}，回退到种子生成");
+                GameLog.Error(TrManager.Tr("log.map_load_failed", _customMapPath));
             }
         }
 
@@ -518,26 +518,26 @@ public partial class Main : Node2D
         // Q6：开局目标提示（画面内覆盖）
         _startOverlayAge = 0f;
         string graceHint = Unit.AiGraceRemaining > 0f
-            ? $"★ AI保护期：前{(int)Unit.AiGraceRemaining}秒AI不会主动进攻，抓紧发展！\n"
+            ? TrManager.Tr("start.grace_hint", (int)Unit.AiGraceRemaining) + "\n"
             : "";
         int dormantCount = AiTeamCount - _activeAiCount;
         string activeHint = dormantCount > 0
-            ? $"★ 对手：{_activeAiCount}个活跃AI阵营（共{AiTeamCount}个，{dormantCount}个休眠不主动进攻）\n"
-            : $"★ 对手：{_activeAiCount}个AI阵营全部活跃\n";
+            ? TrManager.Tr("start.active_hint_dormant", _activeAiCount, AiTeamCount, dormantCount) + "\n"
+            : TrManager.Tr("start.active_hint_all", _activeAiCount) + "\n";
         _startOverlay = new Label
         {
-            Text = "★ 游戏目标：摧毁敌方所有建筑和单位即获胜！\n" +
-                   "★ 建造建议：电站→兵营→车厂→科技中心\n" +
-                   "★ 矿车自动采矿，选中基地可生产更多矿车($500)\n" +
-                   "★ E5 油田：战斗单位停留4秒占领，占领后每秒产$8\n" +
-                   "★ E5 稀有矿(紫色)：矿车采集收益×2 | 陆地矿脉：散布广储值低\n" +
+            Text = TrManager.Tr("start.objective") + "\n" +
+                   TrManager.Tr("start.build_advice") + "\n" +
+                   TrManager.Tr("start.harvester") + "\n" +
+                   TrManager.Tr("start.oilfield") + "\n" +
+                   TrManager.Tr("start.rare_mineral") + "\n" +
                    activeHint +
                    graceHint +
-                   "★ 选中单位右键点敌方建筑/单位攻击\n" +
-                   "★ 选中建筑右键设集结点 | R维修 | V出售\n" +
-                   "★ ☢ 建造科技中心后按 Z 可发射核弹（5分钟冷却）\n" +
-                   "★ ⚡ 按 C 释放闪电风暴（持续5秒范围伤害/4分钟冷却）\n" +
-                   $"★ 地图种子: {_mapSeed}（--seed={_mapSeed} 可复现本张地图）",
+                   TrManager.Tr("start.attack_hint") + "\n" +
+                   TrManager.Tr("start.rally_repair_sell") + "\n" +
+                   TrManager.Tr("start.nuke_hint") + "\n" +
+                   TrManager.Tr("start.lightning_hint") + "\n" +
+                   TrManager.Tr("start.seed_hint", _mapSeed),
         };
         _startOverlay.HorizontalAlignment = HorizontalAlignment.Center;
         _startOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
@@ -615,7 +615,7 @@ public partial class Main : Node2D
         _cardLabel.Modulate = new Color(1f, 0.95f, 0.8f);
         _cardLabel.AddThemeFontSizeOverride("font_size", 20);
         _cardLabel.Visible = true;
-        _cardLabel.Text = "════ 战术卡选择 ════";
+        _cardLabel.Text = TrManager.Tr("card.select_panel_title");
         _cardLabel.HorizontalAlignment = HorizontalAlignment.Center;
         _cardPanel.AddChild(_cardLabel);
 
@@ -776,7 +776,7 @@ public partial class Main : Node2D
                 if (!_aiGraceEndedNotified)
                 {
                     _aiGraceEndedNotified = true;
-                    ShowToast("⚠ AI保护期结束！敌方开始进攻！", new Color(1f, 0.5f, 0.3f));
+                    ShowToast(TrManager.Tr("start.ai_grace_ended"), new Color(1f, 0.5f, 0.3f));
                 }
             }
         }
@@ -877,6 +877,16 @@ public partial class Main : Node2D
             TrySpawnUnit(UnitType.Scout);
         if (Input.IsKeyPressed(Key.H) && Input.IsKeyPressed(Key.Shift))
             TrySpawnUnit(UnitType.TransportHeli);
+
+        // E11：RA2标志单位热键 Shift+A(天启坦克) / Shift+P(光棱坦克) / Shift+O(基洛夫空艇) / Shift+L(磁暴步兵)
+        if (Input.IsKeyPressed(Key.A) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.ApocalypseTank);
+        if (Input.IsKeyPressed(Key.P) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.PrismTank);
+        if (Input.IsKeyPressed(Key.O) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.KirovAirship);
+        if (Input.IsKeyPressed(Key.L) && Input.IsKeyPressed(Key.Shift))
+            TrySpawnUnit(UnitType.TeslaTrooper);
         } // end if (!AnyPanelOpen())
 
         // E9：海军热键 Shift+1(驱逐舰) / Shift+2(潜艇) / Shift+3(航母) / Shift+4(登陆艇)

@@ -58,7 +58,7 @@ public partial class Main
                 : TrManager.Tr("tech.has_no")));
         sb.AppendLine();
 
-        string[] branches = { "军事", "经济", "防御" };
+        string[] branches = { TrManager.Tr("tech.branch_military"), TrManager.Tr("tech.branch_economy"), TrManager.Tr("tech.branch_defense") };
         int techIdx = 0;
         foreach (var branch in branches)
         {
@@ -1113,7 +1113,7 @@ public partial class Main
         if (_eureka[teamId] == null) return;
         if (!_eureka[teamId].OnDestroy()) return;
         // 击毁建筑触发随机分支尤里卡
-        string[] branches = { "军事", "经济", "防御" };
+        string[] branches = { TrManager.Tr("tech.branch_military"), TrManager.Tr("tech.branch_economy"), TrManager.Tr("tech.branch_defense") };
         TriggerEureka(teamId, branches[GD.RandRange(0, 2)], TrManager.Tr("eureka.reason_destroy"));
     }
 

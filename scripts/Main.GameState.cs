@@ -11,6 +11,7 @@ namespace RTSGame;
 /// </summary>
 public partial class Main
 {
+    private bool _gameWon;
 
     /// <summary>P5：应用难度配置到游戏参数。P2-4: 从DifficultyConfig数据驱动加载。</summary>
     private void ApplyDifficultyConfig()
@@ -45,7 +46,8 @@ public partial class Main
         if (playerBuildings == 0 && playerUnits == 0)
         {
             _gameOver = true;
-            _gameResult = "失败！你的基地被摧毁了。";
+            _gameWon = false;
+            _gameResult = TrManager.Tr("game_state.defeat");
             _gameOverDelay = 2f;
             return;
         }
@@ -63,7 +65,8 @@ public partial class Main
         if (!anyAiAlive)
         {
             _gameOver = true;
-            _gameResult = "胜利！所有敌方阵营已被全部消灭。";
+            _gameWon = true;
+            _gameResult = TrManager.Tr("game_state.victory");
             _gameOverDelay = 2f;
         }
     }
@@ -72,7 +75,7 @@ public partial class Main
     private void ShowGameOverUI()
     {
         // 阶段12-C：游戏结束音效 + P1-6: BGM切换
-        bool win = _gameResult.StartsWith("胜利");
+        bool win = _gameWon;
         _audio?.PlaySfxForce(win ? AudioManager.Sfx.NotifyVictory : AudioManager.Sfx.NotifyDefeat);
         BgmManager.SwitchScene(win ? BgmManager.BgmScene.Victory : BgmManager.BgmScene.Defeat);
 
@@ -101,7 +104,7 @@ public partial class Main
         vbox.AddChild(title);
 
         var diffLabel = new Label();
-        diffLabel.Text = $"难度：{_difficulty}";
+        diffLabel.Text = TrManager.Tr("game_state.difficulty_display", _difficulty);
         diffLabel.AddThemeFontSizeOverride("font_size", 18);
         diffLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
         diffLabel.HorizontalAlignment = HorizontalAlignment.Center;
@@ -111,13 +114,13 @@ public partial class Main
         vbox.AddChild(spacer);
 
         var restartBtn = new Button();
-        restartBtn.Text = "重新开始（同难度）";
+        restartBtn.Text = TrManager.Tr("game_state.restart_same_difficulty");
         restartBtn.CustomMinimumSize = new Vector2(0, 44);
         restartBtn.Pressed += () => CallDeferred(nameof(RestartGame));
         vbox.AddChild(restartBtn);
 
         var menuBtn = new Button();
-        menuBtn.Text = "返回主菜单";
+        menuBtn.Text = TrManager.Tr("game_state.return_to_menu");
         menuBtn.CustomMinimumSize = new Vector2(0, 44);
         menuBtn.Pressed += () => CallDeferred(nameof(ReturnToMenu));
         vbox.AddChild(menuBtn);

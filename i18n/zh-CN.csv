@@ -128,6 +128,10 @@ build.destroyer,驱逐舰
 build.submarine,潜艇
 build.carrier,航母
 build.landing_craft,登陆艇
+build.apocalypse_tank,天启坦克
+build.prism_tank,光棱坦克
+build.kirov_airship,基洛夫空艇
+build.tesla_trooper,磁暴步兵
 build.tech,科技
 build.airfield_panel,机场
 build.nuke_silo_panel,核弹井
@@ -186,6 +190,10 @@ build.desc_carrier,搭载4架战斗机的海上基地
 build.desc_landing_craft,水面运兵3名，两栖登陆
 build.desc_rocket_launcher,溅射伤害，需科技
 build.desc_missile_tank,超远程爆发，需科技
+build.desc_apocalypse_tank,重型对空对地双管坦克，需车厂+科技
+build.desc_prism_tank,远程光束溅射，需车厂+科技
+build.desc_kirov_airship,空中重型轰炸，溅射120，需机场+科技
+build.desc_tesla_trooper,电击步兵，溅射30，需兵营+科技
 
 # === 建造面板提示 ===
 build.hint_place_mode,放置模式
@@ -703,3 +711,90 @@ unit.merge_sniper_tank,狙击战车
 unit.merge_spy_vehicle,间谍车
 unit.transport,运输车
 unit.transport_heli,运输直升机
+unit.apocalypse_tank,天启坦克
+unit.prism_tank,光棱坦克
+unit.kirov_airship,基洛夫空艇
+unit.tesla_trooper,磁暴步兵
+# === i18n: hint.* ===
+hint.controls_basic,WASD 移动相机 | 滚轮 缩放 | 左键拖框 选择 | 右键 移动/攻击/集结点
+hint.controls_cmd,Q 攻击移动 | X 停止 | R 维修建筑 | V 出售建筑(回收50%) | Ctrl+1~9 编队 | 1~9 选编队
+hint.controls_building,选中建筑右键设集结点 | 选中受损建筑按R维修 | 选中建筑(非基地)按V出售
+hint.units_line,B 轻坦${0} | N 重坦${1} | M 炮兵${2} | H 矿车${3}
+hint.units_tech_line,K 火箭炮${0} | L 导弹车${1} (需科技中心)
+hint.buildings_line,P 电站${0} | O 兵营${1} | I 车厂${2} | T 科技${3} (需前置建筑)
+hint.super_weapon_keys,Z 核弹(需核弹井) | C 闪电(需闪电塔) | Shift+V 导弹(需导弹井)
+hint.exp_system,E11: 单位战斗获取经验→升级→随机能力(穿甲弹/双发/散射/反应装甲/自修复/烟幕/涡轮/侦察/狂热/掠夺/坚韧)
+hint.tech_tree_keys,G1: Tab 打开科技树面板 | 数字键研究科技 (军事/经济/防御三分支)
+hint.era_keys,G2: Y 打开时代面板 | U 升级时代 (石器→青铜→工业→信息)
+hint.card_keys,G3: T 查看战术卡 | 开局5秒后自动选卡(1/2/3)
+hint.power_grid_keys,G4: G 查看电网分区 | 建筑需在电站280px范围内才有满功率
+hint.eureka_keys,G5: H 查看尤里卡进度 | 击杀/采集/建造/摧毁触发免费科技
+hint.adjacency_keys,G6: J 查看邻接加成 | 同类建筑紧邻建造获得加成
+hint.spy_keys,G7: N 查看间谍任务 | 选中间谍右键敌方建筑执行任务
+hint.capture_keys,G8: K 查看占领状态 | 占领获$300+缴获加速+连锁+叛变风险
+# === i18n: combat.* ===
+combat.our_side,我方
+combat.enemy_team,敌方 Team {0}
+combat.nuke_launched,☢ {0}核弹已发射！即将命中目标...
+combat.lightning_charging,⚡ {0}闪电风暴蓄能中！即将劈下...
+combat.nuke_hit,☢ {0}释放核弹！命中 {1} 单位 / {2} 建筑
+combat.lightning_hit,⚡ {0}释放闪电风暴！初始命中 {1} 敌方目标，持续 {2}秒
+combat.building_attacked,⚠ {0}正在遭受攻击！
+# === i18n: spy.* (toast/recon) ===
+spy.toast_steal_tech,间谍窃取: {0}
+spy.toast_ai_steal_tech,AI Team {0} 间谍窃取科技
+spy.toast_no_tech,间谍: 无可窃取科技，$300补偿
+spy.toast_sabotage_power,间谍破坏: {0}断电
+spy.toast_steal_money,间谍窃取: ${0}
+spy.toast_sabotage_prod,间谍瘫痪: {0}停工
+spy.recon_title,侦察: {0} (Team {1})
+spy.recon_hp,  血量: {0}/{1}
+spy.recon_power,  电力: +{0}/-{1}
+spy.recon_nearby,  附近敌方单位: {0}
+# === i18n: game_state.* ===
+game_state.defeat,失败！你的基地被摧毁了。
+game_state.victory,胜利！所有敌方阵营已被全部消灭。
+game_state.difficulty_display,难度：{0}
+game_state.restart_same_difficulty,重新开始（同难度）
+game_state.return_to_menu,返回主菜单
+# === i18n: input.* ===
+input.nuke_unavailable,☢ 核弹不可用：需建造核弹发射井
+input.nuke_cooldown,☢ 核弹冷却中：{0}:{1:D2}
+input.nuke_ready,☢ 核弹已就绪：左键点击目标 / 右键取消
+input.lightning_unavailable,⚡ 闪电不可用：需建造闪电风暴塔
+input.lightning_cooldown,⚡ 闪电风暴冷却中：{0}:{1:D2}
+input.lightning_ready,⚡ 闪电风暴已就绪：左键点击目标 / 右键取消
+input.missile_unavailable,🚀 导弹不可用：需建造导弹发射井
+input.missile_cooldown,🚀 导弹冷却中：{0}:{1:D2}
+input.missile_ready,🚀 巡航导弹已就绪：左键点击目标 / 右键取消
+# === i18n: start.* ===
+start.objective,★ 游戏目标：摧毁敌方所有建筑和单位即获胜！
+start.build_advice,★ 建造建议：电站→兵营→车厂→科技中心
+start.harvester,★ 矿车自动采矿，选中基地可生产更多矿车($500)
+start.oilfield,★ E5 油田：战斗单位停留4秒占领，占领后每秒产$8
+start.rare_mineral,★ E5 稀有矿(紫色)：矿车采集收益×2 | 陆地矿脉：散布广储值低
+start.active_hint_dormant,★ 对手：{0}个活跃AI阵营（共{1}个，{2}个休眠不主动进攻）
+start.active_hint_all,★ 对手：{0}个AI阵营全部活跃
+start.grace_hint,★ AI保护期：前{0}秒AI不会主动进攻，抓紧发展！
+start.attack_hint,★ 选中单位右键点敌方建筑/单位攻击
+start.rally_repair_sell,★ 选中建筑右键设集结点 | R维修 | V出售
+start.nuke_hint,★ ☢ 建造科技中心后按 Z 可发射核弹（5分钟冷却）
+start.lightning_hint,★ ⚡ 按 C 释放闪电风暴（持续5秒范围伤害/4分钟冷却）
+start.seed_hint,★ 地图种子: {0}（--seed={0} 可复现本张地图）
+start.ai_grace_ended,⚠ AI保护期结束！敌方开始进攻！
+# === i18n: card.* ===
+card.select_panel_title,════ 战术卡选择 ════
+# === i18n: log.* ===
+log.screenshot_failed,[截图] 失败: {0}
+log.map_load_failed,[Map] 自定义地图加载失败: {0}，回退到种子生成
+# === i18n: saveload.* ===
+saveload.saved,已存档: {0}
+saveload.save_failed,存档失败！
+saveload.no_saves,没有可用存档
+saveload.load_corrupted,读档失败：数据损坏
+saveload.loaded,已读档: {0}
+saveload.load_failed,读档失败！
+# === i18n: tech.branch_* ===
+tech.branch_military,军事
+tech.branch_economy,经济
+tech.branch_defense,防御

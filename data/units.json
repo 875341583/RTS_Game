@@ -46,8 +46,8 @@
     },
     "Infantry": {
       "name": "步兵",
-      "cost": 100,
-      "stats2d": { "maxHealth": 35, "moveSpeed": 90, "attackDamage": 6, "attackRange": 100, "attackCooldown": 0.6, "aggroRange": 200 },
+      "cost": 150,
+      "stats2d": { "maxHealth": 35, "moveSpeed": 90, "attackDamage": 5, "attackRange": 100, "attackCooldown": 0.6, "aggroRange": 200 },
       "stats3d": { "maxHealth": 50, "moveSpeed": 8, "attackDamage": 8, "attackRange": 8, "attackCooldown": 0.5 }
     },
     "Engineer": {
@@ -58,13 +58,13 @@
     },
     "Sapper": {
       "name": "工兵",
-      "cost": 150,
+      "cost": 120,
       "stats2d": { "maxHealth": 40, "moveSpeed": 95, "attackDamage": 3, "attackRange": 60, "attackCooldown": 0.8, "aggroRange": 100 },
       "stats3d": { "maxHealth": 50, "moveSpeed": 8, "attackDamage": 3, "attackRange": 3, "attackCooldown": 2.0, "terrainModType": "Flatten" }
     },
     "ChiefEngineer": {
       "name": "高级工程师",
-      "cost": 400,
+      "cost": 300,
       "stats2d": { "maxHealth": 60, "moveSpeed": 100, "attackDamage": 5, "attackRange": 80, "attackCooldown": 0.7, "aggroRange": 120 },
       "stats3d": { "maxHealth": 70, "moveSpeed": 9, "attackDamage": 5, "attackRange": 5, "attackCooldown": 1.5, "terrainModType": "Flatten" }
     },
@@ -76,13 +76,13 @@
     },
     "Sniper": {
       "name": "狙击手",
-      "cost": 200,
+      "cost": 300,
       "stats2d": { "maxHealth": 40, "moveSpeed": 80, "attackDamage": 45, "attackRange": 350, "attackCooldown": 2.5, "minAttackRange": 80, "aggroRange": 380 },
       "stats3d": { "maxHealth": 45, "moveSpeed": 8, "attackDamage": 30, "attackRange": 18, "attackCooldown": 2.0 }
     },
     "FlameInfantry": {
       "name": "喷火兵",
-      "cost": 180,
+      "cost": 250,
       "stats2d": { "maxHealth": 50, "moveSpeed": 85, "attackDamage": 8, "attackRange": 80, "attackCooldown": 0.5, "splashRadius": 40, "aggroRange": 120 },
       "stats3d": { "maxHealth": 60, "moveSpeed": 8, "attackDamage": 12, "attackRange": 6, "attackCooldown": 0.3, "splashRadius": 1.5 }
     },
@@ -94,8 +94,8 @@
     },
     "Hero": {
       "name": "英雄",
-      "cost": 600,
-      "stats2d": { "maxHealth": 200, "moveSpeed": 160, "attackDamage": 35, "attackRange": 160, "attackCooldown": 0.6, "aggroRange": 300, "autoDefend": true, "isHero": true },
+      "cost": 800,
+      "stats2d": { "maxHealth": 200, "moveSpeed": 160, "attackDamage": 30, "attackRange": 160, "attackCooldown": 0.6, "aggroRange": 300, "autoDefend": true, "isHero": true },
       "stats3d": { "maxHealth": 200, "moveSpeed": 10, "attackDamage": 25, "attackRange": 10, "attackCooldown": 0.5, "isHero": true }
     },
     "Spy": {
@@ -106,7 +106,7 @@
     },
     "Thief": {
       "name": "窃贼",
-      "cost": 300,
+      "cost": 250,
       "stats2d": { "maxHealth": 40, "moveSpeed": 130, "attackDamage": 5, "attackRange": 60, "attackCooldown": 0.8, "aggroRange": 100 },
       "stats3d": { "maxHealth": 45, "moveSpeed": 9, "attackDamage": 3, "attackRange": 3, "attackCooldown": 2.0 }
     },
@@ -131,7 +131,7 @@
     "Bomber": {
       "name": "轰炸机",
       "cost": 800,
-      "stats2d": { "maxHealth": 100, "moveSpeed": 180, "attackDamage": 50, "attackRange": 250, "attackCooldown": 3.0, "splashRadius": 100, "aggroRange": 320, "autoDefend": true, "isAirUnit": true },
+      "stats2d": { "maxHealth": 100, "moveSpeed": 180, "attackDamage": 50, "attackRange": 250, "attackCooldown": 2.8, "splashRadius": 100, "aggroRange": 320, "autoDefend": true, "isAirUnit": true },
       "stats3d": { "maxHealth": 120, "moveSpeed": 20, "attackDamage": 50, "attackRange": 6, "attackCooldown": 3.0, "isAirUnit": true, "splashRadius": 5 }
     },
     "Scout": {
@@ -169,6 +169,30 @@
       "cost": 400,
       "stats2d": { "maxHealth": 120, "moveSpeed": 100, "attackDamage": 0, "attackRange": 0, "attackCooldown": 0, "aggroRange": 0, "autoDefend": false, "maxPassengers": 3 },
       "stats3d": { "maxHealth": 120, "moveSpeed": 7, "attackDamage": 5, "attackRange": 5, "attackCooldown": 2.0, "maxPassengers": 4 }
+    },
+    "ApocalypseTank": {
+      "name": "天启坦克",
+      "cost": 1500,
+      "stats2d": { "maxHealth": 400, "moveSpeed": 120, "attackDamage": 80, "attackRange": 180, "attackCooldown": 1.8, "aggroRange": 300, "canAttackAir": true },
+      "stats3d": { "maxHealth": 400, "moveSpeed": 7, "attackDamage": 60, "attackRange": 14, "attackCooldown": 1.5, "canAttackAir": true }
+    },
+    "PrismTank": {
+      "name": "光棱坦克",
+      "cost": 1200,
+      "stats2d": { "maxHealth": 150, "moveSpeed": 140, "attackDamage": 60, "attackRange": 320, "attackCooldown": 2.0, "aggroRange": 350, "splashRadius": 50 },
+      "stats3d": { "maxHealth": 150, "moveSpeed": 9, "attackDamage": 45, "attackRange": 22, "attackCooldown": 1.5, "splashRadius": 4 }
+    },
+    "KirovAirship": {
+      "name": "基洛夫空艇",
+      "cost": 1500,
+      "stats2d": { "maxHealth": 300, "moveSpeed": 80, "attackDamage": 120, "attackRange": 60, "attackCooldown": 3.0, "splashRadius": 120, "aggroRange": 250, "autoDefend": true, "isAirUnit": true },
+      "stats3d": { "maxHealth": 300, "moveSpeed": 6, "attackDamage": 100, "attackRange": 5, "attackCooldown": 3.0, "isAirUnit": true, "splashRadius": 8 }
+    },
+    "TeslaTrooper": {
+      "name": "磁暴步兵",
+      "cost": 500,
+      "stats2d": { "maxHealth": 80, "moveSpeed": 85, "attackDamage": 25, "attackRange": 120, "attackCooldown": 1.2, "aggroRange": 180, "splashRadius": 30 },
+      "stats3d": { "maxHealth": 100, "moveSpeed": 7, "attackDamage": 20, "attackRange": 8, "attackCooldown": 1.0, "splashRadius": 2 }
     }
   }
 }

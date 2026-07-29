@@ -17,7 +17,8 @@
         "Harvester", "Infantry", "Engineer", "Grenadier", "Sniper", "FlameInfantry",
         "Transport", "Hero", "Spy", "Thief",
         "Fighter", "Helicopter", "RocketInfantry", "Bomber", "Scout", "TransportHeli",
-        "Destroyer", "Submarine", "AircraftCarrier", "LandingCraft"
+        "Destroyer", "Submarine", "AircraftCarrier", "LandingCraft",
+        "ApocalypseTank", "PrismTank", "KirovAirship", "TeslaTrooper"
       ],
       "availableBuildings": [
         "PowerPlant", "Barracks", "WarFactory", "TechCenter",
@@ -41,7 +42,8 @@
         "Harvester", "Infantry", "Engineer", "Sapper", "ChiefEngineer", "FlameInfantry",
         "Transport", "Hero", "Thief",
         "Helicopter",
-        "Destroyer", "LandingCraft"
+        "Destroyer", "LandingCraft",
+        "ApocalypseTank", "TeslaTrooper"
       ],
       "availableBuildings": [
         "PowerPlant", "Barracks", "WarFactory", "TechCenter",
@@ -65,7 +67,8 @@
         "Harvester", "Infantry", "Engineer", "Sapper", "Grenadier", "Sniper",
         "Transport", "Hero", "Spy", "Thief",
         "Helicopter", "Scout", "TransportHeli",
-        "Submarine", "LandingCraft"
+        "Submarine", "LandingCraft",
+        "KirovAirship"
       ],
       "availableBuildings": [
         "PowerPlant", "Barracks", "WarFactory", "TechCenter",

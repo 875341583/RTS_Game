@@ -232,14 +232,18 @@ public static class EraSystem
                 && type != UnitType.Fighter && type != UnitType.Helicopter && type != UnitType.RocketInfantry
                 && type != UnitType.Bomber && type != UnitType.Scout && type != UnitType.TransportHeli
                 && type != UnitType.Destroyer && type != UnitType.Submarine && type != UnitType.AircraftCarrier
-                && type != UnitType.LandingCraft;
+                && type != UnitType.LandingCraft
+                && type != UnitType.ApocalypseTank && type != UnitType.PrismTank
+                && type != UnitType.KirovAirship && type != UnitType.TeslaTrooper;
         }
         // 工业时代：+火箭炮/导弹车/总工程师/空军系列/火箭兵
         if (era == Era.Industrial)
         {
             return type != UnitType.Hero && type != UnitType.Spy
                 && type != UnitType.Destroyer && type != UnitType.Submarine && type != UnitType.AircraftCarrier
-                && type != UnitType.LandingCraft;
+                && type != UnitType.LandingCraft
+                && type != UnitType.ApocalypseTank && type != UnitType.PrismTank
+                && type != UnitType.KirovAirship;
         }
         // 信息时代：全部解锁
         return true;

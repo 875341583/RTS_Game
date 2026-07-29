@@ -210,12 +210,12 @@ public partial class Main
             GetSaveDir();
             string path = $"{GetSaveDir()}/{MakeTimestampSaveName()}";
             SaveLoadSystem.SaveGame(this, path);
-            ShowToast($"已存档: {System.IO.Path.GetFileName(path)}", new Color(0.4f, 1.0f, 0.4f));
+            ShowToast(TrManager.Tr("saveload.saved", System.IO.Path.GetFileName(path)), new Color(0.4f, 1.0f, 0.4f));
         }
         catch (Exception ex)
         {
             GameLog.Error($"[SaveLoad] 快速存档失败: {ex.Message}");
-            ShowToast("存档失败！", new Color(1.0f, 0.3f, 0.3f));
+            ShowToast(TrManager.Tr("saveload.save_failed"), new Color(1.0f, 0.3f, 0.3f));
         }
     }
 
@@ -227,7 +227,7 @@ public partial class Main
             var files = ListSaveFiles();
             if (files.Length == 0)
             {
-                ShowToast("没有可用存档", new Color(1.0f, 0.8f, 0.3f));
+                ShowToast(TrManager.Tr("saveload.no_saves"), new Color(1.0f, 0.8f, 0.3f));
                 GameLog.Debug("[SaveLoad] 无存档可用");
                 return;
             }
@@ -235,16 +235,16 @@ public partial class Main
             var data = SaveLoadSystem.LoadGame(path);
             if (data == null)
             {
-                ShowToast("读档失败：数据损坏", new Color(1.0f, 0.3f, 0.3f));
+                ShowToast(TrManager.Tr("saveload.load_corrupted"), new Color(1.0f, 0.3f, 0.3f));
                 return;
             }
             ApplyLoadData(data);
-            ShowToast($"已读档: {files[0]}", new Color(0.4f, 1.0f, 0.4f));
+            ShowToast(TrManager.Tr("saveload.loaded", files[0]), new Color(0.4f, 1.0f, 0.4f));
         }
         catch (Exception ex)
         {
             GameLog.Error($"[SaveLoad] 快速读档失败: {ex.Message}");
-            ShowToast("读档失败！", new Color(1.0f, 0.3f, 0.3f));
+            ShowToast(TrManager.Tr("saveload.load_failed"), new Color(1.0f, 0.3f, 0.3f));
         }
     }
 

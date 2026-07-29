@@ -89,6 +89,8 @@ public partial class BuildPanel : Control
     private static Texture2D? _iDestroyer, _iSubmarine, _iCarrier, _iLandingCraft, _iShipyard;
     // E10：超武建筑图标
     private static Texture2D? _iNukeSilo, _iLightningTower, _iMissileSilo;
+    // RA2标志单位图标（复用现有素材）
+    private static Texture2D? _iApocalypseTank, _iPrismTank, _iKirovAirship, _iTeslaTrooper;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -237,6 +239,11 @@ public partial class BuildPanel : Control
         AddItem(TrManager.Tr("build.submarine"),    GameData.GetUnitCost(UnitType.Submarine),  _iSubmarine,  false, BuildingType.Shipyard, UnitType.Submarine,      false, BuildTab.Vehicles);
         AddItem(TrManager.Tr("build.carrier"),   GameData.GetUnitCost(UnitType.AircraftCarrier), _iCarrier,    false, BuildingType.Shipyard, UnitType.AircraftCarrier, false, BuildTab.Vehicles);
         AddItem(TrManager.Tr("build.landing_craft"),  GameData.GetUnitCost(UnitType.LandingCraft), _iLandingCraft, false, BuildingType.Shipyard, UnitType.LandingCraft,  false, BuildTab.Vehicles);
+        // RA2标志单位
+        AddItem(TrManager.Tr("build.apocalypse_tank"), GameData.GetUnitCost(UnitType.ApocalypseTank), _iApocalypseTank, false, BuildingType.TechCenter, UnitType.ApocalypseTank, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.prism_tank"), GameData.GetUnitCost(UnitType.PrismTank), _iPrismTank, false, BuildingType.TechCenter, UnitType.PrismTank, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.kirov_airship"), GameData.GetUnitCost(UnitType.KirovAirship), _iKirovAirship, false, BuildingType.TechCenter, UnitType.KirovAirship, false, BuildTab.Vehicles);
+        AddItem(TrManager.Tr("build.tesla_trooper"), GameData.GetUnitCost(UnitType.TeslaTrooper), _iTeslaTrooper, false, BuildingType.TechCenter, UnitType.TeslaTrooper, false, BuildTab.Infantry);
     }
 
     private void AddItem(string name, int cost, Texture2D? icon, bool isBuilding, BuildingType bt, UnitType ut, bool harv, BuildTab tab)
@@ -389,8 +396,8 @@ public partial class BuildPanel : Control
             }
             else if (it.IsHarvester)
             {
-                if (!_hasBase) { it.IsLocked = true; it.LockReason = "需要建造厂"; }
-                else if (_unitCount >= _unitCap) { it.IsLocked = true; it.LockReason = "单位已满"; }
+                if (!_hasBase) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_base"); }
+                else if (_unitCount >= _unitCap) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_unit_full"); }
             }
             else
             {
@@ -399,7 +406,7 @@ public partial class BuildPanel : Control
 
             // 资金不足也算锁定原因（但不置灰整块，仅成本变红）
             if (!it.CanAfford && string.IsNullOrEmpty(it.LockReason))
-                it.LockReason = "资金不足";
+                it.LockReason = TrManager.Tr("build.lock_money_low");
         }
 
         RefreshVisuals();
@@ -433,66 +440,66 @@ public partial class BuildPanel : Control
         switch (it.BType)
         {
             case BuildingType.PowerPlant:
-                if (!_hasBase) { it.IsLocked = true; it.LockReason = "需要建造厂"; }
+                if (!_hasBase) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_base"); }
                 break;
             case BuildingType.Barracks:
-                if (!_hasPower) { it.IsLocked = true; it.LockReason = "需要电站"; }
-                else if (_playerTechLevel < 1) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
+                if (!_hasPower) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_power"); }
+                else if (_playerTechLevel < 1) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_difficulty"); }
                 break;
             case BuildingType.WarFactory:
-                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
-                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
+                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_barracks"); }
+                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_difficulty"); }
                 break;
             case BuildingType.TechCenter:
-                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
-                else if (_playerTechLevel < 3) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_warfactory"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
+                else if (_playerTechLevel < 3) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_difficulty"); }
                 break;
             // 阶段12-A1+A2 新增建筑
             case BuildingType.Turret:
-                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_barracks"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             case BuildingType.AntiAirTurret:
-                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
-                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_warfactory"); }
+                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_difficulty"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             case BuildingType.RepairPad:
-                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
-                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = "难度未解锁"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_warfactory"); }
+                else if (_playerTechLevel < 2) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_difficulty"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             // E7：机场
             case BuildingType.Airfield:
-                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             // E9：船厂
             case BuildingType.Shipyard:
-                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             // E10：超武建筑
             case BuildingType.NukeSilo:
-                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             case BuildingType.LightningTower:
-                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
             case BuildingType.MissileSilo:
-                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
-                else if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; }
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
+                else if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); }
                 break;
         }
     }
 
     private void EvaluateUnitLock(BuildItem it)
     {
-        if (_power < 0) { it.IsLocked = true; it.LockReason = "电力不足"; return; }
-        if (_unitCount >= _unitCap) { it.IsLocked = true; it.LockReason = "单位已满"; return; }
+        if (_power < 0) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_power_low"); return; }
+        if (_unitCount >= _unitCap) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_unit_full"); return; }
 
         switch (it.UType)
         {
@@ -503,35 +510,41 @@ public partial class BuildPanel : Control
             case UnitType.Sniper:          // E6
             case UnitType.Thief:          // E6b
             case UnitType.RocketInfantry:   // E7
-                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = "需要兵营"; }
+                if (!_hasBarracks) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_barracks"); }
                 break;
             case UnitType.HeavyTank:
             case UnitType.Artillery:
             case UnitType.AntiAir:
             case UnitType.Engineer:
             case UnitType.Transport:       // E6
-                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_warfactory"); }
                 break;
             case UnitType.Fighter:          // E7
             case UnitType.Helicopter:       // E7
             case UnitType.Bomber:           // E8
             case UnitType.Scout:            // E8
             case UnitType.TransportHeli:    // E8
-                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = "需要车厂"; }
-                else if (!HasAirfield) { it.IsLocked = true; it.LockReason = "需要机场"; }
+                if (!_hasWarFactory) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_warfactory"); }
+                else if (!HasAirfield) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_airfield"); }
                 break;
             // E9：海军单位需船厂
             case UnitType.Destroyer:
             case UnitType.Submarine:
             case UnitType.AircraftCarrier:
             case UnitType.LandingCraft:
-                if (!HasShipyard) { it.IsLocked = true; it.LockReason = "需要船厂"; }
+                if (!HasShipyard) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_shipyard"); }
+                break;
+            case UnitType.ApocalypseTank:
+            case UnitType.PrismTank:
+            case UnitType.KirovAirship:
+            case UnitType.TeslaTrooper:
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
                 break;
             case UnitType.RocketLauncher:
             case UnitType.MissileTank:
             case UnitType.Hero:           // E6b
             case UnitType.Spy:            // E6b
-                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = "需要科技中心"; }
+                if (!_hasTechCenter) { it.IsLocked = true; it.LockReason = TrManager.Tr("build.lock_need_techcenter"); }
                 break;
         }
     }
@@ -548,7 +561,7 @@ public partial class BuildPanel : Control
             if (it.PanelNode == null) continue;
             Color bg;
             bool placementActive = (it.IsBuilding && ActivePlacement == it.BType);
-            if (it.IsLocked || !it.CanAfford && it.LockReason == "资金不足")
+            if (it.IsLocked)
                 bg = CLocked;
             else if (placementActive)
                 bg = CSelected;
@@ -682,6 +695,10 @@ public partial class BuildPanel : Control
             UnitType.LandingCraft => TrManager.Tr("build.desc_landing_craft"),
             UnitType.RocketLauncher => TrManager.Tr("build.desc_rocket_launcher"),
             UnitType.MissileTank => TrManager.Tr("build.desc_missile_tank"),
+            UnitType.ApocalypseTank => TrManager.Tr("build.desc_apocalypse_tank"),
+            UnitType.PrismTank => TrManager.Tr("build.desc_prism_tank"),
+            UnitType.KirovAirship => TrManager.Tr("build.desc_kirov_airship"),
+            UnitType.TeslaTrooper => TrManager.Tr("build.desc_tesla_trooper"),
             _ => ""
         };
     }
@@ -738,6 +755,11 @@ public partial class BuildPanel : Control
         _iNukeSilo = LoadPng("res://assets/sprites/buildings/nuke_silo.png");
         _iLightningTower = LoadPng("res://assets/sprites/buildings/lightning_tower.png");
         _iMissileSilo = LoadPng("res://assets/sprites/buildings/missile_silo.png");
+        // RA2标志单位图标（复用现有素材）
+        _iApocalypseTank = LoadPng("res://assets/sprites/units/hull_heavy.png");
+        _iPrismTank = LoadPng("res://assets/sprites/units/hull_rocket.png");
+        _iKirovAirship = LoadPng("res://assets/sprites/units/bomber.png");
+        _iTeslaTrooper = LoadPng("res://assets/sprites/units/infantry.png");
     }
 
     /// <summary>加载 PNG 纹理，失败时打印错误但不中断。</summary>

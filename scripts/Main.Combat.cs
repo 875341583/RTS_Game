@@ -105,8 +105,8 @@ public partial class Main
             LaunchPos = launchPos
         });
 
-        string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
-        ShowToast($"☢ {who}核弹已发射！即将命中目标...", new Color(1f, 0.5f, 0.2f));
+        string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
+        ShowToast(TrManager.Tr("combat.nuke_launched", who), new Color(1f, 0.5f, 0.2f));
         GameLog.Debug($"[核弹] Team {firingTeamId} 从 {launchPos} 发射核弹 → {targetPos}，1.5秒后命中");
     }
 
@@ -120,8 +120,8 @@ public partial class Main
             Countdown = 0.8f
         });
 
-        string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
-        ShowToast($"⚡ {who}闪电风暴蓄能中！即将劈下...", new Color(0.5f, 0.8f, 1f));
+        string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
+        ShowToast(TrManager.Tr("combat.lightning_charging", who), new Color(0.5f, 0.8f, 1f));
         GameLog.Debug($"[闪电] Team {firingTeamId} 闪电风暴蓄能 → {targetPos}，0.8秒后劈下");
     }
 
@@ -257,8 +257,8 @@ public partial class Main
         }
 
         // 6. 通知提示
-        string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
-        ShowToast($"☢ {who}释放核弹！命中 {unitHits} 单位 / {bldHits} 建筑",
+        string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
+        ShowToast(TrManager.Tr("combat.nuke_hit", who, unitHits, bldHits),
             new Color(1f, 0.3f, 0.2f));
         GameLog.Debug($"[核弹] Team {firingTeamId} 于 {pos} 释放，命中 {unitHits} 单位 + {bldHits} 建筑");
 
@@ -307,8 +307,8 @@ public partial class Main
         _lightningBoltSeed = (float)GD.RandRange(0, 1000);
 
         // 6. 通知提示
-        string who = firingTeamId == PlayerTeamId ? "我方" : $"敌方 Team {firingTeamId}";
-        ShowToast($"⚡ {who}释放闪电风暴！初始命中 {unitHits} 敌方目标，持续 {GameConst.LightningDuration:F0}s",
+        string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
+        ShowToast(TrManager.Tr("combat.lightning_hit", who, unitHits, $"{GameConst.LightningDuration:F0}"),
             new Color(0.5f, 0.8f, 1f));
         GameLog.Debug($"[闪电] Team {firingTeamId} 于 {pos} 释放，初始命中 {unitHits}，持续 {GameConst.LightningDuration}s");
 
@@ -489,14 +489,14 @@ public partial class Main
                         ApplyTechEffects(spyTeamId);
                         var nodeName = TechTree.Nodes[stolenTech.Value];
                         GameLog.Debug($"[G7] 间谍窃取科技成功: {nodeName.Name} (Team {spyTeamId})");
-                        ShowToast(spyTeamId == 0 ? $"间谍窃取: {nodeName.Name}" : $"AI Team {spyTeamId} 间谍窃取科技");
+                        ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_steal_tech", nodeName.Name) : TrManager.Tr("spy.toast_ai_steal_tech", spyTeamId));
                     }
                     else
                     {
                         // 敌方无可窃取科技，补偿$300
                         AddResourceForTeam(spyTeamId, 300);
                         GameLog.Debug($"[G7] 间谍无可窃取科技，获得$300补偿 (Team {spyTeamId})");
-                        ShowToast(spyTeamId == 0 ? "间谍: 无可窃取科技, $300补偿" : "");
+                        ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_no_tech") : "");
                     }
                 }
                 break;
@@ -507,7 +507,7 @@ public partial class Main
                 {
                     target.PowerConsumed += 200;
                     GameLog.Debug($"[G7] 间谍破坏电网: {target.BuildingName} 断电{(int)SpyMission.SabotagePowerDuration}秒 (Team {target.TeamId})");
-                    ShowToast(spyTeamId == 0 ? $"间谍破坏: {target.BuildingName}断电" : "");
+                    ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_sabotage_power", target.BuildingName) : "");
                     // 延迟恢复
                     DelayedRestoreSpySabotage(target, SpyMission.SabotagePowerDuration, 200);
                 }
@@ -523,7 +523,7 @@ public partial class Main
                     SpendMoney(target.TeamId, stolen);
                     AddResourceForTeam(spyTeamId, stolen);
                     GameLog.Debug($"[G7] 间谍窃取${stolen} (Team {target.TeamId} → Team {spyTeamId})");
-                    ShowToast(spyTeamId == 0 ? $"间谍窃取: ${stolen}" : "");
+                    ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_steal_money", stolen) : "");
                 }
                 break;
 
@@ -534,7 +534,7 @@ public partial class Main
                     // 通过大幅增加PowerConsumed使建筑离线
                     target.PowerConsumed += 500;
                     GameLog.Debug($"[G7] 间谍瘫痪生产: {target.BuildingName} 暂停{(int)SpyMission.SabotageProdDuration}秒");
-                    ShowToast(spyTeamId == 0 ? $"间谍瘫痪: {target.BuildingName}停工" : "");
+                    ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_sabotage_prod", target.BuildingName) : "");
                     DelayedRestoreSpySabotage(target, SpyMission.SabotageProdDuration, 500);
                 }
                 break;
@@ -542,9 +542,9 @@ public partial class Main
             case SpyMission.MissionType.Recon:
                 // 侦察：揭示敌方建筑/单位信息（通过Toast通知）
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine($"侦察: {target.BuildingName} (Team {target.TeamId})");
-                sb.AppendLine($"  血量: {(int)target.Health}/{(int)target.MaxHealth}");
-                sb.AppendLine($"  电力: +{target.PowerProvided}/-{target.PowerConsumed}");
+                sb.AppendLine(TrManager.Tr("spy.recon_title", target.BuildingName, target.TeamId));
+                sb.AppendLine(TrManager.Tr("spy.recon_hp", (int)target.Health, (int)target.MaxHealth));
+                sb.AppendLine(TrManager.Tr("spy.recon_power", target.PowerProvided, target.PowerConsumed));
                 // 统计附近敌方单位
                 int nearbyEnemies = 0;
                 foreach (var c in _unitsNode.GetChildren())
@@ -553,7 +553,7 @@ public partial class Main
                         && u.GlobalPosition.DistanceTo(target.GlobalPosition) < 300f)
                         nearbyEnemies++;
                 }
-                sb.AppendLine($"  附近敌方单位: {nearbyEnemies}");
+                sb.AppendLine(TrManager.Tr("spy.recon_nearby", nearbyEnemies));
                 GameLog.Debug($"[G7] 间谍侦察: {sb.ToString().Trim()}");
                 if (spyTeamId == 0) ShowToast(sb.ToString().Trim());
                 break;
@@ -634,7 +634,7 @@ public partial class Main
         // Q6：建筑受袭事件通知 + P1-6: 攻击通知音效+BGM切换
         if (teamId == 0)
         {
-            ShowToast($"⚠ {b.BuildingName}正在遭受攻击！", new Color(1f, 0.5f, 0.3f));
+            ShowToast(TrManager.Tr("combat.building_attacked", b.BuildingName), new Color(1f, 0.5f, 0.3f));
             _audio?.PlaySfxForce(AudioManager.Sfx.NotifyAttack);
             BgmManager.SwitchScene(BgmManager.BgmScene.Alert);
             _alertBgmTimer = 8f; // 8秒无攻击后切回战斗BGM
