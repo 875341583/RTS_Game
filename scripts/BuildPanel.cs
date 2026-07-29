@@ -60,16 +60,48 @@ public partial class BuildPanel : Control
     public BuildingType? ActivePlacement { get; set; }
     public string DifficultyName { get; set; } = "Normal";
 
-    // 颜色：红警2 风格深灰金属 + 暗金高亮
-    private static readonly Color CBg = new(0.13f, 0.14f, 0.16f, 0.96f);
-    private static readonly Color CHover = new(0.34f, 0.29f, 0.18f, 0.97f);
-    private static readonly Color CLocked = new(0.06f, 0.06f, 0.07f, 0.93f);
-    private static readonly Color CSelected = new(0.58f, 0.44f, 0.16f, 0.98f);
-    private static readonly Color CReady = new(0.19f, 0.20f, 0.22f, 0.96f);
+    // 颜色：RA2风格深灰金属 + 钢银色边框 + 金色高亮
+    // 主背景：深灰金属质感 (0.10-0.14)
+    private static readonly Color CBg = new(0.11f, 0.12f, 0.14f, 0.98f);
+    // 标题栏背景：更深的金属色
+    private static readonly Color CTitleBar = new(0.07f, 0.08f, 0.09f, 1f);
+    // 信息区底板：暗金属
+    private static readonly Color CInfoPlate = new(0.14f, 0.15f, 0.17f, 1f);
+    // 提示区底板：暗金属
+    private static readonly Color CHintPlate = new(0.09f, 0.10f, 0.11f, 1f);
+    // 悬停：亮金色底
+    private static readonly Color CHover = new(0.45f, 0.36f, 0.16f, 0.97f);
+    // 锁定：深黑底
+    private static readonly Color CLocked = new(0.04f, 0.04f, 0.05f, 0.93f);
+    // 选中放置：蓝绿色底（RA2放置模式）
+    private static readonly Color CSelected = new(0.12f, 0.35f, 0.28f, 0.98f);
+    // 可建造：暗灰底
+    private static readonly Color CReady = new(0.15f, 0.16f, 0.18f, 0.96f);
+    // 资金不足：暗红底
+    private static readonly Color CCantAfford = new(0.28f, 0.10f, 0.08f, 0.95f);
+
+    // 边框颜色：外圈钢银色 (0.45-0.55)，内圈暗色
+    private static readonly Color CSteelBorder = new(0.50f, 0.52f, 0.55f, 0.9f);  // 外圈钢银色
+    private static readonly Color CDarkBorder = new(0.03f, 0.03f, 0.04f, 0.9f);   // 内圈暗色（凹槽感）
+    // 悬停边框：金色
+    private static readonly Color CHoverBorder = new(0.85f, 0.70f, 0.28f, 0.95f);
+    // 选中边框：亮蓝绿色
+    private static readonly Color CSelectedBorder = new(0.25f, 0.85f, 0.65f, 0.95f);
+    // 锁定边框：暗灰
+    private static readonly Color CLockedBorder = new(0.20f, 0.20f, 0.22f, 0.8f);
+    // 资金不足边框：红色
+    private static readonly Color CCantAffordBorder = new(0.70f, 0.22f, 0.15f, 0.9f);
+
     /// <summary>金色边框（建筑/单位图标外框）。</summary>
     private static readonly Color CGoldBorder = new(0.72f, 0.58f, 0.22f, 0.9f);
     /// <summary>金色文本（资金主数字、选中项高亮）。</summary>
     private static readonly Color CGoldText = new(1f, 0.82f, 0.32f, 1f);
+    /// <summary>标签选中色（深金底色）。</summary>
+    private static readonly Color CTabActive = new(0.38f, 0.30f, 0.12f, 1f);
+    /// <summary>标签未选中色（暗灰底色）。</summary>
+    private static readonly Color CTabInactive = new(0.10f, 0.11f, 0.12f, 1f);
+    /// <summary>分隔线暗色。</summary>
+    private static readonly Color CDivider = new(0.03f, 0.03f, 0.04f, 0.8f);
 
     private const float W = 232f;
 
@@ -92,6 +124,13 @@ public partial class BuildPanel : Control
     // RA2标志单位图标（复用现有素材）
     private static Texture2D? _iApocalypseTank, _iPrismTank, _iKirovAirship, _iTeslaTrooper;
 
+    // 信息区/提示区底板引用（用于更新时刷新StyleBox）
+    private Panel _infoPanel = null!;
+    private Panel _hintPanel = null!;
+    private Label _titleLabel = null!;
+    private Label _moneyLabel = null!;
+    private ColorRect _powerBar = null!;
+
     // 悬停项
     private BuildItem? _hoverItem;
 
@@ -103,6 +142,7 @@ public partial class BuildPanel : Control
         OffsetLeft = -W; OffsetRight = 0; OffsetTop = 0; OffsetBottom = 0;
         MouseFilter = MouseFilterEnum.Stop;
 
+        // RA2风格深灰金属背景
         var bg = new ColorRect();
         bg.Color = CBg;
         bg.AnchorRight = 1; bg.AnchorBottom = 1;
@@ -111,27 +151,91 @@ public partial class BuildPanel : Control
 
         var root = new VBoxContainer();
         root.AnchorRight = 1; root.AnchorBottom = 1;
-        root.OffsetLeft = 8; root.OffsetTop = 8; root.OffsetRight = -8; root.OffsetBottom = -8;
-        root.AddThemeConstantOverride("separation", 6);
+        root.OffsetLeft = 6; root.OffsetTop = 6; root.OffsetRight = -6; root.OffsetBottom = -6;
+        root.AddThemeConstantOverride("separation", 4);
         root.MouseFilter = MouseFilterEnum.Pass;
         AddChild(root);
 
+        // RA2标题栏：深色金属背景 + 金色文字
+        var titleBar = new Panel();
+        titleBar.CustomMinimumSize = new Vector2(W - 12, 24);
+        var titleStyle = new StyleBoxFlat
+        {
+            BgColor = CTitleBar,
+            BorderWidthBottom = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 4, ContentMarginRight = 4,
+            ContentMarginTop = 2, ContentMarginBottom = 2
+        };
+        titleBar.AddThemeStyleboxOverride("panel", titleStyle);
+        titleBar.MouseFilter = MouseFilterEnum.Pass;
+        root.AddChild(titleBar);
+
+        _titleLabel = new Label();
+        _titleLabel.Text = TrManager.Tr("build.panel_title");
+        _titleLabel.AddThemeFontSizeOverride("font_size", 16);
+        _titleLabel.AddThemeColorOverride("font_color", CGoldText);
+        _titleLabel.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f));
+        _titleLabel.AddThemeConstantOverride("outline_size", 1);
+        _titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _titleLabel.AnchorRight = 1; _titleLabel.AnchorBottom = 1;
+        _titleLabel.MouseFilter = MouseFilterEnum.Pass;
+        titleBar.AddChild(_titleLabel);
+
+        // 资金/电力信息区：金属底板背景
+        _infoPanel = new Panel();
+        _infoPanel.CustomMinimumSize = new Vector2(W - 12, 68);
+        var infoStyle = new StyleBoxFlat
+        {
+            BgColor = CInfoPlate,
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 4, ContentMarginBottom = 4
+        };
+        _infoPanel.AddThemeStyleboxOverride("panel", infoStyle);
+        _infoPanel.MouseFilter = MouseFilterEnum.Pass;
+        root.AddChild(_infoPanel);
+
         _infoLabel = new RichTextLabel();
         _infoLabel.BbcodeEnabled = true;
-        _infoLabel.AddThemeFontSizeOverride("normal_font_size", 16);
+        _infoLabel.AddThemeFontSizeOverride("normal_font_size", 18);
         _infoLabel.FitContent = true;
-        _infoLabel.CustomMinimumSize = new Vector2(W - 16, 64);
-        root.AddChild(_infoLabel);
+        _infoLabel.AnchorRight = 1; _infoLabel.AnchorBottom = 1;
+        _infoLabel.OffsetLeft = 4; _infoLabel.OffsetTop = 2; _infoLabel.OffsetRight = -4; _infoLabel.OffsetBottom = -2;
+        _infoLabel.MouseFilter = MouseFilterEnum.Pass;
+        _infoPanel.AddChild(_infoLabel);
+
+        // 电力指示条（正：蓝 / 负：红）
+        _powerBar = new ColorRect();
+        _powerBar.CustomMinimumSize = new Vector2(0, 2);
+        _powerBar.Color = new Color(0.2f, 0.5f, 0.9f, 0.8f);
+        _powerBar.AnchorLeft = 0.04f; _powerBar.AnchorRight = 0.96f;
+        _powerBar.AnchorTop = 0.90f; _powerBar.AnchorBottom = 0.95f;
+        _powerBar.MouseFilter = MouseFilterEnum.Pass;
+        _infoPanel.AddChild(_powerBar);
+
+        // 分类标签区：建筑/步兵/车辆
+        var tabsPanel = new Panel();
+        tabsPanel.CustomMinimumSize = new Vector2(0, 28);
+        var tabsStyle = new StyleBoxFlat { BgColor = CTitleBar, ContentMarginLeft = 2, ContentMarginRight = 2 };
+        tabsPanel.AddThemeStyleboxOverride("panel", tabsStyle);
+        tabsPanel.MouseFilter = MouseFilterEnum.Pass;
+        root.AddChild(tabsPanel);
 
         var tabs = new HBoxContainer();
-        tabs.AddThemeConstantOverride("separation", 3);
+        tabs.AnchorRight = 1; tabs.AnchorBottom = 1;
+        tabs.OffsetLeft = 2; tabs.OffsetTop = 2; tabs.OffsetRight = -2; tabs.OffsetBottom = -2;
+        tabs.AddThemeConstantOverride("separation", 1);
+        tabs.MouseFilter = MouseFilterEnum.Pass;
+        tabsPanel.AddChild(tabs);
+
         _tabBuildings = MakeTabButton(TrManager.Tr("build.tab_buildings"), BuildTab.Buildings);
         _tabInfantry  = MakeTabButton(TrManager.Tr("build.tab_infantry"), BuildTab.Infantry);
         _tabVehicles  = MakeTabButton(TrManager.Tr("build.tab_vehicles"), BuildTab.Vehicles);
         tabs.AddChild(_tabBuildings);
         tabs.AddChild(_tabInfantry);
         tabs.AddChild(_tabVehicles);
-        root.AddChild(tabs);
 
         _buildingGrid = MakeGrid();
         root.AddChild(_buildingGrid);
@@ -144,26 +248,136 @@ public partial class BuildPanel : Control
         _vehicleGrid.Visible = false;
         root.AddChild(_vehicleGrid);
 
+        // 底部提示区：暗色金属底板
+        _hintPanel = new Panel();
+        _hintPanel.CustomMinimumSize = new Vector2(W - 12, 74);
+        var hintStyle = new StyleBoxFlat
+        {
+            BgColor = CHintPlate,
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 4, ContentMarginRight = 4,
+            ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        _hintPanel.AddThemeStyleboxOverride("panel", hintStyle);
+        _hintPanel.MouseFilter = MouseFilterEnum.Pass;
+        root.AddChild(_hintPanel);
+
         _hintLabel = new RichTextLabel();
         _hintLabel.BbcodeEnabled = true;
         _hintLabel.AddThemeFontSizeOverride("normal_font_size", 12);
-        _hintLabel.CustomMinimumSize = new Vector2(W - 16, 70);
         _hintLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        root.AddChild(_hintLabel);
+        _hintLabel.AnchorRight = 1; _hintLabel.AnchorBottom = 1;
+        _hintLabel.OffsetLeft = 2; _hintLabel.OffsetTop = 2; _hintLabel.OffsetRight = -2; _hintLabel.OffsetBottom = -2;
+        _hintLabel.MouseFilter = MouseFilterEnum.Pass;
+        _hintPanel.AddChild(_hintLabel);
 
         CreateItems();
+
+        // 初始刷新标签视觉
+        UpdateTabVisuals();
+    }
+
+    /// <summary>RA2风格面板边框绘制：外钢银线 + 内暗线 + 四角铆钉装饰。</summary>
+    public override void _Draw()
+    {
+        var sz = Size;
+        float margin = 1f;
+
+        // 外边框：钢银色2px线
+        DrawRect(new Rect2(margin, margin, sz.X - margin * 2, sz.Y - margin * 2), CSteelBorder, false, 2f);
+        // 内边框：暗色1px线（产生立体凹槽感）
+        float inner = margin + 3f;
+        DrawRect(new Rect2(inner, inner, sz.X - inner * 2, sz.Y - inner * 2), CDarkBorder, false, 1f);
+
+        // 四角铆钉装饰：短斜线
+        float cornerLen = 8f;
+        float cornerOffset = 4f;
+        // 左上角
+        DrawLine(new Vector2(cornerOffset, cornerOffset), new Vector2(cornerOffset + cornerLen, cornerOffset + cornerLen), CSteelBorder, 1.5f);
+        DrawLine(new Vector2(cornerOffset + 2, cornerOffset), new Vector2(cornerOffset + cornerLen, cornerOffset + cornerLen - 2), CDarkBorder, 1f);
+        // 右下角
+        DrawLine(new Vector2(sz.X - cornerOffset, sz.Y - cornerOffset), new Vector2(sz.X - cornerOffset - cornerLen, sz.Y - cornerOffset - cornerLen), CSteelBorder, 1.5f);
+        DrawLine(new Vector2(sz.X - cornerOffset - 2, sz.Y - cornerOffset), new Vector2(sz.X - cornerOffset - cornerLen, sz.Y - cornerOffset - cornerLen + 2), CDarkBorder, 1f);
+        // 左下角
+        DrawLine(new Vector2(cornerOffset, sz.Y - cornerOffset), new Vector2(cornerOffset + cornerLen, sz.Y - cornerOffset - cornerLen), CSteelBorder, 1.5f);
+        // 右上角
+        DrawLine(new Vector2(sz.X - cornerOffset, cornerOffset), new Vector2(sz.X - cornerOffset - cornerLen, cornerOffset + cornerLen), CSteelBorder, 1.5f);
     }
 
     private Button MakeTabButton(string text, BuildTab tab)
     {
         var b = new Button { Text = text, ToggleMode = true, ButtonPressed = (tab == _currentTab) };
         b.AddThemeFontSizeOverride("font_size", 14);
-        b.AddThemeColorOverride("font_color", new Color(0.8f, 0.74f, 0.52f));
+        b.AddThemeColorOverride("font_color", new Color(0.65f, 0.60f, 0.42f));
         b.AddThemeColorOverride("font_pressed_color", CGoldText);
         b.AddThemeColorOverride("font_hover_color", Colors.White);
+        b.AddThemeColorOverride("font_hover_pressed_color", CGoldText);
+        // RA2标签按钮金属底色
+        var tabStyle = new StyleBoxFlat
+        {
+            BgColor = (tab == _currentTab) ? CTabActive : CTabInactive,
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = (tab == _currentTab) ? CGoldBorder : CDarkBorder,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        b.AddThemeStyleboxOverride("normal", tabStyle);
+        // 选中时顶部1px亮线（凸起感）
+        var pressedStyle = new StyleBoxFlat
+        {
+            BgColor = CTabActive,
+            BorderWidthTop = 2, BorderWidthBottom = 0, BorderWidthLeft = 1, BorderWidthRight = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        b.AddThemeStyleboxOverride("pressed", pressedStyle);
+        b.AddThemeStyleboxOverride("hover_pressed", pressedStyle);
+        var hoverStyle = new StyleBoxFlat
+        {
+            BgColor = new Color(0.20f, 0.17f, 0.10f, 1f),
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        b.AddThemeStyleboxOverride("hover", hoverStyle);
         b.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        b.Pressed += () => ShowTab(tab);
+        b.Pressed += () => { ShowTab(tab); };
         return b;
+    }
+
+    /// <summary>更新三个标签按钮的视觉状态（选中/未选中配色）。</summary>
+    private void UpdateTabVisuals()
+    {
+        UpdateSingleTabStyle(_tabBuildings, _currentTab == BuildTab.Buildings);
+        UpdateSingleTabStyle(_tabInfantry, _currentTab == BuildTab.Infantry);
+        UpdateSingleTabStyle(_tabVehicles, _currentTab == BuildTab.Vehicles);
+    }
+
+    private static void UpdateSingleTabStyle(Button b, bool isActive)
+    {
+        var normalStyle = new StyleBoxFlat
+        {
+            BgColor = isActive ? CTabActive : CTabInactive,
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = isActive ? CGoldBorder : CDarkBorder,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        b.AddThemeStyleboxOverride("normal", normalStyle);
+        var pressedStyle = new StyleBoxFlat
+        {
+            BgColor = CTabActive,
+            BorderWidthTop = 2, BorderWidthBottom = 0, BorderWidthLeft = 1, BorderWidthRight = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        b.AddThemeStyleboxOverride("pressed", pressedStyle);
+        b.AddThemeStyleboxOverride("hover_pressed", pressedStyle);
+        b.AddThemeColorOverride("font_color", isActive ? CGoldText : new Color(0.65f, 0.60f, 0.42f));
     }
 
     private static GridContainer MakeGrid()
@@ -184,6 +398,7 @@ public partial class BuildPanel : Control
         _buildingGrid.Visible = tab == BuildTab.Buildings;
         _infantryGrid.Visible = tab == BuildTab.Infantry;
         _vehicleGrid.Visible  = tab == BuildTab.Vehicles;
+        UpdateTabVisuals();
     }
 
     private void CreateItems()
@@ -256,7 +471,15 @@ public partial class BuildPanel : Control
 
         var panel = new Panel();
         panel.CustomMinimumSize = new Vector2(102, 88);
-        var style = new StyleBoxFlat { BgColor = CReady, BorderWidthBottom = 2, BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderColor = CGoldBorder, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3, CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3 };
+        // RA2双线凹槽：外圈钢银色1px + 内圈暗色1px
+        var style = new StyleBoxFlat
+        {
+            BgColor = CReady,
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = CSteelBorder,
+            ContentMarginLeft = 0, ContentMarginRight = 0,
+            ContentMarginTop = 0, ContentMarginBottom = 0
+        };
         panel.AddThemeStyleboxOverride("panel", style);
 
         var bgRect = new ColorRect();
@@ -337,9 +560,9 @@ public partial class BuildPanel : Control
             item.ProdBar = bar;
         }
 
-        // 悬停
-        panel.MouseEntered += () => { _hoverItem = item; };
-        panel.MouseExited += () => { if (_hoverItem == item) _hoverItem = null; };
+        // 悬停（触发局部刷新以更新高亮配色）
+        panel.MouseEntered += () => { _hoverItem = item; RefreshVisuals(); };
+        panel.MouseExited += () => { if (_hoverItem == item) { _hoverItem = null; RefreshVisuals(); } };
         // 点击
         panel.GuiInput += (@event) => OnItemGuiInput(@event, item);
 
@@ -552,42 +775,70 @@ public partial class BuildPanel : Control
     private void RefreshVisuals()
     {
         var powerWarn = _power < 0 ? $" [color=#ff5555]{TrManager.Tr("build.lock_power_low")}![/color]" : "";
+        // 资金用金色大字体，电力正/负用蓝/红
+        string powerColor = _power < 0 ? "#ff5555" : "#88ccff";
         _infoLabel.Text = $"[color=#ffd54f]{DifficultyName}[/color]  {TrManager.Tr("build.tech")}Lv{_playerTechLevel}\n" +
-                          $"[color=#ffd24f][b]${_money}[/b][/color]   {_unitCount}/{_unitCap} {TrManager.Tr("build.tab_infantry")}\n" +
-                          $"[color={(_power < 0 ? "#ff5555" : "#88ccff")}]{TrManager.Tr("ui.power_label", _power)}{powerWarn}[/color]";
+                          $"[color=#ffd24f][b][font_size=22]${_money}[/font_size][/b][/color]   {_unitCount}/{_unitCap} {TrManager.Tr("build.tab_infantry")}\n" +
+                          $"[color={powerColor}]{TrManager.Tr("ui.power_label", _power)}{powerWarn}[/color]";
+
+        // 电力指示条颜色：正蓝色 / 负红色
+        if (_powerBar != null)
+            _powerBar.Color = _power < 0
+                ? new Color(0.8f, 0.2f, 0.15f, 0.85f)
+                : new Color(0.2f, 0.5f, 0.9f, 0.8f);
 
         foreach (var it in _items)
         {
             if (it.PanelNode == null) continue;
-            Color bg;
+            Color bg, borderColor;
             bool placementActive = (it.IsBuilding && ActivePlacement == it.BType);
-            if (it.IsLocked)
-                bg = CLocked;
-            else if (placementActive)
-                bg = CSelected;
-            else
-                bg = CReady;
 
-            // 资金不足但前置满足：底色偏暗红
-            if (!it.IsLocked && !it.CanAfford)
-                bg = new Color(0.3f, 0.15f, 0.12f, 0.95f);
-
-            // 锁定
+            // RA2配色：锁定/选中/可建造/资金不足/悬停
             if (it.IsLocked)
             {
                 bg = CLocked;
+                borderColor = CLockedBorder;
                 it.PanelNode.Modulate = new Color(0.5f, 0.5f, 0.5f, 0.7f);
             }
             else if (placementActive)
             {
+                bg = CSelected;
+                borderColor = CSelectedBorder;
+                it.PanelNode.Modulate = Colors.White;
+            }
+            else if (!it.CanAfford)
+            {
+                bg = CCantAfford;
+                borderColor = CCantAffordBorder;
+                it.PanelNode.Modulate = Colors.White;
+            }
+            else if (_hoverItem == it)
+            {
+                bg = CHover;
+                borderColor = CHoverBorder;
                 it.PanelNode.Modulate = Colors.White;
             }
             else
             {
+                bg = CReady;
+                borderColor = CSteelBorder;
                 it.PanelNode.Modulate = Colors.White;
             }
 
+            // 更新底板背景色
             if (it.BgRect != null) it.BgRect.Color = bg;
+
+            // 更新Panel边框（RA2双线凹槽：钢银外线 + 暗内线）
+            if (it.PanelNode != null)
+            {
+                var sb = new StyleBoxFlat
+                {
+                    BgColor = bg,
+                    BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+                    BorderColor = borderColor
+                };
+                it.PanelNode.AddThemeStyleboxOverride("panel", sb);
+            }
 
             // 成本颜色
             if (it.CostLabel != null)

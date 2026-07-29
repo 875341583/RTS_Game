@@ -131,6 +131,9 @@ build.prism_tank,Prism Tank
 build.kirov_airship,Kirov Airship
 build.tesla_trooper,Tesla Trooper
 build.tech,Tech
+build.panel_title,Construction
+build.power_status,Power
+build.money_label,Funds
 build.airfield_panel,Airfield
 build.nuke_silo_panel,Nuke Silo
 build.lightning_tower_panel,Lightning Tower

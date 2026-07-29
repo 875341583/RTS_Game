@@ -353,6 +353,56 @@ public partial class Main : Node2D
         _uiLabel = GetNode<Label>("UI/Label");
         _hintLabel = GetNode<Label>("UI/HintLabel");
 
+        // RA2风格顶部信息栏 — Label样式
+        _uiLabel.AddThemeColorOverride("font_color", new Color(0.95f, 0.92f, 0.8f));
+        _uiLabel.AddThemeFontSizeOverride("font_size", 14);
+        _uiLabel.AddThemeConstantOverride("shadow_offset_x", 1);
+        _uiLabel.AddThemeConstantOverride("shadow_offset_y", 1);
+        _uiLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+
+        // RA2风格底部提示栏 — HintLabel样式
+        _hintLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.72f, 0.68f));
+        _hintLabel.AddThemeConstantOverride("shadow_offset_x", 1);
+        _hintLabel.AddThemeConstantOverride("shadow_offset_y", 1);
+        _hintLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.7f));
+
+        // RA2风格顶部信息栏金属底板（Label之后、BuildPanel之前插入）
+        var topBarBg = new Panel();
+        topBarBg.OffsetLeft = 4; topBarBg.OffsetTop = 4;
+        topBarBg.OffsetRight = 530; topBarBg.OffsetBottom = 120;
+        var topBarStyle = new StyleBoxFlat();
+        topBarStyle.BgColor = new Color(0.06f, 0.07f, 0.08f, 0.85f);
+        topBarStyle.BorderWidthLeft = 1; topBarStyle.BorderWidthRight = 1;
+        topBarStyle.BorderWidthTop = 1; topBarStyle.BorderWidthBottom = 1;
+        topBarStyle.BorderColor = new Color(0.4f, 0.4f, 0.45f, 0.7f);
+        topBarStyle.CornerRadiusTopLeft = 2; topBarStyle.CornerRadiusTopRight = 2;
+        topBarStyle.CornerRadiusBottomLeft = 2; topBarStyle.CornerRadiusBottomRight = 2;
+        topBarStyle.ContentMarginLeft = 8; topBarStyle.ContentMarginRight = 8;
+        topBarStyle.ContentMarginTop = 6; topBarStyle.ContentMarginBottom = 6;
+        topBarBg.AddThemeStyleboxOverride("panel", topBarStyle);
+        topBarBg.MouseFilter = Control.MouseFilterEnum.Ignore;
+        GetNode<CanvasLayer>("UI").AddChild(topBarBg);
+        // 将Label移到最前（确保在背景之上）
+        GetNode<CanvasLayer>("UI").MoveChild(_uiLabel, -1);
+
+        // RA2风格底部提示栏金属底板
+        var hintBarBg = new Panel();
+        hintBarBg.OffsetLeft = 200; hintBarBg.OffsetTop = 555;
+        hintBarBg.OffsetRight = 1000; hintBarBg.OffsetBottom = 740;
+        var hintStyle = new StyleBoxFlat();
+        hintStyle.BgColor = new Color(0.05f, 0.06f, 0.07f, 0.8f);
+        hintStyle.BorderWidthLeft = 1; hintStyle.BorderWidthRight = 1;
+        hintStyle.BorderWidthTop = 1; hintStyle.BorderWidthBottom = 1;
+        hintStyle.BorderColor = new Color(0.35f, 0.35f, 0.4f, 0.6f);
+        hintStyle.CornerRadiusTopLeft = 2; hintStyle.CornerRadiusTopRight = 2;
+        hintStyle.CornerRadiusBottomLeft = 2; hintStyle.CornerRadiusBottomRight = 2;
+        hintStyle.ContentMarginLeft = 8; hintStyle.ContentMarginRight = 8;
+        hintStyle.ContentMarginTop = 4; hintStyle.ContentMarginBottom = 4;
+        hintBarBg.AddThemeStyleboxOverride("panel", hintStyle);
+        hintBarBg.MouseFilter = Control.MouseFilterEnum.Ignore;
+        GetNode<CanvasLayer>("UI").AddChild(hintBarBg);
+        GetNode<CanvasLayer>("UI").MoveChild(_hintLabel, -1);
+
         _unitScene = GD.Load<PackedScene>("res://scenes/Unit.tscn");
         _harvesterScene = GD.Load<PackedScene>("res://scenes/Harvester.tscn");
         _buildingScene = GD.Load<PackedScene>("res://scenes/Building.tscn");

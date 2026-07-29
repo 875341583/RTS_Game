@@ -133,6 +133,9 @@ build.prism_tank,光棱坦克
 build.kirov_airship,基洛夫空艇
 build.tesla_trooper,磁暴步兵
 build.tech,科技
+build.panel_title,建造指挥
+build.power_status,电力
+build.money_label,资金
 build.airfield_panel,机场
 build.nuke_silo_panel,核弹井
 build.lightning_tower_panel,闪电塔
