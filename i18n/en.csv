@@ -800,3 +800,53 @@ saveload.load_failed,Load failed!
 tech.branch_military,Military
 tech.branch_economy,Economy
 tech.branch_defense,Defense
+# === i18n: ra2_ui ===
+menu.version,v3.1 RA2 Style
+menu.credits,Credits
+menu.credits_desc,View development team
+menu.vs_ai,VS AI
+menu.players,Players
+menu.side,Side
+menu.color,Color
+menu.team,Team
+menu.start_pos,Start
+menu.easy,Easy
+menu.normal,Normal
+menu.hard,Hard
+menu.brutal,Brutal
+menu.ai_player,AI (Computer)
+menu.human,Player
+menu.map_preview,Map Preview
+menu.rules,Game Rules
+menu.short_game,Short Game
+menu.superweapons,Superweapons
+menu.destroyable_bridges,Destroyable Bridges
+menu.units,Units
+menu.credits_start,Starting Credits
+menu.game_speed,Game Speed
+menu.slow,Slow
+menu.medium_speed,Medium
+menu.fast,Fast
+menu.fastest,Fastest
+menu.random_map,Random Map
+menu.battle_fight,Fight!
+menu.faction_allies,Allies
+menu.faction_soviet,Soviet
+menu.faction_yuri,Yuri
+menu.color_red,Red
+menu.color_blue,Blue
+menu.color_green,Green
+menu.color_yellow,Yellow
+menu.color_purple,Purple
+menu.color_orange,Orange
+menu.color_pink,Pink
+menu.color_cyan,Cyan
+menu.team_a,Team A
+menu.team_b,Team B
+menu.team_none,None
+menu.map_name,Map Name
+menu.player_slots,Player Slots
+menu.scenario_options,Scenario Options
+menu.game_options,Game Options
+menu.briefing,Briefing
+menu.deploy,Deploy

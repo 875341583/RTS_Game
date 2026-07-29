@@ -802,3 +802,53 @@ saveload.load_failed,读档失败！
 tech.branch_military,军事
 tech.branch_economy,经济
 tech.branch_defense,防御
+# === i18n: ra2_ui ===
+menu.version,v3.1 RA2风格
+menu.credits,制作人员
+menu.credits_desc,查看开发团队
+menu.vs_ai,对战 AI
+menu.players,玩家
+menu.side,阵营
+menu.color,颜色
+menu.team,队伍
+menu.start_pos,起点
+menu.easy,简单
+menu.normal,中等
+menu.hard,困难
+menu.brutal,残酷
+menu.ai_player,AI (电脑)
+menu.human,玩家
+menu.map_preview,地图预览
+menu.rules,游戏规则
+menu.short_game,短局模式
+menu.superweapons,超级武器
+menu.destroyable_bridges,可摧毁桥梁
+menu.units,单位数
+menu.credits_start,启动资金
+menu.game_speed,游戏速度
+menu.slow,慢速
+menu.medium_speed,中速
+menu.fast,快速
+menu.fastest,最快
+menu.random_map,随机地图
+menu.battle_fight,开始战斗
+menu.faction_allies,盟军
+menu.faction_soviet,苏军
+menu.faction_yuri,尤里
+menu.color_red,红
+menu.color_blue,蓝
+menu.color_green,绿
+menu.color_yellow,黄
+menu.color_purple,紫
+menu.color_orange,橙
+menu.color_pink,粉
+menu.color_cyan,青
+menu.team_a,队伍 A
+menu.team_b,队伍 B
+menu.team_none,无
+menu.map_name,地图名称
+menu.player_slots,玩家位置
+menu.scenario_options,剧本选项
+menu.game_options,游戏选项
+menu.briefing,简报
+menu.deploy,部署
