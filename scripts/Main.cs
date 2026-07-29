@@ -242,6 +242,9 @@ public partial class Main : Node2D
     private Label _captureLabel = null!;
     private bool _capturePanelVisible = false;
 
+    // Phase1: 战争迷雾
+    private FogOfWar _fogOfWar = null!;
+
     public override void _Ready()
     {
         // P2-4: 加载Mod（在游戏数据之前，以便Mod覆盖生效）
@@ -692,6 +695,12 @@ public partial class Main : Node2D
 
         // P3-1: 启动回放录制
         ReplayRecorder.Start(_mapSeed, _difficulty.ToString(), MapConfig.GridSize, MapConfig.Theme.ToString());
+
+        // Phase1: 战争迷雾初始化
+        _fogOfWar = new FogOfWar();
+        _fogOfWar.Initialize(MapConfig.GridSize);
+        AddChild(_fogOfWar);
+        GameLog.Debug("[FogOfWar] 战争迷雾系统初始化完成");
     }
 
     // ======== E4：地形改造支持方法 ========
@@ -1160,6 +1169,11 @@ public partial class Main : Node2D
              var queueData = CollectPlayerProductionInfo();
              _buildPanel.UpdateProductionQueue(queueData);
         }
+
+        // Phase1: 更新战争迷雾
+        if (_fogOfWar != null)
+            _fogOfWar.UpdateVisibility(GetAllUnits(), GetAllBuildings(), delta);
+
         // 放置模式预览重绘
         if (_placementMode != null) QueueRedraw();
         // Esc 取消放置
