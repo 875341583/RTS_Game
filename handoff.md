@@ -3,10 +3,21 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '69e23cd8-186e-4cf4-8f4a-5ffa14aebaa5'
-  PropagateID: '69e23cd8-186e-4cf4-8f4a-5ffa14aebaa5'
-  ReservedCode1: '1e65330e-4965-4bf2-bf43-c68515c1b1a7'
-  ReservedCode2: '1e65330e-4965-4bf2-bf43-c68515c1b1a7'
+  ProduceID: 'd68ee65a-348e-4746-bf6e-d6b530f0d8d9'
+  PropagateID: 'd68ee65a-348e-4746-bf6e-d6b530f0d8d9'
+  ReservedCode1: '92e3dc84-c77f-4a8f-91e2-cf54c5bbaf00'
+  ReservedCode2: '92e3dc84-c77f-4a8f-91e2-cf54c5bbaf00'
+---
+
+---
+AIGC:
+  ContentProducer: '001191110102MAD55U9H0F10002'
+  ContentPropagator: '001191110102MAD55U9H0F10002'
+  Label: '1'
+  ProduceID: '16aac90e-a7e3-403d-ba7f-36c353f43ae0'
+  PropagateID: '16aac90e-a7e3-403d-ba7f-36c353f43ae0'
+  ReservedCode1: 'c0647406-fe78-4e62-8be8-d60ec6e200f6'
+  ReservedCode2: 'c0647406-fe78-4e62-8be8-d60ec6e200f6'
 ---
 
 # 铁幕突袭（RTS_Game）交接文档
