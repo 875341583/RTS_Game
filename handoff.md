@@ -1,3 +1,25 @@
+---
+AIGC:
+  ContentProducer: '001191110102MAD55U9H0F10002'
+  ContentPropagator: '001191110102MAD55U9H0F10002'
+  Label: '1'
+  ProduceID: 'c2a1f0ba-8aeb-42a6-aa92-5fabe7b22c81'
+  PropagateID: 'c2a1f0ba-8aeb-42a6-aa92-5fabe7b22c81'
+  ReservedCode1: '8854c3ba-a84d-4081-b44b-7b7e25a52de7'
+  ReservedCode2: '8854c3ba-a84d-4081-b44b-7b7e25a52de7'
+---
+
+---
+AIGC:
+  ContentProducer: '001191110102MAD55U9H0F10002'
+  ContentPropagator: '001191110102MAD55U9H0F10002'
+  Label: '1'
+  ProduceID: '4a685637-f935-455c-be47-4d6f41db737b'
+  PropagateID: '4a685637-f935-455c-be47-4d6f41db737b'
+  ReservedCode1: 'e26d240b-36b0-4218-b816-dc3184809581'
+  ReservedCode2: 'e26d240b-36b0-4218-b816-dc3184809581'
+---
+
 # 铁幕突袭（RTS_Game）交接文档
 
 > 最后更新：2026-07-29
