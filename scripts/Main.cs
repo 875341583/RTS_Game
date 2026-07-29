@@ -544,9 +544,18 @@ public partial class Main : Node2D
         }
 
         // Q1：侧边栏建造面板
+        // 修复：CanvasLayer 不为 Control 子节点提供布局矩形，
+        // 需创建全屏 Control 容器作为锚点布局的父节点
+        var uiRoot = new Control();
+        uiRoot.Name = "UIRoot";
+        uiRoot.Position = Vector2.Zero;
+        uiRoot.Size = new Vector2(1920, 1080);
+        uiRoot.MouseFilter = Control.MouseFilterEnum.Ignore;
+        GetNode<CanvasLayer>("UI").AddChild(uiRoot);
+
         _buildPanel = new BuildPanel();
         _buildPanel.DifficultyName = _difficulty.ToString();
-        GetNode<CanvasLayer>("UI").AddChild(_buildPanel);
+        uiRoot.AddChild(_buildPanel);
         _buildPanel.BuildBuildingRequested += (bt) => TryBuildBuilding(bt);
         _buildPanel.BuildUnitRequested += (ut) => TrySpawnUnit(ut);
         _buildPanel.BuildHarvesterRequested += () => TrySpawnHarvester();
@@ -560,7 +569,7 @@ public partial class Main : Node2D
         // Q2：小地图
         _minimap = new Minimap();
         _minimap.Setup(this, _camera);
-        GetNode<CanvasLayer>("UI").AddChild(_minimap);
+        uiRoot.AddChild(_minimap);
         // 调整提示标签位置，避免与小地图重叠
         _hintLabel.OffsetLeft = 200f;
         GameLog.Debug("[UI] 小地图已加载");
