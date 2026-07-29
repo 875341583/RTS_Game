@@ -57,6 +57,9 @@ public partial class MainMenu : Control
             }
         }
 
+        // 初始化国际化翻译系统（菜单也需要翻译）
+        TrManager.SetLanguage("zh-CN");
+
         // 加载阵营数据（用于遭遇战页面）
         FactionManager.Load();
 

@@ -89,10 +89,10 @@ public static class TrManager
     public static void Initialize()
     {
         _strings.Clear();
-        // 尝试加载当前语言的翻译文件
-        var lang = TranslationServer.GetLocale();
-        _currentLang = lang;
-        LoadFromCsv($"res://i18n/{lang}.csv");
-        GameLog.Info($"[i18n] 初始化完成，语言: {lang}，{_strings.Count} 条翻译");
+        // 默认中文，不依赖系统locale
+        _currentLang = "zh-CN";
+        TranslationServer.SetLocale("zh-CN");
+        LoadFromCsv($"res://i18n/{_currentLang}.csv");
+        GameLog.Info($"[i18n] 初始化完成，语言: {_currentLang}，{_strings.Count} 条翻译");
     }
 }
