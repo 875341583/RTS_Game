@@ -1183,6 +1183,9 @@ public partial class Main : Node2D
         if (_fogOfWar != null)
             _fogOfWar.UpdateVisibility(GetAllUnits(), GetAllBuildings(), delta);
 
+        // Phase1: 推进超武发射动画
+        TickPendingSuperWeapons(dt);
+
         // 放置模式预览重绘
         if (_placementMode != null) QueueRedraw();
         // Esc 取消放置
@@ -1191,6 +1194,9 @@ public partial class Main : Node2D
 
     public override void _Draw()
     {
+        // Phase1: 超武发射动画（核弹下落弹道+闪电蓄能）
+        DrawPendingSuperWeapons();
+
         // ---- 阶段12-A4：核弹冲击波持久特效（始终绘制） ----
         foreach (var nuke in _activeNukeVisuals)
         {

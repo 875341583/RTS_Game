@@ -630,7 +630,7 @@ public partial class Main
                 var target = FindNukeTargetForAi(teamId);
                 if (target.HasValue)
                 {
-                    ApplyNuke(target.Value, teamId);
+                    LaunchNukeWithAnimation(target.Value, teamId);
                     _aiNukeCooldowns[teamId] = GameConst.NukeCooldown;
                 }
             }
@@ -646,7 +646,7 @@ public partial class Main
                 var target = FindNukeTargetForAi(teamId);
                 if (target.HasValue)
                 {
-                    ApplyLightning(target.Value, teamId);
+                    LaunchLightningWithAnimation(target.Value, teamId);
                     _aiLightningCooldowns[teamId] = GameConst.LightningCooldown;
                 }
             }

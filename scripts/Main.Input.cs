@@ -44,7 +44,7 @@ public partial class Main
                 // 阶段12-A4：闪电风暴目标选择模式（与核弹互斥优先）
                 if (_lightningTargetMode && !mouseOverPanel)
                 {
-                    ApplyLightning(worldPos, PlayerTeamId);
+                    LaunchLightningWithAnimation(worldPos, PlayerTeamId);
                     ReplayRecorder.Record(ReplayRecorder.ActionType.Lightning, new { X = worldPos.X, Y = worldPos.Y });
                     _lightningTargetMode = false;
                     _playerLightningCooldown = GameConst.LightningCooldown;
@@ -54,7 +54,7 @@ public partial class Main
                 // 阶段12-A4：核弹目标选择模式优先（左键释放核弹）
                 if (_nukeTargetMode && !mouseOverPanel)
                 {
-                    ApplyNuke(worldPos, PlayerTeamId);
+                    LaunchNukeWithAnimation(worldPos, PlayerTeamId);
                     ReplayRecorder.Record(ReplayRecorder.ActionType.Nuke, new { X = worldPos.X, Y = worldPos.Y });
                     _nukeTargetMode = false;
                     _playerNukeCooldown = GameConst.NukeCooldown;
