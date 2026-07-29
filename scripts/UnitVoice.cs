@@ -89,6 +89,139 @@ public static class UnitVoice
             [VoiceType.Select] = "res://assets/sounds/voice/spy_select.wav",
             [VoiceType.Move]   = "res://assets/sounds/voice/spy_move.wav",
         },
+        // ---- 补强：22种缺失单位语音（音频文件不存在时静默跳过） ----
+        ["ApocalypseTank"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_apocalypse_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_apocalypse_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_apocalypse_attack.wav",
+        },
+        ["PrismTank"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_prism_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_prism_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_prism_attack.wav",
+        },
+        ["KirovAirship"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_kirov_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_kirov_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_kirov_attack.wav",
+        },
+        ["TeslaTrooper"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_tesla_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_tesla_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_tesla_attack.wav",
+        },
+        ["Fighter"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_fighter_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_fighter_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_fighter_attack.wav",
+        },
+        ["Bomber"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_bomber_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_bomber_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_bomber_attack.wav",
+        },
+        ["Scout"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_scout_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_scout_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_scout_attack.wav",
+        },
+        ["Helicopter"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_heli_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_heli_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_heli_attack.wav",
+        },
+        ["Destroyer"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_destroyer_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_destroyer_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_destroyer_attack.wav",
+        },
+        ["Submarine"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_submarine_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_submarine_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_submarine_attack.wav",
+        },
+        ["Grenadier"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_grenadier_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_grenadier_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_grenadier_attack.wav",
+        },
+        ["Sniper"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_sniper_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_sniper_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_sniper_attack.wav",
+        },
+        ["FlameInfantry"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_flame_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_flame_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_flame_attack.wav",
+        },
+        ["Thief"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_thief_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_thief_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_thief_attack.wav",
+        },
+        ["RocketInfantry"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_rocketinf_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_rocketinf_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_rocketinf_attack.wav",
+        },
+        ["Transport"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_transport_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_transport_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_transport_attack.wav",
+        },
+        ["Sapper"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_sapper_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_sapper_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_sapper_attack.wav",
+        },
+        ["ChiefEngineer"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_chiefengineer_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_chiefengineer_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_chiefengineer_attack.wav",
+        },
+        ["AntiAir"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_antiair_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_antiair_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_antiair_attack.wav",
+        },
+        ["AircraftCarrier"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_carrier_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_carrier_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_carrier_attack.wav",
+        },
+        ["LandingCraft"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_landing_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_landing_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_landing_attack.wav",
+        },
+        ["TransportHeli"] = new()
+        {
+            [VoiceType.Select] = "res://assets/sounds/voice/voice_transheli_select.wav",
+            [VoiceType.Move]   = "res://assets/sounds/voice/voice_transheli_move.wav",
+            [VoiceType.Attack] = "res://assets/sounds/voice/voice_transheli_attack.wav",
+        },
     };
 
     /// <summary>缓存已加载的AudioStream。</summary>
@@ -139,6 +272,29 @@ public static class UnitVoice
         UnitType.Engineer => "Engineer",
         UnitType.Hero => "Hero",
         UnitType.Spy => "Spy",
+        // 补强：22种缺失单位语音映射
+        UnitType.ApocalypseTank => "ApocalypseTank",
+        UnitType.PrismTank => "PrismTank",
+        UnitType.KirovAirship => "KirovAirship",
+        UnitType.TeslaTrooper => "TeslaTrooper",
+        UnitType.Fighter => "Fighter",
+        UnitType.Bomber => "Bomber",
+        UnitType.Scout => "Scout",
+        UnitType.Helicopter => "Helicopter",
+        UnitType.Destroyer => "Destroyer",
+        UnitType.Submarine => "Submarine",
+        UnitType.Grenadier => "Grenadier",
+        UnitType.Sniper => "Sniper",
+        UnitType.FlameInfantry => "FlameInfantry",
+        UnitType.Thief => "Thief",
+        UnitType.RocketInfantry => "RocketInfantry",
+        UnitType.Transport => "Transport",
+        UnitType.Sapper => "Sapper",
+        UnitType.ChiefEngineer => "ChiefEngineer",
+        UnitType.AntiAir => "AntiAir",
+        UnitType.AircraftCarrier => "AircraftCarrier",
+        UnitType.LandingCraft => "LandingCraft",
+        UnitType.TransportHeli => "TransportHeli",
         _ => "",
     };
 }

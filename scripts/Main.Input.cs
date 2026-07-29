@@ -127,7 +127,7 @@ public partial class Main
                 if (_lightningTargetMode) { _lightningTargetMode = false; QueueRedraw(); return; }
                 if (_nukeTargetMode) { _nukeTargetMode = false; QueueRedraw(); return; }
                 if (_missileTargetMode) { _missileTargetMode = false; QueueRedraw(); return; }
-                if (_placementMode != null) { CancelPlacement(); return; }
+                if (_placementMode != null) { CancelPlacement(); PlayBuildCancelSfx(); return; }
                 if (_attackMoveMode) { _attackMoveMode = false; return; }
                 if (_forceAttackMode) { _forceAttackMode = false; return; }
                 if (_patrolMode) { _patrolMode = false; return; }
@@ -591,7 +591,8 @@ public partial class Main
                     {
                         ReplayRecorder.Record(ReplayRecorder.ActionType.CancelProduction, new { Building = producer.BuildingName });
                         GameLog.Debug($"[取消生产] {producer.BuildingName} 取消: {cancelled.Value}");
-                        _audio?.PlaySfx(AudioManager.Sfx.UiClick);
+                        // 补强：取消生产时播放BuildCancel音效
+                        PlayBuildCancelSfx();
                     }
                     return;
                 }
@@ -793,6 +794,8 @@ public partial class Main
             {
                 building.SetSelected(true);
                 _selected.Add(building);
+                // 补强：选中建筑时播放UiClick音效
+                _audio?.PlaySfx(AudioManager.Sfx.UiClick);
                 return;
             }
             var unit = PickUnitAt(end, requireEnemy: false);

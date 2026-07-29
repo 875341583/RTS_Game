@@ -23,6 +23,8 @@ public partial class AudioManager : Node
         Nuke, Lightning,
         // 通知
         NotifyLowPower, NotifyAttack, NotifyVictory, NotifyDefeat,
+        // 补强场景音效
+        BuildingDamaged, BuildCancel, PowerRestored, TechUnlock, TurretFire, AaFire,
     }
 
     // ---- 音量 ----
@@ -94,6 +96,24 @@ public partial class AudioManager : Node
         _streams[Sfx.NotifyAttack]   = GD.Load<AudioStream>("res://assets/sounds/notify_attack.wav");
         _streams[Sfx.NotifyVictory]  = GD.Load<AudioStream>("res://assets/sounds/notify_victory.wav");
         _streams[Sfx.NotifyDefeat]   = GD.Load<AudioStream>("res://assets/sounds/notify_defeat.wav");
+        // 补强场景音效（文件可能不存在，优雅降级）
+        _streams[Sfx.BuildingDamaged] = LoadSfxIfExists("res://assets/sounds/sfx_building_damaged.wav");
+        _streams[Sfx.BuildCancel]    = LoadSfxIfExists("res://assets/sounds/sfx_build_cancel.wav");
+        _streams[Sfx.PowerRestored]  = LoadSfxIfExists("res://assets/sounds/sfx_power_restored.wav");
+        _streams[Sfx.TechUnlock]     = LoadSfxIfExists("res://assets/sounds/sfx_tech_unlock.wav");
+        _streams[Sfx.TurretFire]     = LoadSfxIfExists("res://assets/sounds/sfx_turret_fire.wav");
+        _streams[Sfx.AaFire]         = LoadSfxIfExists("res://assets/sounds/sfx_aa_fire.wav");
+    }
+
+    /// <summary>尝试加载音效文件，不存在则返回null（优雅降级，不报错）。</summary>
+    private static AudioStream? LoadSfxIfExists(string path)
+    {
+        if (!ResourceLoader.Exists(path, "AudioStream"))
+        {
+            GameLog.Debug($"[Audio] 音效文件未导入: {path}，跳过");
+            return null;
+        }
+        return GD.Load<AudioStream>(path);
     }
 
     /// <summary>播放音效（带节流，同种音效50ms内不重复）。</summary>

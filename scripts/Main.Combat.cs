@@ -435,25 +435,63 @@ public partial class Main
         }
     }
 
-    /// <summary>单位死亡音效。</summary>
+    /// <summary>单位死亡音效。补强：普通单位播放Explosion，大型单位播放BigExplosion。</summary>
     public void PlayUnitDeathSfx(UnitType type)
     {
         if (_audio == null) return;
         switch (type)
         {
             case UnitType.HeavyTank:
+            case UnitType.ApocalypseTank:
+            case UnitType.KirovAirship:
+            case UnitType.AircraftCarrier:
                 _audio.PlaySfx(AudioManager.Sfx.BigExplosion);
                 break;
             default:
+                // 补强：普通单位播放Explosion音效（非BigExplosion）
+                _audio.PlaySfx(AudioManager.Sfx.Explosion);
                 _audio.PlaySfx(AudioManager.Sfx.UnitDie);
                 break;
         }
+    }
+
+    /// <summary>建筑被攻击音效。补强：播放金属撞击声。</summary>
+    public void PlayBuildingDamagedSfx()
+    {
+        _audio?.PlaySfx(AudioManager.Sfx.BuildingDamaged);
     }
 
     /// <summary>建筑被毁音效。</summary>
     public void PlayBuildingDestroyedSfx()
     {
         _audio?.PlaySfxForce(AudioManager.Sfx.BigExplosion);
+    }
+
+    /// <summary>补强：防御建筑开火音效 — 机枪塔用TurretFire，防空炮用AaFire。</summary>
+    public void PlayTurretFireSfx(BuildingType buildingType)
+    {
+        if (_audio == null) return;
+        switch (buildingType)
+        {
+            case BuildingType.AntiAirTurret:
+                _audio.PlaySfx(AudioManager.Sfx.AaFire);
+                break;
+            default:
+                _audio.PlaySfx(AudioManager.Sfx.TurretFire);
+                break;
+        }
+    }
+
+    /// <summary>补强：科技解锁音效。</summary>
+    public void PlayTechUnlockSfx()
+    {
+        _audio?.PlaySfxForce(AudioManager.Sfx.TechUnlock);
+    }
+
+    /// <summary>补强：电力恢复音效（NotifyLowPower的反向）。</summary>
+    public void PlayPowerRestoredSfx()
+    {
+        _audio?.PlaySfxForce(AudioManager.Sfx.PowerRestored);
     }
 
     /// <summary>P1-6: 命中音效（单位受击时调用）。</summary>

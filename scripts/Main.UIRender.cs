@@ -458,10 +458,15 @@ public partial class Main
                 _audio?.PlaySfxForce(AudioManager.Sfx.NotifyLowPower);
                 _lowPowerNotifyCooldown = 5f;
             }
+            _wasLowPower = true;
         }
         else
         {
+            // 补强：电力从不足恢复到正常时播放PowerRestored音效
+            if (_wasLowPower)
+                PlayPowerRestoredSfx();
             _lowPowerNotifyCooldown = 0f;
+            _wasLowPower = false;
         }
 
         // 汇总 7 个 AI 阵营（总单位、总资金、总电力）
@@ -577,5 +582,7 @@ public partial class Main
 
     /// <summary>P1-6: 低电量通知节流计时器</summary>
     private float _lowPowerNotifyCooldown;
+    /// <summary>补强：上一帧是否处于低电状态（用于检测电力恢复事件）</summary>
+    private bool _wasLowPower;
 
 }

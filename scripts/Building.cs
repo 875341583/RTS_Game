@@ -352,6 +352,9 @@ public partial class Building : Area2D, IBuildingEntity
             _healthBar.Value = Mathf.Max(0, Health);
             _healthBar.Visible = true;
         }
+        // 补强：建筑被攻击时播放金属撞击声
+        if (GetParent()?.GetParent() is Main hitMain)
+            hitMain.PlayBuildingDamagedSfx();
         // G4+：通知己方单位回防
         if (GetParent()?.GetParent() is Main main)
             main.OnBuildingAttacked(this);
@@ -749,6 +752,9 @@ public partial class Building : Area2D, IBuildingEntity
                         parentNode.AddChild(BattleEffect.MuzzleFlash(GlobalPosition));
                         parentNode.AddChild(BattleEffect.Shell(GlobalPosition, target.GlobalPosition));
                     }
+                    // 补强：防御建筑开火音效
+                    if (GetParent()?.GetParent() is Main turretMain)
+                        turretMain.PlayTurretFireSfx(Type);
                     // 炮塔转向敌人
                     var dir = target.GlobalPosition - GlobalPosition;
                     if (dir.LengthSquared() > 1f) _turretAngle = dir.Angle();

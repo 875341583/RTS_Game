@@ -95,6 +95,8 @@ public partial class Main
             GameLog.Debug($"[G1] 科技研究完成: {node.Name} — {node.Description}");
             ShowToast(TrManager.Tr("tech.toast_research_done", node.Name));
             ApplyTechEffects(0);
+            // 补强：科技解锁音效
+            PlayTechUnlockSfx();
             if (_techTreePanelVisible) UpdateTechTreePanel();
         }
 

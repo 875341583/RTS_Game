@@ -14,6 +14,8 @@ namespace RTSGame;
 ///   - Alert:   被攻击   — 紧急警报进行曲
 ///   - Victory: 胜利     — 凯旋曲
 ///   - Defeat:  失败     — 沉重低音曲
+///
+/// 补强：BGM切换时0.5秒淡出旧曲 + 0.5秒淡入新曲（Tween实现，不阻塞主循环）。
 /// </summary>
 public static class BgmManager
 {
@@ -38,6 +40,14 @@ public static class BgmManager
 
     private static BgmScene _currentScene = BgmScene.Menu;
     private static AudioStreamPlayer? _player;
+    private static float _bgmVolume = 0.35f;
+    private const float FadeDuration = 0.5f;
+
+    /// <summary>是否正在淡出中（防止重复触发）。</summary>
+    private static bool _fadingOut;
+
+    /// <summary>待切换的目标场景（淡出完成后播放）。</summary>
+    private static BgmScene? _pendingScene;
 
     /// <summary>当前播放场景。</summary>
     public static BgmScene CurrentScene => _currentScene;
@@ -48,16 +58,57 @@ public static class BgmManager
         _player = bgmPlayer;
     }
 
-    /// <summary>切换BGM场景。</summary>
+    /// <summary>切换BGM场景（带淡入淡出）。</summary>
     public static void SwitchScene(BgmScene scene)
     {
-        if (scene == _currentScene && _player != null && _player.Playing) return;
+        if (scene == _currentScene && _player != null && _player.Playing && !_fadingOut) return;
 
-        _currentScene = scene;
-        PlayCurrent();
+        // 如果正在播放，先淡出再切换；否则直接播放新场景
+        if (_player != null && _player.Playing && !_fadingOut)
+        {
+            _pendingScene = scene;
+            FadeOutThenSwitch();
+        }
+        else
+        {
+            _currentScene = scene;
+            _pendingScene = null;
+            PlayCurrent();
+        }
     }
 
-    /// <summary>播放当前场景的BGM。</summary>
+    /// <summary>淡出当前BGM，完成后播放待切换场景。</summary>
+    private static void FadeOutThenSwitch()
+    {
+        if (_player == null || _fadingOut) return;
+        _fadingOut = true;
+
+        // 使用Tween淡出音量→0→Stop
+        var tween = _player.CreateTween();
+        tween.TweenProperty(_player, "volume_db", -80f, FadeDuration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenCallback(Callable.From(() =>
+        {
+            if (_player != null)
+            {
+                _player.Stop();
+                // 恢复音量，准备下次播放
+                _player.VolumeDb = Mathf.LinearToDb(_bgmVolume);
+            }
+            _fadingOut = false;
+
+            // 播放待切换场景
+            if (_pendingScene.HasValue)
+            {
+                _currentScene = _pendingScene.Value;
+                _pendingScene = null;
+                PlayCurrent();
+            }
+        }));
+    }
+
+    /// <summary>播放当前场景的BGM（带0.5秒淡入）。</summary>
     public static void PlayCurrent()
     {
         if (_player == null) return;
@@ -78,14 +129,24 @@ public static class BgmManager
         }
 
         _player.Stream = stream;
-        _player.VolumeDb = Mathf.LinearToDb(0.35f);
+        // 从0音量开始淡入
+        _player.VolumeDb = -80f;
         _player.Play();
+
+        // 淡入动画
+        var tween = _player.CreateTween();
+        tween.TweenProperty(_player, "volume_db", Mathf.LinearToDb(_bgmVolume), FadeDuration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.In);
+
         GameLog.Debug($"[BgmManager] 切换BGM: {_currentScene}");
     }
 
-    /// <summary>停止BGM。</summary>
+    /// <summary>停止BGM（带淡出）。</summary>
     public static void Stop()
     {
-        _player?.Stop();
+        if (_player == null || !_player.Playing || _fadingOut) return;
+        _pendingScene = null; // 停止后不再切换
+        FadeOutThenSwitch();
     }
 }

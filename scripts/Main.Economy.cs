@@ -375,6 +375,12 @@ public partial class Main
 
     // P1-2: GetBuildingCost 已迁移到上方（支持阵营乘数的重载版本）
 
+    /// <summary>补强：取消建造/生产时播放取消音效。</summary>
+    public void PlayBuildCancelSfx()
+    {
+        _audio?.PlaySfx(AudioManager.Sfx.BuildCancel);
+    }
+
     /// <summary>G4：计算维修费用 = 造价 × 缺失血量比例 × 0.5。</summary>
     private int GetRepairCost(Building b)
     {
@@ -1067,6 +1073,9 @@ public partial class Main
         // 阶段12-C：玩家方生产完成音效
         if (teamId == PlayerTeamId)
             _audio?.PlaySfx(AudioManager.Sfx.UiUnitReady);
+        // 补强：建筑建造完成音效
+        if (teamId == PlayerTeamId)
+            _audio?.PlaySfx(AudioManager.Sfx.UiBuildDone);
     }
 
     private Building? FindHomeBase(int teamId)
