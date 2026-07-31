@@ -255,17 +255,43 @@ public partial class Building : Area2D, IBuildingEntity
         _lightningTowerTex = LoadTexture("res://assets/sprites/buildings/lightning_tower.png"); // E10
         _missileSiloTex    = LoadTexture("res://assets/sprites/buildings/missile_silo.png");     // E10
 
-        // 通用选择环
+        // RA2风格建筑选择环：虚线圆 + 四角L标记
         var ring = Image.CreateEmpty(128, 128, false, Image.Format.Rgba8);
         ring.Fill(Colors.Transparent);
-        for (float a = 0; a < Mathf.Tau; a += 0.02f)
+        // 外圈：虚线圆
+        for (float a = 0; a < Mathf.Tau; a += 0.105f)
         {
-            int cx = (int)(64 + 60 * Mathf.Cos(a));
-            int cy = (int)(64 + 60 * Mathf.Sin(a));
-            if (cx >= 0 && cx < 128 && cy >= 0 && cy < 128)
+            float endA = a + 0.052f;
+            for (float t = a; t < endA; t += 0.004f)
             {
-                ring.SetPixel(cx, cy, Colors.Lime);
-                if (cx + 1 < 128 && cy >= 0 && cy < 128) ring.SetPixel(cx + 1, cy, Colors.Lime);
+                int cx = (int)(64 + 60 * Mathf.Cos(t));
+                int cy = (int)(64 + 60 * Mathf.Sin(t));
+                if (cx >= 0 && cx < 128 && cy >= 0 && cy < 128)
+                    ring.SetPixel(cx, cy, new Color(0.3f, 0.9f, 1.0f, 1.0f));
+            }
+        }
+        // 内圈：半透明实线
+        for (float a = 0; a < Mathf.Tau; a += 0.015f)
+        {
+            int cx = (int)(64 + 54 * Mathf.Cos(a));
+            int cy = (int)(64 + 54 * Mathf.Sin(a));
+            if (cx >= 0 && cx < 128 && cy >= 0 && cy < 128)
+                ring.SetPixel(cx, cy, new Color(0.2f, 0.7f, 0.9f, 0.5f));
+        }
+        // 四角L形标记
+        int[][] corners = { new[] { 4, 4 }, new[] { 116, 4 }, new[] { 4, 116 }, new[] { 116, 116 } };
+        foreach (var c in corners)
+        {
+            int dx = c[0] < 64 ? 1 : -1;
+            int dy = c[1] < 64 ? 1 : -1;
+            for (int i = 0; i < 12; i++)
+            {
+                int px = c[0] + dx * i, py = c[1];
+                if (px >= 0 && px < 128 && py >= 0 && py < 128)
+                    ring.SetPixel(px, py, new Color(0.5f, 0.95f, 1.0f, 1.0f));
+                px = c[0]; py = c[1] + dy * i;
+                if (px >= 0 && px < 128 && py >= 0 && py < 128)
+                    ring.SetPixel(px, py, new Color(0.5f, 0.95f, 1.0f, 1.0f));
             }
         }
         _buildingRingTex = ImageTexture.CreateFromImage(ring);

@@ -175,7 +175,8 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     private static readonly Vector2[] _shadowPtsLarge = GenEllipsePoints(26f, 13f);
     private static readonly Vector2[] _shadowPtsSmall = GenEllipsePoints(13f, 7f);
     private static readonly Vector2[] _shadowPtsBldg = GenEllipsePoints(52f, 26f);
-    private static readonly Color _shadowColor = new(0, 0, 0, 0.4f);
+    private static readonly Color _shadowColor = new(0, 0, 0, 0.45f);
+    private static readonly Color _shadowColorSoft = new(0, 0, 0, 0.2f);
 
     private static Vector2[] GenEllipsePoints(float rx, float ry)
     {
@@ -266,18 +267,43 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _turretMissile = LoadUnitTexture("res://assets/sprites/units/turret_missile.png");
         _turretAntiAir  = LoadUnitTexture("res://assets/sprites/units/turret_antiair.png");
 
-        // ---- 选中环（保留）----
+        // ---- RA2风格选中环：双层虚线圆 + 四角标记 ----
         var ring = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
         ring.Fill(new Color(0, 0, 0, 0));
-        for (float a = 0; a < Mathf.Tau; a += 0.03f)
+        // 外圈：虚线圆（每6度画一段，跳3度）
+        for (float a = 0; a < Mathf.Tau; a += 0.105f)
         {
-            int cx = (int)(32 + 28 * Mathf.Cos(a));
-            int cy = (int)(32 + 28 * Mathf.Sin(a));
-            if (cx >= 0 && cx < 64 && cy >= 0 && cy < 64)
+            float endA = a + 0.052f;
+            for (float t = a; t < endA; t += 0.005f)
             {
-                ring.SetPixel(cx, cy, Colors.Lime);
-                if (cx + 1 < 64) ring.SetPixel(cx + 1, cy, Colors.Lime);
-                if (cy + 1 < 64) ring.SetPixel(cx, cy + 1, Colors.Lime);
+                int cx = (int)(32 + 28 * Mathf.Cos(t));
+                int cy = (int)(32 + 28 * Mathf.Sin(t));
+                if (cx >= 0 && cx < 64 && cy >= 0 && cy < 64)
+                    ring.SetPixel(cx, cy, new Color(0.3f, 0.9f, 1.0f, 1.0f));
+            }
+        }
+        // 内圈：实线细圆
+        for (float a = 0; a < Mathf.Tau; a += 0.02f)
+        {
+            int cx = (int)(32 + 22 * Mathf.Cos(a));
+            int cy = (int)(32 + 22 * Mathf.Sin(a));
+            if (cx >= 0 && cx < 64 && cy >= 0 && cy < 64)
+                ring.SetPixel(cx, cy, new Color(0.2f, 0.7f, 0.9f, 0.7f));
+        }
+        // 四角L形标记（RA2经典风格）
+        int[][] corners = { new[] { 4, 4 }, new[] { 56, 4 }, new[] { 4, 56 }, new[] { 56, 56 } };
+        foreach (var c in corners)
+        {
+            int dx = c[0] < 32 ? 1 : -1;
+            int dy = c[1] < 32 ? 1 : -1;
+            for (int i = 0; i < 8; i++)
+            {
+                int px = c[0] + dx * i, py = c[1];
+                if (px >= 0 && px < 64 && py >= 0 && py < 64)
+                    ring.SetPixel(px, py, new Color(0.5f, 0.95f, 1.0f, 1.0f));
+                px = c[0]; py = c[1] + dy * i;
+                if (px >= 0 && px < 64 && py >= 0 && py < 64)
+                    ring.SetPixel(px, py, new Color(0.5f, 0.95f, 1.0f, 1.0f));
             }
         }
         _ringTex = ImageTexture.CreateFromImage(ring);
@@ -2599,6 +2625,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         // 通过 DrawSetTransform 把椭圆中心偏移到单位脚下偏右下，模拟光源在左上方
         var pts = IsInfantryType(Type) ? _shadowPtsSmall : _shadowPtsLarge;
         float yOff = IsInfantryType(Type) ? 8f : 18f;
+        // 外层柔和阴影（更大、更淡，模拟散射光）
+        DrawSetTransform(new Vector2(3f, yOff), 0f, new Vector2(1.3f, 1.3f));
+        DrawPolygon(pts, new Color[] { _shadowColorSoft });
+        // 内层主阴影
         DrawSetTransform(new Vector2(3f, yOff), 0f, Vector2.One);
         DrawPolygon(pts, new Color[] { _shadowColor });
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
