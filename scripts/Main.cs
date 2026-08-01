@@ -345,16 +345,14 @@ public partial class Main : Node2D
 
         ApplyDifficultyConfig();
 
-        // RA2风格屏幕后处理：程序化暗角（不依赖着色器，兼容软件渲染）
+        // RA2风格屏幕后处理：程序化暗角（_Draw同心圆环，兼容ANGLE/软件渲染）
         {
-            // 创建暗角覆盖层（全屏径向渐变深色覆盖）
             var vignette = new VignetteOverlay();
             vignette.Name = "VignetteOverlay";
             vignette.Position = Vector2.Zero;
             vignette.Size = new Vector2(1920, 1080);
             vignette.MouseFilter = Control.MouseFilterEnum.Ignore;
 
-            // UI放最前(layer 2)，暗角在游戏世界之上(layer 1)
             var uiLayer = GetNode<CanvasLayer>("UI");
             uiLayer.Layer = 2;
             var ppLayer = new CanvasLayer();

@@ -47,11 +47,11 @@ public partial class FogOfWar : Node2D
     /// <summary>菱形顶点数组（用于DrawPolygon）。</summary>
     private static readonly Vector2[] DiamondPoints = IsoCoords.DiamondVerts;
 
-    /// <summary>Unexplored 迷雾颜色（纯黑不透明）。</summary>
-    private static readonly Color ColorUnexplored = new(0f, 0f, 0f, 1f);
+    /// <summary>Unexplored 迷雾颜色（RA2风格深蓝灰，非纯黑，保留氛围感）。</summary>
+    private static readonly Color ColorUnexplored = new(0.02f, 0.03f, 0.06f, 0.96f);
 
-    /// <summary>Explored 迷雾颜色（暗灰半透明）。</summary>
-    private static readonly Color ColorExplored = new(0f, 0f, 0f, 0.55f);
+    /// <summary>Explored 迷雾颜色（暗蓝灰半透明，地形隐约可见）。</summary>
+    private static readonly Color ColorExplored = new(0.02f, 0.03f, 0.06f, 0.5f);
 
     /// <summary>初始化迷雾数据。由 Main._Ready 调用。</summary>
     public void Initialize(int mapSize)
