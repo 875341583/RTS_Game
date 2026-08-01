@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 namespace RTSGame;
@@ -75,6 +76,7 @@ public partial class MainMenu : Control
 
         TrManager.SetLanguage("zh-CN");
         FactionManager.Load();
+        NetworkManager.Init(); // 初始化联机系统
         _settingsQuality = QualitySettings.Current;
         _settingsFullscreen = DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen;
 
@@ -291,6 +293,12 @@ public partial class MainMenu : Control
         skBtn.Pressed += () => ShowSkirmishPage();
         rightVb.AddChild(skBtn);
         rightVb.AddChild(MakeLabel(TrManager.Tr("menu.skirmish_desc"), 11, ColTextDim));
+        rightVb.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
+
+        var mpBtn = MakeRedButton("联机对战", 22);
+        mpBtn.Pressed += () => ShowMultiplayerPage();
+        rightVb.AddChild(mpBtn);
+        rightVb.AddChild(MakeLabel("局域网/互联网 3~11人实时对战", 11, ColTextDim));
         rightVb.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
 
         var setBtn = MakeRedButton(TrManager.Tr("ui.settings"), 22);
@@ -581,6 +589,382 @@ public partial class MainMenu : Control
         backBtn.Pressed += () => ShowMainMenu();
         backRow.AddChild(backBtn);
         cv.AddChild(backRow);
+    }
+
+    // ==================== 联机页面 ====================
+
+    private LineEdit _mpNameInput = null!;
+    private LineEdit _mpIpInput = null!;
+    private LineEdit _mpPortInput = null!;
+    private LineEdit _mpChatInput = null!;
+    private Label _mpStatusLabel = null!;
+    private Label _mpPlayerListLabel = null!;
+    private VBoxContainer _mpChatBox = null!;
+    private int _mpModeChoice = 3; // 3/5/7/9/11
+
+    private void ShowMultiplayerPage()
+    {
+        ClearPage();
+
+        // 标题
+        var titlePanel = MakePanel(20, 10, 1880, 50, true);
+        _pageRoot.AddChild(titlePanel);
+        var titleVb = MakePanelContent(titlePanel, 16);
+        var title = MakeLabel("联机对战", 24, ColGold);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        titleVb.AddChild(title);
+
+        // 左列：创建房间
+        var leftPanel = MakePanel(20, 80, 900, 940);
+        _pageRoot.AddChild(leftPanel);
+        var lvb = MakePanelContent(leftPanel, 16);
+        lvb.AddThemeConstantOverride("separation", 10);
+
+        lvb.AddChild(MakeLabel("创建房间", 18, ColGold));
+
+        // 玩家名
+        lvb.AddChild(MakeLabel("你的名称", 13, ColTextDim));
+        _mpNameInput = new LineEdit { Text = "玩家", CustomMinimumSize = new Vector2(400, 36) };
+        _mpNameInput.AddThemeFontSizeOverride("font_size", 15);
+        lvb.AddChild(_mpNameInput);
+
+        // 模式选择
+        lvb.AddChild(MakeLabel("对战模式", 13, ColTextDim));
+        var modeRow = new HBoxContainer();
+        modeRow.AddThemeConstantOverride("separation", 6);
+        foreach (var m in new[] { 3, 5, 7, 9, 11 })
+        {
+            var b = MakeGrayButton($"{m}人模式", 13, _mpModeChoice == m);
+            int mode = m;
+            b.Pressed += () => { _mpModeChoice = mode; ShowMultiplayerPage(); };
+            modeRow.AddChild(b);
+        }
+        lvb.AddChild(modeRow);
+
+        // 阵营选择
+        lvb.AddChild(MakeLabel("选择阵营", 13, ColTextDim));
+        var facRow = new HBoxContainer();
+        facRow.AddThemeConstantOverride("separation", 6);
+        string[] factions = { "Allies", "Soviet", "Yuri" };
+        string[] facLabels = { "同盟军", "苏维埃", "尤里军团" };
+        foreach (var (fac, label) in System.Linq.Enumerable.Zip(factions, facLabels))
+        {
+            var b = MakeGrayButton(label, 12, _selFactionId == fac);
+            string f = fac;
+            b.Pressed += () => { _selFactionId = f; GameSession.PlayerFactionId = f; ShowMultiplayerPage(); };
+            facRow.AddChild(b);
+        }
+        lvb.AddChild(facRow);
+
+        // 端口
+        lvb.AddChild(MakeLabel("服务器端口", 13, ColTextDim));
+        _mpPortInput = new LineEdit { Text = "25565", CustomMinimumSize = new Vector2(200, 36) };
+        _mpPortInput.AddThemeFontSizeOverride("font_size", 15);
+        lvb.AddChild(_mpPortInput);
+
+        lvb.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+
+        var createBtn = MakeRedButton("创建房间并等待玩家", 18);
+        createBtn.Pressed += () =>
+        {
+            int port = 25565;
+            if (int.TryParse(_mpPortInput.Text.Trim(), out var p)) port = p;
+            var config = new NetworkManager.RoomConfig
+            {
+                MaxPlayers = _mpModeChoice,
+                Port = port,
+                HostName = _mpNameInput.Text.Trim(),
+                HostFaction = _selFactionId,
+                ModeName = $"{_mpModeChoice}人模式"
+            };
+            GameSession.PlayerFactionId = _selFactionId;
+            if (NetworkManager.CreateRoom(config))
+            {
+                ShowLobbyPage(isHost: true);
+            }
+            else
+            {
+                ShowMpStatus("创建房间失败，请检查端口是否被占用");
+            }
+        };
+        lvb.AddChild(createBtn);
+
+        // ---- 右列：加入房间 ----
+        var rightPanel = MakePanel(960, 80, 920, 940);
+        _pageRoot.AddChild(rightPanel);
+        var rvb = MakePanelContent(rightPanel, 16);
+        rvb.AddThemeConstantOverride("separation", 10);
+
+        rvb.AddChild(MakeLabel("加入房间", 18, ColGold));
+
+        rvb.AddChild(MakeLabel("服务器IP地址", 13, ColTextDim));
+        _mpIpInput = new LineEdit { Text = "127.0.0.1", CustomMinimumSize = new Vector2(400, 36) };
+        _mpIpInput.AddThemeFontSizeOverride("font_size", 15);
+        rvb.AddChild(_mpIpInput);
+
+        rvb.AddChild(MakeLabel("服务器端口", 13, ColTextDim));
+        var portInput2 = new LineEdit { Text = "25565", CustomMinimumSize = new Vector2(200, 36) };
+        portInput2.AddThemeFontSizeOverride("font_size", 15);
+        rvb.AddChild(portInput2);
+
+        rvb.AddChild(MakeLabel("你的名称", 13, ColTextDim));
+        // 复用同一个名称输入框
+        rvb.AddChild(new Label { Text = "（同左）" });
+
+        rvb.AddChild(MakeLabel("选择阵营", 13, ColTextDim));
+        var facRow2 = new HBoxContainer();
+        facRow2.AddThemeConstantOverride("separation", 6);
+        foreach (var (fac, label) in System.Linq.Enumerable.Zip(factions, facLabels))
+        {
+            var b = MakeGrayButton(label, 12, _selFactionId == fac);
+            string f = fac;
+            b.Pressed += () => { _selFactionId = f; GameSession.PlayerFactionId = f; ShowMultiplayerPage(); };
+            facRow2.AddChild(b);
+        }
+        rvb.AddChild(facRow2);
+
+        rvb.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+
+        var joinBtn = MakeRedButton("加入房间", 18);
+        joinBtn.Pressed += () =>
+        {
+            int port = 25565;
+            if (int.TryParse(portInput2.Text.Trim(), out var p)) port = p;
+            string ip = _mpIpInput.Text.Trim();
+            if (string.IsNullOrEmpty(ip)) { ShowMpStatus("请输入服务器IP"); return; }
+            if (NetworkManager.JoinRoom(ip, port, _mpNameInput.Text.Trim(), _selFactionId))
+            {
+                ShowLobbyPage(isHost: false);
+            }
+            else
+            {
+                ShowMpStatus("连接失败，请检查IP和端口");
+            }
+        };
+        rvb.AddChild(joinBtn);
+
+        // 状态
+        _mpStatusLabel = MakeLabel("", 13, ColRedBright);
+        rvb.AddChild(_mpStatusLabel);
+
+        rvb.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
+
+        // 返回
+        var backBtn = MakeGrayButton(TrManager.Tr("menu.back"), 16);
+        backBtn.CustomMinimumSize = new Vector2(160, 40);
+        backBtn.Pressed += () => ShowMainMenu();
+        rvb.AddChild(backBtn);
+
+        // 底部提示
+        var hintPanel = MakePanel(20, 1030, 1880, 50);
+        _pageRoot.AddChild(hintPanel);
+        var hintHb = new HBoxContainer();
+        hintHb.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        hintHb.Alignment = BoxContainer.AlignmentMode.Center;
+        hintPanel.AddChild(hintHb);
+        hintHb.AddChild(MakeLabel("提示：联机模式支持局域网和互联网直连。房主创建房间后，其他玩家输入房主IP加入。", 12, ColTextDim));
+    }
+
+    private void ShowMpStatus(string msg)
+    {
+        if (_mpStatusLabel != null)
+            _mpStatusLabel.Text = msg;
+    }
+
+    // ==================== 联机大厅页面 ====================
+
+    private void ShowLobbyPage(bool isHost)
+    {
+        ClearPage();
+
+        NetworkManager.LobbyChanged -= OnLobbyChanged;
+        NetworkManager.LobbyChanged += OnLobbyChanged;
+        NetworkManager.GameStarted -= OnGameStarted;
+        NetworkManager.GameStarted += OnGameStarted;
+        NetworkManager.Disconnected -= OnNetDisconnected;
+        NetworkManager.Disconnected += OnNetDisconnected;
+        NetworkManager.ChatReceived -= OnChatReceived;
+        NetworkManager.ChatReceived += OnChatReceived;
+
+        // 标题
+        var titlePanel = MakePanel(20, 10, 1880, 50, true);
+        _pageRoot.AddChild(titlePanel);
+        var titleVb = MakePanelContent(titlePanel, 16);
+        var title = MakeLabel($"联机大厅 — {NetworkManager.Room.ModeName}（{NetworkManager.Room.MaxPlayers}人）", 22, ColGold);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        titleVb.AddChild(title);
+
+        // 左列：玩家列表
+        var leftPanel = MakePanel(20, 80, 900, 820);
+        _pageRoot.AddChild(leftPanel);
+        var lvb = MakePanelContent(leftPanel, 16);
+        lvb.AddThemeConstantOverride("separation", 8);
+
+        lvb.AddChild(MakeLabel("玩家列表", 18, ColGold));
+        _mpPlayerListLabel = MakeLabel("", 14, ColTextMain);
+        _mpPlayerListLabel.CustomMinimumSize = new Vector2(0, 400);
+        lvb.AddChild(_mpPlayerListLabel);
+        RefreshPlayerList();
+
+        // AI填充按钮（仅Host可见）
+        if (isHost)
+        {
+            var aiBtn = MakeGrayButton(NetworkManager._fillWithAI ? "AI填充：开启" : "AI填充：关闭", 13, NetworkManager._fillWithAI);
+            aiBtn.Pressed += () =>
+            {
+                NetworkManager.ToggleFillAI();
+                ShowLobbyPage(isHost);
+            };
+            lvb.AddChild(aiBtn);
+            lvb.AddChild(MakeLabel("开启后，未接入的空位由AI自动填充", 11, ColTextDim));
+        }
+
+        // 右列：聊天 + 设置
+        var rightPanel = MakePanel(960, 80, 920, 820);
+        _pageRoot.AddChild(rightPanel);
+        var rvb = MakePanelContent(rightPanel, 16);
+        rvb.AddThemeConstantOverride("separation", 8);
+
+        rvb.AddChild(MakeLabel("聊天", 18, ColGold));
+        _mpChatBox = new VBoxContainer();
+        _mpChatBox.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        _mpChatBox.AddThemeConstantOverride("separation", 2);
+        rvb.AddChild(_mpChatBox);
+
+        _mpChatInput = new LineEdit { CustomMinimumSize = new Vector2(0, 36) };
+        _mpChatInput.AddThemeFontSizeOverride("font_size", 14);
+        _mpChatInput.PlaceholderText = "输入消息后回车发送...";
+        _mpChatInput.TextSubmitted += (text) =>
+        {
+            if (!string.IsNullOrEmpty(text))
+            {
+                NetworkManager.SendChat(text);
+                _mpChatInput.Text = "";
+            }
+        };
+        rvb.AddChild(_mpChatInput);
+
+        // 底部操作栏
+        var bottomPanel = MakePanel(20, 920, 1880, 140);
+        _pageRoot.AddChild(bottomPanel);
+        var bottomHb = new HBoxContainer();
+        bottomHb.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        bottomHb.Alignment = BoxContainer.AlignmentMode.Center;
+        bottomHb.AddThemeConstantOverride("separation", 24);
+        bottomPanel.AddChild(bottomHb);
+
+        var leaveBtn = MakeGrayButton("离开房间", 16);
+        leaveBtn.CustomMinimumSize = new Vector2(160, 44);
+        leaveBtn.Pressed += () =>
+        {
+            NetworkManager.Disconnect();
+            ShowMultiplayerPage();
+        };
+        bottomHb.AddChild(leaveBtn);
+
+        if (isHost)
+        {
+            // 地图设置已在Skirmish中选好，这里使用GameSession的值
+            var startBtn = MakeRedButton("开始游戏", 22, 280, 44);
+            startBtn.Pressed += () =>
+            {
+                // 检查所有真人玩家是否准备
+                if (!NetworkManager._fillWithAI)
+                {
+                    foreach (var p in NetworkManager.Players.Values)
+                        if (!p.IsAI && !p.IsReady)
+                        {
+                            ShowMpStatus("有玩家未准备");
+                            return;
+                        }
+                }
+
+                ulong seed = GameSession.MapSeed == 0 ? (ulong)DateTime.Now.Ticks : GameSession.MapSeed;
+                NetworkManager.HostStartGame(seed, GameSession.SelectedDifficulty,
+                    GameSession.SelectedMapSize, GameSession.SelectedMapTheme);
+                // Host自己进入游戏
+                GameSession.IsMultiplayer = true;
+                CallDeferred(nameof(ChangeToGameScene));
+            };
+            bottomHb.AddChild(startBtn);
+
+            // 地图设置快捷入口
+            var mapBtn = MakeGrayButton("地图设置", 14);
+            mapBtn.CustomMinimumSize = new Vector2(160, 44);
+            mapBtn.Pressed += () => ShowSkirmishPage();
+            bottomHb.AddChild(mapBtn);
+        }
+        else
+        {
+            var readyBtn = MakeRedButton("准备/取消准备", 18, 280, 44);
+            readyBtn.Pressed += () => { NetworkManager.ToggleReady(); };
+            bottomHb.AddChild(readyBtn);
+        }
+    }
+
+    private void OnLobbyChanged()
+    {
+        if (_mpPlayerListLabel != null)
+            RefreshPlayerList();
+    }
+
+    private void RefreshPlayerList()
+    {
+        if (_mpPlayerListLabel == null) return;
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < NetworkManager.Room.MaxPlayers; i++)
+        {
+            NetworkManager.PlayerSlot? slot = null;
+            foreach (var p in NetworkManager.Players.Values)
+                if (p.TeamId == i) { slot = p; break; }
+            if (slot != null)
+            {
+                string tag = slot.IsHost ? "[房主] " : slot.IsAI ? "[AI] " : "";
+                string ready = slot.IsReady ? " ✓" : " ✗";
+                string colorName = ((GameData.TeamPalette[i % GameData.TeamPalette.Length]).ToHtml());
+                sb.AppendLine($"[color={colorName}]阵营{i}[/color]  {tag}{slot.Name} ({slot.Faction}){ready}");
+            }
+            else
+            {
+                sb.AppendLine($"阵营{i}  [空位]");
+            }
+        }
+        _mpPlayerListLabel.Text = sb.ToString();
+    }
+
+    private void OnGameStarted()
+    {
+        GameSession.IsMultiplayer = true;
+        CallDeferred(nameof(ChangeToGameScene));
+    }
+
+    private void OnNetDisconnected(string reason)
+    {
+        CallDeferred(nameof(OnNetDisconnectedDeferred), reason);
+    }
+
+    private void OnNetDisconnectedDeferred(string reason)
+    {
+        ShowMpStatus($"断开连接: {reason}");
+        ShowMultiplayerPage();
+    }
+
+    private void OnChatReceived(string sender, string message)
+    {
+        if (_mpChatBox != null && IsInstanceValid(_mpChatBox))
+        {
+            var lbl = MakeLabel($"{sender}: {message}", 12, ColTextMain);
+            _mpChatBox.AddChild(lbl);
+            // 保持最多20条
+            while (_mpChatBox.GetChildCount() > 20)
+                _mpChatBox.GetChild(0).QueueFree();
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (NetworkManager.IsOnline)
+            NetworkManager.Poll();
     }
 
     private void ChangeToGameScene()

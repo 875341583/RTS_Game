@@ -20,4 +20,7 @@ public static class GameSession
 
     /// <summary>P1-2: 玩家选择的阵营ID。默认 "Allies"（同盟军）。游戏场景 _Ready 时 FactionManager 已加载，用于设置玩家阵营。</summary>
     public static string PlayerFactionId { get; set; } = "Allies";
+
+    /// <summary>是否处于联机模式（由 NetworkManager 设置）。</summary>
+    public static bool IsMultiplayer { get; set; } = false;
 }

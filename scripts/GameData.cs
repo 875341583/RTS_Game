@@ -190,6 +190,9 @@ public static class GameData
         new(0.44f, 0.18f, 0.72f), // 5 Purple 深紫（明度低）
         new(0.95f, 0.51f, 0.12f), // 6 Orange 亮橙
         new(0.14f, 0.62f, 0.88f), // 7 Cyan  偏蓝青（与2纯绿拉大色相差）
+        new(0.55f, 0.75f, 0.15f), // 8 Lime  偏黄绿
+        new(0.75f, 0.15f, 0.55f), // 9 Magenta 品红
+        new(0.20f, 0.20f, 0.25f), // 10 Dark  暗银灰（接近黑）
     };
 
     /// <summary>获取 TeamId 对应的阵营色。优先从 FactionManager 取色（阵营差异化），超出阵营数后回退到 TeamPalette 取模。</summary>

@@ -69,8 +69,8 @@ public static class MapConfig
     public static int Center => _gridSize / 2;
 
     /// <summary>
-    /// 8个阵营的基地起始位置（根据GridSize动态计算）。
-    /// Small(32): 四角+四边中点
+    /// 11个阵营的基地起始位置（根据GridSize动态计算）。
+    /// Small(32): 四角+四边中点+中心三角
     /// Medium/Large: 按比例分布
     /// </summary>
     public static (int x, int y)[] BasePositions
@@ -80,10 +80,13 @@ public static class MapConfig
             int g = _gridSize;
             int edge = g - 5;  // 边缘偏移（留5格缓冲）
             int mid = g / 2;
+            int q1 = g / 4;    // 四分之一点
+            int q3 = g * 3 / 4; // 四分之三点
             return new (int, int)[]
             {
                 (0, 0), (edge, edge), (edge, 0), (0, edge),
                 (mid, 0), (mid, edge), (0, mid), (edge, mid),
+                (q1, q1), (q3, q1), (mid, mid),
             };
         }
     }

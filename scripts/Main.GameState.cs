@@ -39,6 +39,14 @@ public partial class Main
     private void CheckWinCondition()
     {
         if (_gameOver) return;
+
+        // 联机模式：使用网络版胜负判定
+        if (NetworkManager.IsOnline)
+        {
+            CheckWinConditionNet();
+            return;
+        }
+
         int playerUnits = CountUnitsOfTeam(PlayerTeamId);
         int playerBuildings = CountBuildingsOfTeam(PlayerTeamId);
 

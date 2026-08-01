@@ -41,15 +41,19 @@ public partial class Main : Node2D
     private Vector2 _dragStart;
 
     // 资金
-    /// <summary>玩家阵营固定为 0；阵营 1..(AiTeamCount) 为 AI 阵营。总阵营数 = AiTeamCount + 1。</summary>
-    private const int AiTeamCount = 7;
-    /// <summary>总阵营数（8）。与 Unit.TeamPalette 长度对应。</summary>
-    private const int TotalTeamCount = 8;
-    /// <summary>玩家阵营 ID 固定为 0。</summary>
-    private const int PlayerTeamId = 0;
+    /// <summary>玩家阵营固定为 0；阵营 1..10 为其他玩家或 AI 阵营。总阵营数 = 11。</summary>
+    private const int MaxTeamCount = 11;
+    /// <summary>总阵营数（11）。与 GameData.TeamPalette 长度对应。</summary>
+    private const int TotalTeamCount = MaxTeamCount;
+    /// <summary>单机模式下AI阵营数量（联机模式动态调整）。</summary>
+    private const int SinglePlayerAiCount = 7;
+    /// <summary>当前模式下的AI阵营数量（单机=7，联机动态）。</summary>
+    private static int AiTeamCount => NetworkManager.IsOnline ? NetworkManager.AiTeamCount : SinglePlayerAiCount;
+    /// <summary>玩家阵营 ID（联机模式下由 NetworkManager 分配）。</summary>
+    private static int PlayerTeamId => NetworkManager.IsOnline ? NetworkManager.LocalTeamId : 0;
 
-    // 资金：玩家 2500，每个 AI 2000
-    private readonly int[] _money = new int[TotalTeamCount] { 2500, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };
+    // 资金：玩家 2500，每个 AI 2000（11阵营）
+    private readonly int[] _money = new int[TotalTeamCount] { 2500, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };
     // P1-2: 单位/建筑造价已迁移到 data/units.json 和 data/buildings.json
     // 通过 GameData.GetUnitCost() / GameData.GetBuildingCost() 获取
     // 阵营乘数通过 FactionDef.ApplyCost() 应用
@@ -476,7 +480,11 @@ public partial class Main : Node2D
         for (int i = 0; i < _eureka.Length; i++)
             if (_eureka[i] == null) _eureka[i] = new EurekaSystem.TeamEureka();
 
-        // ---- 初始化 8 阵营 ----
+        // ---- 初始化阵营 ----
+        // 联机模式：根据NetworkManager.Players分配真人/AI阵营
+        // 单机模式：TeamId 0=玩家，1..7=AI（按难度激活）
+        int activeTeamCount = NetworkManager.IsOnline ? NetworkManager.Room.MaxPlayers : TotalTeamCount;
+
         // 阵营起始位置：P2-2: 使用 MapConfig 动态计算，支持任意地图尺寸
         var basePositions = MapConfig.BasePositions;
         var teamGridPositions = new (int gx, int gy)[TotalTeamCount];
@@ -491,13 +499,36 @@ public partial class Main : Node2D
 
         for (int teamId = 0; teamId < TotalTeamCount; teamId++)
         {
+            // 联机模式：只为房间内的阵营生成基地
+            bool hasSlot = false;
+            bool isHuman = false;
+            bool isLocalPlayer = false;
+            if (NetworkManager.IsOnline)
+            {
+                foreach (var p in NetworkManager.Players.Values)
+                    if (p.TeamId == teamId)
+                    {
+                        hasSlot = true;
+                        isHuman = !p.IsAI;
+                        isLocalPlayer = (p.PeerId == NetworkManager.LocalPeerId);
+                        break;
+                    }
+                if (!hasSlot) continue; // 跳过空槽位
+            }
+            else
+            {
+                hasSlot = true;
+                isHuman = (teamId == PlayerTeamId);
+                isLocalPlayer = (teamId == PlayerTeamId);
+            }
+
             var basePos = teamStartPositions[teamId];
             var baseBuilding = SpawnBuilding(BuildingType.Base, basePos, teamId);
             _bases[teamId] = baseBuilding;
 
-            if (teamId == PlayerTeamId)
+            if (isLocalPlayer)
             {
-                // 玩家方：3 矿车起步，2 坦克 1 重坦 1 轻坦（玩家手动操控）
+                // 本地玩家方：3 矿车起步，2 坦克 1 重坦 1 轻坦（玩家手动操控）
                 SpawnHarvester(basePos + new Vector2(-40, 70), teamId, baseBuilding);
                 SpawnHarvester(basePos + new Vector2(50, 70), teamId, baseBuilding);
                 SpawnHarvester(basePos + new Vector2(0, 110), teamId, baseBuilding);
@@ -507,7 +538,7 @@ public partial class Main : Node2D
             }
             else
             {
-                // AI 方：N 矿车起步 + 1 重坦 1 轻坦
+                // AI 方或远端真人玩家方（均由AI暂代，远端玩家的操作通过命令同步）
                 // 活跃AI（teamId ≤ _activeAiCount）开放 AutoAI 主动进攻
                 // 休眠AI（teamId > _activeAiCount）禁用 AutoAI 静止原地不主动进攻
                 bool isActiveAi = teamId <= _activeAiCount;
@@ -792,6 +823,9 @@ public partial class Main : Node2D
         _fogOfWar.Initialize(MapConfig.GridSize);
         AddChild(_fogOfWar);
         GameLog.Debug("[FogOfWar] 战争迷雾系统初始化完成");
+
+        // 联机同步初始化
+        InitNetSync();
     }
 
     // ======== E4：地形改造支持方法 ========
@@ -832,6 +866,10 @@ public partial class Main : Node2D
     public override void _Process(double delta)
     {
         var dt = (float)delta;
+
+        // 联机模式：轮询网络消息
+        if (NetworkManager.IsOnline)
+            NetworkManager.Poll();
 
         // P1-5: 缓存刷新——每帧标记脏，首次GetAllUnits/GetAllBuildings调用时重建
         _unitsCacheDirty = true;
