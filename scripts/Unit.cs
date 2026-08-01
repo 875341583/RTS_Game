@@ -171,6 +171,49 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     protected Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
     private ProgressBar _healthBar = null!;
+    private static StyleBoxFlat? _healthBarBgStyle;
+    private static StyleBoxFlat? _healthBarFgStyle;
+    private static StyleBoxFlat? _healthBarFgStyleYellow;
+    private static StyleBoxFlat? _healthBarFgStyleRed;
+    /// <summary>初始化RA2风格血条样式（静态缓存，所有单位共享）。</summary>
+    private static void InitHealthBarStyles()
+    {
+        if (_healthBarBgStyle != null) return;
+        _healthBarBgStyle = new StyleBoxFlat
+        {
+            BgColor = new Color(0.08f, 0.08f, 0.08f, 0.85f),
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = new Color(0.3f, 0.3f, 0.3f, 0.8f),
+            CornerRadiusTopLeft = 1, CornerRadiusTopRight = 1,
+            CornerRadiusBottomLeft = 1, CornerRadiusBottomRight = 1
+        };
+        _healthBarFgStyle = new StyleBoxFlat
+        {
+            BgColor = new Color(0.2f, 0.7f, 0.2f, 0.95f),
+            CornerRadiusTopLeft = 1, CornerRadiusTopRight = 1,
+            CornerRadiusBottomLeft = 1, CornerRadiusBottomRight = 1
+        };
+        _healthBarFgStyleYellow = new StyleBoxFlat
+        {
+            BgColor = new Color(0.9f, 0.8f, 0.15f, 0.95f),
+            CornerRadiusTopLeft = 1, CornerRadiusTopRight = 1,
+            CornerRadiusBottomLeft = 1, CornerRadiusBottomRight = 1
+        };
+        _healthBarFgStyleRed = new StyleBoxFlat
+        {
+            BgColor = new Color(0.85f, 0.15f, 0.1f, 0.95f),
+            CornerRadiusTopLeft = 1, CornerRadiusTopRight = 1,
+            CornerRadiusBottomLeft = 1, CornerRadiusBottomRight = 1
+        };
+    }
+    /// <summary>根据当前血量百分比更新血条前景颜色（绿→黄→红）。</summary>
+    private void UpdateHealthBarStyle()
+    {
+        if (_healthBar == null) return;
+        float pct = MaxHealth > 0 ? Health / MaxHealth : 0f;
+        var fg = pct > 0.6f ? _healthBarFgStyle : pct > 0.3f ? _healthBarFgStyleYellow : _healthBarFgStyleRed;
+        _healthBar.AddThemeStyleboxOverride("fill", fg);
+    }
     // 椭圆阴影点（32边形，缓存复用）
     private static readonly Vector2[] _shadowPtsLarge = GenEllipsePoints(26f, 13f);
     private static readonly Vector2[] _shadowPtsSmall = GenEllipsePoints(13f, 7f);
@@ -856,6 +899,9 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _selectionRing.Visible = false;
         _healthBar.MaxValue = MaxHealth;
         _healthBar.Value = Health;
+        InitHealthBarStyles();
+        _healthBar.AddThemeStyleboxOverride("background", _healthBarBgStyle);
+        UpdateHealthBarStyle();
         UpdateHealthBarVisibility();
 
         // 炮塔精灵（战斗单位专用，矿车、步兵和工程车不需要）
@@ -2278,6 +2324,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             mainNode.PlayHitSfx();
         if (_healthBar != null)
             _healthBar.Value = Mathf.Max(0, Health);
+        UpdateHealthBarStyle();
         UpdateHealthBarVisibility();
         if (Health <= 0 && !_isDead) Die();
     }
@@ -2290,6 +2337,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         if (_healthBar != null)
         {
             _healthBar.Value = Health;
+            UpdateHealthBarStyle();
             UpdateHealthBarVisibility();
         }
     }
@@ -2524,7 +2572,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     protected virtual void Die()
     {
         _isDead = true;
-        GameLog.Debug($"{UnitName} (Team {TeamId}) destroyed!");
+        GameLog.Debug($"{UnitName} (阵营 {TeamId}) 被摧毁");
 
         // E6：运输车被摧毁时，乘客全部阵亡
         if (IsTransport && Passengers.Count > 0)

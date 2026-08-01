@@ -87,6 +87,30 @@ public partial class Building : Area2D, IBuildingEntity
     private Sprite2D _body = null!;
     private Sprite2D _selectionRing = null!;
     private ProgressBar _healthBar = null!;
+    private static StyleBoxFlat? _bldgHpBgStyle;
+    private static StyleBoxFlat? _bldgHpFgGreen;
+    private static StyleBoxFlat? _bldgHpFgYellow;
+    private static StyleBoxFlat? _bldgHpFgRed;
+    private static void InitBldgHealthBarStyles()
+    {
+        if (_bldgHpBgStyle != null) return;
+        _bldgHpBgStyle = new StyleBoxFlat
+        {
+            BgColor = new Color(0.08f, 0.08f, 0.08f, 0.85f),
+            BorderWidthBottom = 1, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1,
+            BorderColor = new Color(0.3f, 0.3f, 0.3f, 0.8f)
+        };
+        _bldgHpFgGreen = new StyleBoxFlat { BgColor = new Color(0.2f, 0.7f, 0.2f, 0.95f) };
+        _bldgHpFgYellow = new StyleBoxFlat { BgColor = new Color(0.9f, 0.8f, 0.15f, 0.95f) };
+        _bldgHpFgRed = new StyleBoxFlat { BgColor = new Color(0.85f, 0.15f, 0.1f, 0.95f) };
+    }
+    private void UpdateBldgHealthBarStyle()
+    {
+        if (_healthBar == null) return;
+        float pct = MaxHealth > 0 ? Health / MaxHealth : 0f;
+        var fg = pct > 0.6f ? _bldgHpFgGreen : pct > 0.3f ? _bldgHpFgYellow : _bldgHpFgRed;
+        _healthBar.AddThemeStyleboxOverride("fill", fg);
+    }
     private float _hitFlashTimer;
 
     // Phase1: 受损冒烟粒子系统
@@ -211,6 +235,9 @@ public partial class Building : Area2D, IBuildingEntity
         _healthBar.MaxValue = MaxHealth;
         _healthBar.Value = Health;
         _healthBar.Visible = false;
+        InitBldgHealthBarStyles();
+        _healthBar.AddThemeStyleboxOverride("background", _bldgHpBgStyle);
+        UpdateBldgHealthBarStyle();
 
         // Phase1: 建造入场动画 — 从0缩放到目标大小，淡入
         var targetScale = _body.Scale;
@@ -377,6 +404,7 @@ public partial class Building : Area2D, IBuildingEntity
         {
             _healthBar.Value = Mathf.Max(0, Health);
             _healthBar.Visible = true;
+            UpdateBldgHealthBarStyle();
         }
         // 补强：建筑被攻击时播放金属撞击声
         if (GetParent()?.GetParent() is Main hitMain)
@@ -386,7 +414,7 @@ public partial class Building : Area2D, IBuildingEntity
             main.OnBuildingAttacked(this);
         if (Health <= 0)
         {
-            GameLog.Debug($"{BuildingName} (Team {TeamId}) destroyed!");
+            GameLog.Debug($"{BuildingName} (阵营 {TeamId}) 被摧毁");
             // Q5：建筑被摧毁爆炸
             if (GetParent()?.GetParent() is Node2D parentNode)
                 parentNode.AddChild(BattleEffect.BigExplosion(GlobalPosition));
@@ -550,6 +578,7 @@ public partial class Building : Area2D, IBuildingEntity
         {
             _healthBar.Value = Health;
             _healthBar.Visible = IsSelected;
+            UpdateBldgHealthBarStyle();
         }
         QueueRedraw();
     }
@@ -563,6 +592,7 @@ public partial class Building : Area2D, IBuildingEntity
         {
             _healthBar.Value = Health;
             _healthBar.Visible = true;
+            UpdateBldgHealthBarStyle();
         }
     }
 

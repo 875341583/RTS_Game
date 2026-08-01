@@ -545,77 +545,100 @@ public partial class Main
         foreach (var child in _cardButtonContainer.GetChildren())
             child.QueueFree();
 
-        // 为每张卡创建可点击的面板按钮
+        // 为每张卡创建结构化卡片面板（图标区 + 名称 + 描述 + 编号）
         for (int i = 0; i < _cardChoices.Length; i++)
         {
             var card = TacticalCards.Cards[_cardChoices[i]];
             int cardIndex = i; // 闭包捕获
 
+            // 用 Button 作为可点击容器（保留点击交互），但不用 Text
             var cardButton = new Button
             {
-                Text = TrManager.Tr("card.button_text", card.Icon, card.Name, card.Description, i + 1),
                 CustomMinimumSize = new Vector2(210, 320),
-                Alignment = HorizontalAlignment.Center,
                 ClipText = false,
+                Text = "",
             };
-            cardButton.AddThemeFontSizeOverride("font_size", 13);
-            cardButton.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.8f));
-            cardButton.AddThemeColorOverride("font_hover_color", new Color(1f, 1f, 0.6f));
-            cardButton.AddThemeColorOverride("font_pressed_color", new Color(0.9f, 1f, 0.9f));
+            cardButton.MouseFilter = Control.MouseFilterEnum.Stop;
 
-            // 军工风深色背景样式
-            var btnStyle = new StyleBoxFlat();
-            btnStyle.BgColor = new Color(0.1f, 0.15f, 0.12f, 0.95f);
-            btnStyle.BorderWidthLeft = 2;
-            btnStyle.BorderWidthRight = 2;
-            btnStyle.BorderWidthTop = 2;
-            btnStyle.BorderWidthBottom = 2;
-            btnStyle.BorderColor = new Color(0.35f, 0.55f, 0.4f);
-            btnStyle.CornerRadiusTopLeft = 6;
-            btnStyle.CornerRadiusTopRight = 6;
-            btnStyle.CornerRadiusBottomLeft = 6;
-            btnStyle.CornerRadiusBottomRight = 6;
-            btnStyle.ContentMarginLeft = 12;
-            btnStyle.ContentMarginRight = 12;
-            btnStyle.ContentMarginTop = 12;
-            btnStyle.ContentMarginBottom = 12;
-            cardButton.AddThemeStyleboxOverride("normal", btnStyle);
+            // 军工风深色背景样式（三态）
+            static StyleBoxFlat MakeCardStyle(Color bg, Color border, bool pressed = false)
+            {
+                var s = new StyleBoxFlat();
+                s.BgColor = bg;
+                s.BorderWidthLeft = 2; s.BorderWidthRight = 2;
+                s.BorderWidthTop = 2; s.BorderWidthBottom = 2;
+                s.BorderColor = border;
+                s.CornerRadiusTopLeft = 6; s.CornerRadiusTopRight = 6;
+                s.CornerRadiusBottomLeft = 6; s.CornerRadiusBottomRight = 6;
+                s.ContentMarginLeft = 10; s.ContentMarginRight = 10;
+                s.ContentMarginTop = 10; s.ContentMarginBottom = 10;
+                return s;
+            }
+            cardButton.AddThemeStyleboxOverride("normal",
+                MakeCardStyle(new Color(0.1f, 0.15f, 0.12f, 0.95f), new Color(0.35f, 0.55f, 0.4f)));
+            cardButton.AddThemeStyleboxOverride("hover",
+                MakeCardStyle(new Color(0.15f, 0.22f, 0.18f, 0.98f), new Color(0.6f, 0.8f, 0.5f)));
+            cardButton.AddThemeStyleboxOverride("pressed",
+                MakeCardStyle(new Color(0.18f, 0.25f, 0.2f, 1f), new Color(0.7f, 1f, 0.6f), true));
 
-            // hover 样式（亮边框）
-            var hoverStyle = new StyleBoxFlat();
-            hoverStyle.BgColor = new Color(0.15f, 0.22f, 0.18f, 0.98f);
-            hoverStyle.BorderWidthLeft = 2;
-            hoverStyle.BorderWidthRight = 2;
-            hoverStyle.BorderWidthTop = 2;
-            hoverStyle.BorderWidthBottom = 2;
-            hoverStyle.BorderColor = new Color(0.6f, 0.8f, 0.5f);
-            hoverStyle.CornerRadiusTopLeft = 6;
-            hoverStyle.CornerRadiusTopRight = 6;
-            hoverStyle.CornerRadiusBottomLeft = 6;
-            hoverStyle.CornerRadiusBottomRight = 6;
-            hoverStyle.ContentMarginLeft = 12;
-            hoverStyle.ContentMarginRight = 12;
-            hoverStyle.ContentMarginTop = 12;
-            hoverStyle.ContentMarginBottom = 12;
-            cardButton.AddThemeStyleboxOverride("hover", hoverStyle);
+            // 结构化内容容器
+            var cardVBox = new VBoxContainer();
+            cardVBox.AnchorRight = 1; cardVBox.AnchorBottom = 1;
+            cardVBox.OffsetLeft = 10; cardVBox.OffsetTop = 10;
+            cardVBox.OffsetRight = -10; cardVBox.OffsetBottom = -10;
+            cardVBox.AddThemeConstantOverride("separation", 6);
+            cardVBox.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cardVBox.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+            cardButton.AddChild(cardVBox);
 
-            // pressed 样式
-            var pressedStyle = new StyleBoxFlat();
-            pressedStyle.BgColor = new Color(0.18f, 0.25f, 0.2f, 1f);
-            pressedStyle.BorderWidthLeft = 2;
-            pressedStyle.BorderWidthRight = 2;
-            pressedStyle.BorderWidthTop = 2;
-            pressedStyle.BorderWidthBottom = 2;
-            pressedStyle.BorderColor = new Color(0.7f, 1f, 0.6f);
-            pressedStyle.CornerRadiusTopLeft = 6;
-            pressedStyle.CornerRadiusTopRight = 6;
-            pressedStyle.CornerRadiusBottomLeft = 6;
-            pressedStyle.CornerRadiusBottomRight = 6;
-            pressedStyle.ContentMarginLeft = 12;
-            pressedStyle.ContentMarginRight = 12;
-            pressedStyle.ContentMarginTop = 12;
-            pressedStyle.ContentMarginBottom = 12;
-            cardButton.AddThemeStyleboxOverride("pressed", pressedStyle);
+            // 图标区（大号文字符号，居中，占上方约40%）
+            var iconLabel = new Label();
+            iconLabel.Text = card.Icon;
+            iconLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            iconLabel.AddThemeFontSizeOverride("font_size", 56);
+            iconLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.85f, 0.5f));
+            iconLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.6f));
+            iconLabel.AddThemeConstantOverride("shadow_offset_x", 2);
+            iconLabel.AddThemeConstantOverride("shadow_offset_y", 2);
+            iconLabel.CustomMinimumSize = new Vector2(0, 80);
+            iconLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cardVBox.AddChild(iconLabel);
+
+            // 分隔线
+            var sep = new HSeparator();
+            sep.Modulate = new Color(0.4f, 0.55f, 0.4f, 0.5f);
+            sep.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cardVBox.AddChild(sep);
+
+            // 卡片名称（较粗，居中）
+            var nameLabel = new Label();
+            nameLabel.Text = card.Name;
+            nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            nameLabel.AddThemeFontSizeOverride("font_size", 18);
+            nameLabel.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.8f));
+            nameLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cardVBox.AddChild(nameLabel);
+
+            // 描述（自动换行，左对齐）
+            var descLabel = new Label();
+            descLabel.Text = card.Description;
+            descLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            descLabel.AddThemeFontSizeOverride("font_size", 12);
+            descLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.78f, 0.72f));
+            descLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            descLabel.CustomMinimumSize = new Vector2(180, 0);
+            descLabel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+            descLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cardVBox.AddChild(descLabel);
+
+            // 底部编号提示
+            var numLabel = new Label();
+            numLabel.Text = $"[{i + 1}]";
+            numLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            numLabel.AddThemeFontSizeOverride("font_size", 14);
+            numLabel.AddThemeColorOverride("font_color", new Color(0.5f, 0.7f, 0.5f));
+            numLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cardVBox.AddChild(numLabel);
 
             cardButton.Pressed += () => SelectPlayerCard(_cardChoices[cardIndex]);
             _cardButtonContainer.AddChild(cardButton);

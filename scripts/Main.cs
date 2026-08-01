@@ -1187,7 +1187,7 @@ public partial class Main : Node2D
                 aiUnits += CountUnitsOfTeam(t);
                 aiBld += CountBuildingsOfTeam(t);
             }
-            GameLog.Debug($"[Status] Player: ${_money[0]} | {CountUnitsOfTeam(0)} units / {CountBuildingsOfTeam(0)} buildings | AI(1-7) total: units={aiUnits} / buildings={aiBld}");
+            GameLog.Debug($"[状态] 玩家: ${_money[0]} | {CountUnitsOfTeam(0)} 单位 / {CountBuildingsOfTeam(0)} 建筑 | AI(1-7)合计: 单位={aiUnits} / 建筑={aiBld}");
         }
 
         CheckWinCondition();

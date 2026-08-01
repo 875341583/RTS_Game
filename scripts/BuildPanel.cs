@@ -250,7 +250,7 @@ public partial class BuildPanel : Control
 
         // 底部提示区：暗色金属底板
         _hintPanel = new Panel();
-        _hintPanel.CustomMinimumSize = new Vector2(W - 12, 74);
+        _hintPanel.CustomMinimumSize = new Vector2(W - 12, 90);
         var hintStyle = new StyleBoxFlat
         {
             BgColor = CHintPlate,
