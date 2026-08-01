@@ -514,10 +514,11 @@ public partial class Main
         string missileLine = TrManager.Tr("ui.missile_line", missileStatus);
 
         string status = _gameOver ? _gameResult : TrManager.Tr("ui.game_objective");
-        string eraName = EraSystem.Eras[(int)_eraProgress[0].CurrentEra].Name;
-        string eraUpgradeStr = _eraProgress[0].IsUpgrading ? TrManager.Tr("ui.era_upgrade", $"{_eraProgress[0].Progress*100:F0}") : "";
+        int pId = PlayerTeamId;
+        string eraName = EraSystem.Eras[(int)_eraProgress[pId].CurrentEra].Name;
+        string eraUpgradeStr = _eraProgress[pId].IsUpgrading ? TrManager.Tr("ui.era_upgrade", $"{_eraProgress[pId].Progress*100:F0}") : "";
         string cardStr = _playerCard.HasValue ? TrManager.Tr("ui.card_display", TacticalCards.Cards[_playerCard.Value].Name) : "";
-        _uiLabel.Text = $"{TrManager.Tr("ui.difficulty_label", _difficulty)} {TrManager.Tr("ui.era_label", eraName, eraUpgradeStr)}{cardStr} {TrManager.Tr("ui.tech_cap", _playerTechLevel, _unitCap + GetTechUnitCapBonus(0) + GetCardUnitCapBonus(0))}    {TrManager.Tr("ui.money_label", _money[0])}    |    {TrManager.Tr("ui.ai_money_label", aiTotalMoney)}    [{QualitySettings.LevelName}]\n" +
+        _uiLabel.Text = $"{TrManager.Tr("ui.difficulty_label", _difficulty)} {TrManager.Tr("ui.era_label", eraName, eraUpgradeStr)}{cardStr} {TrManager.Tr("ui.tech_cap", _playerTechLevel, _unitCap + GetTechUnitCapBonus(pId) + GetCardUnitCapBonus(pId))}    {TrManager.Tr("ui.money_label", _money[pId])}    |    {TrManager.Tr("ui.ai_money_label", aiTotalMoney)}    [{QualitySettings.LevelName}]\n" +
                         $"{TrManager.Tr("ui.power_label", playerPower)}{powerWarn}    |    {TrManager.Tr("ui.ai_power_label", aiTotalPower)}\n" +
                         $"{TrManager.Tr("ui.player_units_label", playerUnits, playerBuildings)}  · " +
                         $"{TrManager.Tr("ui.ai_units_label", aiTotalUnits)}\n" +

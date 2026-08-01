@@ -1,3 +1,4 @@
+using System;
 using Godot;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -153,15 +154,26 @@ public static class ReplayRecorder
         if (_recording) _frameCounter++;
     }
 
+    /// <summary>
+    /// 玩家操作事件 — 每当 Record 被调用时触发（不论是否在录制中）。
+    /// 联机模式：NetworkManager 订阅此事件将命令发送到远端。
+    /// </summary>
+    public static event Action<ActionType, string>? OnRecorded;
+
     /// <summary>记录一条操作。</summary>
     public static void Record(ActionType action, object? parameters = null)
     {
+        string json = parameters != null ? JsonSerializer.Serialize(parameters) : "";
+
+        // 联机同步：始终触发事件（不管是否在录制中）
+        OnRecorded?.Invoke(action, json);
+
         if (!_recording) return;
         var record = new ReplayRecord
         {
             Frame = _frameCounter,
             Action = action,
-            Params = parameters != null ? JsonSerializer.Serialize(parameters) : "",
+            Params = json,
         };
         _records.Add(record);
     }

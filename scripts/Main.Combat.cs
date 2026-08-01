@@ -671,7 +671,7 @@ public partial class Main
         Vector2 bPos = b.GlobalPosition;
 
         // Q6：建筑受袭事件通知 + P1-6: 攻击通知音效+BGM切换
-        if (teamId == 0)
+        if (teamId == PlayerTeamId)
         {
             ShowToast(TrManager.Tr("combat.building_attacked", b.BuildingName), new Color(1f, 0.5f, 0.3f));
             _audio?.PlaySfxForce(AudioManager.Sfx.NotifyAttack);

@@ -375,19 +375,19 @@ public partial class Main
             int repaired = 0;
             foreach (var o in _selected)
             {
-                if (o is Building b && b.TeamId == 0 && IsInstanceValid(b) && b.NeedsRepair)
+                if (o is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b) && b.NeedsRepair)
                 {
                     int cost = GetRepairCost(b);
-                    if (_money[0] >= cost)
+                    if (_money[PlayerTeamId] >= cost)
                     {
-                        _money[0] -= cost;
+                        _money[PlayerTeamId] -= cost;
                         b.Repair();
                         repaired++;
-                        GameLog.Debug($"[维修] {b.BuildingName} 已修复满血，扣 ${cost}，剩余 ${_money[0]}");
+                        GameLog.Debug($"[维修] {b.BuildingName} 已修复满血，扣 ${cost}，剩余 ${_money[PlayerTeamId]}");
                     }
                     else
                     {
-                        GameLog.Debug($"[维修] 资金不足！维修{b.BuildingName}需要 ${cost}，当前 ${_money[0]}");
+                        GameLog.Debug($"[维修] 资金不足！维修{b.BuildingName}需要 ${cost}，当前 ${_money[PlayerTeamId]}");
                     }
                 }
             }
@@ -404,17 +404,17 @@ public partial class Main
             var toSell = new List<Building>();
             foreach (var o in _selected)
             {
-                if (o is Building b && b.TeamId == 0 && IsInstanceValid(b) && b.Type != BuildingType.Base)
+                if (o is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b) && b.Type != BuildingType.Base)
                     toSell.Add(b);
             }
             foreach (var b in toSell)
             {
                 int refund = Mathf.Max(1, GetBuildingCost(b.Type) / 2);
-                _money[0] += refund;
+                _money[PlayerTeamId] += refund;
                 b.SetSelected(false);
                 _selected.Remove(b);
                 ReplayRecorder.Record(ReplayRecorder.ActionType.SellBuilding, new { Type = b.Type.ToString() });
-                GameLog.Debug($"[出售] {b.BuildingName} 已出售，回收 ${refund}，资金 ${_money[0]}");
+                GameLog.Debug($"[出售] {b.BuildingName} 已出售，回收 ${refund}，资金 ${_money[PlayerTeamId]}");
                 // P0-1: 移除PathFinder障碍并取消事件订阅（H4修复）
                 OnBuildingDestroyed(b);
                 b.Destroyed -= OnBuildingDestroyed;
@@ -534,7 +534,7 @@ public partial class Main
         _selected.Clear();
         foreach (var u in squad)
         {
-            if (IsInstanceValid(u) && u.TeamId == 0)
+            if (IsInstanceValid(u) && u.TeamId == PlayerTeamId)
             {
                 u.SetSelected(true);
                 _selected.Add(u);
@@ -798,7 +798,7 @@ public partial class Main
         {
             // 单击：优先建筑 → 单位
             var building = PickBuildingAt(end, requireEnemy: false);
-            if (building != null && building.TeamId == 0)
+            if (building != null && building.TeamId == PlayerTeamId)
             {
                 building.SetSelected(true);
                 _selected.Add(building);
@@ -807,7 +807,7 @@ public partial class Main
                 return;
             }
             var unit = PickUnitAt(end, requireEnemy: false);
-            if (unit != null && unit.TeamId == 0)
+            if (unit != null && unit.TeamId == PlayerTeamId)
             {
                 unit.SetSelected(true);
                 _selected.Add(unit);
@@ -818,7 +818,7 @@ public partial class Main
         // 框选蓝方单位和建筑
         foreach (var child in _unitsNode.GetChildren())
         {
-            if (child is Unit u && u.TeamId == 0 && rect.HasPoint(u.GlobalPosition))
+            if (child is Unit u && u.TeamId == PlayerTeamId && rect.HasPoint(u.GlobalPosition))
             {
                 u.SetSelected(true);
                 if (!_selected.Contains(u)) _selected.Add(u);
@@ -826,7 +826,7 @@ public partial class Main
         }
         foreach (var child in _buildingsNode.GetChildren())
         {
-            if (child is Building b && b.TeamId == 0 && rect.HasPoint(b.GlobalPosition))
+            if (child is Building b && b.TeamId == PlayerTeamId && rect.HasPoint(b.GlobalPosition))
             {
                 b.SetSelected(true);
                 if (!_selected.Contains(b)) _selected.Add(b);
@@ -859,12 +859,13 @@ public partial class Main
     // ---------- 拾取/查询 ----------
     private Unit? PickUnitAt(Vector2 worldPos, bool requireEnemy)
     {
+        int myTeam = PlayerTeamId;
         foreach (var child in _unitsNode.GetChildren())
         {
             if (child is Unit u && IsInstanceValid(u))
             {
-                if (requireEnemy && u.TeamId == 0) continue;
-                if (!requireEnemy && u.TeamId != 0) continue;
+                if (requireEnemy && u.TeamId == myTeam) continue;
+                if (!requireEnemy && u.TeamId != myTeam) continue;
                 if (u.GlobalPosition.DistanceTo(worldPos) < 30f)
                     return u;
             }
@@ -875,12 +876,13 @@ public partial class Main
     // E6：拾取友方运输车
     private Unit? PickTransportAt(Vector2 worldPos, bool requireFriendly)
     {
+        int myTeam = PlayerTeamId;
         foreach (var child in _unitsNode.GetChildren())
         {
             if (child is Unit u && IsInstanceValid(u) && u.IsTransport)
             {
-                if (requireFriendly && u.TeamId != 0) continue;
-                if (!requireFriendly && u.TeamId == 0) continue;
+                if (requireFriendly && u.TeamId != myTeam) continue;
+                if (!requireFriendly && u.TeamId == myTeam) continue;
                 if (u.GlobalPosition.DistanceTo(worldPos) < 36f)
                     return u;
             }
@@ -890,12 +892,13 @@ public partial class Main
 
     private Building? PickBuildingAt(Vector2 worldPos, bool requireEnemy)
     {
+        int myTeam = PlayerTeamId;
         foreach (var child in _buildingsNode.GetChildren())
         {
             if (child is Building b && IsInstanceValid(b))
             {
-                if (requireEnemy && b.TeamId == 0) continue;
-                if (!requireEnemy && b.TeamId != 0) continue;
+                if (requireEnemy && b.TeamId == myTeam) continue;
+                if (!requireEnemy && b.TeamId != myTeam) continue;
                 if (b.GlobalPosition.DistanceTo(worldPos) < 72f)
                     return b;
             }
@@ -906,9 +909,10 @@ public partial class Main
     private List<Unit> GetSelectedFriendlyUnits()
     {
         var list = new List<Unit>();
+        int myTeam = PlayerTeamId;
         foreach (var o in _selected)
         {
-            if (o is Unit u && IsInstanceValid(u) && u.TeamId == 0)
+            if (o is Unit u && IsInstanceValid(u) && u.TeamId == myTeam)
                 list.Add(u);
         }
         return list;

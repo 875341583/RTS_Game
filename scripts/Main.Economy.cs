@@ -25,10 +25,11 @@ public partial class Main
     /// <summary>P1-2: 尝试生产单位（造价从GameData获取，含阵营乘数）。</summary>
     private void TrySpawnUnit(UnitType type)
     {
+        int t = PlayerTeamId;
         int cost = GetUnitCost(type);
 
         // 建筑前置检查
-        if (!CanProduceUnit(0, type))
+        if (!CanProduceUnit(t, type))
         {
             GameLog.Warning($"[警告] 缺少生产{type}所需建筑！");
             return;
@@ -40,15 +41,15 @@ public partial class Main
         for (int i = 0; i < batchCount; i++)
         {
             // 电力检查
-            if (GetTeamPower(0) < 0)
+            if (GetTeamPower(t) < 0)
             {
-                GameLog.Error($"[警告] 电力不足，无法生产单位！当前电力: {GetTeamPower(0)}");
+                GameLog.Error($"[警告] 电力不足，无法生产单位！当前电力: {GetTeamPower(t)}");
                 break;
             }
 
             // G2：单位上限检查（活跃单位 + 队列中）+ G1科技上限加成 + G3战术卡加成
-            int effectiveCap = _unitCap + GetTechUnitCapBonus(0) + GetCardUnitCapBonus(0);
-            int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
+            int effectiveCap = _unitCap + GetTechUnitCapBonus(t) + GetCardUnitCapBonus(t);
+            int total = CountUnitsOfTeam(t) + CountQueuedUnitsOfTeam(t);
             if (total >= effectiveCap)
             {
                 GameLog.Warning($"[警告] 达到单位上限 {effectiveCap}！");
@@ -56,44 +57,45 @@ public partial class Main
             }
 
             // G2：找生产建筑（队列最短的同类建筑，实现多建筑并行）
-            var producer = FindProducerForUnit(type, 0);
+            var producer = FindProducerForUnit(type, t);
             if (producer == null)
             {
                 GameLog.Warning($"[警告] 没有可用的{GetProducerForUnit(type)}！");
                 break;
             }
 
-            if (_money[0] < cost)
+            if (_money[t] < cost)
             {
-                GameLog.Warning($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}");
+                GameLog.Warning($"[警告] 资金不足！需要 ${cost}，当前 ${_money[t]}");
                 _audio?.PlaySfx(AudioManager.Sfx.UiError);
                 break;
             }
 
-            _money[0] -= cost;
+            _money[t] -= cost;
             producer.EnqueueProduction(UnitTypeToProductionType(type));
             ReplayRecorder.Record(ReplayRecorder.ActionType.SpawnUnit, new { Type = type.ToString() });
-            GameLog.Debug($"蓝方排产{type}(批量{i+1}/{batchCount})，扣 ${cost}，剩余 ${_money[0]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+            GameLog.Debug($"阵营{t}排产{type}(批量{i+1}/{batchCount})，扣 ${cost}，剩余 ${_money[t]}，{producer.BuildingName}队列 {producer.QueueCount}/{Building.MaxQueueSize}");
         }
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
     }
 
     public void TrySpawnHarvester()
     {
+        int t = PlayerTeamId;
         int cost = GetUnitCost(UnitType.Harvester);
-        if (_money[0] < cost) { GameLog.Warning("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
-        if (GetTeamPower(0) < 0) { GameLog.Warning("[警告] 电力不足！"); return; }
+        if (_money[t] < cost) { GameLog.Warning("[警告] 资金不足！"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
+        if (GetTeamPower(t) < 0) { GameLog.Warning("[警告] 电力不足！"); return; }
 
-        int total = CountUnitsOfTeam(0) + CountQueuedUnitsOfTeam(0);
+        int total = CountUnitsOfTeam(t) + CountQueuedUnitsOfTeam(t);
         if (total >= _unitCap) { GameLog.Warning($"[警告] 达到单位上限 {_unitCap}！"); return; }
 
-        var producer = FindProducerBuilding(BuildingType.Base, 0);
+        var producer = FindProducerBuilding(BuildingType.Base, t);
         if (producer == null) { GameLog.Warning("[警告] 没有基地！"); return; }
 
-        _money[0] -= cost;
+        _money[t] -= cost;
         producer.EnqueueProduction(ProductionType.Harvester);
         ReplayRecorder.Record(ReplayRecorder.ActionType.SpawnHarvester);
-        GameLog.Debug($"蓝方排产矿车，扣 ${cost}，剩余 ${_money[0]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
+        GameLog.Debug($"阵营{t}排产矿车，扣 ${cost}，剩余 ${_money[t]}，队列 {producer.QueueCount}/{Building.MaxQueueSize}");
     }
 
     // ---------- 建造系统 ----------
@@ -313,22 +315,23 @@ public partial class Main
     private void TryBuildBuilding(BuildingType type)
     {
         // P1-2: 阵营白名单检查
-        var playerFaction = FactionManager.GetFactionForTeam(0);
+        var playerFaction = FactionManager.GetFactionForTeam(PlayerTeamId);
         if (!playerFaction.CanBuild(type))
         {
             GameLog.Warning($"[P1-2] {playerFaction.Name}无法建造 {type}！");
             return;
         }
 
+        int pId = PlayerTeamId;
         // 前置建筑检查
-        if (type == BuildingType.PowerPlant && !HasBuilding(0, BuildingType.Base)) { GameLog.Warning("[警告] 需要先有建造厂！"); return; }
-        if (type == BuildingType.Barracks && !HasBuilding(0, BuildingType.PowerPlant)) { GameLog.Warning("[警告] 需要先有电站！"); return; }
-        if (type == BuildingType.WarFactory && !HasBuilding(0, BuildingType.Barracks)) { GameLog.Warning("[警告] 需要先有兵营！"); return; }
-        if (type == BuildingType.TechCenter && !HasBuilding(0, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有战车工厂！"); return; }
+        if (type == BuildingType.PowerPlant && !HasBuilding(pId, BuildingType.Base)) { GameLog.Warning("[警告] 需要先有建造厂！"); return; }
+        if (type == BuildingType.Barracks && !HasBuilding(pId, BuildingType.PowerPlant)) { GameLog.Warning("[警告] 需要先有电站！"); return; }
+        if (type == BuildingType.WarFactory && !HasBuilding(pId, BuildingType.Barracks)) { GameLog.Warning("[警告] 需要先有兵营！"); return; }
+        if (type == BuildingType.TechCenter && !HasBuilding(pId, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有战车工厂！"); return; }
         // 阶段12-A1+A2 新增前置
-        if (type == BuildingType.Turret && !HasBuilding(0, BuildingType.Barracks)) { GameLog.Warning("[警告] 需要先有兵营！"); return; }
-        if (type == BuildingType.AntiAirTurret && !HasBuilding(0, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有车厂！"); return; }
-        if (type == BuildingType.RepairPad && !HasBuilding(0, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有车厂！"); return; }
+        if (type == BuildingType.Turret && !HasBuilding(pId, BuildingType.Barracks)) { GameLog.Warning("[警告] 需要先有兵营！"); return; }
+        if (type == BuildingType.AntiAirTurret && !HasBuilding(pId, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有车厂！"); return; }
+        if (type == BuildingType.RepairPad && !HasBuilding(pId, BuildingType.WarFactory)) { GameLog.Warning("[警告] 需要先有车厂！"); return; }
 
         // P5：难度科技等级限制（系统复杂度分级）
         if (type == BuildingType.WarFactory && _playerTechLevel < 2) { GameLog.Debug("[难度限制] 当前难度未解锁战车工厂！"); return; }
@@ -337,23 +340,23 @@ public partial class Main
         if (type == BuildingType.RepairPad && _playerTechLevel < 2) { GameLog.Debug("[难度限制] 当前难度未解锁维修厂！"); return; }
 
         // G2: 时代限制检查
-        if (!IsBuildingUnlockedByEra(0, type))
+        if (!IsBuildingUnlockedByEra(pId, type))
         {
-            var ep = _eraProgress[0];
-            GameLog.Debug($"[G2] {type} 需要{EraSystem.GetNextEra(ep.CurrentEra)?.Name ?? "更高时代"}才能建造！当前：{EraSystem.Eras[(int)ep.CurrentEra].Name}");
+            var ep = _eraProgress[pId];
+            GameLog.Debug($"[G2] {type} 需要{(EraSystem.GetNextEra(ep.CurrentEra)?.Name ?? "更高时代")}才能建造！当前：{EraSystem.Eras[(int)ep.CurrentEra].Name}");
             return;
         }
 
         // 电力检查（电站本身不受电力限制）
-        if (type != BuildingType.PowerPlant && GetTeamPower(0) < 0)
+        if (type != BuildingType.PowerPlant && GetTeamPower(pId) < 0)
         {
-            GameLog.Warning($"[警告] 电力不足！当前电力: {GetTeamPower(0)}");
+            GameLog.Warning($"[警告] 电力不足！当前电力: {GetTeamPower(pId)}");
             return;
         }
 
         // 资金检查
         int cost = GetBuildingCost(type);
-        if (_money[0] < cost) { GameLog.Warning($"[警告] 资金不足！需要 ${cost}，当前 ${_money[0]}"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
+        if (_money[pId] < cost) { GameLog.Warning($"[警告] 资金不足！需要 ${cost}，当前 ${_money[pId]}"); _audio?.PlaySfx(AudioManager.Sfx.UiError); return; }
 
         // Q1：进入放置模式（玩家手动选择位置）
         _placementMode = type;
@@ -417,11 +420,12 @@ public partial class Main
             Mathf.Clamp(grid.Y, 1f, TerrainGrid.GridSize - 2f)
         );
         pos = IsoCoords.GridToScreenF(grid.X, grid.Y);
-        if (_money[0] < cost) { GameLog.Debug("[放置] 资金不足"); CancelPlacement(); return; }
+        int t = PlayerTeamId;
+        if (_money[t] < cost) { GameLog.Debug("[放置] 资金不足"); CancelPlacement(); return; }
         if (!CanPlaceBuilding(pos)) { GameLog.Debug("[放置] 位置被占用"); return; }
-        _money[0] -= cost;
-        SpawnBuilding(type, pos, teamId: 0);
-        GameLog.Debug($"蓝方建造{type}，扣 ${cost}，剩余 ${_money[0]}，位置 {pos}");
+        _money[t] -= cost;
+        SpawnBuilding(type, pos, teamId: t);
+        GameLog.Debug($"阵营{t}建造{type}，扣 ${cost}，剩余 ${_money[t]}，位置 {pos}");
         _audio?.PlaySfx(AudioManager.Sfx.UiPlace);
         // 放一个就退出放置模式（红警2风格：点一次放一个）
         CancelPlacement();
@@ -1237,7 +1241,7 @@ public partial class Main
     {
         foreach (var o in _selected)
         {
-            if (o is Building b && b.TeamId == 0 && IsInstanceValid(b)
+            if (o is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b)
                 && (b.Type == BuildingType.Barracks || b.Type == BuildingType.WarFactory
                     || b.Type == BuildingType.TechCenter || b.Type == BuildingType.Base
                     || b.Type == BuildingType.Airfield || b.Type == BuildingType.Shipyard))

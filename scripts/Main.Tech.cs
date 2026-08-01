@@ -16,9 +16,10 @@ public partial class Main
     {
         if (techNum >= TechOrder.Length) return;
         var techId = TechOrder[techNum];
-        var tp = _techProgress[0]; // 玩家阵营
+        int pId = PlayerTeamId;
+        var tp = _techProgress[pId];
         var node = TechTree.Nodes[techId];
-        bool hasTech = HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter;
+        bool hasTech = HasBuilding(pId, BuildingType.TechCenter) || !node.RequiresTechCenter;
 
         if (tp.Completed.Contains(techId))
         {
@@ -30,29 +31,30 @@ public partial class Main
             GameLog.Debug($"[G1] 正在研究中: {TechTree.Nodes[tp.CurrentlyResearching.Value].Name} ({tp.Progress*100:F0}%)");
             return;
         }
-        if (!TechTree.CanResearch(tp.Completed, techId, hasTech, _money[0], FactionManager.GetFactionForTeam(0).Id))
+        if (!TechTree.CanResearch(tp.Completed, techId, hasTech, _money[pId], FactionManager.GetFactionForTeam(pId).Id))
         {
             if (!hasTech) GameLog.Debug($"[G1] {node.Name} 需要科技中心");
-            else if (_money[0] < node.Cost) GameLog.Debug($"[G1] 资金不足: {node.Name} 需要${node.Cost}，当前${_money[0]}");
+            else if (_money[pId] < node.Cost) GameLog.Debug($"[G1] 资金不足: {node.Name} 需要${node.Cost}，当前${_money[pId]}");
             else GameLog.Debug($"[G1] {node.Name} 需要前置科技");
             return;
         }
-        _money[0] -= node.Cost;
+        _money[pId] -= node.Cost;
         tp.StartResearch(techId);
         ReplayRecorder.Record(ReplayRecorder.ActionType.ResearchTech, new { TechId = techId.ToString() });
-        GameLog.Debug($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[0]}");
+        GameLog.Debug($"[G1] 开始研究: {node.Name} (成本${node.Cost}，{node.ResearchTime:F0}秒) — 资金剩余${_money[pId]}");
         ShowToast(TrManager.Tr("tech.toast_research_started", node.Name));
     }
 
     /// <summary>更新科技树面板显示文本。</summary>
     private void UpdateTechTreePanel()
     {
-        var tp = _techProgress[0];
+        int pId = PlayerTeamId;
+        var tp = _techProgress[pId];
         var sb = new System.Text.StringBuilder();
         sb.AppendLine(TrManager.Tr("tech.tree_title"));
         sb.AppendLine(TrManager.Tr("tech.tree_header",
-            _money[0],
-            HasBuilding(0, BuildingType.TechCenter) ? TrManager.Tr("tech.has_yes") : TrManager.Tr("tech.has_no"),
+            _money[pId],
+            HasBuilding(pId, BuildingType.TechCenter) ? TrManager.Tr("tech.has_yes") : TrManager.Tr("tech.has_no"),
             tp.CurrentlyResearching.HasValue
                 ? TrManager.Tr("tech.researching", TechTree.Nodes[tp.CurrentlyResearching.Value].Name, $"{tp.Progress*100:F0}")
                 : TrManager.Tr("tech.has_no")));
@@ -69,7 +71,7 @@ public partial class Main
                 if (node == null) continue;
                 bool done = tp.Completed.Contains(node.Id);
                 bool researching = tp.CurrentlyResearching == node.Id;
-                bool available = TechTree.CanResearch(tp.Completed, node.Id, HasBuilding(0, BuildingType.TechCenter) || !node.RequiresTechCenter, _money[0], FactionManager.GetFactionForTeam(0).Id);
+                bool available = TechTree.CanResearch(tp.Completed, node.Id, HasBuilding(pId, BuildingType.TechCenter) || !node.RequiresTechCenter, _money[pId], FactionManager.GetFactionForTeam(pId).Id);
                 string status = done ? TrManager.Tr("tech.status_done") : researching ? TrManager.Tr("tech.status_researching", $"{tp.Progress*100:F0}") : available ? TrManager.Tr("tech.status_available") : TrManager.Tr("tech.status_locked");
                 string keyHint = done ? "  " : $"({techIdx})";
                 sb.AppendLine(TrManager.Tr("tech.node_line", keyHint, tier, node.Name, status, node.Cost, $"{node.ResearchTime:F0}"));
@@ -86,15 +88,15 @@ public partial class Main
     private void UpdateTechResearch(float dt)
     {
         // G3: 战术卡研究速度加成 + G6: 邻接加成研究速度
-        float playerResearchMul = GetCardResearchSpeedMul(0) * GetAdjacencyResearchMul(0);
+        float playerResearchMul = GetCardResearchSpeedMul(PlayerTeamId) * GetAdjacencyResearchMul(PlayerTeamId);
         // 玩家阵营
-        var completed = _techProgress[0].UpdateResearch(dt * playerResearchMul);
+        var completed = _techProgress[PlayerTeamId].UpdateResearch(dt * playerResearchMul);
         if (completed.HasValue)
         {
             var node = TechTree.Nodes[completed.Value];
             GameLog.Debug($"[G1] 科技研究完成: {node.Name} — {node.Description}");
             ShowToast(TrManager.Tr("tech.toast_research_done", node.Name));
-            ApplyTechEffects(0);
+            ApplyTechEffects(PlayerTeamId);
             // 补强：科技解锁音效
             PlayTechUnlockSfx();
             if (_techTreePanelVisible) UpdateTechTreePanel();
@@ -190,7 +192,7 @@ public partial class Main
         }
 
         // G3: 战术卡效果
-        TacticalCards.CardId? card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        TacticalCards.CardId? card = GetCardForTeam(teamId);
         if (card.HasValue)
         {
             float allHealth = TacticalCards.GetAllHealthMul(card);
@@ -352,7 +354,8 @@ public partial class Main
     /// <summary>玩家尝试升级时代。</summary>
     private void TryAdvanceEra()
     {
-        var ep = _eraProgress[0];
+        int pId = PlayerTeamId;
+        var ep = _eraProgress[pId];
         if (ep.IsUpgrading)
         {
             GameLog.Debug($"[G2] 时代升级进行中... {ep.Progress*100:F0}%");
@@ -364,20 +367,20 @@ public partial class Main
             GameLog.Debug("[G2] 已达到最高时代（信息时代）");
             return;
         }
-        if (!EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(0, t), _money[0]))
+        if (!EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(pId, t), _money[pId]))
         {
-            if (_money[0] < next.UpgradeCost)
-                GameLog.Debug($"[G2] 资金不足：升级到{next.Name}需要${next.UpgradeCost}，当前${_money[0]}");
+            if (_money[pId] < next.UpgradeCost)
+                GameLog.Debug($"[G2] 资金不足：升级到{next.Name}需要${next.UpgradeCost}，当前${_money[pId]}");
             else
             {
                 string missing = "";
                 foreach (var req in next.RequiredBuildings)
-                    if (!HasBuilding(0, req)) missing += $" {req}";
+                    if (!HasBuilding(pId, req)) missing += $" {req}";
                 GameLog.Debug($"[G2] 缺少前置建筑：{missing}");
             }
             return;
         }
-        _money[0] -= next.UpgradeCost;
+        _money[pId] -= next.UpgradeCost;
         ep.StartUpgrade();
         ReplayRecorder.Record(ReplayRecorder.ActionType.AdvanceEra, new { FromEra = ep.CurrentEra.ToString() });
         GameLog.Debug($"[G2] 开始时代升级：{EraSystem.Eras[(int)ep.CurrentEra].Name} → {next.Name} (成本${next.UpgradeCost}，{next.UpgradeTime:F0}秒)");
@@ -387,11 +390,12 @@ public partial class Main
     /// <summary>更新时代面板显示。</summary>
     private void UpdateEraPanel()
     {
-        var ep = _eraProgress[0];
+        int pId = PlayerTeamId;
+        var ep = _eraProgress[pId];
         var sb = new System.Text.StringBuilder();
         sb.AppendLine(TrManager.Tr("era.panel_title"));
         sb.AppendLine(TrManager.Tr("era.panel_header",
-            EraSystem.Eras[(int)ep.CurrentEra].Name, _money[0]));
+            EraSystem.Eras[(int)ep.CurrentEra].Name, _money[pId]));
         if (ep.IsUpgrading)
         {
             var next = EraSystem.GetNextEra(ep.CurrentEra);
@@ -408,7 +412,7 @@ public partial class Main
             sb.AppendLine(TrManager.Tr("era.era_desc", era.Description));
             if ((int)era.Id == (int)ep.CurrentEra + 1 && !ep.IsUpgrading)
             {
-                bool canAdv = EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(0, t), _money[0]);
+                bool canAdv = EraSystem.CanAdvance(ep.CurrentEra, t => HasBuilding(pId, t), _money[pId]);
                 string reqStr = era.RequiredBuildings.Length > 0
                     ? string.Join("/", System.Array.ConvertAll(era.RequiredBuildings, b => b.ToString()))
                     : TrManager.Tr("era.no_req");
@@ -427,14 +431,14 @@ public partial class Main
     private void UpdateEraProgress(float dt)
     {
         // 玩家阵营
-        var ep = _eraProgress[0];
-        float eraUpgradeMul = TacticalCards.GetEraUpgradeSpeedMul(_playerCard);
+        var ep = _eraProgress[PlayerTeamId];
+        float eraUpgradeMul = TacticalCards.GetEraUpgradeSpeedMul(GetCardForTeam(PlayerTeamId));
         if (ep.UpdateUpgrade(dt * eraUpgradeMul))
         {
             var eraInfo = EraSystem.Eras[(int)ep.CurrentEra];
             GameLog.Debug($"[G2] 时代升级完成: {eraInfo.Name} — {eraInfo.Description}");
             ShowToast(TrManager.Tr("era.toast_entered", eraInfo.Name));
-            ApplyEraEffects(0);
+            ApplyEraEffects(PlayerTeamId);
             if (_eraPanelVisible) UpdateEraPanel();
         }
 
@@ -663,7 +667,7 @@ public partial class Main
         if (card == TacticalCards.CardId.BlitzEconomy)
         {
             int bonus = (int)(_blueStartMoney * 0.5f);
-            _money[0] += bonus;
+            _money[PlayerTeamId] += bonus;
             GameLog.Debug($"[G3] 闪电经济: +${bonus} 起始资金");
         }
 
@@ -671,7 +675,7 @@ public partial class Main
         // （GetUnitCapBonus方法中处理）
 
         // 应用被动效果到现有单位
-        ApplyCardEffectsToUnits(0);
+        ApplyCardEffectsToUnits(PlayerTeamId);
 
         // AI随机选卡
         var rng = new RandomNumberGenerator();
@@ -696,7 +700,7 @@ public partial class Main
     /// <summary>将战术卡效果应用到阵营现有单位。</summary>
     private void ApplyCardEffectsToUnits(int teamId)
     {
-        TacticalCards.CardId? card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        TacticalCards.CardId? card = GetCardForTeam(teamId);
         if (card == null) return;
 
         float allHealthMul = TacticalCards.GetAllHealthMul(card);
@@ -754,7 +758,7 @@ public partial class Main
     /// <summary>S1修复: 获取G3战术卡的生产速度乘数（转换为速度乘数，越大越快）。</summary>
     public float GetCardProduceSpeedMul(int teamId)
     {
-        TacticalCards.CardId? card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        TacticalCards.CardId? card = GetCardForTeam(teamId);
         if (!card.HasValue) return 1f;
         float timeMul = TacticalCards.GetProduceTimeMul(card); // <1表示生产时间缩短=速度提升
         return timeMul < 1f ? 1f / timeMul : 1f;
@@ -818,28 +822,36 @@ public partial class Main
     /// <summary>获取AI战术卡。</summary>
     public TacticalCards.CardId? GetAiCard(int teamId)
     {
-        if (teamId < 1 || teamId > 7) return null;
+        if (teamId < 1 || teamId >= MaxTeamCount) return null;
         return _aiCards[teamId - 1];
+    }
+
+    /// <summary>获取指定阵营的战术卡（联机版：本地玩家用_playerCard，其他用_aiCards）。</summary>
+    public TacticalCards.CardId? GetCardForTeam(int teamId)
+    {
+        if (teamId == PlayerTeamId) return _playerCard;
+        if (teamId >= 1 && teamId < MaxTeamCount) return _aiCards[teamId - 1];
+        return null;
     }
 
     /// <summary>获取阵营战术卡的单位上限加成。</summary>
     public int GetCardUnitCapBonus(int teamId)
     {
-        var card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        var card = GetCardForTeam(teamId);
         return TacticalCards.GetUnitCapBonus(card);
     }
 
     /// <summary>获取阵营战术卡的矿车收益乘数。</summary>
     public float GetCardMiningMul(int teamId)
     {
-        var card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        var card = GetCardForTeam(teamId);
         return TacticalCards.GetMiningMul(card);
     }
 
     /// <summary>获取阵营战术卡的研究速度乘数。</summary>
     public float GetCardResearchSpeedMul(int teamId)
     {
-        var card = teamId == 0 ? _playerCard : _aiCards[teamId - 1];
+        var card = GetCardForTeam(teamId);
         return TacticalCards.GetResearchSpeedMul(card);
     }
 

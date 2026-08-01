@@ -71,8 +71,10 @@ public static class FactionManager
     private static string _defaultFactionId = "Allies";
     private static bool _loaded = false;
 
-    /// <summary>P1-2: 玩家阵营覆盖。设置后 GetFactionForTeam(0) 返回此阵营而非默认映射。</summary>
+    /// <summary>P1-2: 玩家阵营覆盖。设置后 GetFactionForTeam(PlayerTeamId) 返回此阵营而非默认映射。</summary>
     private static string? _playerFactionId = null;
+    /// <summary>本地玩家的teamId（单机=0，联机=NetworkManager.LocalTeamId）。</summary>
+    private static int _playerTeamId = 0;
 
     /// <summary>是否已加载。</summary>
     public static bool IsLoaded => _loaded;
@@ -219,15 +221,22 @@ public static class FactionManager
     }
 
     /// <summary>通过teamId获取阵营定义（循环复用）。
-    /// teamId 0=玩家阵营（可被 SetPlayerFaction 覆盖），1..N=AI循环复用。
-    /// 注意：玩家(teamId=0)默认用默认阵营，可被SetTeamFaction覆盖。</summary>
+    /// 本地玩家的teamId（可单机=0，联机=任意）使用_playerFactionId覆盖。
+    /// 其余teamId循环复用阵营列表。
+    /// 注意：调用 SetPlayerTeamId 设置本地玩家teamId。</summary>
     public static FactionDef GetFactionForTeam(int teamId)
     {
         EnsureLoaded();
         if (_factionList.Count == 0) throw new InvalidOperationException("无阵营定义");
-        if (teamId == 0 && _playerFactionId != null && _factions.TryGetValue(_playerFactionId, out var pf))
+        if (teamId == _playerTeamId && _playerFactionId != null && _factions.TryGetValue(_playerFactionId, out var pf))
             return pf;
         return _factionList[teamId % _factionList.Count];
+    }
+
+    /// <summary>设置本地玩家teamId（联机模式由Main调用）。</summary>
+    public static void SetPlayerTeamId(int teamId)
+    {
+        _playerTeamId = teamId;
     }
 
     /// <summary>P1-2: 设置玩家阵营（由 GameSession.PlayerFactionId 驱动）。</summary>

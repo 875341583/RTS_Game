@@ -93,7 +93,7 @@ public static class NetworkManager
         {
             var relay = new NetRelay();
             relay.Name = "NetRelay";
-            sceneTree.Root.AddChild(relay);
+            sceneTree.Root.CallDeferred(Node.MethodName.AddChild, relay);
         }
 
         GD.Print("[Net] NetworkManager 已初始化");
@@ -708,15 +708,15 @@ public static class NetworkManager
 
     // ====== 游戏内命令同步 ======
 
-    /// <summary>Client→Host：发送玩家操作命令。</summary>
-    public static void SendCommand(ReplayRecorder.ActionType action, object parameters)
+    /// <summary>Client→Host：发送玩家操作命令。参数已序列化为JSON。</summary>
+    public static void SendCommand(ReplayRecorder.ActionType action, string jsonParams)
     {
         if (!IsOnline) return;
         var cmd = new NetCommand
         {
             TeamId = LocalTeamId,
             Action = action,
-            Params = JsonSerializer.Serialize(parameters),
+            Params = jsonParams,
             Frame = Godot.Time.GetTicksMsec()
         };
         string json = JsonSerializer.Serialize(cmd, new JsonSerializerOptions { IncludeFields = true });
@@ -852,14 +852,18 @@ public static class NetworkManager
 
     private static void HandleChatMessage(int fromPeer, string json)
     {
-        if (_role != NetRole.Host) return;
         try
         {
             var data = JsonSerializer.Deserialize<JsonElement>(json);
             string sender = data.GetProperty("sender").GetString() ?? "??";
             string message = data.GetProperty("message").GetString() ?? "";
-            // 广播给所有人
-            BroadcastAll(MsgType.ChatMessage, json);
+            
+            // Host：收到原始消息时广播给所有人；收到自己的广播回显时不重复广播
+            if (_role == NetRole.Host && fromPeer != LocalPeerId)
+            {
+                BroadcastAll(MsgType.ChatMessage, json);
+            }
+            // 所有端：触发聊天回调
             ChatReceived?.Invoke(sender, message);
         }
         catch (Exception e)

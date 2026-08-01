@@ -30,10 +30,23 @@ public partial class Main
         _activeAiCount = dc.ActiveAiCount;
 
         _enemyThinkTimer = _aiThinkInterval;
-        _money[0] = _blueStartMoney;
-        for (int t = 1; t <= AiTeamCount; t++)
-            _money[t] = _aiStartMoney;
-        GameLog.Debug($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney}(x7) | 科技等级Lv{_playerTechLevel} | 上限{_unitCap} | 战略点收入{StrategicPointIncomeEnabled} | 活跃AI {_activeAiCount}/7 (休眠 {AiTeamCount - _activeAiCount} 个)");
+        int pt = PlayerTeamId;
+        _money[pt] = _blueStartMoney;
+        if (NetworkManager.IsOnline)
+        {
+            // 联机模式：为房间内每个非本地玩家分配资金
+            foreach (var p in NetworkManager.Players.Values)
+            {
+                if (p.TeamId == pt) continue;
+                _money[p.TeamId] = p.IsAI ? _aiStartMoney : _blueStartMoney;
+            }
+        }
+        else
+        {
+            for (int t = 1; t <= AiTeamCount; t++)
+                _money[t] = _aiStartMoney;
+        }
+        GameLog.Debug($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney} | 科技等级Lv{_playerTechLevel} | 上限{_unitCap}");
     }
 
     private void CheckWinCondition()

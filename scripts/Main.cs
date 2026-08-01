@@ -202,14 +202,14 @@ public partial class Main : Node2D
     private Key _prevKeyState = Key.None;
 
     // G1: 科技分支树
-    private readonly TechProgress[] _techProgress = new TechProgress[8]; // 每阵营一个
+    private readonly TechProgress[] _techProgress = new TechProgress[MaxTeamCount]; // 每阵营一个
     private bool _techTreePanelVisible = false;
     private Label _techTreeLabel = null!;
     private float _aiTechTimer = 0f;
     private float _techAutoRepairTimer = 0f;
 
     // G2: 时代系统
-    private readonly EraProgress[] _eraProgress = new EraProgress[8]; // 每阵营一个
+    private readonly EraProgress[] _eraProgress = new EraProgress[MaxTeamCount]; // 每阵营一个
     private bool _eraPanelVisible = false;
     private Label _eraLabel = null!;
     private float _aiEraTimer = 0f;
@@ -218,7 +218,7 @@ public partial class Main : Node2D
 
     // G3: 战术卡系统
     private TacticalCards.CardId? _playerCard = null;
-    private readonly TacticalCards.CardId?[] _aiCards = new TacticalCards.CardId?[7];
+    private readonly TacticalCards.CardId?[] _aiCards = new TacticalCards.CardId?[MaxTeamCount];
     private bool _cardSelectionPending = true;
     private float _cardSelectionTimer = 5f; // 游戏开始5秒后弹出
     private TacticalCards.CardId[] _cardChoices = System.Array.Empty<TacticalCards.CardId>();
@@ -242,7 +242,7 @@ public partial class Main : Node2D
     private float _powerGridRefreshTimer = 0f;
 
     // G5: 尤里卡时刻
-    private readonly EurekaSystem.TeamEureka[] _eureka = new EurekaSystem.TeamEureka[8];
+    private readonly EurekaSystem.TeamEureka[] _eureka = new EurekaSystem.TeamEureka[MaxTeamCount];
     private Label _eurekaLabel = null!;
 
     // G6: 邻接加成
@@ -285,6 +285,7 @@ public partial class Main : Node2D
         GameData.Load();
         FactionManager.Load();
         FactionManager.SetPlayerFaction(GameSession.PlayerFactionId);
+        FactionManager.SetPlayerTeamId(PlayerTeamId);
 
         // P0修复: 初始化国际化翻译系统
         TrManager.Initialize();
@@ -669,7 +670,7 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(_toastContainer);
 
         // G1: 初始化科技树进度 + 科技树UI面板
-        for (int i = 0; i < 8; i++) _techProgress[i] = new TechProgress();
+        for (int i = 0; i < MaxTeamCount; i++) _techProgress[i] = new TechProgress();
         _techTreeLabel = new Label();
         _techTreeLabel.Name = "TechTreeLabel";
         _techTreeLabel.Position = new Vector2(180, 80);
@@ -682,7 +683,7 @@ public partial class Main : Node2D
         GameLog.Debug("[G1] 科技树系统初始化完成 — 按Tab打开科技面板");
 
         // G2: 初始化时代系统进度 + 时代面板
-        for (int i = 0; i < 8; i++) _eraProgress[i] = new EraProgress();
+        for (int i = 0; i < MaxTeamCount; i++) _eraProgress[i] = new EraProgress();
         _eraLabel = new Label();
         _eraLabel.Name = "EraLabel";
         _eraLabel.Position = new Vector2(180, 80);
@@ -762,7 +763,7 @@ public partial class Main : Node2D
         GameLog.Debug("[G4] 电网分区系统初始化完成 — 按G查看电网分布");
 
         // G5: 初始化尤里卡系统
-        for (int i = 0; i < 8; i++) _eureka[i] = new EurekaSystem.TeamEureka();
+        for (int i = 0; i < MaxTeamCount; i++) _eureka[i] = new EurekaSystem.TeamEureka();
         _eurekaLabel = new Label();
         _eurekaLabel.Name = "EurekaLabel";
         _eurekaLabel.Position = new Vector2(770, 130);
@@ -1029,15 +1030,27 @@ public partial class Main : Node2D
             }
         }
 
-        // AI 阵营节奏：仅活跃 AI 阵营（1.._activeAiCount）独立 Tick
-        // 休眠AI（_activeAiCount+1..AiTeamCount）既不发展建筑也不造兵进攻，给玩家喘息空间
-        if (!_gameOver)
+        // AI 阵营节奏：仅活跃 AI 阵营独立 Tick
+        // 单机模式：teamId 1.._activeAiCount
+        // 联机模式：由Host运行所有AI阵营（Client不运行AI）
+        if (!_gameOver && !(NetworkManager.IsOnline && NetworkManager.Role == NetworkManager.NetRole.Client))
         {
             _enemyThinkTimer -= dt;
             if (_enemyThinkTimer <= 0f)
             {
-                for (int t = 1; t <= _activeAiCount; t++)
-                    AITickForTeam(t);
+                if (NetworkManager.IsOnline)
+                {
+                    // 联机模式：Host运行所有AI阵营
+                    foreach (var p in NetworkManager.Players.Values)
+                        if (p.IsAI)
+                            AITickForTeam(p.TeamId);
+                }
+                else
+                {
+                    // 单机模式：仅活跃AI
+                    for (int t = 1; t <= _activeAiCount; t++)
+                        AITickForTeam(t);
+                }
                 _enemyThinkTimer = _aiThinkInterval;
             }
         }
@@ -1216,14 +1229,26 @@ public partial class Main : Node2D
         if (_debugTimer <= 0f)
         {
             _debugTimer = 5f;
-            // 8阵营状态汇总输出（玩家方 + AI 合计）
-            int aiUnits = 0, aiBld = 0;
-            for (int t = 1; t <= AiTeamCount; t++)
+            int pt = PlayerTeamId;
+            int otherUnits = 0, otherBld = 0;
+            if (NetworkManager.IsOnline)
             {
-                aiUnits += CountUnitsOfTeam(t);
-                aiBld += CountBuildingsOfTeam(t);
+                foreach (var p in NetworkManager.Players.Values)
+                {
+                    if (p.TeamId == pt) continue;
+                    otherUnits += CountUnitsOfTeam(p.TeamId);
+                    otherBld += CountBuildingsOfTeam(p.TeamId);
+                }
             }
-            GameLog.Debug($"[状态] 玩家: ${_money[0]} | {CountUnitsOfTeam(0)} 单位 / {CountBuildingsOfTeam(0)} 建筑 | AI(1-7)合计: 单位={aiUnits} / 建筑={aiBld}");
+            else
+            {
+                for (int t = 1; t <= AiTeamCount; t++)
+                {
+                    otherUnits += CountUnitsOfTeam(t);
+                    otherBld += CountBuildingsOfTeam(t);
+                }
+            }
+            GameLog.Debug($"[状态] 玩家(T{pt}): ${_money[pt]} | {CountUnitsOfTeam(pt)} 单位 / {CountBuildingsOfTeam(pt)} 建筑 | 其他方合计: 单位={otherUnits} / 建筑={otherBld}");
         }
 
         CheckWinCondition();
@@ -1301,12 +1326,13 @@ public partial class Main : Node2D
         // Q1 刷新侧边栏建造面板
         if (_buildPanel != null)
         {
-             _buildPanel.UpdateState(_money[0], GetTeamPower(0), _playerTechLevel,
-                 CountUnitsOfTeam(0), _unitCap,
-                 HasBuilding(0, BuildingType.Base), HasBuilding(0, BuildingType.PowerPlant),
-                 HasBuilding(0, BuildingType.Barracks), HasBuilding(0, BuildingType.WarFactory),
-                 HasBuilding(0, BuildingType.TechCenter), HasBuilding(0, BuildingType.Airfield),
-                 HasBuilding(0, BuildingType.Shipyard));
+             int pId = PlayerTeamId;
+             _buildPanel.UpdateState(_money[pId], GetTeamPower(pId), _playerTechLevel,
+                 CountUnitsOfTeam(pId), _unitCap,
+                 HasBuilding(pId, BuildingType.Base), HasBuilding(pId, BuildingType.PowerPlant),
+                 HasBuilding(pId, BuildingType.Barracks), HasBuilding(pId, BuildingType.WarFactory),
+                 HasBuilding(pId, BuildingType.TechCenter), HasBuilding(pId, BuildingType.Airfield),
+                 HasBuilding(pId, BuildingType.Shipyard));
 
              // 生产队列信息
              var queueData = CollectPlayerProductionInfo();
@@ -1434,7 +1460,7 @@ public partial class Main : Node2D
             Mathf.Clamp(posGrid.Y, 1f, TerrainGrid.GridSize - 2f)
         );
         pos = IsoCoords.GridToScreenF(posGrid.X, posGrid.Y);
-        bool ok = CanPlaceBuilding(pos) && _money[0] >= GetBuildingCost(_placementMode.Value);
+        bool ok = CanPlaceBuilding(pos) && _money[PlayerTeamId] >= GetBuildingCost(_placementMode.Value);
 
         // 等距菱形预览：在鼠标位置画菱形
         var buildingColor = ok ? new Color(0.2f, 0.9f, 0.2f, 0.35f) : new Color(0.9f, 0.2f, 0.2f, 0.35f);
