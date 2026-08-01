@@ -341,8 +341,8 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.Submarine => "submarine",
         UnitType.AircraftCarrier => "carrier",
         UnitType.LandingCraft => "landing_craft",
-        UnitType.ApocalypseTank => "heavy",
-        UnitType.PrismTank => "rocket",
+        UnitType.ApocalypseTank => "heavy_tank",
+        UnitType.PrismTank => "rocket_launcher",
         UnitType.KirovAirship => "bomber",
         UnitType.TeslaTrooper => "infantry",
         UnitType.Transport => "transport_vehicle",
@@ -364,8 +364,11 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             for (int d = 0; d < 8; d++)
             {
                 string path = $"res://assets/sprites/units_iso/unit_{name}_{IsoDirNames[d]}.png";
-                arr[d] = GD.Load<Texture2D>(path);
-                if (arr[d] != null) anyLoaded = true;
+                if (ResourceLoader.Exists(path, "Texture2D"))
+                {
+                    arr[d] = GD.Load<Texture2D>(path);
+                    if (arr[d] != null) anyLoaded = true;
+                }
             }
             if (anyLoaded)
                 _isoSprites[name] = arr;

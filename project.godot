@@ -8,8 +8,6 @@
 
 config_version=5
 
-"ï»¿config_version"=5
-
 [application]
 
 config/name="铁幕突袭"
