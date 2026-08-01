@@ -580,11 +580,12 @@ public static class IsoTerrainRenderer
         bool east = gx < TerrainGrid.GridSize - 1 && terrain.GetEffectiveType(gx + 1, gy) == TerrainType.Road;
         bool west = gx > 0 && terrain.GetEffectiveType(gx - 1, gy) == TerrainType.Road;
 
+        var fallback = GetFallbackTile(new Color(0.3f, 0.3f, 0.3f)); // 灰色道路占位
         if ((north || south) && (east || west))
-            return _roadCrossTex?.GetImage() ?? _roadETex?.GetImage()!;
+            return _roadCrossTex?.GetImage() ?? _roadETex?.GetImage() ?? fallback;
         if (north || south)
-            return _roadNTex?.GetImage() ?? _roadETex?.GetImage()!;
-        return _roadETex?.GetImage()!;
+            return _roadNTex?.GetImage() ?? _roadETex?.GetImage() ?? fallback;
+        return _roadETex?.GetImage() ?? fallback;
     }
 
     // ======== 贴图加载 ========
@@ -635,12 +636,12 @@ public static class IsoTerrainRenderer
         _fieldTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileField1.png",
             "res://assets/sprites/terrain/tileField2.png" });
-        _roadETex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadEast.png");
-        _roadNTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadNorth.png");
-        _roadCrossTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileGrass_roadCrossing.png");
-        _bridgeTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileBridge.png");
-        _tunnelTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileTunnel.png");
-        _cliffTex = GD.Load<Texture2D>("res://assets/sprites/terrain/tileCliff.png");
+        _roadETex = LoadTexSafe("res://assets/sprites/terrain/tileGrass_roadEast.png");
+        _roadNTex = LoadTexSafe("res://assets/sprites/terrain/tileGrass_roadNorth.png");
+        _roadCrossTex = LoadTexSafe("res://assets/sprites/terrain/tileGrass_roadCrossing.png");
+        _bridgeTex = LoadTexSafe("res://assets/sprites/terrain/tileBridge.png");
+        _tunnelTex = LoadTexSafe("res://assets/sprites/terrain/tileTunnel.png");
+        _cliffTex = LoadTexSafe("res://assets/sprites/terrain/tileCliff.png");
         _texturesLoaded = true;
     }
 
@@ -649,11 +650,36 @@ public static class IsoTerrainRenderer
         var arr = new Texture2D?[paths.Length];
         for (int i = 0; i < paths.Length; i++)
         {
-            arr[i] = GD.Load<Texture2D>(paths[i]);
-            if (arr[i] == null)
-                GameLog.Error($"[IsoTerrain] Failed to load: {paths[i]}");
+            arr[i] = LoadTexSafe(paths[i]);
         }
         return arr;
+    }
+
+    /// <summary>带预检的纹理加载，避免GD.Load失败产生错误日志。</summary>
+    private static Texture2D? LoadTexSafe(string path)
+    {
+        if (!ResourceLoader.Exists(path, "Texture2D"))
+        {
+            GameLog.Error($"[IsoTerrain] Texture not found: {path}");
+            return null;
+        }
+        var tex = GD.Load<Texture2D>(path);
+        if (tex == null)
+            GameLog.Error($"[IsoTerrain] GD.Load returned null: {path}");
+        return tex;
+    }
+
+    private static Image? _fallbackTile;
+
+    /// <summary>获取64×32纯色占位图（地形贴图加载失败时的回退）。</summary>
+    private static Image GetFallbackTile(Color color)
+    {
+        if (_fallbackTile == null)
+        {
+            _fallbackTile = Image.CreateEmpty(TileW, TileH, false, Image.Format.Rgba8);
+        }
+        _fallbackTile.Fill(color);
+        return _fallbackTile;
     }
 
     private static Image[][] LoadImageArray(Texture2D?[] texs)
@@ -662,7 +688,13 @@ public static class IsoTerrainRenderer
         arr[0] = new Image[texs.Length];
         for (int i = 0; i < texs.Length; i++)
         {
-            arr[0][i] = texs[i]?.GetImage() ?? Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            arr[0][i] = texs[i]?.GetImage();
+            if (arr[0][i] == null)
+            {
+                // 加载失败时使用纯色占位图而非1×1透明图，避免渲染为透明块
+                arr[0][i] = GetFallbackTile(new Color(0.35f, 0.45f, 0.25f));
+                GameLog.Error($"[IsoTerrain] 贴图加载失败，使用纯色占位图");
+            }
         }
         return arr;
     }
