@@ -392,7 +392,7 @@ public partial class Main
                 }
             }
             if (repaired > 0)
-                ReplayRecorder.Record(ReplayRecorder.ActionType.RepairBuilding, new { Count = repaired });
+                ReplayRecorder.Record(ReplayRecorder.ActionType.RepairBuilding, new { Count = repaired, Buildings = _selected.OfType<Building>().Where(b => b.TeamId == PlayerTeamId && IsInstanceValid(b) && b.NeedsRepair).Select(b => new { X = b.GlobalPosition.X, Y = b.GlobalPosition.Y }).ToArray() });
             if (repaired == 0)
             {
                 GameLog.Debug("[维修] 没有可维修的建筑（需选中受损的蓝方建筑）");
@@ -413,7 +413,7 @@ public partial class Main
                 _money[PlayerTeamId] += refund;
                 b.SetSelected(false);
                 _selected.Remove(b);
-                ReplayRecorder.Record(ReplayRecorder.ActionType.SellBuilding, new { Type = b.Type.ToString() });
+                ReplayRecorder.Record(ReplayRecorder.ActionType.SellBuilding, new { Type = b.Type.ToString(), X = b.GlobalPosition.X, Y = b.GlobalPosition.Y });
                 GameLog.Debug($"[出售] {b.BuildingName} 已出售，回收 ${refund}，资金 ${_money[PlayerTeamId]}");
                 // P0-1: 移除PathFinder障碍并取消事件订阅（H4修复）
                 OnBuildingDestroyed(b);
@@ -597,7 +597,7 @@ public partial class Main
                     var cancelled = producer.CancelLastProduction();
                     if (cancelled.HasValue)
                     {
-                        ReplayRecorder.Record(ReplayRecorder.ActionType.CancelProduction, new { Building = producer.BuildingName });
+                        ReplayRecorder.Record(ReplayRecorder.ActionType.CancelProduction, new { Building = producer.BuildingName, X = producer.GlobalPosition.X, Y = producer.GlobalPosition.Y });
                         GameLog.Debug($"[取消生产] {producer.BuildingName} 取消: {cancelled.Value}");
                         // 补强：取消生产时播放BuildCancel音效
                         PlayBuildCancelSfx();

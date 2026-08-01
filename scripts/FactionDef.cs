@@ -75,6 +75,8 @@ public static class FactionManager
     private static string? _playerFactionId = null;
     /// <summary>本地玩家的teamId（单机=0，联机=NetworkManager.LocalTeamId）。</summary>
     private static int _playerTeamId = 0;
+    /// <summary>联机模式：各team的阵营覆盖（teamId → factionId）。</summary>
+    private static readonly Dictionary<int, string> _teamFactionOverrides = new();
 
     /// <summary>是否已加载。</summary>
     public static bool IsLoaded => _loaded;
@@ -228,9 +230,19 @@ public static class FactionManager
     {
         EnsureLoaded();
         if (_factionList.Count == 0) throw new InvalidOperationException("无阵营定义");
+        // 联机模式：优先查team级覆盖
+        if (_teamFactionOverrides.TryGetValue(teamId, out var tfId) && _factions.TryGetValue(tfId, out var tf))
+            return tf;
         if (teamId == _playerTeamId && _playerFactionId != null && _factions.TryGetValue(_playerFactionId, out var pf))
             return pf;
         return _factionList[teamId % _factionList.Count];
+    }
+
+    /// <summary>设置指定team的阵营（联机模式用，由Main._Ready从StartGame信息设置）。</summary>
+    public static void SetTeamFaction(int teamId, string factionId)
+    {
+        _teamFactionOverrides[teamId] = factionId;
+        GameLog.Debug($"[FactionManager] Team {teamId} 阵营设为: {factionId}");
     }
 
     /// <summary>设置本地玩家teamId（联机模式由Main调用）。</summary>

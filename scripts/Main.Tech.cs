@@ -677,21 +677,27 @@ public partial class Main
         // 应用被动效果到现有单位
         ApplyCardEffectsToUnits(PlayerTeamId);
 
-        // AI随机选卡
-        var rng = new RandomNumberGenerator();
-        rng.Randomize();
-        for (int team = 1; team < TotalTeamCount; team++)
+        // AI随机选卡（联机模式下只有Host执行，避免desync）
+        if (!NetworkManager.IsOnline || NetworkManager.IsHost)
         {
-            var aiPick = TacticalCards.DrawRandom(1, rng)[0];
-            _aiCards[team - 1] = aiPick;
-            GameLog.Debug($"[G3] AI Team {team} 战术卡: {TacticalCards.Cards[aiPick].Name}");
-            // AI闪电经济即时效果
-            if (aiPick == TacticalCards.CardId.BlitzEconomy)
+            var rng = new RandomNumberGenerator();
+            rng.Randomize();
+            for (int team = 1; team < TotalTeamCount; team++)
             {
-                int aiBonus = (int)(_aiStartMoney * 0.5f);
-                _money[team] += aiBonus;
+                // 联机模式下跳过已被其他真人玩家占据的team
+                if (NetworkManager.IsOnline && NetworkManager.IsPlayerTeam(team))
+                    continue;
+                var aiPick = TacticalCards.DrawRandom(1, rng)[0];
+                _aiCards[team - 1] = aiPick;
+                GameLog.Debug($"[G3] AI Team {team} 战术卡: {TacticalCards.Cards[aiPick].Name}");
+                // AI闪电经济即时效果
+                if (aiPick == TacticalCards.CardId.BlitzEconomy)
+                {
+                    int aiBonus = (int)(_aiStartMoney * 0.5f);
+                    _money[team] += aiBonus;
+                }
+                ApplyCardEffectsToUnits(team);
             }
-            ApplyCardEffectsToUnits(team);
         }
 
         ShowCardStatus();

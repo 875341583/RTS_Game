@@ -427,6 +427,8 @@ public partial class Main
         SpawnBuilding(type, pos, teamId: t);
         GameLog.Debug($"阵营{t}建造{type}，扣 ${cost}，剩余 ${_money[t]}，位置 {pos}");
         _audio?.PlaySfx(AudioManager.Sfx.UiPlace);
+        // 记录实际放置坐标（联机+回放都需要）
+        ReplayRecorder.Record(ReplayRecorder.ActionType.PlaceBuilding, new { Type = type.ToString(), X = pos.X, Y = pos.Y });
         // 放一个就退出放置模式（红警2风格：点一次放一个）
         CancelPlacement();
     }

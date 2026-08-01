@@ -272,17 +272,17 @@ public partial class Main
                     string typeName = GetString(p, "Type");
                     if (Enum.TryParse<BuildingType>(typeName, out var bt))
                     {
-                        // 远端放建筑：直接在基地附近放置（简化版）
-                        // 真正需要玩家指定坐标，但当前Record没有记录坐标
-                        // Host权威模式下，Host已经执行了SpawnBuilding，通过快照同步建筑
-                        // 这里作为备份：在基地附近随机放置
-                        var buildings = GetBuildingsOfTeam(teamId);
-                        var baseBld = buildings.FirstOrDefault(b => b.Type == BuildingType.Base);
-                        if (baseBld != null)
+                        // 如果包含坐标，在精确位置放置建筑
+                        if (p.TryGetProperty("X", out var xel) && p.TryGetProperty("Y", out var yel))
                         {
-                            var pos = FindBuildingPlacementNear(baseBld.GlobalPosition, bt, teamId);
-                            SpawnBuilding(bt, pos, teamId);
+                            var pos = new Vector2(xel.GetSingle(), yel.GetSingle());
+                            if (CanPlaceBuilding(pos))
+                            {
+                                _money[teamId] -= GetBuildingCost(bt, teamId);
+                                SpawnBuilding(bt, pos, teamId);
+                            }
                         }
+                        // 无坐标 = 进入放置模式，远端不需要执行
                     }
                 }
                 break;
@@ -326,12 +326,25 @@ public partial class Main
 
             case ReplayRecorder.ActionType.CancelProduction:
                 {
-                    // 需要知道哪个建筑取消 — 简化：取消队列最长的建筑
-                    var buildings = GetBuildingsOfTeam(teamId)
-                        .Where(b => b.QueueCount > 0)
-                        .OrderByDescending(b => b.QueueCount)
-                        .FirstOrDefault();
-                    buildings?.CancelLastProduction();
+                    // 使用坐标精确定位建筑
+                    if (p.TryGetProperty("X", out var xel) && p.TryGetProperty("Y", out var yel))
+                    {
+                        var target = new Vector2(xel.GetSingle(), yel.GetSingle());
+                        var bld = GetBuildingsOfTeam(teamId)
+                            .Where(b => b.QueueCount > 0)
+                            .OrderBy(b => b.GlobalPosition.DistanceSquaredTo(target))
+                            .FirstOrDefault();
+                        bld?.CancelLastProduction();
+                    }
+                    else
+                    {
+                        // 兼容旧格式：取消队列最长的建筑
+                        var buildings = GetBuildingsOfTeam(teamId)
+                            .Where(b => b.QueueCount > 0)
+                            .OrderByDescending(b => b.QueueCount)
+                            .FirstOrDefault();
+                        buildings?.CancelLastProduction();
+                    }
                 }
                 break;
 
@@ -369,13 +382,41 @@ public partial class Main
             // ---- 建筑操作 ----
             case ReplayRecorder.ActionType.RepairBuilding:
                 {
-                    foreach (var b in GetBuildingsOfTeam(teamId).Where(b => b.NeedsRepair))
+                    // 使用坐标精确匹配需要维修的建筑
+                    if (p.TryGetProperty("Buildings", out var bldArr) && bldArr.ValueKind == JsonValueKind.Array)
                     {
-                        int cost = GetRepairCost(b);
-                        if (_money[teamId] >= cost)
+                        foreach (var item in bldArr.EnumerateArray())
                         {
-                            _money[teamId] -= cost;
-                            b.Repair();
+                            if (item.TryGetProperty("X", out var xel) && item.TryGetProperty("Y", out var yel))
+                            {
+                                var target = new Vector2(xel.GetSingle(), yel.GetSingle());
+                                var bld = GetBuildingsOfTeam(teamId)
+                                    .Where(b => b.NeedsRepair)
+                                    .OrderBy(b => b.GlobalPosition.DistanceSquaredTo(target))
+                                    .FirstOrDefault();
+                                if (bld != null)
+                                {
+                                    int cost = GetRepairCost(bld);
+                                    if (_money[teamId] >= cost)
+                                    {
+                                        _money[teamId] -= cost;
+                                        bld.Repair();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 兼容旧格式：维修所有需维修的建筑
+                        foreach (var b in GetBuildingsOfTeam(teamId).Where(b => b.NeedsRepair))
+                        {
+                            int cost = GetRepairCost(b);
+                            if (_money[teamId] >= cost)
+                            {
+                                _money[teamId] -= cost;
+                                b.Repair();
+                            }
                         }
                     }
                 }
@@ -384,19 +425,39 @@ public partial class Main
             case ReplayRecorder.ActionType.SellBuilding:
                 {
                     string typeName = GetString(p, "Type");
-                    var toSell = GetBuildingsOfTeam(teamId)
-                        .Where(b => b.Type != BuildingType.Base)
-                        .ToList();
-                    // 如果指定了类型，只卖该类型
-                    if (!string.IsNullOrEmpty(typeName) && Enum.TryParse<BuildingType>(typeName, out var sellType))
-                        toSell = toSell.Where(b => b.Type == sellType).ToList();
-                    foreach (var b in toSell)
+                    // 使用坐标精确匹配要出售的建筑
+                    if (p.TryGetProperty("X", out var xel) && p.TryGetProperty("Y", out var yel))
                     {
-                        int refund = Math.Max(1, GetBuildingCost(b.Type, teamId) / 2);
-                        _money[teamId] += refund;
-                        OnBuildingDestroyed(b);
-                        b.Destroyed -= OnBuildingDestroyed;
-                        b.QueueFree();
+                        var target = new Vector2(xel.GetSingle(), yel.GetSingle());
+                        var bld = GetBuildingsOfTeam(teamId)
+                            .Where(b => b.Type != BuildingType.Base)
+                            .OrderBy(b => b.GlobalPosition.DistanceSquaredTo(target))
+                            .FirstOrDefault();
+                        if (bld != null)
+                        {
+                            int refund = Math.Max(1, GetBuildingCost(bld.Type, teamId) / 2);
+                            _money[teamId] += refund;
+                            OnBuildingDestroyed(bld);
+                            bld.Destroyed -= OnBuildingDestroyed;
+                            bld.QueueFree();
+                        }
+                    }
+                    else
+                    {
+                        // 兼容旧格式：出售所有同类型建筑
+                        var toSell = GetBuildingsOfTeam(teamId)
+                            .Where(b => b.Type != BuildingType.Base)
+                            .ToList();
+                        if (!string.IsNullOrEmpty(typeName) && Enum.TryParse<BuildingType>(typeName, out var sellType))
+                            toSell = toSell.Where(b => b.Type == sellType).ToList();
+                        foreach (var b in toSell)
+                        {
+                            int refund = Math.Max(1, GetBuildingCost(b.Type, teamId) / 2);
+                            _money[teamId] += refund;
+                            OnBuildingDestroyed(b);
+                            b.Destroyed -= OnBuildingDestroyed;
+                            b.QueueFree();
+                        }
                     }
                 }
                 break;
@@ -752,7 +813,7 @@ public partial class Main
     {
         if (teamId == PlayerTeamId)
             _playerCard = card;
-        else
+        else if (teamId > 0 && teamId <= _aiCards.Length)
             _aiCards[teamId - 1] = card;
 
         // 闪电经济即时效果

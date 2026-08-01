@@ -20,6 +20,17 @@ public static class NetworkManager
     /// <summary>是否处于联机模式。</summary>
     public static bool IsOnline => _role != NetRole.Offline;
 
+    /// <summary>本机是否为Host。</summary>
+    public static bool IsHost => _role == NetRole.Host;
+
+    /// <summary>指定TeamId是否由真人玩家控制（非AI）。</summary>
+    public static bool IsPlayerTeam(int teamId)
+    {
+        foreach (var p in Players.Values)
+            if (p.TeamId == teamId && !p.IsAI) return true;
+        return false;
+    }
+
     /// <summary>网络角色。</summary>
     public static NetRole Role => _role;
     private static NetRole _role = NetRole.Offline;
@@ -362,10 +373,11 @@ public static class NetworkManager
     {
         if (_role != NetRole.Client) return;
         if (Players.TryGetValue(LocalPeerId, out var slot))
+        {
             slot.IsReady = !slot.IsReady;
-        // 发送ReadyToggle消息
-        var data = new { peerId = LocalPeerId, ready = Players[LocalPeerId].IsReady };
-        SendToHost(MsgType.ReadyToggle, JsonSerializer.Serialize(data));
+            var data = new { peerId = LocalPeerId, ready = slot.IsReady };
+            SendToHost(MsgType.ReadyToggle, JsonSerializer.Serialize(data));
+        }
     }
 
     // ====== Host：开始游戏 ======
@@ -723,8 +735,9 @@ public static class NetworkManager
 
         if (_role == NetRole.Host)
         {
-            // Host本地直接处理
+            // Host本地执行 + 广播给所有Client
             CommandReceived?.Invoke(cmd);
+            BroadcastAll(MsgType.CommandBroadcast, json);
         }
         else
         {

@@ -287,6 +287,16 @@ public partial class Main : Node2D
         FactionManager.SetPlayerFaction(GameSession.PlayerFactionId);
         FactionManager.SetPlayerTeamId(PlayerTeamId);
 
+        // 联机模式：为所有team设置正确的阵营（从NetworkManager.Players读取）
+        if (NetworkManager.IsOnline)
+        {
+            foreach (var p in NetworkManager.Players.Values)
+            {
+                if (!p.IsAI && !string.IsNullOrEmpty(p.Faction))
+                    FactionManager.SetTeamFaction(p.TeamId, p.Faction);
+            }
+        }
+
         // P0修复: 初始化国际化翻译系统
         TrManager.Initialize();
 
