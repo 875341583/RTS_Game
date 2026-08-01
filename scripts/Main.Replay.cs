@@ -274,12 +274,12 @@ public partial class Main
     {
         foreach (var o in _selected)
         {
-            if (o is Building b && b.TeamId == 0 && IsInstanceValid(b) && b.NeedsRepair)
+            if (o is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b) && b.NeedsRepair)
             {
                 int cost = GetRepairCost(b);
-                if (_money[0] >= cost)
+                if (_money[PlayerTeamId] >= cost)
                 {
-                    _money[0] -= cost;
+                    _money[PlayerTeamId] -= cost;
                     b.Repair();
                 }
             }
@@ -294,13 +294,13 @@ public partial class Main
         var toSell = new List<Building>();
         foreach (var o in _selected)
         {
-            if (o is Building b && b.TeamId == 0 && IsInstanceValid(b) && b.Type != BuildingType.Base)
+            if (o is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b) && b.Type != BuildingType.Base)
                 toSell.Add(b);
         }
         foreach (var b in toSell)
         {
             int refund = Mathf.Max(1, GetBuildingCost(b.Type) / 2);
-            _money[0] += refund;
+            _money[PlayerTeamId] += refund;
             b.SetSelected(false);
             _selected.Remove(b);
             OnBuildingDestroyed(b);

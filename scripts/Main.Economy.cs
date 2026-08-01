@@ -105,7 +105,7 @@ public partial class Main
         var faction = FactionManager.GetFactionForTeam(teamId);
         if (!faction.CanProduceUnit(unitType))
         {
-            if (teamId == 0) GameLog.Warning($"[P1-2] {faction.Name}无法生产 {unitType}！");
+            if (teamId == PlayerTeamId) GameLog.Warning($"[P1-2] {faction.Name}无法生产 {unitType}！");
             return false;
         }
 

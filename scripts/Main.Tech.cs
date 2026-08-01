@@ -1033,7 +1033,7 @@ public partial class Main
             sb.AppendLine(TrManager.Tr("adj.hint", "\n"));
 
         // 研究速度加成
-        float resMul = AdjacencyBonus.GetResearchMultiplier(buildings, 0);
+        float resMul = AdjacencyBonus.GetResearchMultiplier(buildings, PlayerTeamId);
         if (resMul > 1f)
             sb.AppendLine(TrManager.Tr("adj.research_bonus", "\n", $"{(resMul - 1f) * 100:F0}"));
 
@@ -1062,7 +1062,7 @@ public partial class Main
         bool anySpy = false;
         foreach (var c in _unitsNode.GetChildren())
         {
-            if (c is Unit u && u.TeamId == 0 && u.Type == UnitType.Spy && IsInstanceValid(u))
+            if (c is Unit u && u.TeamId == PlayerTeamId && u.Type == UnitType.Spy && IsInstanceValid(u))
             {
                 anySpy = true;
                 if (u.IsSpyOnMission)
@@ -1167,7 +1167,7 @@ public partial class Main
             // 该分支已全部研究完成 → 资金补偿
             int compensation = 200;
             _money[teamId] += compensation;
-            if (teamId == 0)
+            if (teamId == PlayerTeamId)
                 ShowToast(TrManager.Tr("eureka.toast_graduated", reason, branch, compensation), new Color(1f, 0.85f, 0.3f));
             GameLog.Debug($"[G5] Team {teamId} {reason}({branch}) — 分支已毕业，+${compensation}补偿");
             return;
@@ -1181,7 +1181,7 @@ public partial class Main
 
         ApplyTechEffects(teamId);
 
-        if (teamId == 0)
+        if (teamId == PlayerTeamId)
             ShowToast(TrManager.Tr("eureka.toast_free_tech", reason, node.Name), new Color(0.7f, 1f, 0.7f));
         GameLog.Debug($"[G5] Team {teamId} {reason} — 免费获得{branch}科技: {node.Name}");
 

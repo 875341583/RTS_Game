@@ -658,7 +658,7 @@ public partial class Building : Area2D, IBuildingEntity
             {
                 capturedMain.AddResourceForTeam(capturingTeamId, CaptureBonus.CaptureMoneyReward);
                 GameLog.Debug($"[G8] 占领奖励: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
-                capturedMain.ShowToast(capturingTeamId == 0
+                capturedMain.ShowToast(capturingTeamId == Main.PlayerTeamId
                     ? TrManager.Tr("building.captured", BuildingName, CaptureBonus.CaptureMoneyReward)
                     : "");
             }
@@ -768,9 +768,9 @@ public partial class Building : Area2D, IBuildingEntity
                     {
                         GameLog.Debug($"[G8] 叛变! {BuildingName} 从 Team {TeamId} 叛变回 Team {_originalTeamId}!");
                         if (GetParent()?.GetParent() is Main capMain)
-                            capMain.ShowToast(TeamId == 0
-                                ? TrManager.Tr("building.defected", BuildingName, _originalTeamId)
-                                : "");
+                        capMain.ShowToast(TeamId == Main.PlayerTeamId
+                            ? TrManager.Tr("building.defected", BuildingName, _originalTeamId)
+                            : "");
                         TeamId = _originalTeamId;
                         _originalTeamId = -1;
                         _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);

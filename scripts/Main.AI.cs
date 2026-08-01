@@ -295,7 +295,7 @@ public partial class Main
             if (!_bases.TryGetValue(t, out var b) || !IsInstanceValid(b)) continue;
             // 优先攻击玩家（0号），其次是其他AI
             float d = myPos.DistanceTo(b.GlobalPosition);
-            if (t == 0) d *= 0.7f; // 玩家优先
+            if (t == PlayerTeamId) d *= 0.7f; // 玩家优先
             if (d < bestDist)
             {
                 bestDist = d;

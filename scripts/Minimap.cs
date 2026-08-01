@@ -194,7 +194,7 @@ public partial class Minimap : Control
                 if (c is Building b && GodotObject.IsInstanceValid(b))
                 {
                     var mp = W2M(b.GlobalPosition);
-                    var col = b.TeamId == 0 ? CBlue : CRed;
+                    var col = b.TeamId == Main.PlayerTeamId ? CBlue : CRed;
                     float sz = b.Type == BuildingType.Base ? 6f : 4f;
                     DrawRect(new Rect2(mp - new Vector2(sz / 2, sz / 2), sz, sz), col, true);
                 }
@@ -211,12 +211,12 @@ public partial class Minimap : Control
                 if (c is Harvester h)
                 {
                     var mp = W2M(h.GlobalPosition);
-                    DrawCircle(mp, 1.5f, h.TeamId == 0 ? CBlueHarv : CRedHarv);
+                    DrawCircle(mp, 1.5f, h.TeamId == Main.PlayerTeamId ? CBlueHarv : CRedHarv);
                 }
                 else if (c is Unit u)
                 {
                     var mp = W2M(u.GlobalPosition);
-                    var col = u.TeamId == 0 ? (u.IsSelected ? CBlueSel : CBlue) : CRed;
+                    var col = u.TeamId == Main.PlayerTeamId ? (u.IsSelected ? CBlueSel : CBlue) : CRed;
                     float r = u.Type == UnitType.HeavyTank || u.Type == UnitType.MissileTank ? 2f : 1.5f;
                     DrawCircle(mp, r, col);
                 }

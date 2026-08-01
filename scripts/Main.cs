@@ -50,7 +50,7 @@ public partial class Main : Node2D
     /// <summary>当前模式下的AI阵营数量（单机=7，联机动态）。</summary>
     private static int AiTeamCount => NetworkManager.IsOnline ? NetworkManager.AiTeamCount : SinglePlayerAiCount;
     /// <summary>玩家阵营 ID（联机模式下由 NetworkManager 分配）。</summary>
-    private static int PlayerTeamId => NetworkManager.IsOnline ? NetworkManager.LocalTeamId : 0;
+    public static int PlayerTeamId => NetworkManager.IsOnline ? NetworkManager.LocalTeamId : 0;
 
     // 资金：玩家 2500，每个 AI 2000（11阵营）
     private readonly int[] _money = new int[TotalTeamCount] { 2500, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000 };

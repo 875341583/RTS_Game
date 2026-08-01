@@ -527,14 +527,14 @@ public partial class Main
                         ApplyTechEffects(spyTeamId);
                         var nodeName = TechTree.Nodes[stolenTech.Value];
                         GameLog.Debug($"[G7] 间谍窃取科技成功: {nodeName.Name} (Team {spyTeamId})");
-                        ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_steal_tech", nodeName.Name) : TrManager.Tr("spy.toast_ai_steal_tech", spyTeamId));
+                        ShowToast(spyTeamId == PlayerTeamId ? TrManager.Tr("spy.toast_steal_tech", nodeName.Name) : TrManager.Tr("spy.toast_ai_steal_tech", spyTeamId));
                     }
                     else
                     {
                         // 敌方无可窃取科技，补偿$300
                         AddResourceForTeam(spyTeamId, 300);
                         GameLog.Debug($"[G7] 间谍无可窃取科技，获得$300补偿 (Team {spyTeamId})");
-                        ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_no_tech") : "");
+                        ShowToast(spyTeamId == PlayerTeamId ? TrManager.Tr("spy.toast_no_tech") : "");
                     }
                 }
                 break;
@@ -545,7 +545,7 @@ public partial class Main
                 {
                     target.PowerConsumed += 200;
                     GameLog.Debug($"[G7] 间谍破坏电网: {target.BuildingName} 断电{(int)SpyMission.SabotagePowerDuration}秒 (Team {target.TeamId})");
-                    ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_sabotage_power", target.BuildingName) : "");
+                    ShowToast(spyTeamId == PlayerTeamId ? TrManager.Tr("spy.toast_sabotage_power", target.BuildingName) : "");
                     // 延迟恢复
                     DelayedRestoreSpySabotage(target, SpyMission.SabotagePowerDuration, 200);
                 }
@@ -561,7 +561,7 @@ public partial class Main
                     SpendMoney(target.TeamId, stolen);
                     AddResourceForTeam(spyTeamId, stolen);
                     GameLog.Debug($"[G7] 间谍窃取${stolen} (Team {target.TeamId} → Team {spyTeamId})");
-                    ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_steal_money", stolen) : "");
+                    ShowToast(spyTeamId == PlayerTeamId ? TrManager.Tr("spy.toast_steal_money", stolen) : "");
                 }
                 break;
 
@@ -572,7 +572,7 @@ public partial class Main
                     // 通过大幅增加PowerConsumed使建筑离线
                     target.PowerConsumed += 500;
                     GameLog.Debug($"[G7] 间谍瘫痪生产: {target.BuildingName} 暂停{(int)SpyMission.SabotageProdDuration}秒");
-                    ShowToast(spyTeamId == 0 ? TrManager.Tr("spy.toast_sabotage_prod", target.BuildingName) : "");
+                    ShowToast(spyTeamId == PlayerTeamId ? TrManager.Tr("spy.toast_sabotage_prod", target.BuildingName) : "");
                     DelayedRestoreSpySabotage(target, SpyMission.SabotageProdDuration, 500);
                 }
                 break;
@@ -593,7 +593,7 @@ public partial class Main
                 }
                 sb.AppendLine(TrManager.Tr("spy.recon_nearby", nearbyEnemies));
                 GameLog.Debug($"[G7] 间谍侦察: {sb.ToString().Trim()}");
-                if (spyTeamId == 0) ShowToast(sb.ToString().Trim());
+                if (spyTeamId == PlayerTeamId) ShowToast(sb.ToString().Trim());
                 break;
         }
     }
