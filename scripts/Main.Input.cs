@@ -34,6 +34,14 @@ public partial class Main
         {
             if (k.Keycode == Key.F5) { QuickSave(); return; }
             if (k.Keycode == Key.F9) { QuickLoad(); return; }
+            // F1: 切换底部控制指南面板显示/隐藏
+            if (k.Keycode == Key.F1)
+            {
+                _hintPanelVisible = !_hintPanelVisible;
+                _hintBarBg.Visible = _hintPanelVisible;
+                _hintLabel.Visible = _hintPanelVisible;
+                return;
+            }
         }
 
         if (_gameOver) return;

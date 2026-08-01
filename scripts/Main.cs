@@ -32,6 +32,8 @@ public partial class Main : Node2D
     private Line2D _dragBox = null!;
     private Label _uiLabel = null!;
     private Label _hintLabel = null!;
+    private Panel _hintBarBg = null!;
+    private bool _hintPanelVisible = true;
 
     // 选中集合（统一存放 Unit 和 Building）
     private readonly List<GodotObject> _selected = new();
@@ -406,9 +408,9 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").MoveChild(_uiLabel, -1);
 
         // RA2风格底部提示栏金属底板
-        var hintBarBg = new Panel();
-        hintBarBg.OffsetLeft = 200; hintBarBg.OffsetTop = 555;
-        hintBarBg.OffsetRight = 1000; hintBarBg.OffsetBottom = 740;
+        _hintBarBg = new Panel();
+        _hintBarBg.OffsetLeft = 200; _hintBarBg.OffsetTop = 555;
+        _hintBarBg.OffsetRight = 1000; _hintBarBg.OffsetBottom = 740;
         var hintStyle = new StyleBoxFlat();
         hintStyle.BgColor = new Color(0.05f, 0.06f, 0.07f, 0.8f);
         hintStyle.BorderWidthLeft = 1; hintStyle.BorderWidthRight = 1;
@@ -418,9 +420,12 @@ public partial class Main : Node2D
         hintStyle.CornerRadiusBottomLeft = 2; hintStyle.CornerRadiusBottomRight = 2;
         hintStyle.ContentMarginLeft = 8; hintStyle.ContentMarginRight = 8;
         hintStyle.ContentMarginTop = 4; hintStyle.ContentMarginBottom = 4;
-        hintBarBg.AddThemeStyleboxOverride("panel", hintStyle);
-        hintBarBg.MouseFilter = Control.MouseFilterEnum.Ignore;
-        GetNode<CanvasLayer>("UI").AddChild(hintBarBg);
+        _hintBarBg.AddThemeStyleboxOverride("panel", hintStyle);
+        _hintBarBg.MouseFilter = Control.MouseFilterEnum.Ignore;
+        // 默认半透明，减少对游戏画面的遮挡
+        _hintBarBg.Modulate = new Color(1, 1, 1, 0.45f);
+        _hintLabel.Modulate = new Color(1, 1, 1, 0.45f);
+        GetNode<CanvasLayer>("UI").AddChild(_hintBarBg);
         GetNode<CanvasLayer>("UI").MoveChild(_hintLabel, -1);
 
         _unitScene = GD.Load<PackedScene>("res://scenes/Unit.tscn");
