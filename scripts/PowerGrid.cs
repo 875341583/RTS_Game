@@ -57,7 +57,6 @@ public static class PowerGrid
     {
         int supplied = 0;
         int consumed = 0;
-        bool hasPowerSource = false;
 
         foreach (var b in allBuildings)
         {
@@ -68,12 +67,10 @@ public static class PowerGrid
             if (b.Type == BuildingType.PowerPlant && b.PowerProvided > 0 && dist <= PowerRadius)
             {
                 supplied += b.PowerProvided;
-                hasPowerSource = true;
             }
             if (b.Type == BuildingType.Base && b.PowerProvided > 0 && dist <= BasePowerRadius)
             {
                 supplied += b.PowerProvided;
-                hasPowerSource = true;
             }
 
             // 同区域耗电建筑

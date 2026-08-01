@@ -964,7 +964,7 @@ public partial class MainMenu : Control
     public override void _Process(double delta)
     {
         if (NetworkManager.IsOnline)
-            NetworkManager.Poll();
+            NetworkManager.Poll((float)delta);
     }
 
     private void ChangeToGameScene()

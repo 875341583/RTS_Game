@@ -15,6 +15,11 @@ namespace RTSGame;
 /// </summary>
 public static class NetworkManager
 {
+    // ====== 全局缓存 ======
+
+    /// <summary>L2: 统一JsonSerializerOptions，避免反复创建。</summary>
+    private static readonly JsonSerializerOptions _jsonOpts = new() { IncludeFields = true };
+
     // ====== 联机会话状态 ======
 
     /// <summary>是否处于联机模式。</summary>
@@ -52,6 +57,22 @@ public static class NetworkManager
 
     /// <summary>联机是否已进入游戏（非大厅状态）。</summary>
     public static bool InGame { get; set; }
+
+    // ====== C3: 全局NetId — 跨端单位/建筑标识 ======
+
+    private static int _netIdCounter = 1;
+
+    /// <summary>Host端分配唯一NetId（仅Host调用）。</summary>
+    public static int AllocateNetId()
+    {
+        return _netIdCounter++;
+    }
+
+    /// <summary>重置NetId计数器（游戏开始时调用）。</summary>
+    public static void ResetNetIds()
+    {
+        _netIdCounter = 1;
+    }
 
     // ====== Godot multiplayer API ======
 
@@ -98,14 +119,14 @@ public static class NetworkManager
         _mp.PeerDisconnected += OnPeerDisconnected;
 
         // 创建NetRelay节点（用普通Node而非Godot Node，需要手动创建C#对象）
-        // NetRelay必须是场景树中的节点才能使用RPC
-        var sceneTree = Engine.GetMainLoop() as SceneTree;
-        if (sceneTree != null && sceneTree.Root.GetNodeOrNull<NetRelay>("NetRelay") == null)
-        {
-            var relay = new NetRelay();
-            relay.Name = "NetRelay";
-            sceneTree.Root.CallDeferred(Node.MethodName.AddChild, relay);
-        }
+            // NetRelay必须是场景树中的节点才能使用RPC
+            var sceneTree = Engine.GetMainLoop() as SceneTree;
+            if (sceneTree != null && sceneTree.Root.GetNodeOrNull<NetRelay>("NetRelay") == null)
+            {
+                var relay = new NetRelay();
+                relay.Name = "NetRelay";
+                sceneTree.Root.AddChild(relay); // H4: 同步AddChild，消除竞态窗口
+            }
 
         GD.Print("[Net] NetworkManager 已初始化");
     }
@@ -191,6 +212,7 @@ public static class NetworkManager
             _pendingJoinName = playerName;
             _pendingJoinFaction = faction;
             LocalPeerId = _mp.GetUniqueId();
+            _joinStartTime = Time.GetTicksMsec(); // M2: 记录连接开始时间用于超时检测
 
             GD.Print($"[Net] 正在连接 {ip}:{port} ...");
             return true;
@@ -205,6 +227,7 @@ public static class NetworkManager
 
     private static string _pendingJoinName = "";
     private static string _pendingJoinFaction = "Allies";
+    private static ulong _joinStartTime; // M2: 连接超时检测
 
     // ====== 断开连接 ======
 
@@ -225,6 +248,10 @@ public static class NetworkManager
         Players.Clear();
         LocalTeamId = 0;
         LocalPeerId = 1;
+        _lobbyBroadcastTimer = 0f;  // L3: 重置timer
+        _snapshotTimer = 0f;        // L3: 重置timer
+        _pendingJoinName = "";      // L3: 清除待加入状态
+        _disconnectedPeers.Clear(); // L3: 清除断线缓冲
         GD.Print("[Net] 已断开连接");
         Disconnected?.Invoke("用户主动断开");
     }
@@ -232,9 +259,21 @@ public static class NetworkManager
     // ====== 每帧处理（由Main._Process调用） ======
 
     /// <summary>联机模式下的每帧处理（由Main或MainMenu调用）。</summary>
-    public static void Poll()
+    public static void Poll(float delta = 0.016f)
     {
         if (!IsOnline) return;
+
+        // M2: Client连接超时检测（10秒）
+        if (_role == NetRole.Client && !Players.ContainsKey(LocalPeerId))
+        {
+            if (Time.GetTicksMsec() - _joinStartTime > 10000)
+            {
+                GD.PrintErr("[Net] 连接超时（10秒），断开");
+                Disconnect();
+                Disconnected?.Invoke("连接超时");
+                return;
+            }
+        }
 
         // Client: 连接成功后发送JoinRequest
         if (_role == NetRole.Client && _peer?.GetConnectionStatus() == MultiplayerPeer.ConnectionStatus.Connected
@@ -245,7 +284,7 @@ public static class NetworkManager
         }
 
         // Host: 定期广播大厅状态（每0.5秒）
-        _lobbyBroadcastTimer += 0.016f;
+        _lobbyBroadcastTimer += delta; // M7: 用实际delta替代硬编码0.016f
         if (_role == NetRole.Host && !InGame && _lobbyBroadcastTimer > 0.5f)
         {
             _lobbyBroadcastTimer = 0;
@@ -255,7 +294,7 @@ public static class NetworkManager
         // Host: 游戏中定期广播状态快照（每0.1秒）
         if (_role == NetRole.Host && InGame)
         {
-            _snapshotTimer += 0.016f;
+            _snapshotTimer += delta; // M7: 用实际delta
             if (_snapshotTimer > 0.1f)
             {
                 _snapshotTimer = 0;
@@ -263,10 +302,31 @@ public static class NetworkManager
                 SnapshotData?.Invoke();
             }
         }
+
+        // H6: 检查断线grace period超时，将超时玩家转为AI
+        if (_role == NetRole.Host && InGame && _disconnectedPeers.Count > 0)
+        {
+            var expiredKeys = new List<int>();
+            foreach (var kv in _disconnectedPeers)
+            {
+                if (Time.GetTicksMsec() - kv.Value > 5000) // 5秒grace period
+                    expiredKeys.Add(kv.Key);
+            }
+            foreach (var peerId in expiredKeys)
+            {
+                _disconnectedPeers.Remove(peerId);
+                GD.Print($"[Net] Peer {peerId} 断线grace period超时，转为AI");
+                FillAISlots();
+                LobbyChanged?.Invoke();
+            }
+        }
     }
 
     private static float _lobbyBroadcastTimer;
     private static float _snapshotTimer;
+
+    /// <summary>H6: 断线缓冲 — peerId → 断线时间戳。等待5秒grace period后才转AI。</summary>
+    private static readonly Dictionary<int, ulong> _disconnectedPeers = new();
 
     /// <summary>Host回调：收集状态快照数据（由Main.GameSync.cs设置）。</summary>
     public static event Action? SnapshotData;
@@ -284,10 +344,22 @@ public static class NetworkManager
         GD.Print($"[Net] Peer {peerId} 已断开");
         if (_role == NetRole.Host)
         {
-            // 移除该玩家，用AI填充
-            Players.Remove((int)peerId);
-            FillAISlots();
-            LobbyChanged?.Invoke();
+            // H6: 不立即转AI，先放入grace period缓冲，等待玩家重连
+            if (InGame)
+            {
+                _disconnectedPeers[(int)peerId] = Time.GetTicksMsec();
+                GD.Print($"[Net] Peer {peerId} 进入断线grace period（5秒内重连可恢复）");
+                // 临时标记该玩家不活跃，但不移除PlayerSlot
+                if (Players.TryGetValue((int)peerId, out var slot))
+                    slot.IsReady = false; // 标记为未准备，表示不活跃
+            }
+            else
+            {
+                // 大厅阶段：直接移除
+                Players.Remove((int)peerId);
+                FillAISlots();
+                LobbyChanged?.Invoke();
+            }
         }
         else if (_role == NetRole.Client && peerId == 1)
         {
@@ -542,7 +614,7 @@ public static class NetworkManager
                 teamId = teamId,
                 roomConfig = Room
             };
-            SendToPeer(fromPeer, MsgType.JoinAck, JsonSerializer.Serialize(ack, new JsonSerializerOptions { IncludeFields = true }));
+            SendToPeer(fromPeer, MsgType.JoinAck, JsonSerializer.Serialize(ack, _jsonOpts));
 
             // 广播更新后的大厅信息
             BroadcastLobbyInfo();
@@ -610,7 +682,7 @@ public static class NetworkManager
                 IsAI = p.IsAI
             });
         }
-        BroadcastAll(MsgType.LobbyInfo, JsonSerializer.Serialize(info, new JsonSerializerOptions { IncludeFields = true }));
+        BroadcastAll(MsgType.LobbyInfo, JsonSerializer.Serialize(info, _jsonOpts));
     }
 
     private static void HandleLobbyInfo(string json)
@@ -618,7 +690,7 @@ public static class NetworkManager
         if (_role != NetRole.Client) return;
         try
         {
-            var info = JsonSerializer.Deserialize<LobbyInfoData>(json, new JsonSerializerOptions { IncludeFields = true });
+            var info = JsonSerializer.Deserialize<LobbyInfoData>(json, _jsonOpts);
             if (info == null) return;
 
             Room = info.Room ?? new RoomConfig();
@@ -673,7 +745,7 @@ public static class NetworkManager
         if (_role != NetRole.Client) return;
         try
         {
-            var info = JsonSerializer.Deserialize<StartGameInfo>(json, new JsonSerializerOptions { IncludeFields = true });
+            var info = JsonSerializer.Deserialize<StartGameInfo>(json, _jsonOpts);
             if (info == null) return;
 
             // 更新本地配置
@@ -731,13 +803,15 @@ public static class NetworkManager
             Params = jsonParams,
             Frame = Godot.Time.GetTicksMsec()
         };
-        string json = JsonSerializer.Serialize(cmd, new JsonSerializerOptions { IncludeFields = true });
+        string json = JsonSerializer.Serialize(cmd, _jsonOpts);
 
         if (_role == NetRole.Host)
         {
             // Host本地执行 + 广播给所有Client
-            CommandReceived?.Invoke(cmd);
-            BroadcastAll(MsgType.CommandBroadcast, json);
+            // H2: 只在执行成功时广播
+            bool success = CommandReceived?.Invoke(cmd) ?? true;
+            if (success)
+                BroadcastAll(MsgType.CommandBroadcast, json);
         }
         else
         {
@@ -745,22 +819,53 @@ public static class NetworkManager
         }
     }
 
+    // H7: 命令速率限制 — 每peer每秒最多20条命令
+    private static readonly Dictionary<int, List<ulong>> _commandTimestamps = new();
+    private const int MaxCommandsPerSecond = 20;
+    private const int RateLimitWindowMs = 1000;
+
+    /// <summary>检查指定peer是否超过命令速率限制。</summary>
+    private static bool IsRateLimited(int peerId)
+    {
+        if (!_commandTimestamps.TryGetValue(peerId, out var stamps))
+        {
+            _commandTimestamps[peerId] = new List<ulong>();
+            stamps = _commandTimestamps[peerId];
+        }
+
+        ulong now = Time.GetTicksMsec();
+        // 清理过期时间戳
+        stamps.RemoveAll(t => now - t > RateLimitWindowMs);
+
+        if (stamps.Count >= MaxCommandsPerSecond)
+            return true; // 超过限制
+
+        stamps.Add(now);
+        return false;
+    }
+
     private static void HandlePlayerCommand(int fromPeer, string json)
     {
         if (_role != NetRole.Host) return;
         try
         {
-            var cmd = JsonSerializer.Deserialize<NetCommand>(json, new JsonSerializerOptions { IncludeFields = true });
+            // H7: 命令速率限制
+            if (IsRateLimited(fromPeer))
+            {
+                GD.Print($"[Net] Peer {fromPeer} 命令速率超限，丢弃");
+                return;
+            }
+
+            var cmd = JsonSerializer.Deserialize<NetCommand>(json, _jsonOpts);
             if (cmd == null) return;
 
             // Host验证命令合法性（TeamId匹配）
             if (Players.TryGetValue(fromPeer, out var slot) && slot.TeamId == cmd.TeamId)
             {
-                // 本地执行
-                CommandReceived?.Invoke(cmd);
-
-                // 广播给所有客户端
-                BroadcastAll(MsgType.CommandBroadcast, json);
+                // H2: 本地执行，只在成功时广播
+                bool success = CommandReceived?.Invoke(cmd) ?? true;
+                if (success)
+                    BroadcastAll(MsgType.CommandBroadcast, json);
             }
         }
         catch (Exception e)
@@ -774,7 +879,7 @@ public static class NetworkManager
         if (_role != NetRole.Client) return;
         try
         {
-            var cmd = JsonSerializer.Deserialize<NetCommand>(json, new JsonSerializerOptions { IncludeFields = true });
+            var cmd = JsonSerializer.Deserialize<NetCommand>(json, _jsonOpts);
             if (cmd == null) return;
             // 只处理非本地玩家的命令
             if (cmd.TeamId != LocalTeamId)
@@ -788,8 +893,8 @@ public static class NetworkManager
         }
     }
 
-    /// <summary>命令接收回调（由Main.GameSync.cs设置）。</summary>
-    public static event Action<NetCommand>? CommandReceived;
+    /// <summary>命令接收回调（由Main.GameSync.cs设置）。返回true=执行成功，false=执行失败（Host不广播失败的命令）。</summary>
+    public static event Func<NetCommand, bool>? CommandReceived;
 
     // ====== 状态快照 ======
 
@@ -798,7 +903,7 @@ public static class NetworkManager
         if (_role != NetRole.Client) return;
         try
         {
-            var snap = JsonSerializer.Deserialize<StateSnapshotData>(json, new JsonSerializerOptions { IncludeFields = true });
+            var snap = JsonSerializer.Deserialize<StateSnapshotData>(json, _jsonOpts);
             if (snap != null)
                 SnapshotReceived?.Invoke(snap);
         }
@@ -815,7 +920,7 @@ public static class NetworkManager
     public static void SendSnapshot(StateSnapshotData snapshot)
     {
         if (_role != NetRole.Host || !InGame) return;
-        string json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { IncludeFields = true });
+        string json = JsonSerializer.Serialize(snapshot, _jsonOpts);
         BroadcastAll(MsgType.StateSnapshot, json);
     }
 
@@ -931,6 +1036,13 @@ public static class NetworkManager
         public int[]? Money;
         public List<UnitState>? Units;
         public List<BuildingState>? Buildings;
+        // M6: 扩展状态 — 科技/时代/超武冷却/战略点
+        public int[]? TechProgress;        // 各阵营当前研究的科技索引（-1=无）
+        public int[]? EraProgress;         // 各阵营当前时代等级
+        public float[]? NukeCooldown;      // 各阵营核弹冷却
+        public float[]? LightningCooldown; // 各阵营闪电冷却
+        public float[]? MissileCooldown;   // 各阵营巡航导弹冷却
+        public List<StrategicPointState>? StrategicPoints;
     }
 
     public class UnitState
@@ -939,7 +1051,7 @@ public static class NetworkManager
         public int UnitType;   // UnitType enum值
         public float X, Y;
         public float Health;
-        public int UnitId; // 用于匹配/插值
+        public int NetId;  // C3: 全局NetId替代InstanceId
     }
 
     public class BuildingState
@@ -948,7 +1060,17 @@ public static class NetworkManager
         public int BuildingType; // BuildingType enum值
         public float X, Y;
         public float Health;
-        public int BuildingId;
+        public int NetId;    // C3: 全局NetId替代InstanceId
+        // M6: 生产队列信息
+        public int QueueCount;        // 当前生产队列长度
+        public int ProductionType;    // 当前正在生产的单位类型（-1=无）
+    }
+
+    /// <summary>M6: 战略点占领状态。</summary>
+    public class StrategicPointState
+    {
+        public float X, Y;
+        public int TeamId;   // -1=未被占领
     }
 
     // --- 内部传输结构 ---

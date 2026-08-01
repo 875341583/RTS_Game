@@ -877,10 +877,12 @@ public partial class Main : Node2D
     public override void _Process(double delta)
     {
         var dt = (float)delta;
+        // C2/H1: 客户端跳过AI/经济/科技逻辑的标志
+        bool isClientLogic = NetworkManager.IsOnline && NetworkManager.Role == NetworkManager.NetRole.Client;
 
         // 联机模式：轮询网络消息
         if (NetworkManager.IsOnline)
-            NetworkManager.Poll();
+            NetworkManager.Poll(dt);
 
         // P1-5: 缓存刷新——每帧标记脏，首次GetAllUnits/GetAllBuildings调用时重建
         _unitsCacheDirty = true;
@@ -1095,12 +1097,14 @@ public partial class Main : Node2D
             UpdateAIStrategyTimers(dt);
 
         // ---- 阶段12-A4：核弹冷却递减 + 视觉特效更新 ----
-        if (_playerNukeCooldown > 0f)
+        // C2/H1: 客户端只递减自己阵营的冷却，AI冷却由Host快照同步
+        if (_playerNukeCooldown > 0f && (!isClientLogic || true)) // 玩家自己的冷却两端都递减
         {
             _playerNukeCooldown -= dt;
             if (_playerNukeCooldown < 0f) _playerNukeCooldown = 0f;
         }
-        if (_aiNukeCooldowns.Count > 0)
+        // C2/H1: 客户端跳过AI冷却递减（由Host快照同步）
+        if (!isClientLogic && _aiNukeCooldowns.Count > 0)
         {
             var aiKeys = new List<int>(_aiNukeCooldowns.Keys);
             foreach (var k in aiKeys)
@@ -1133,7 +1137,8 @@ public partial class Main : Node2D
             _playerLightningCooldown -= dt;
             if (_playerLightningCooldown < 0f) _playerLightningCooldown = 0f;
         }
-        if (_aiLightningCooldowns.Count > 0)
+        // C2/H1: 客户端跳过AI冷却递减（由Host快照同步）
+        if (!isClientLogic && _aiLightningCooldowns.Count > 0)
         {
             var aiKeys2 = new List<int>(_aiLightningCooldowns.Keys);
             foreach (var k in aiKeys2)
@@ -1151,7 +1156,8 @@ public partial class Main : Node2D
             _playerMissileCooldown -= dt;
             if (_playerMissileCooldown < 0f) _playerMissileCooldown = 0f;
         }
-        if (_aiMissileCooldowns.Count > 0)
+        // C2/H1: 客户端跳过AI冷却递减（由Host快照同步）
+        if (!isClientLogic && _aiMissileCooldowns.Count > 0)
         {
             var aiKeys3 = new List<int>(_aiMissileCooldowns.Keys);
             foreach (var k in aiKeys3)
@@ -1227,11 +1233,14 @@ public partial class Main : Node2D
             }
         }
 
-        // E5：油田占领+产钱处理
-        foreach (var child in _resourcesNode.GetChildren())
+        // E5：油田占领+产钱处理 — C2/H1: 客户端跳过经济逻辑（由Host快照同步）
+        if (!isClientLogic)
         {
-            if (child is ResourceNode rn && IsInstanceValid(rn) && rn.ResourceType == ResourceType.OilField)
-                rn.ProcessOilField(dt);
+            foreach (var child in _resourcesNode.GetChildren())
+            {
+                if (child is ResourceNode rn && IsInstanceValid(rn) && rn.ResourceType == ResourceType.OilField)
+                    rn.ProcessOilField(dt);
+            }
         }
 
         // 调试：每5秒输出游戏状态
@@ -1282,11 +1291,15 @@ public partial class Main : Node2D
 
         UpdateUI();
 
-        // G1: 更新科技研究进度
-        UpdateTechResearch(dt);
+        // C2/H1: 客户端跳过科技/时代/维修逻辑（由Host快照同步）
+        if (!isClientLogic)
+        {
+            // G1: 更新科技研究进度
+            UpdateTechResearch(dt);
 
-        // G2: 更新时代升级进度
-        UpdateEraProgress(dt);
+            // G2: 更新时代升级进度
+            UpdateEraProgress(dt);
+        }
 
         // G3: 战术卡选择计时
         if (_cardSelectionPending)
@@ -1306,8 +1319,8 @@ public partial class Main : Node2D
                 _cardStatusLabel.Visible = false;
         }
 
-        // G1: 建筑自动维修科技效果
-        if (_techAutoRepairTimer <= 0f)
+        // G1: 建筑自动维修科技效果 — C2/H1: 客户端跳过
+        if (!isClientLogic && _techAutoRepairTimer <= 0f)
         {
             _techAutoRepairTimer = 1f; // 每秒检查一次
             for (int team = 0; team < TotalTeamCount; team++)

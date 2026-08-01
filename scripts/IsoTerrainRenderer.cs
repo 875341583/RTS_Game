@@ -688,7 +688,7 @@ public static class IsoTerrainRenderer
         arr[0] = new Image[texs.Length];
         for (int i = 0; i < texs.Length; i++)
         {
-            arr[0][i] = texs[i]?.GetImage();
+            arr[0][i] = texs[i]?.GetImage()!;
             if (arr[0][i] == null)
             {
                 // 加载失败时使用纯色占位图而非1×1透明图，避免渲染为透明块

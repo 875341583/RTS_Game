@@ -37,7 +37,7 @@ public partial class AudioManager : Node
     private AudioStreamPlayer _sfxPlayer = null!;
     private AudioStreamPlayer _sfxPlayer2 = null!;  // 第二个播放器用于重叠音效
     private AudioStreamPlayer _voicePlayer = null!; // P2-3: 单位语音专用播放器
-    private readonly Dictionary<Sfx, AudioStream> _streams = new();
+    private readonly Dictionary<Sfx, AudioStream?> _streams = new();
 
     // ---- 节流：同种音效最小间隔（秒），防止刷屏 ----
     private readonly Dictionary<Sfx, float> _lastPlayTime = new();

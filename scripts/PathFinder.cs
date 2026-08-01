@@ -22,15 +22,15 @@ namespace RTSGame
     private const int DiagonalCost = 14; // ≈10*√2
 
     // ========== A*工作数组（P2-2: 动态大小，EnsureWorkArrays时按GridSize分配） ==========
-    private int[,] _gCost;
-    private int[,] _hCost;
-    private int[,] _parentX;
-    private int[,] _parentY;
-    private bool[,] _closed;
-    private bool[,] _opened;
+    private int[,] _gCost = null!;
+    private int[,] _hCost = null!;
+    private int[,] _parentX = null!;
+    private int[,] _parentY = null!;
+    private bool[,] _closed = null!;
+    private bool[,] _opened = null!;
     // P0修复：优先队列替代List线性搜索。F值作为优先级，相同F选H更小（更接近终点）。
     // 用 (F << 16) | H 组合键实现tie-breaking（假设F和H各不超过65535）。
-    private PriorityQueue<(int x, int y), int> _openQueue;
+    private PriorityQueue<(int x, int y), int> _openQueue = null!;
     private int _gs; // 当前GridSize快照
 
     private void EnsureWorkArrays()

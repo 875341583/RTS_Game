@@ -34,6 +34,8 @@ public partial class Building : Area2D, IBuildingEntity
     public void SetHealth(float value) { Health = Mathf.Clamp(value, 0f, MaxHealth); }
     public bool IsSelected { get; private set; }
     public int TeamId { get; set; } = 0;
+    /// <summary>C3: 联机全局唯一标识（Host分配，非联机模式下为0）。</summary>
+    public int NetId { get; set; } = 0;
     /// <summary>G5: 最后攻击方阵营（尤里卡用）。</summary>
     public int _lastAttackerTeam = -1;
     public BuildingType Type { get; set; } = BuildingType.Base;
@@ -389,7 +391,7 @@ public partial class Building : Area2D, IBuildingEntity
     /// <summary>IRenderable: 是否已被摧毁（血量归零）。</summary>
     public bool IsDead => Health <= 0f;
     /// <summary>IRenderable: 返回当前世界坐标。</summary>
-    public Vector2 GetPosition() => GlobalPosition;
+    public new Vector2 GetPosition() => GlobalPosition;
     /// <summary>IRenderable: Y-Sort 排序键（与 _Process 中 ZIndex 计算一致）。</summary>
     public float GetSortY() => RenderLayer.UnitBase + (int)(GlobalPosition.Y / 2f);
     /// <summary>IBuildingEntity: 是否正常运营（存活）。低电降速由 Main 的 PowerGrid 管理，不在实体层判定。</summary>

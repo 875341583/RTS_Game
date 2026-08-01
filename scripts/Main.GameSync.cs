@@ -63,10 +63,10 @@ public partial class Main
         NetworkManager.SendCommand(action, json);
     }
 
-    /// <summary>收到远端玩家命令时处理。</summary>
-    private void OnNetCommandReceived(NetworkManager.NetCommand cmd)
+    /// <summary>收到远端玩家命令时处理。返回true=执行成功。</summary>
+    private bool OnNetCommandReceived(NetworkManager.NetCommand cmd)
     {
-        if (cmd.TeamId == NetworkManager.LocalTeamId) return; // 忽略自己的命令回显
+        if (cmd.TeamId == NetworkManager.LocalTeamId) return true; // 忽略自己的命令回显
 
         try
         {
@@ -75,10 +75,12 @@ public partial class Main
                 ? default
                 : JsonSerializer.Deserialize<JsonElement>(cmd.Params);
             ExecuteNetCommand(cmd.Action, cmd.TeamId, p);
+            return true;
         }
         catch (Exception e)
         {
             GameLog.Error($"[NetSync] 命令解析失败: {cmd.Action} — {e.Message}");
+            return false;
         }
     }
 
@@ -241,6 +243,8 @@ public partial class Main
 
             case ReplayRecorder.ActionType.CommandTerrainMod:
                 {
+                    // M4: 空引用防护
+                    if (_terrain == null) break;
                     var target = GetXY(p);
                     var terrainCell = _terrain.GetCellAtWorld(target.X, target.Y);
                     var modType = DetectTerrainMod(terrainCell);
@@ -505,6 +509,19 @@ public partial class Main
     {
         if (NetworkManager.Role != NetworkManager.NetRole.Host) return;
 
+        // C3: 游戏开始时重置NetId，并为本场景所有单位/建筑分配NetId
+        if (_netIdsAssigned == false)
+        {
+            NetworkManager.ResetNetIds();
+            foreach (var u in GetAllUnits())
+                if (IsInstanceValid(u) && u.NetId == 0)
+                    u.NetId = NetworkManager.AllocateNetId();
+            foreach (var b in GetAllBuildings())
+                if (IsInstanceValid(b) && b.NetId == 0)
+                    b.NetId = NetworkManager.AllocateNetId();
+            _netIdsAssigned = true;
+        }
+
         var snap = new NetworkManager.StateSnapshotData
         {
             Timestamp = Time.GetTicksMsec(),
@@ -522,6 +539,9 @@ public partial class Main
         {
             if (!IsInstanceValid(u)) continue;
             if (!activeTeams.Contains(u.TeamId)) continue;
+            // C3: 确保新单位有NetId
+            if (u.NetId == 0)
+                u.NetId = NetworkManager.AllocateNetId();
             snap.Units.Add(new NetworkManager.UnitState
             {
                 TeamId = u.TeamId,
@@ -529,7 +549,7 @@ public partial class Main
                 X = u.GlobalPosition.X,
                 Y = u.GlobalPosition.Y,
                 Health = u.Health,
-                UnitId = (int)u.GetInstanceId()
+                NetId = u.NetId  // C3: 使用NetId替代InstanceId
             });
         }
 
@@ -537,6 +557,8 @@ public partial class Main
         {
             if (!IsInstanceValid(b)) continue;
             if (!activeTeams.Contains(b.TeamId)) continue;
+            if (b.NetId == 0)
+                b.NetId = NetworkManager.AllocateNetId();
             snap.Buildings.Add(new NetworkManager.BuildingState
             {
                 TeamId = b.TeamId,
@@ -544,14 +566,51 @@ public partial class Main
                 X = b.GlobalPosition.X,
                 Y = b.GlobalPosition.Y,
                 Health = b.Health,
-                BuildingId = (int)b.GetInstanceId()
+                NetId = b.NetId,  // C3: 使用NetId
+                QueueCount = b.QueueCount,
+                ProductionType = -1  // TODO: 从建筑获取当前生产类型
             });
+        }
+
+        // M6: 采集科技/时代/超武冷却
+        int maxTeam = TotalTeamCount;
+        snap.TechProgress = new int[maxTeam];
+        snap.EraProgress = new int[maxTeam];
+        snap.NukeCooldown = new float[maxTeam];
+        snap.LightningCooldown = new float[maxTeam];
+        snap.MissileCooldown = new float[maxTeam];
+        for (int t = 0; t < maxTeam; t++)
+        {
+            var tp = _techProgress[t];
+            snap.TechProgress[t] = tp?.CurrentlyResearching.HasValue == true ? (int)tp.CurrentlyResearching.Value : -1;
+            snap.EraProgress[t] = (int)(_eraProgress[t]?.CurrentEra ?? EraSystem.Era.Stone);
+            snap.NukeCooldown[t] = t == PlayerTeamId ? _playerNukeCooldown : (_aiNukeCooldowns.GetValueOrDefault(t, 0f));
+            snap.LightningCooldown[t] = t == PlayerTeamId ? _playerLightningCooldown : (_aiLightningCooldowns.GetValueOrDefault(t, 0f));
+            snap.MissileCooldown[t] = t == PlayerTeamId ? _playerMissileCooldown : (_aiMissileCooldowns.GetValueOrDefault(t, 0f));
+        }
+
+        // M6: 战略点占领状态
+        snap.StrategicPoints = new List<NetworkManager.StrategicPointState>();
+        if (_strategicPointsNode != null)
+        {
+            foreach (var c in _strategicPointsNode.GetChildren())
+            {
+                if (c is not StrategicPoint sp || !IsInstanceValid(sp)) continue;
+                snap.StrategicPoints.Add(new NetworkManager.StrategicPointState
+                {
+                    X = sp.GlobalPosition.X,
+                    Y = sp.GlobalPosition.Y,
+                    TeamId = sp.OwningTeam
+                });
+            }
         }
 
         NetworkManager.SendSnapshot(snap);
     }
 
-    // ====== 单位ID映射表（Client端：远端UnitId → 本地Unit节点） ======
+    private bool _netIdsAssigned = false;
+
+    // ====== 单位ID映射表（Client端：NetId → 本地Unit/Building节点） ======
 
     private readonly Dictionary<int, Unit> _netUnitMap = new();
     private readonly Dictionary<int, Building> _netBuildingMap = new();
@@ -561,14 +620,19 @@ public partial class Main
     {
         if (NetworkManager.Role != NetworkManager.NetRole.Client) return;
 
-        // 更新资金（全阵营）
+        // M1: 更新资金（全阵营）— 只在差值超过阈值时纠正，避免回滚客户端刚执行的操作
         if (snap.Money != null)
         {
             for (int i = 0; i < snap.Money.Length && i < _money.Length; i++)
-                _money[i] = snap.Money[i];
+            {
+                int diff = snap.Money[i] - _money[i];
+                // 只在差值>50时纠正（避免覆盖刚执行的经济操作）
+                if (System.Math.Abs(diff) > 50)
+                    _money[i] = snap.Money[i];
+            }
         }
 
-        // 更新单位位置（通过InstanceId映射）
+        // 更新单位位置（通过NetId映射）— C3
         if (snap.Units != null)
         {
             // 清理失效映射
@@ -581,16 +645,19 @@ public partial class Main
             var seenIds = new HashSet<int>();
             foreach (var us in snap.Units)
             {
-                seenIds.Add(us.UnitId);
-                if (_netUnitMap.TryGetValue(us.UnitId, out var u) && IsInstanceValid(u))
+                seenIds.Add(us.NetId);
+                if (_netUnitMap.TryGetValue(us.NetId, out var u) && IsInstanceValid(u))
                 {
                     // 插值移动：逐步逼近目标位置
                     var targetPos = new Vector2(us.X, us.Y);
-                    var diff = targetPos - u.GlobalPosition;
-                    if (diff.Length() > 200f)
+                    var diffVec = targetPos - u.GlobalPosition;
+                    if (diffVec.Length() > 200f)
                         u.GlobalPosition = targetPos; // 跳跃修正（单位刚生成或严重延迟）
                     else
-                        u.GlobalPosition += diff * 0.3f; // 插值平滑
+                        u.GlobalPosition += diffVec * 0.3f; // 插值平滑
+                    // 同步血量
+                    if (System.Math.Abs(u.Health - us.Health) > 1f)
+                        u.SetHealth(us.Health);
                 }
                 //else: 新单位 — 由命令同步处理生成，快照不创建新单位
             }
@@ -607,7 +674,7 @@ public partial class Main
             }
         }
 
-        // 更新建筑（类似处理）
+        // 更新建筑（类似处理）— C3
         if (snap.Buildings != null)
         {
             var deadBldKeys = new List<int>();
@@ -618,10 +685,13 @@ public partial class Main
             var seenBldIds = new HashSet<int>();
             foreach (var bs in snap.Buildings)
             {
-                seenBldIds.Add(bs.BuildingId);
-                if (_netBuildingMap.TryGetValue(bs.BuildingId, out var b) && IsInstanceValid(b))
+                seenBldIds.Add(bs.NetId);
+                if (_netBuildingMap.TryGetValue(bs.NetId, out var b) && IsInstanceValid(b))
                 {
                     b.GlobalPosition = new Vector2(bs.X, bs.Y); // 建筑不移动，直接设置
+                    // 同步血量
+                    if (System.Math.Abs(b.Health - bs.Health) > 1f)
+                        b.SetHealth(bs.Health);
                 }
             }
 
@@ -636,19 +706,22 @@ public partial class Main
             }
         }
 
-        // 建立初始映射：如果映射表为空，用本地单位列表初始化
+        // 建立初始映射：如果映射表为空，用本地单位列表初始化（C3: 用NetId匹配）
         if (_netUnitMap.Count == 0 && snap.Units != null)
         {
             var localUnits = GetAllUnits();
             foreach (var us in snap.Units)
             {
-                // 尝试按Type+TeamId+最近位置匹配
+                // 按Type+TeamId+最近位置匹配
                 var match = localUnits.FirstOrDefault(u => IsInstanceValid(u)
                     && u.TeamId == us.TeamId
                     && (int)u.Type == us.UnitType
                     && u.GlobalPosition.DistanceTo(new Vector2(us.X, us.Y)) < 50f);
                 if (match != null)
-                    _netUnitMap[us.UnitId] = match;
+                {
+                    match.NetId = us.NetId; // C3: 记录分配的NetId
+                    _netUnitMap[us.NetId] = match;
+                }
             }
         }
         if (_netBuildingMap.Count == 0 && snap.Buildings != null)
@@ -661,7 +734,55 @@ public partial class Main
                     && (int)b.Type == bs.BuildingType
                     && b.GlobalPosition.DistanceTo(new Vector2(bs.X, bs.Y)) < 50f);
                 if (match != null)
-                    _netBuildingMap[bs.BuildingId] = match;
+                {
+                    match.NetId = bs.NetId; // C3: 记录分配的NetId
+                    _netBuildingMap[bs.NetId] = match;
+                }
+            }
+        }
+
+        // M6: 同步科技/时代/超武冷却
+        if (snap.TechProgress != null)
+        {
+            for (int t = 0; t < snap.TechProgress.Length && t < _techProgress.Length; t++)
+            {
+                // 只更新非本地阵营的科技进度
+                if (t == NetworkManager.LocalTeamId) continue;
+                var tp = _techProgress[t];
+                if (tp != null && snap.TechProgress[t] >= 0)
+                    tp.RestoreResearching((TechTree.TechId)snap.TechProgress[t], 0f);
+            }
+        }
+        if (snap.EraProgress != null)
+        {
+            for (int t = 0; t < snap.EraProgress.Length && t < _eraProgress.Length; t++)
+            {
+                if (t == NetworkManager.LocalTeamId) continue;
+                var ep = _eraProgress[t];
+                if (ep != null)
+                    ep.Restore((EraSystem.Era)snap.EraProgress[t], false, 0f);
+            }
+        }
+
+        // M6: 同步战略点占领状态
+        if (snap.StrategicPoints != null && _strategicPointsNode != null)
+        {
+            foreach (var sps in snap.StrategicPoints)
+            {
+                StrategicPoint? match = null;
+                foreach (var c in _strategicPointsNode.GetChildren())
+                {
+                    if (c is StrategicPoint sp && IsInstanceValid(sp)
+                        && sp.GlobalPosition.DistanceTo(new Vector2(sps.X, sps.Y)) < 50f)
+                    {
+                        match = sp;
+                        break;
+                    }
+                }
+                // StrategicPoint.OwningTeam is private set, but we can use Restore or a method
+                // For now, just log — the actual capture state will be synced through unit positions
+                if (match != null && sps.TeamId >= 0)
+                    GameLog.Debug($"[NetSync] 战略点同步: TeamId={sps.TeamId}");
             }
         }
     }
@@ -838,6 +959,7 @@ public partial class Main
         NetworkManager.SnapshotData -= CollectAndSendSnapshot;
         NetworkManager.GameOverReceived -= OnNetGameOver;
         _netInitialized = false;
+        _netIdsAssigned = false;
         _netUnitMap.Clear();
         _netBuildingMap.Clear();
     }

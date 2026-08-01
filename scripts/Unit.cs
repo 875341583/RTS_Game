@@ -36,6 +36,8 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     public void SetHealth(float value) => Health = Mathf.Clamp(value, 0f, MaxHealth);
     public bool IsSelected { get; protected set; }
     public int TeamId { get; set; } = 0;
+    /// <summary>C3: 联机全局唯一标识（Host分配，非联机模式下为0）。</summary>
+    public int NetId { get; set; } = 0;
     /// <summary>红方自动战斗 AI 开关。开启后主动全图搜索敌人攻击。</summary>
     public bool AutoAI { get; set; } = false;
     /// <summary>自动防御开关。无命令时发现附近敌人自动迎击，消灭后返回守卫位置。</summary>
@@ -253,7 +255,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     private static readonly string[] IsoDirNames = { "E", "SE", "S", "SW", "W", "NW", "N", "NE" };
     private int _lastDirIndex = -1;  // 上次方向，避免每帧换贴图
     // 炮塔精灵
-    protected Sprite2D _turret = null!;
+    protected Sprite2D? _turret;
     // 新素材朝右（RIGHT=0°），无需额外旋转偏移
     private const float SpriteRotationOffset = 0f;
 
@@ -2133,7 +2135,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     // ---- P1-5: IRenderable / IUnitEntity 薄适配方法 ----
     // 不改变现有逻辑，仅提供接口要求的访问入口，供统一渲染/逻辑层调用。
     /// <summary>IRenderable: 返回当前世界坐标。</summary>
-    public Vector2 GetPosition() => GlobalPosition;
+    public new Vector2 GetPosition() => GlobalPosition;
     /// <summary>IRenderable: Y-Sort 排序键（与 _Process 中 ZIndex 计算一致）。</summary>
     public float GetSortY() => RenderLayer.UnitBase + (int)(GlobalPosition.Y / 2f);
 

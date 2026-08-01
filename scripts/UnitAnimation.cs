@@ -191,7 +191,7 @@ public static class UnitAnimation
 /// </summary>
 public class UnitAnimationPlayer
 {
-    private Unit _unit;
+    private Unit? _unit;
     private string _unitName = "";
     private bool _hasAnimation = false;
 
@@ -291,7 +291,7 @@ public class UnitAnimationPlayer
         var tex = UnitAnimation.GetFrame(_unitName, _currentAction, _currentDir, _currentFrame);
         if (tex != null && tex != _lastAppliedTexture)
         {
-            _unit.SetAnimationFrame(tex);
+            _unit?.SetAnimationFrame(tex);
             _lastAppliedTexture = tex;
         }
 

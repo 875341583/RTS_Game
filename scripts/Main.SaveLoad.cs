@@ -45,7 +45,7 @@ public partial class Main
     {
         var arr = new int[_aiCards.Length];
         for (int i = 0; i < _aiCards.Length; i++)
-            arr[i] = _aiCards[i].HasValue ? (int)_aiCards[i].Value : -1;
+            arr[i] = (int?)_aiCards[i] ?? -1;
         return arr;
     }
 
@@ -356,7 +356,7 @@ public partial class Main
             if ((UnitType)us.Type == UnitType.Harvester)
             {
                 var home = FindNearestBase(pos, us.TeamId);
-                u = SpawnHarvester(pos, us.TeamId, home);
+                u = SpawnHarvester(pos, us.TeamId, home!);
                 if (u is Harvester h && home != null) h.HomeBase = home;
             }
             else
