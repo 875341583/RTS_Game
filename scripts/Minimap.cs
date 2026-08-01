@@ -178,7 +178,7 @@ public partial class Minimap : Control
                 if (c is StrategicPoint sp && GodotObject.IsInstanceValid(sp))
                 {
                     var mp = W2M(sp.GlobalPosition);
-                    var col = sp.OwningTeam == 0 ? CBlue : (sp.OwningTeam == 1 ? CRed : CStratNeutral);
+                    var col = sp.OwningTeam == Main.PlayerTeamId ? CBlue : (sp.OwningTeam == 1 ? CRed : CStratNeutral);
                     DrawCircle(mp, 3f, col);
                     DrawLine(mp - new Vector2(4, 0), mp + new Vector2(4, 0), col, 1f);
                     DrawLine(mp - new Vector2(0, 4), mp + new Vector2(0, 4), col, 1f);

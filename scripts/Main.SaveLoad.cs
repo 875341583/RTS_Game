@@ -422,7 +422,7 @@ public partial class Main
         _gameResult = data.GameResult ?? "";
 
         // 15. 重置PathFinder障碍（建筑已在SpawnBuilding时注册）
-        GameLog.Debug($"[SaveLoad] 存档应用完成。单位数={CountUnitsOfTeam(0) + CountBuildingsOfTeam(0)}");
+        GameLog.Debug($"[SaveLoad] 存档应用完成。单位数={CountUnitsOfTeam(PlayerTeamId) + CountBuildingsOfTeam(PlayerTeamId)}");
     }
 
     /// <summary>清空场景中所有单位、建筑节点（保留资源点/战略点/地形不重建）。</summary>

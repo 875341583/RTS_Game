@@ -884,7 +884,7 @@ public partial class Main
         sb.AppendLine(TrManager.Tr("power.offline_speed", $"{PowerGrid.OfflineProduceMul*100:F0}"));
         sb.AppendLine();
 
-        var buildings = GetTeamBuildings(0);
+        var buildings = GetTeamBuildings(PlayerTeamId);
         int powerPlants = 0;
         int powered = 0;
         int offline = 0;
@@ -980,7 +980,7 @@ public partial class Main
         sb.AppendLine(TrManager.Tr("adj.rule_tech_pp"));
         sb.AppendLine();
 
-        var buildings = GetTeamBuildings(0);
+        var buildings = GetTeamBuildings(PlayerTeamId);
         sb.AppendLine(TrManager.Tr("adj.section_player"));
         bool anyBonus = false;
         foreach (var b in buildings)
@@ -1200,7 +1200,7 @@ public partial class Main
         sb.AppendLine();
 
         // 玩家方
-        var p = _eureka[0];
+        var p = _eureka[PlayerTeamId];
         sb.AppendLine(TrManager.Tr("eureka.section_player"));
         sb.AppendLine(TrManager.Tr("eureka.player_line1", p.KillCounter, EurekaSystem.KillThreshold, p.MoneyAccumulated, EurekaSystem.MoneyThreshold));
         sb.AppendLine(TrManager.Tr("eureka.player_line2", p.BuildCounter, EurekaSystem.BuildThreshold, p.DestroyCounter, EurekaSystem.DestroyThreshold));

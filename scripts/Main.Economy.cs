@@ -866,15 +866,15 @@ public partial class Main
         // G4：自动维修血量低于50%的蓝方建筑
         foreach (var c in _buildingsNode.GetChildren())
         {
-            if (c is Building b && b.TeamId == 0 && IsInstanceValid(b)
+            if (c is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b)
                 && b.NeedsRepair && b.Health < b.MaxHealth * 0.5f)
             {
                 int cost = GetRepairCost(b);
-                if (_money[0] >= cost)
+                if (_money[PlayerTeamId] >= cost)
                 {
-                    _money[0] -= cost;
+                    _money[PlayerTeamId] -= cost;
                     b.Repair();
-                    GameLog.Debug($"[BlueAI] 维修{b.BuildingName}，扣 ${cost}，剩余 ${_money[0]}");
+                    GameLog.Debug($"[BlueAI] 维修{b.BuildingName}，扣 ${cost}，剩余 ${_money[PlayerTeamId]}");
                 }
             }
         }
@@ -886,19 +886,19 @@ public partial class Main
             if (_blueCaptureCounter >= 3)
             {
                 _blueCaptureCounter = 0;
-                AITryCaptureStrategicPoint(0);
+                AITryCaptureStrategicPoint(PlayerTeamId);
             }
         }
 
         // 先建建筑
-        AIBuildLogic(0);
+        AIBuildLogic(PlayerTeamId);
 
-        bool savingForTech = HasBuilding(0, BuildingType.WarFactory) && !HasBuilding(0, BuildingType.TechCenter);
+        bool savingForTech = HasBuilding(PlayerTeamId, BuildingType.WarFactory) && !HasBuilding(PlayerTeamId, BuildingType.TechCenter);
         if (savingForTech) return;
 
         // 补矿车 + 造兵（复用提取的公共方法）
-        AIReplenishHarvesters(0);
-        AITrainUnits(0);
+        AIReplenishHarvesters(PlayerTeamId);
+        AITrainUnits(PlayerTeamId);
     }
 
     /// <summary>AI 占领战略点：派最近的己方战斗单位去最近的非己方战略点。</summary>
