@@ -118,6 +118,9 @@ public static class IsoTerrainRenderer
 
                 // 画悬崖（高差≥2的边缘画深色陡崖）— 字节缓冲区版
                 DrawCliffEdgesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, terrain, gx, gy);
+
+                // 陆-陆边缘混合（消除草↔沙、草↔雪等硬切边界）
+                BlendTerrainEdgesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, terrain, gx, gy, halfW, halfH);
             }
         }
 
@@ -935,6 +938,147 @@ public static class IsoTerrainRenderer
         }
     }
 
+    /// <summary>
+    /// 陆-陆地形边缘混合：在菱形边缘像素处以渐变alpha叠加邻居地形代表色，
+    /// 消除草↔沙、草↔雪、沙↔雪等硬切边界。仅在elevation相同的邻居间生效。
+    /// </summary>
+    private static void BlendTerrainEdgesFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        int cx, int cy, TerrainCell cell, TerrainGrid terrain, int gx, int gy, int halfW, int halfH)
+    {
+        // 只对需要过渡的陆地类型处理
+        var myType = cell.Type;
+        if (myType is not (TerrainType.Grass or TerrainType.Sand or TerrainType.Snow or TerrainType.Mountain))
+            return;
+
+        // 4个等距方向邻居：(dx, dy) → 菱形边方向
+        // (0,-1)=北→左上边, (1,0)=东→右上边, (0,1)=南→右下边, (-1,0)=西→左下边
+        var dirs = new (int dx, int dy)[]
+        {
+            (0, -1), // 北
+            (1, 0),  // 东
+            (0, 1),  // 南
+            (-1, 0), // 西
+        };
+
+        foreach (var (dx, dy) in dirs)
+        {
+            int nx = gx + dx, ny = gy + dy;
+            if (nx < 0 || nx >= TerrainGrid.GridSize || ny < 0 || ny >= TerrainGrid.GridSize)
+                continue;
+
+            var neighborCell = terrain.GetCell(nx, ny);
+            var nType = neighborCell.Type;
+
+            // 邻居必须是不同的陆地类型且elevation相同（避免跨悬崖混合）
+            if (nType == myType) continue;
+            if (nType is not (TerrainType.Grass or TerrainType.Sand or TerrainType.Snow or TerrainType.Mountain))
+                continue;
+            if (neighborCell.Elevation != cell.Elevation) continue;
+
+            // 获取邻居地形的代表色
+            var (nr, ng, nb) = GetTerrainRepColor(nType);
+            // 获取当前地形的代表色
+            var (mr, mg, mb) = GetTerrainRepColor(myType);
+
+            // 在菱形对应边缘绘制渐变混合带（6像素宽，约tile宽度的10%）
+            int blendWidth = 6;
+            float maxBlend = 0.55f;
+
+            for (int i = 0; i <= halfW; i++)
+            {
+                float t = (float)i / halfW;
+
+                for (int edge = 0; edge < blendWidth; edge++)
+                {
+                    float distFactor = 1f - (float)edge / blendWidth;
+                    float blendStrength = maxBlend * distFactor * distFactor; // 二次衰减
+
+                    int pxCur, pyCur;
+                    GetEdgePoint(dx, dy, t, halfW, halfH, edge, out pxCur, out pyCur);
+
+                    // 混合：将当前边缘像素朝邻居颜色方向偏移
+                    BlendPixel(imgData, imgStride, imgW, imgH, cx + pxCur, cy + pyCur,
+                        nr, ng, nb, blendStrength);
+
+                    // 沿边缘法线方向多撒几个点形成带状
+                    if (edge < 3)
+                    {
+                        int nx2 = pxCur + (dx != 0 ? 0 : (dy > 0 ? 1 : -1));
+                        int ny2 = pyCur + (dy != 0 ? 0 : (dx > 0 ? 1 : -1));
+                        BlendPixel(imgData, imgStride, imgW, imgH, cx + nx2, cy + ny2,
+                            nr, ng, nb, blendStrength * 0.7f);
+                    }
+                }
+
+                // 散落"侵入"像素簇（草侵入沙、沙侵入草等）—— 更密集
+                if ((i * 7 + gx * 13 + gy * 17) % 4 == 0)
+                {
+                    int pxCur, pyCur;
+                    GetEdgePoint(dx, dy, t, halfW, halfH, 0, out pxCur, out pyCur);
+                    // 散落2-3个邻居颜色小点
+                    for (int s = 0; s < 3; s++)
+                    {
+                        int scatterPx = pxCur + ((i * 3 + s * 5) % 5 - 2);
+                        int scatterPy = pyCur + ((i * 5 + s * 3) % 5 - 2);
+                        BlendPixel(imgData, imgStride, imgW, imgH, cx + scatterPx, cy + scatterPy,
+                            nr, ng, nb, maxBlend * 0.6f);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>根据方向参数t(0~1)沿菱形边获取像素坐标。</summary>
+    private static void GetEdgePoint(int dx, int dy, float t, int halfW, int halfH, int edgeOffset, out int px, out int py)
+    {
+        if (dx == 0 && dy == -1) // 北→左上边
+        {
+            px = -(int)(halfW * t) - edgeOffset;
+            py = -(int)(halfH * (1f - t)) - edgeOffset / 2;
+        }
+        else if (dx == 1 && dy == 0) // 东→右上边
+        {
+            px = (int)(halfW * t) + edgeOffset;
+            py = -(int)(halfH * (1f - t)) - edgeOffset / 2;
+        }
+        else if (dx == 0 && dy == 1) // 南→右下边
+        {
+            px = (int)(halfW * (1f - t)) + edgeOffset;
+            py = (int)(halfH * t) + edgeOffset / 2;
+        }
+        else // dx==-1, dy==0 → 西→左下边
+        {
+            px = -(int)(halfW * (1f - t)) - edgeOffset;
+            py = (int)(halfH * t) + edgeOffset / 2;
+        }
+    }
+
+    /// <summary>将指定像素朝目标颜色做alpha混合。</summary>
+    private static void BlendPixel(byte[] imgData, int imgStride, int imgW, int imgH,
+        int imgX, int imgY, float r, float g, float b, float strength)
+    {
+        if (imgX < 0 || imgX >= imgW || imgY < 0 || imgY >= imgH) return;
+        int idx = imgY * imgStride + imgX * 4;
+        if (imgData[idx + 3] < 128) return; // 跳过透明像素
+        float inv = 1f - strength;
+        imgData[idx]     = (byte)Math.Clamp(imgData[idx]     * inv + r * 255f * strength, 0, 255);
+        imgData[idx + 1] = (byte)Math.Clamp(imgData[idx + 1] * inv + g * 255f * strength, 0, 255);
+        imgData[idx + 2] = (byte)Math.Clamp(imgData[idx + 2] * inv + b * 255f * strength, 0, 255);
+    }
+
+    /// <summary>获取地形类型的代表色（用于边缘混合）。</summary>
+    private static (float r, float g, float b) GetTerrainRepColor(TerrainType type)
+    {
+        return type switch
+        {
+            TerrainType.Grass => (0.35f, 0.42f, 0.22f),    // 暖草绿
+            TerrainType.Sand => (0.62f, 0.52f, 0.33f),      // 暖沙色
+            TerrainType.Snow => (0.82f, 0.84f, 0.88f),      // 浅蓝白
+            TerrainType.Mountain => (0.42f, 0.35f, 0.26f),  // 岩棕
+            _ => (0.5f, 0.5f, 0.5f),
+        };
+    }
+
     // ======== 水面波纹 ========
 
     private static void DrawWaterRipples(Image img, int cx, int cy, TerrainCell cell, Random rng)
@@ -1237,7 +1381,9 @@ public static class IsoTerrainRenderer
             "res://assets/sprites/terrain/tileSand3.png",
             "res://assets/sprites/terrain/tileSand4.png",
             "res://assets/sprites/terrain/tileSand5.png",
-            "res://assets/sprites/terrain/tileSand6.png" });
+            "res://assets/sprites/terrain/tileSand6.png",
+            "res://assets/sprites/terrain/tileSand7.png",
+            "res://assets/sprites/terrain/tileSand8.png" });
         _shallowTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileShallow1.png",
             "res://assets/sprites/terrain/tileShallow2.png",
@@ -1258,14 +1404,18 @@ public static class IsoTerrainRenderer
             "res://assets/sprites/terrain/tileMountain3.png",
             "res://assets/sprites/terrain/tileMountain4.png",
             "res://assets/sprites/terrain/tileMountain5.png",
-            "res://assets/sprites/terrain/tileMountain6.png" });
+            "res://assets/sprites/terrain/tileMountain6.png",
+            "res://assets/sprites/terrain/tileMountain7.png",
+            "res://assets/sprites/terrain/tileMountain8.png" });
         _snowTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileSnow1.png",
             "res://assets/sprites/terrain/tileSnow2.png",
             "res://assets/sprites/terrain/tileSnow3.png",
             "res://assets/sprites/terrain/tileSnow4.png",
             "res://assets/sprites/terrain/tileSnow5.png",
-            "res://assets/sprites/terrain/tileSnow6.png" });
+            "res://assets/sprites/terrain/tileSnow6.png",
+            "res://assets/sprites/terrain/tileSnow7.png",
+            "res://assets/sprites/terrain/tileSnow8.png" });
         _cityTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileCity1.png",
             "res://assets/sprites/terrain/tileCity2.png",
