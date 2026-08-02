@@ -496,7 +496,6 @@ public class TerrainGrid
                 if (IsBaseArea(x, y)) continue;
 
                 // 检查2格内是否有山脉/雪地
-                bool nearMountain = false;
                 int mountainCount = 0;
                 for (int dy = -2; dy <= 2; dy++)
                     for (int dx = -2; dx <= 2; dx++)
