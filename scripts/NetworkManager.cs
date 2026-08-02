@@ -137,7 +137,7 @@ public static class NetworkManager
                     sceneTree.Root.AddChild(relay); // H4: 同步AddChild，消除竞态窗口
                 }
 
-            GameLog.Info("[Net] NetworkManager 已初始化");
+            GameLog.Info("[Net] NetworkManager initialized");
         }
     }
 
@@ -160,7 +160,7 @@ public static class NetworkManager
                 Error err = _peer.CreateServer(config.Port, config.MaxPlayers - 1); // 减1因为Host自己占一个槽
                 if (err != Error.Ok)
                 {
-                    GameLog.Error($"[Net] 创建服务器失败: {err}");
+                    GameLog.Error($"[Net] create server failed: {err}");
                     _role = NetRole.Offline;
                     return false;
                 }
@@ -185,13 +185,13 @@ public static class NetworkManager
                 // 填充AI槽位
                 FillAISlots();
 
-                GameLog.Info($"[Net] 房间已创建 — 端口{config.Port} 模式{config.MaxPlayers}人");
+                GameLog.Info($"[Net] room created - port {config.Port} mode {config.MaxPlayers} players");
                 LobbyChanged?.Invoke();
                 return true;
             }
             catch (Exception e)
             {
-                GameLog.Error($"[Net] 创建房间异常: {e.Message}");
+                GameLog.Error($"[Net] create room exception: {e.Message}");
                 _role = NetRole.Offline;
                 return false;
             }
@@ -214,7 +214,7 @@ public static class NetworkManager
                 Error err = _peer.CreateClient(ip, port);
                 if (err != Error.Ok)
                 {
-                    GameLog.Error($"[Net] 连接服务器失败: {err}");
+                    GameLog.Error($"[Net] connect server failed: {err}");
                     _role = NetRole.Offline;
                     return false;
                 }
@@ -229,12 +229,12 @@ public static class NetworkManager
                 LocalPeerId = _mp.GetUniqueId();
                 _joinStartTime = Time.GetTicksMsec(); // M2: 记录连接开始时间用于超时检测
 
-                GameLog.Info($"[Net] 正在连接 {ip}:{port} ...");
+                GameLog.Info($"[Net] connecting to {ip}:{port} ...");
                 return true;
             }
             catch (Exception e)
             {
-                GameLog.Error($"[Net] 加入房间异常: {e.Message}");
+                GameLog.Error($"[Net] join room exception: {e.Message}");
                 _role = NetRole.Offline;
                 return false;
             }
@@ -270,8 +270,8 @@ public static class NetworkManager
             _snapshotTimer = 0f;        // L3: 重置timer
             _pendingJoinName = "";      // L3: 清除待加入状态
             _disconnectedPeers.Clear(); // L3: 清除断线缓冲
-            GameLog.Info("[Net] 已断开连接");
-            Disconnected?.Invoke("用户主动断开");
+            GameLog.Info("[Net] disconnected");
+            Disconnected?.Invoke(TrManager.Tr("net.user_disconnected"));
         }
     }
 
@@ -289,9 +289,9 @@ public static class NetworkManager
             {
                 if (Time.GetTicksMsec() - _joinStartTime > 10000)
                 {
-                    GameLog.Error("[Net] 连接超时（10秒），断开");
+                    GameLog.Error("[Net] connection timeout (10s), disconnecting");
                     Disconnect();
-                    Disconnected?.Invoke("连接超时");
+                    Disconnected?.Invoke(TrManager.Tr("net.connection_timeout"));
                     return;
                 }
             }
@@ -336,7 +336,7 @@ public static class NetworkManager
                 foreach (var peerId in expiredKeys)
                 {
                     _disconnectedPeers.Remove(peerId);
-                    GameLog.Info($"[Net] Peer {peerId} 断线grace period超时，转为AI");
+                    GameLog.Info($"[Net] Peer {peerId} grace period expired, converting to AI");
                     FillAISlots();
                     LobbyChanged?.Invoke();
                 }
@@ -359,7 +359,7 @@ public static class NetworkManager
     {
         lock (_netLock)
         {
-            GameLog.Info($"[Net] Peer {peerId} 已连接");
+            GameLog.Info($"[Net] Peer {peerId} connected");
             // Client在连接成功后自己发JoinRequest，Host不需要主动发
         }
     }
@@ -368,14 +368,14 @@ public static class NetworkManager
     {
         lock (_netLock)
         {
-            GameLog.Info($"[Net] Peer {peerId} 已断开");
+            GameLog.Info($"[Net] Peer {peerId} disconnected");
             if (_role == NetRole.Host)
             {
                 // H6: 不立即转AI，先放入grace period缓冲，等待玩家重连
                 if (InGame)
                 {
                     _disconnectedPeers[(int)peerId] = Time.GetTicksMsec();
-                    GameLog.Info($"[Net] Peer {peerId} 进入断线grace period（5秒内重连可恢复）");
+                    GameLog.Info($"[Net] Peer {peerId} entered grace period (5s reconnect window)");
                     // 临时标记该玩家不活跃，但不移除PlayerSlot
                     if (Players.TryGetValue((int)peerId, out var slot))
                         slot.IsReady = false; // 标记为未准备，表示不活跃
@@ -392,7 +392,7 @@ public static class NetworkManager
             {
                 // Host断开了
                 Disconnect();
-                Disconnected?.Invoke("与房主断开连接");
+                Disconnected?.Invoke(TrManager.Tr("net.host_disconnected"));
             }
         }
     }
@@ -616,7 +616,7 @@ public static class NetworkManager
     {
         var req = new { name, faction };
         SendToHost(MsgType.JoinRequest, JsonSerializer.Serialize(req));
-        GameLog.Info($"[Net] 已发送加入请求: {name} / {faction}");
+        GameLog.Info($"[Net] join request sent: {name} / {faction}");
     }
 
     private static void HandleJoinRequest(int fromPeer, string json)
@@ -632,7 +632,7 @@ public static class NetworkManager
             if (teamId < 0)
             {
                 // 房间已满
-                SendToPeer(fromPeer, MsgType.JoinAck, JsonSerializer.Serialize(new { accepted = false, reason = "房间已满" }));
+                SendToPeer(fromPeer, MsgType.JoinAck, JsonSerializer.Serialize(new { accepted = false, reason = TrManager.Tr("net.room_full") }));
                 return;
             }
 
@@ -665,7 +665,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理JoinRequest异常: {e.Message}");
+            GameLog.Error($"[Net] HandleJoinRequest exception: {e.Message}");
         }
     }
 
@@ -678,9 +678,9 @@ public static class NetworkManager
             bool accepted = ack.GetProperty("accepted").GetBoolean();
             if (!accepted)
             {
-                string reason = ack.GetProperty("reason").GetString() ?? "未知原因";
-                GameLog.Error($"[Net] 加入被拒绝: {reason}");
-                Disconnected?.Invoke($"加入失败: {reason}");
+                string reason = ack.GetProperty("reason").GetString() ?? TrManager.Tr("net.unknown_reason");
+                GameLog.Error($"[Net] join rejected: {reason}");
+                Disconnected?.Invoke(TrManager.Tr("net.join_failed", reason));
                 Disconnect();
                 return;
             }
@@ -694,12 +694,12 @@ public static class NetworkManager
                 Room = JsonSerializer.Deserialize<RoomConfig>(rcElem.GetRawText()) ?? new RoomConfig();
             }
 
-            GameLog.Info($"[Net] 加入成功 — TeamId={LocalTeamId} PeerId={LocalPeerId}");
+            GameLog.Info($"[Net] join ok — TeamId={LocalTeamId} PeerId={LocalPeerId}");
             LobbyChanged?.Invoke();
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理JoinAck异常: {e.Message}");
+            GameLog.Error($"[Net] HandleJoinAck exception: {e.Message}");
         }
     }
 
@@ -758,7 +758,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理LobbyInfo异常: {e.Message}");
+            GameLog.Error($"[Net] HandleLobbyInfo exception: {e.Message}");
         }
     }
 
@@ -779,7 +779,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理ReadyToggle异常: {e.Message}");
+            GameLog.Error($"[Net] HandleReadyToggle exception: {e.Message}");
         }
     }
 
@@ -825,11 +825,11 @@ public static class NetworkManager
 
             InGame = true;
             GameStarted?.Invoke();
-            GameLog.Info("[Net] 收到StartGame，准备进入游戏场景");
+            GameLog.Info("[Net] StartGame received, entering game scene");
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理StartGame异常: {e.Message}");
+            GameLog.Error($"[Net] HandleStartGame exception: {e.Message}");
         }
     }
 
@@ -898,7 +898,7 @@ public static class NetworkManager
             // H7: 命令速率限制
             if (IsRateLimited(fromPeer))
             {
-                GameLog.Warning($"[Net] Peer {fromPeer} 命令速率超限，丢弃");
+                GameLog.Warning($"[Net] Peer {fromPeer} command rate exceeded, dropping");
                 return;
             }
 
@@ -916,7 +916,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理PlayerCommand异常: {e.Message}");
+            GameLog.Error($"[Net] HandlePlayerCommand exception: {e.Message}");
         }
     }
 
@@ -935,7 +935,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理CommandBroadcast异常: {e.Message}");
+            GameLog.Error($"[Net] HandleCommandBroadcast exception: {e.Message}");
         }
     }
 
@@ -955,7 +955,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理StateSnapshot异常: {e.Message}");
+            GameLog.Error($"[Net] HandleStateSnapshot exception: {e.Message}");
         }
     }
 
@@ -995,7 +995,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理GameOver异常: {e.Message}");
+            GameLog.Error($"[Net] HandleGameOver exception: {e.Message}");
         }
     }
 
@@ -1041,7 +1041,7 @@ public static class NetworkManager
         }
         catch (Exception e)
         {
-            GameLog.Error($"[Net] 处理ChatMessage异常: {e.Message}");
+            GameLog.Error($"[Net] HandleChatMessage exception: {e.Message}");
         }
     }
 
@@ -1059,7 +1059,7 @@ public static class NetworkManager
         public int Port { get; set; } = 25565;
         public string HostName { get; set; } = "Host";
         public string HostFaction { get; set; } = "Allies";
-        public string ModeName { get; set; } = "3人模式";
+        public string ModeName { get; set; } = TrManager.Tr("net.mode_3p");
         public string MapName { get; set; } = "";
     }
 

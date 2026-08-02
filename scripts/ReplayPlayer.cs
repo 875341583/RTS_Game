@@ -73,7 +73,7 @@ public static class ReplayPlayer
         _state = PlaybackState.Playing;
         _main = main;
         _playbackSpeed = 1f;
-        GameLog.Info($"[Replay] 开始回放: {_file.Header.MapSeed}/{_file.Header.Difficulty} ({_file.Records.Count} 操作)");
+        GameLog.Info($"[Replay] Start replay: {_file.Header.MapSeed}/{_file.Header.Difficulty} ({_file.Records.Count} actions)");
     }
 
     /// <summary>暂停回放。</summary>
@@ -82,7 +82,7 @@ public static class ReplayPlayer
         if (_state == PlaybackState.Playing)
         {
             _state = PlaybackState.Paused;
-            GameLog.Debug("[Replay] 回放暂停");
+            GameLog.Debug("[Replay] Replay paused");
         }
     }
 
@@ -92,7 +92,7 @@ public static class ReplayPlayer
         if (_state == PlaybackState.Paused)
         {
             _state = PlaybackState.Playing;
-            GameLog.Debug("[Replay] 回放继续");
+            GameLog.Debug("[Replay] Replay resumed");
         }
     }
 
@@ -104,7 +104,7 @@ public static class ReplayPlayer
         _currentIndex = 0;
         _frameCounter = 0;
         _main = null;
-        GameLog.Debug("[Replay] 回放已停止");
+        GameLog.Debug("[Replay] Replay stopped");
     }
 
     /// <summary>每帧调用（由 Main._Process 驱动）。</summary>
@@ -130,7 +130,7 @@ public static class ReplayPlayer
             if (_currentIndex >= _file.Records.Count)
             {
                 _state = PlaybackState.Finished;
-                GameLog.Info($"[Replay] 回放结束 (帧 {_frameCounter}, {_file.Records.Count} 操作已全部执行)");
+                GameLog.Info($"[Replay] Replay finished (frame {_frameCounter}, {_file.Records.Count} actions all executed)");
                 return;
             }
         }
@@ -153,7 +153,7 @@ public static class ReplayPlayer
         if (_currentIndex >= _file.Records.Count)
         {
             _state = PlaybackState.Finished;
-            GameLog.Info("[Replay] 单步回放结束");
+            GameLog.Info("[Replay] Step replay finished");
         }
     }
 
@@ -265,13 +265,13 @@ public static class ReplayPlayer
                     _main.ReplaySelectCard(parms);
                     break;
                 default:
-                    GameLog.Warning($"[Replay] 未知操作类型: {record.Action}");
+                    GameLog.Warning($"[Replay] Unknown action type: {record.Action}");
                     break;
             }
         }
         catch (System.Exception ex)
         {
-            GameLog.Warning($"[Replay] 执行操作失败: {record.Action} — {ex.Message}");
+            GameLog.Warning($"[Replay] Failed to execute action: {record.Action} — {ex.Message}");
         }
     }
 }

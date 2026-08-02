@@ -223,7 +223,7 @@ public static class GameData
         LoadUnits();
         LoadBuildings();
         _loaded = true;
-        GameLog.Debug($"[GameData] 数据加载完成: {_units.Count}单位, {_buildings.Count}建筑, {_productionTimes.Count}生产时间(2D), {_productionTimes3d.Count}生产时间(3D)");
+        GameLog.Debug($"[GameData] data load complete: {_units.Count} units, {_buildings.Count} buildings, {_productionTimes.Count} production time(s) (2D), {_productionTimes3d.Count} production time(s) (3D)");
     }
 
     /// <summary>确保数据已加载（首次访问时自动调用）。</summary>
@@ -238,14 +238,14 @@ public static class GameData
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GameLog.Error($"[GameData] 无法加载单位数据: {path}");
+            GameLog.Error($"[GameData] cannot load unit data: {path}");
             return;
         }
         var json = file.GetAsText();
         var parsed = Json.ParseString(json);
         if (parsed.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Error($"[GameData] 单位数据解析失败: {path}");
+            GameLog.Error($"[GameData] unit data parse failed: {path}");
             return;
         }
         var root = parsed.AsGodotDictionary();
@@ -255,7 +255,7 @@ public static class GameData
             string typeName = key.AsString();
             if (!Enum.TryParse<UnitType>(typeName, out var unitType))
             {
-                GameLog.Error($"[GameData] 未知单位类型: {typeName}");
+                GameLog.Error($"[GameData] unknown unit type: {typeName}");
                 continue;
             }
             var entry = ParseUnitEntry(units[key].AsGodotDictionary());
@@ -303,14 +303,14 @@ public static class GameData
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GameLog.Error($"[GameData] 无法加载建筑数据: {path}");
+            GameLog.Error($"[GameData] cannot load building data: {path}");
             return;
         }
         var json = file.GetAsText();
         var parsed = Json.ParseString(json);
         if (parsed.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Error($"[GameData] 建筑数据解析失败: {path}");
+            GameLog.Error($"[GameData] building data parse failed: {path}");
             return;
         }
         var root = parsed.AsGodotDictionary();
@@ -320,7 +320,7 @@ public static class GameData
             string typeName = key.AsString();
             if (!Enum.TryParse<BuildingType>(typeName, out var buildingType))
             {
-                GameLog.Error($"[GameData] 未知建筑类型: {typeName}");
+                GameLog.Error($"[GameData] unknown building type: {typeName}");
                 continue;
             }
             var entry = ParseBuildingEntry(buildings[key].AsGodotDictionary());
@@ -338,7 +338,7 @@ public static class GameData
                 if (typeName.StartsWith("_")) continue;
                 if (!Enum.TryParse<ProductionType>(typeName, out var prodType))
                 {
-                    GameLog.Error($"[GameData] 未知生产类型: {typeName}");
+                    GameLog.Error($"[GameData] unknown production type: {typeName}");
                     continue;
                 }
                 _productionTimes[prodType] = (float)times[key].AsDouble();
@@ -355,7 +355,7 @@ public static class GameData
                 if (typeName.StartsWith("_")) continue;
                 if (!Enum.TryParse<ProductionType>(typeName, out var prodType))
                 {
-                    GameLog.Error($"[GameData] 未知3D生产类型: {typeName}");
+                    GameLog.Error($"[GameData] unknown 3D production type: {typeName}");
                     continue;
                 }
                 _productionTimes3d[prodType] = (float)times3d[key].AsDouble();
@@ -398,14 +398,14 @@ public static class GameData
     public static UnitEntry GetUnit(UnitType type)
     {
         EnsureLoaded();
-        return _units.GetValueOrDefault(type) ?? throw new InvalidOperationException($"单位数据未加载: {type}");
+        return _units.GetValueOrDefault(type) ?? throw new InvalidOperationException($"unit data not loaded: {type}");
     }
 
     /// <summary>获取建筑数据条目。</summary>
     public static BuildingEntry GetBuilding(BuildingType type)
     {
         EnsureLoaded();
-        return _buildings.GetValueOrDefault(type) ?? throw new InvalidOperationException($"建筑数据未加载: {type}");
+        return _buildings.GetValueOrDefault(type) ?? throw new InvalidOperationException($"building data not loaded: {type}");
     }
 
     /// <summary>获取单位造价。</summary>
@@ -413,7 +413,7 @@ public static class GameData
     {
         EnsureLoaded();
         if (_units.TryGetValue(type, out var entry)) return entry.Cost;
-        GameLog.Error($"[GameData] 单位造价缺失: {type}，返回0");
+        GameLog.Error($"[GameData] unit cost missing: {type}, returning 0");
         return 0;
     }
 
@@ -422,7 +422,7 @@ public static class GameData
     {
         EnsureLoaded();
         if (_buildings.TryGetValue(type, out var entry)) return entry.Cost;
-        GameLog.Error($"[GameData] 建筑造价缺失: {type}，返回0");
+        GameLog.Error($"[GameData] building cost missing: {type}, returning 0");
         return 0;
     }
 
@@ -432,7 +432,7 @@ public static class GameData
         EnsureLoaded();
         var dict = is3d ? _productionTimes3d : _productionTimes;
         if (dict.TryGetValue(type, out var time)) return time;
-        GameLog.Error($"[GameData] 生产时间缺失: {type}(3D={is3d})，返回3.0秒");
+        GameLog.Error($"[GameData] production time missing: {type}(3D={is3d}), returning 3.0s");
         return 3f;
     }
 
@@ -446,7 +446,7 @@ public static class GameData
         string name = prodType.ToString();
         if (Enum.TryParse<UnitType>(name, out var unitType))
             return GetUnitCost(unitType);
-        GameLog.Error($"[GameData] 无法将ProductionType映射为UnitType: {prodType}");
+        GameLog.Error($"[GameData] cannot map ProductionType to UnitType: {prodType}");
         return 0;
     }
 }

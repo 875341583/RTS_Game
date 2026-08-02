@@ -360,7 +360,7 @@ public partial class Building : Area2D, IBuildingEntity
             else
                 GameLog.Error($"[R4] Failed to load building sprite: {path}");
         }
-        GameLog.Debug($"[R4] 等距建筑精灵图加载完成: {_isoBuildingSprites.Count}/{13} 种建筑");
+        GameLog.Debug($"[R4] Isometric building sprites loaded: {_isoBuildingSprites.Count}/{13} building types");
     }
 
     private static Texture2D LoadTexture(string path)
@@ -416,7 +416,7 @@ public partial class Building : Area2D, IBuildingEntity
             main.OnBuildingAttacked(this);
         if (Health <= 0)
         {
-            GameLog.Debug($"{BuildingName} (阵营 {TeamId}) 被摧毁");
+            GameLog.Debug($"{BuildingName} (Team {TeamId}) destroyed");
             // Q5：建筑被摧毁爆炸
             if (GetParent()?.GetParent() is Node2D parentNode)
                 parentNode.AddChild(BattleEffect.BigExplosion(GlobalPosition));
@@ -672,13 +672,13 @@ public partial class Building : Area2D, IBuildingEntity
             _capturingTeamId = -1;
             _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
             _body.Modulate = _teamTint;
-            GameLog.Debug($"{BuildingName} 被 Team {capturingTeamId} 占领!");
+            GameLog.Debug($"{BuildingName} captured by Team {capturingTeamId}!");
 
             // G8: 占领即获资源
             if (GetParent()?.GetParent() is Main capturedMain)
             {
                 capturedMain.AddResourceForTeam(capturingTeamId, CaptureBonus.CaptureMoneyReward);
-                GameLog.Debug($"[G8] 占领奖励: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
+                GameLog.Debug($"[G8] Capture bonus: Team {capturingTeamId} +${CaptureBonus.CaptureMoneyReward}");
                 capturedMain.ShowToast(capturingTeamId == Main.PlayerTeamId
                     ? TrManager.Tr("building.captured", BuildingName, CaptureBonus.CaptureMoneyReward)
                     : "");
@@ -787,7 +787,7 @@ public partial class Building : Area2D, IBuildingEntity
                 {
                     if (_originalTeamId >= 0 && _originalTeamId != TeamId)
                     {
-                        GameLog.Debug($"[G8] 叛变! {BuildingName} 从 Team {TeamId} 叛变回 Team {_originalTeamId}!");
+                        GameLog.Debug($"[G8] Betrayal! {BuildingName} betrayed from Team {TeamId} back to Team {_originalTeamId}!");
                         if (GetParent()?.GetParent() is Main capMain)
                         capMain.ShowToast(TeamId == Main.PlayerTeamId
                             ? TrManager.Tr("building.defected", BuildingName, _originalTeamId)

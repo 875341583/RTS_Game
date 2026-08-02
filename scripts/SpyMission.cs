@@ -90,7 +90,7 @@ public static class SpyMission
         var jsonText = ModLoader.ReadDataFile("spy_missions.json");
         if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning("[SpyMission] 无法读取 spy_missions.json，使用硬编码fallback");
+            GameLog.Warning("[SpyMission] Cannot read spy_missions.json, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -98,7 +98,7 @@ public static class SpyMission
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Warning("[SpyMission] spy_missions.json 格式错误，使用硬编码fallback");
+            GameLog.Warning("[SpyMission] spy_missions.json parse error, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -122,7 +122,7 @@ public static class SpyMission
                 var idStr = dict["id"].AsString();
                 if (!System.Enum.TryParse<MissionType>(idStr, out var id))
                 {
-                    GameLog.Warning($"[SpyMission] 未知任务ID: {idStr}");
+                    GameLog.Warning($"[SpyMission] Unknown mission ID: {idStr}");
                     continue;
                 }
 
@@ -135,7 +135,7 @@ public static class SpyMission
             }
         }
 
-        GameLog.Info($"[SpyMission] 从JSON加载 {_missions.Count} 个任务 + 常量");
+        GameLog.Info($"[SpyMission] Loaded {_missions.Count} missions + constants from JSON");
     }
 
     /// <summary>P2-4: 硬编码fallback（JSON加载失败时使用）</summary>

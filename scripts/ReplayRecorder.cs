@@ -138,14 +138,14 @@ public static class ReplayRecorder
             MapTheme = mapTheme,
             Timestamp = System.DateTime.UtcNow.ToString("o"),
         };
-        Log($"[Replay] 开始录制 (种子={mapSeed}, 难度={difficulty}, 尺寸={mapSize}, 主题={mapTheme})");
+        Log($"[Replay] start recording (seed={mapSeed}, difficulty={difficulty}, size={mapSize}, theme={mapTheme})");
     }
 
     /// <summary>停止录制。</summary>
     public static void Stop()
     {
         _recording = false;
-        Log($"[Replay] 录制结束，共 {_records.Count} 条操作记录");
+        Log($"[Replay] recording ended, {_records.Count} records");
     }
 
     /// <summary>每帧递增帧计数器（由 Main._Process 调用）。</summary>
@@ -190,7 +190,7 @@ public static class ReplayRecorder
         var json = JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true });
         path ??= System.IO.Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
-            "Godot", "app_userdata", "铁幕突袭",
+            "Godot", "app_userdata", "IronCurtain",
             $"replay_{System.DateTime.Now:yyyyMMdd_HHmmss}.replay");
 
         var dir = System.IO.Path.GetDirectoryName(path);
@@ -198,7 +198,7 @@ public static class ReplayRecorder
             System.IO.Directory.CreateDirectory(dir);
 
         System.IO.File.WriteAllText(path, json);
-        LogInfo($"[Replay] 回放已保存: {path} ({_records.Count} 条记录)");
+        LogInfo($"[Replay] replay saved: {path} ({_records.Count} records)");
         return path;
     }
 
@@ -207,7 +207,7 @@ public static class ReplayRecorder
     {
         if (!System.IO.File.Exists(path))
         {
-            LogWarning($"[Replay] 文件不存在: {path}");
+            LogWarning($"[Replay] file not found: {path}");
             return null;
         }
         try
@@ -216,15 +216,15 @@ public static class ReplayRecorder
             var file = JsonSerializer.Deserialize<ReplayFile>(json);
             if (file == null)
             {
-                    LogWarning($"[Replay] 反序列化失败: {path}");
+                    LogWarning($"[Replay] deserialize failed: {path}");
                 return null;
             }
-            LogInfo($"[Replay] 加载回放: {path} ({file.Records.Count} 条记录)");
+            LogInfo($"[Replay] load replay: {path} ({file.Records.Count} records)");
             return file;
         }
         catch (System.Exception ex)
         {
-            LogWarning($"[Replay] 加载失败: {ex.Message}");
+            LogWarning($"[Replay] load failed: {ex.Message}");
             return null;
         }
     }

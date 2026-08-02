@@ -855,3 +855,49 @@ menu.briefing,Briefing
 menu.deploy,Deploy
 combat.nuke_warning,WARNING: Nuclear Missile Launch Detected!
 combat.lightning_warning,WARNING: Lightning Storm Creating!
+# === i18n: net.* ===
+net.user_disconnected,User disconnected
+net.connection_timeout,Connection timeout
+net.host_disconnected,Disconnected from host
+net.room_full,Room full
+net.unknown_reason,Unknown reason
+net.join_failed,Join failed: {0}
+net.mode_3p,3-Player Mode
+# === i18n: MainMenu Multiplayer ===
+menu.mp_title,Multiplayer
+menu.create_room,Create Room
+menu.join_room,Join Room
+menu.mp_mode,Battle Mode
+menu.select_faction,Select Faction
+menu.server_ip,Server IP
+menu.server_port,Server Port
+menu.your_name,Your Name
+menu.same_as_left,(same as left)
+menu.mp_lobby,Multiplayer Lobby — {0} ({1}P)
+menu.player_list,Player List
+menu.chat,Chat
+menu.mp_chat_placeholder,Type message and press Enter...
+menu.leave_room,Leave Room
+menu.map_settings,Map Settings
+menu.ready_toggle,Ready / Cancel Ready
+menu.host_tag,[Host] 
+menu.mp_status_not_ready,Not all players are ready
+menu.mp_create_failed,Failed to create room, check if port is occupied
+menu.mp_enter_ip,Please enter server IP
+menu.mp_connect_failed,Connection failed, check IP and port
+menu.mp_ai_fill_on,AI Fill: ON
+menu.mp_ai_fill_off,AI Fill: OFF
+menu.mp_ai_fill_hint,When enabled, empty slots are filled by AI
+menu.mp_disconnected,Disconnected: 
+menu.faction_label,Faction
+menu.empty_slot,Empty
+menu.mp_player,Player
+menu.mp_desc,LAN/Internet 3-11 player real-time battle
+menu.n_player_mode,{0}P Mode
+menu.create_and_wait,Create Room & Wait for Players
+menu.mp_hint,Tip: Multiplayer supports LAN and Internet direct connect. Host creates a room, others join with host IP.
+menu.mp_start_game,Start Game
+menu.reproduction_mode,1:1 Red Alert 2 Core Experience · 15min per match
+menu.copyright,© 2026 RTS_Game · Powered by Godot 4.7
+menu.lang_zh,中文
+menu.lang_en,English

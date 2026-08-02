@@ -857,3 +857,49 @@ menu.briefing,简报
 menu.deploy,部署
 combat.nuke_warning,⚠ 警告：侦测到核弹发射！
 combat.lightning_warning,⚠ 警告：闪电风暴正在蓄能！
+# === i18n: net.* ===
+net.user_disconnected,用户主动断开
+net.connection_timeout,连接超时
+net.host_disconnected,与房主断开连接
+net.room_full,房间已满
+net.unknown_reason,未知原因
+net.join_failed,加入失败: {0}
+net.mode_3p,3人模式
+# === i18n: MainMenu 联机页面 ===
+menu.mp_title,联机对战
+menu.create_room,创建房间
+menu.join_room,加入房间
+menu.mp_mode,对战模式
+menu.select_faction,选择阵营
+menu.server_ip,服务器IP地址
+menu.server_port,服务器端口
+menu.your_name,你的名称
+menu.same_as_left,（同左）
+menu.mp_lobby,联机大厅 — {0}（{1}人）
+menu.player_list,玩家列表
+menu.chat,聊天
+menu.mp_chat_placeholder,输入消息后回车发送...
+menu.leave_room,离开房间
+menu.map_settings,地图设置
+menu.ready_toggle,准备/取消准备
+menu.host_tag,[房主] 
+menu.mp_status_not_ready,有玩家未准备
+menu.mp_create_failed,创建房间失败，请检查端口是否被占用
+menu.mp_enter_ip,请输入服务器IP
+menu.mp_connect_failed,连接失败，请检查IP和端口
+menu.mp_ai_fill_on,AI填充：开启
+menu.mp_ai_fill_off,AI填充：关闭
+menu.mp_ai_fill_hint,开启后，未接入的空位由AI自动填充
+menu.mp_disconnected,断开连接: 
+menu.faction_label,阵营
+menu.empty_slot,空位
+menu.mp_player,玩家
+menu.mp_desc,局域网/互联网 3~11人实时对战
+menu.n_player_mode,{0}人模式
+menu.create_and_wait,创建房间并等待玩家
+menu.mp_hint,提示：联机模式支持局域网和互联网直连。房主创建房间后，其他玩家输入房主IP加入。
+menu.mp_start_game,开始游戏
+menu.reproduction_mode,1:1 复刻红警2核心体验 · 15分钟一局
+menu.copyright,© 2026 RTS_Game · Powered by Godot 4.7
+menu.lang_zh,中文
+menu.lang_en,English

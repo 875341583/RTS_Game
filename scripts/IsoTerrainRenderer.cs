@@ -693,7 +693,7 @@ public static class IsoTerrainRenderer
             {
                 // 加载失败时使用纯色占位图而非1×1透明图，避免渲染为透明块
                 arr[0][i] = GetFallbackTile(new Color(0.35f, 0.45f, 0.25f));
-                GameLog.Error($"[IsoTerrain] 贴图加载失败，使用纯色占位图");
+                GameLog.Error($"[IsoTerrain] Texture load failed, using solid color placeholder");
             }
         }
         return arr;

@@ -255,7 +255,7 @@ public partial class Minimap : Control
     {
         var font = GetWindow().GetThemeDefaultFont();
         if (font == null) return;
-        const string title = "战术地图";
+        const string title = "Tactical Map";
         const float fontSize = 11f;
         const float offsetY = -2f;
         var textSize = font.GetStringSize(title, HorizontalAlignment.Left, fontSize);

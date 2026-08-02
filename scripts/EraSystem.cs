@@ -94,7 +94,7 @@ public static class EraSystem
         var jsonText = ModLoader.ReadDataFile("eras.json");
         if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning("[EraSystem] 无法读取 eras.json，使用硬编码fallback");
+            GameLog.Warning("[EraSystem] Cannot read eras.json, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -102,7 +102,7 @@ public static class EraSystem
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Array)
         {
-            GameLog.Warning("[EraSystem] eras.json 格式错误，使用硬编码fallback");
+            GameLog.Warning("[EraSystem] eras.json parse error, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -117,7 +117,7 @@ public static class EraSystem
             var idStr = dict["id"].AsString();
             if (!System.Enum.TryParse<Era>(idStr, out var id))
             {
-                GameLog.Warning($"[EraSystem] 未知时代ID: {idStr}");
+                GameLog.Warning($"[EraSystem] Unknown era ID: {idStr}");
                 continue;
             }
 
@@ -143,7 +143,7 @@ public static class EraSystem
         }
 
         _eras = list.ToArray();
-        GameLog.Info($"[EraSystem] 从JSON加载 {_eras.Length} 个时代");
+        GameLog.Info($"[EraSystem] Loaded {_eras.Length} eras from JSON");
     }
 
     /// <summary>P2-4: 硬编码fallback（JSON加载失败时使用）</summary>

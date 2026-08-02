@@ -46,7 +46,7 @@ public partial class Main
             for (int t = 1; t <= AiTeamCount; t++)
                 _money[t] = _aiStartMoney;
         }
-        GameLog.Debug($"[Difficulty] {_difficulty} | AI间隔 {_aiThinkInterval}s | 玩家方${_blueStartMoney} AI${_aiStartMoney} | 科技等级Lv{_playerTechLevel} | 上限{_unitCap}");
+        GameLog.Debug($"[Difficulty] {_difficulty} | AI interval {_aiThinkInterval}s | Player ${_blueStartMoney} AI ${_aiStartMoney} | Tech Lv{_playerTechLevel} | Cap {_unitCap}");
     }
 
     private void CheckWinCondition()
@@ -146,7 +146,7 @@ public partial class Main
         menuBtn.Pressed += () => CallDeferred(nameof(ReturnToMenu));
         vbox.AddChild(menuBtn);
 
-        GameLog.Debug($"[GameOver] {_gameResult} (难度 {_difficulty})");
+        GameLog.Debug($"[GameOver] {_gameResult} (difficulty {_difficulty})");
     }
 
     private void RestartGame()

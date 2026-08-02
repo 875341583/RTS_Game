@@ -71,7 +71,7 @@ public partial class AudioManager : Node
         // P2-3: 初始化BGM管理器
         BgmManager.Initialize(_bgmPlayer);
 
-        GameLog.Debug("[Audio] 音效管理器初始化完毕");
+        GameLog.Debug("[Audio] AudioManager initialized");
     }
 
     private void LoadAllSounds()
@@ -110,7 +110,7 @@ public partial class AudioManager : Node
     {
         if (!ResourceLoader.Exists(path, "AudioStream"))
         {
-            GameLog.Debug($"[Audio] 音效文件未导入: {path}，跳过");
+            GameLog.Debug($"[Audio] Sound file not imported: {path}, skipping");
             return null;
         }
         return GD.Load<AudioStream>(path);
@@ -168,7 +168,7 @@ public partial class AudioManager : Node
     {
         Muted = !Muted;
         _bgmPlayer.VolumeDb = Muted ? -80f : Mathf.LinearToDb(BgmVolume);
-        GameLog.Debug($"[Audio] 静音: {Muted}");
+        GameLog.Debug($"[Audio] Muted: {Muted}");
     }
 
     /// <summary>P2-3: 播放单位语音（选择/移动/攻击）。</summary>

@@ -45,6 +45,6 @@ public partial class VignetteOverlay : Control
                     new Color(0, 0, 0, alpha), bandWidth + 1.5f);
         }
 
-        GameLog.Debug("[Visual] 暗角_Draw绘制完成 (同心圆环×48)");
+        GameLog.Debug("[Visual] Vignette _Draw complete (48 concentric rings)");
     }
 }

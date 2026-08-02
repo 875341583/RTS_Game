@@ -118,13 +118,13 @@ public static class BgmManager
         // 尝试加载，文件不存在或未导入时静默跳过
         if (!ResourceLoader.Exists(path, "AudioStream"))
         {
-            GameLog.Debug($"[BgmManager] BGM文件未导入: {path}，跳过");
+            GameLog.Debug($"[BgmManager] BGM file not imported: {path}, skipping");
             return;
         }
         var stream = GD.Load<AudioStream>(path);
         if (stream == null)
         {
-            GameLog.Debug($"[BgmManager] BGM加载失败: {path}，跳过");
+            GameLog.Debug($"[BgmManager] BGM load failed: {path}, skipping");
             return;
         }
 
@@ -139,7 +139,7 @@ public static class BgmManager
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.In);
 
-        GameLog.Debug($"[BgmManager] 切换BGM: {_currentScene}");
+        GameLog.Debug($"[BgmManager] Switching BGM: {_currentScene}");
     }
 
     /// <summary>停止BGM（带淡出）。</summary>

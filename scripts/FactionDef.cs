@@ -95,7 +95,7 @@ public static class FactionManager
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GameLog.Error($"[FactionManager] 无法加载阵营配置: {path}");
+            GameLog.Error($"[FactionManager] Cannot load faction config: {path}");
             // 降级：创建默认阵营
             CreateDefaultFactions();
             _loaded = true;
@@ -105,7 +105,7 @@ public static class FactionManager
         var parsed = Json.ParseString(json);
         if (parsed.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Error($"[FactionManager] 阵营配置解析失败");
+            GameLog.Error("[FactionManager] Faction config parse failed");
             CreateDefaultFactions();
             _loaded = true;
             return;
@@ -123,7 +123,7 @@ public static class FactionManager
             _factionList.Add(def);
         }
         _loaded = true;
-        GameLog.Debug($"[FactionManager] 阵营加载完成: {_factionList.Count}个阵营（默认: {_defaultFactionId}）");
+        GameLog.Debug($"[FactionManager] Factions loaded: {_factionList.Count} faction(s) (default: {_defaultFactionId})");
     }
 
     private static void EnsureLoaded()
@@ -163,7 +163,7 @@ public static class FactionManager
                 if (Enum.TryParse<UnitType>(name, out var ut))
                     def.AvailableUnits.Add(ut);
                 else
-                    GameLog.Error($"[FactionManager] 阵营{id}未知单位类型: {name}");
+                    GameLog.Error($"[FactionManager] Faction {id} unknown unit type: {name}");
             }
         }
         if (d.ContainsKey("availableBuildings"))
@@ -176,7 +176,7 @@ public static class FactionManager
                 if (Enum.TryParse<BuildingType>(name, out var bt))
                     def.AvailableBuildings.Add(bt);
                 else
-                    GameLog.Error($"[FactionManager] 阵营{id}未知建筑类型: {name}");
+                    GameLog.Error($"[FactionManager] Faction {id} unknown building type: {name}");
             }
         }
         if (d.ContainsKey("exclusiveTechs"))
@@ -229,7 +229,7 @@ public static class FactionManager
     public static FactionDef GetFactionForTeam(int teamId)
     {
         EnsureLoaded();
-        if (_factionList.Count == 0) throw new InvalidOperationException("无阵营定义");
+        if (_factionList.Count == 0) throw new InvalidOperationException("No faction definitions");
         // 联机模式：优先查team级覆盖
         if (_teamFactionOverrides.TryGetValue(teamId, out var tfId) && _factions.TryGetValue(tfId, out var tf))
             return tf;
@@ -242,7 +242,7 @@ public static class FactionManager
     public static void SetTeamFaction(int teamId, string factionId)
     {
         _teamFactionOverrides[teamId] = factionId;
-        GameLog.Debug($"[FactionManager] Team {teamId} 阵营设为: {factionId}");
+        GameLog.Debug($"[FactionManager] Team {teamId} faction set to: {factionId}");
     }
 
     /// <summary>设置本地玩家teamId（联机模式由Main调用）。</summary>
@@ -255,7 +255,7 @@ public static class FactionManager
     public static void SetPlayerFaction(string factionId)
     {
         _playerFactionId = factionId;
-        GameLog.Debug($"[FactionManager] 玩家阵营设为: {factionId}");
+        GameLog.Debug($"[FactionManager] Player faction set to: {factionId}");
     }
 
     /// <summary>获取默认阵营。</summary>

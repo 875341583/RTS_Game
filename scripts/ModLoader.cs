@@ -65,13 +65,13 @@ public static class ModLoader
             foreach (var mod in sorted)
             {
                 _loadedMods.Add(mod);
-                GameLog.Info($"[ModLoader] 已加载Mod: {mod.Name} v{mod.Version} (priority={mod.Priority})");
+                GameLog.Info($"[ModLoader] Loaded mod: {mod.Name} v{mod.Version} (priority={mod.Priority})");
             }
 
             if (_loadedMods.Count > 0)
-                GameLog.Info($"[ModLoader] 共加载 {_loadedMods.Count} 个Mod");
+                GameLog.Info($"[ModLoader] Loaded {_loadedMods.Count} mod(s)");
             else
-                GameLog.Debug("[ModLoader] 未发现任何Mod");
+                GameLog.Debug("[ModLoader] No mods found");
         }
     }
 
@@ -110,7 +110,7 @@ public static class ModLoader
             {
                 var content = file.GetAsText();
                 file.Close();
-                GameLog.Debug($"[ModLoader] 使用Mod数据: {lastModPath}");
+                GameLog.Debug($"[ModLoader] Using mod data: {lastModPath}");
                 return content;
             }
         }
@@ -125,7 +125,7 @@ public static class ModLoader
             return content;
         }
 
-        GameLog.Warning($"[ModLoader] 无法读取数据文件: {baseFileName}");
+        GameLog.Warning($"[ModLoader] Cannot read data file: {baseFileName}");
         return "";
     }
 
@@ -136,7 +136,7 @@ public static class ModLoader
         var dir = Godot.DirAccess.Open("res://mods/");
         if (dir == null)
         {
-            GameLog.Debug("[ModLoader] mods/ 目录不存在，跳过Mod扫描");
+            GameLog.Debug("[ModLoader] mods/ directory not found, skipping mod scan");
             return dirs;
         }
 
@@ -159,14 +159,14 @@ public static class ModLoader
         var modJsonPath = $"{modDir}mod.json";
         if (!ResourceLoader.Exists(modJsonPath))
         {
-            GameLog.Warning($"[ModLoader] Mod目录缺少mod.json: {modDir}");
+            GameLog.Warning($"[ModLoader] Mod directory missing mod.json: {modDir}");
             return null;
         }
 
         var file = Godot.FileAccess.Open(modJsonPath, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GameLog.Warning($"[ModLoader] 无法打开: {modJsonPath}");
+            GameLog.Warning($"[ModLoader] Cannot open: {modJsonPath}");
             return null;
         }
 
@@ -176,7 +176,7 @@ public static class ModLoader
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Warning($"[ModLoader] mod.json格式错误: {modJsonPath}");
+            GameLog.Warning($"[ModLoader] mod.json parse error: {modJsonPath}");
             return null;
         }
 

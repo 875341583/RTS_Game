@@ -53,7 +53,7 @@ public partial class Main
         NetworkManager.GameOverReceived -= OnNetGameOver;
         NetworkManager.GameOverReceived += OnNetGameOver;
 
-        GameLog.Debug($"[NetSync] 联机同步已初始化 — 角色:{NetworkManager.Role} 本地TeamId:{NetworkManager.LocalTeamId}");
+        GameLog.Debug($"[NetSync] net sync initialized — role:{NetworkManager.Role} localTeamId:{NetworkManager.LocalTeamId}");
     }
 
     /// <summary>玩家操作被Record时触发 → 发送到网络。</summary>
@@ -79,7 +79,7 @@ public partial class Main
         }
         catch (Exception e)
         {
-            GameLog.Error($"[NetSync] 命令解析失败: {cmd.Action} — {e.Message}");
+            GameLog.Error($"[NetSync] command parse failed: {cmd.Action} — {e.Message}");
             return false;
         }
     }
@@ -497,7 +497,7 @@ public partial class Main
                 break;
 
             default:
-                GameLog.Debug($"[NetSync] 远端命令 {action} 未处理（TeamId={teamId}）");
+                GameLog.Debug($"[NetSync] remote command {action} not handled (TeamId={teamId})");
                 break;
         }
     }
@@ -666,7 +666,7 @@ public partial class Main
                 newUnit.NetId = us.NetId;
                 newUnit.SetHealth(us.Health);
                 _netUnitMap[us.NetId] = newUnit;
-                GameLog.Debug($"[NetSync] 客户端Spawn新单位: NetId={us.NetId} Type={(UnitType)us.UnitType} Team={us.TeamId}");
+                GameLog.Debug($"[NetSync] client spawn new unit: NetId={us.NetId} Type={(UnitType)us.UnitType} Team={us.TeamId}");
             }
             }
 
@@ -713,7 +713,7 @@ public partial class Main
                 newBld.NetId = bs.NetId;
                 newBld.SetHealth(bs.Health);
                 _netBuildingMap[bs.NetId] = newBld;
-                GameLog.Debug($"[NetSync] 客户端Spawn新建筑: NetId={bs.NetId} Type={(BuildingType)bs.BuildingType} Team={bs.TeamId}");
+                GameLog.Debug($"[NetSync] client spawn new building: NetId={bs.NetId} Type={(BuildingType)bs.BuildingType} Team={bs.TeamId}");
             }
             }
 
@@ -821,13 +821,13 @@ public partial class Main
     /// <summary>收到游戏结束通知。</summary>
     private void OnNetGameOver(string result)
     {
-        _gameWon = result.Contains("胜利") || result.Contains("victory");
+        _gameWon = result.Contains("victory");
         _gameResult = result;
         if (!_gameOver)
         {
             _gameOver = true;
             _gameOverDelay = 2f;
-            GameLog.Debug($"[NetSync] 收到游戏结束: {result}");
+            GameLog.Debug($"[NetSync] game over received: {result}");
         }
     }
 
@@ -846,7 +846,7 @@ public partial class Main
         {
             _gameOver = true;
             _gameWon = false;
-            _gameResult = "战败";
+            _gameResult = "defeat";
             _gameOverDelay = 2f;
             return;
         }
@@ -866,11 +866,11 @@ public partial class Main
         {
             _gameOver = true;
             _gameWon = true;
-            _gameResult = "胜利";
+            _gameResult = "victory";
             _gameOverDelay = 2f;
             // Host广播游戏结束
             if (NetworkManager.Role == NetworkManager.NetRole.Host)
-                NetworkManager.SendGameOver("胜利");
+                NetworkManager.SendGameOver("victory");
         }
     }
 
@@ -940,7 +940,7 @@ public partial class Main
 
         _money[teamId] -= node.Cost;
         tp.StartResearch(techId);
-        GameLog.Debug($"[NetSync] Team {teamId} 开始研究: {node.Name} (成本${node.Cost})");
+        GameLog.Debug($"[NetSync] Team {teamId} start research: {node.Name} (cost ${node.Cost})");
     }
 
     /// <summary>为指定阵营升级时代（联机版，不调用ReplayRecorder.Record）。</summary>
@@ -955,7 +955,7 @@ public partial class Main
 
         _money[teamId] -= next.UpgradeCost;
         ep.StartUpgrade();
-        GameLog.Debug($"[NetSync] Team {teamId} 开始时代升级 → {next.Name} (成本${next.UpgradeCost})");
+        GameLog.Debug($"[NetSync] Team {teamId} start era upgrade → {next.Name} (cost ${next.UpgradeCost})");
     }
 
     /// <summary>为指定阵营选择战术卡（联机版，不调用ReplayRecorder.Record）。</summary>
@@ -975,7 +975,7 @@ public partial class Main
         }
 
         ApplyCardEffectsToUnits(teamId);
-        GameLog.Debug($"[NetSync] Team {teamId} 选择战术卡: {TacticalCards.Cards[card].Name}");
+        GameLog.Debug($"[NetSync] Team {teamId} select tactical card: {TacticalCards.Cards[card].Name}");
     }
 
     /// <summary>联机模式清理（游戏退出时调用）。</summary>

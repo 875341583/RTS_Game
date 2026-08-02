@@ -79,7 +79,7 @@ public static class UnitAnimation
             TryLoadUnitAnimations(name);
         }
 
-        GameLog.Debug($"[P1-4] 单位动画系统初始化完成: {_animCache.Count} 种兵种有动画, {_noAnimUnits.Count} 种无动画(回退单帧)");
+        GameLog.Debug($"[P1-4] Unit animation system initialized: {_animCache.Count} unit types have animation, {_noAnimUnits.Count} without (falling back to single frame)");
     }
 
     /// <summary>尝试加载某个兵种的所有动画帧。</summary>

@@ -281,7 +281,7 @@ public partial class Main : Node2D
                     MapConfig.SetSize(size);
             }
         }
-        GameLog.Debug($"[Map] 地图尺寸 {MapConfig.GridSize}×{MapConfig.GridSize} (像素 {MapConfig.MapPixelSize})");
+        GameLog.Debug($"[Map] map size {MapConfig.GridSize}x{MapConfig.GridSize} (pixels {MapConfig.MapPixelSize})");
 
         // P1-2: 加载游戏数据（单位/建筑/阵营）
         GameData.Load();
@@ -342,7 +342,7 @@ public partial class Main : Node2D
         if (_mapSeed == 0)
             _mapSeed = (ulong)DateTime.Now.Ticks;
         _mapRng = new Random((int)(_mapSeed & 0x7FFFFFFF));
-        GameLog.Debug($"[Map] 种子 {_mapSeed}（可用 --seed={_mapSeed} 复现本张地图）");
+        GameLog.Debug($"[Map] seed {_mapSeed} (use --seed={_mapSeed} to reproduce this map)");
 
         // P1-3: 如果指定了自定义地图文件，加载并应用
         if (!string.IsNullOrEmpty(_customMapPath))
@@ -352,7 +352,7 @@ public partial class Main : Node2D
             {
                 _mapSeed = _customMap.Seed;
                 _mapRng = new Random((int)(_mapSeed & 0x7FFFFFFF));
-                GameLog.Debug($"[Map] 自定义地图已加载: {_customMap.Name} (seed={_mapSeed}, {_customMap.TerrainMods.Count}个修改, {_customMap.ResourceNodes.Count}个矿点, {_customMap.StrategicPoints.Count}个战略点)");
+                GameLog.Debug($"[Map] custom map loaded: {_customMap.Name} (seed={_mapSeed}, {_customMap.TerrainMods.Count} mods, {_customMap.ResourceNodes.Count} ore nodes, {_customMap.StrategicPoints.Count} strategic points)");
             }
             else
             {
@@ -377,7 +377,7 @@ public partial class Main : Node2D
             ppLayer.Layer = 1;
             ppLayer.AddChild(vignette);
             AddChild(ppLayer);
-            GameLog.Debug("[Visual] 屏幕暗角后处理已启用");
+            GameLog.Debug("[Visual] screen vignette post-processing enabled");
         }
 
         _camera = GetNode<RTSCamera>("Camera2D");
@@ -473,18 +473,18 @@ public partial class Main : Node2D
                 cell.HasTunnel = mod.HasTunnel;
                 _terrain.SetCell(mod.Gx, mod.Gy, cell);
             }
-            GameLog.Debug($"[Map] 应用了 {_customMap.TerrainMods.Count} 个地形修改");
+            GameLog.Debug($"[Map] applied {_customMap.TerrainMods.Count} terrain mods");
         }
 
         var stats = _terrain.GetStats();
-        GameLog.Debug("[Terrain] 地形生成统计：");
+        GameLog.Debug("[Terrain] terrain generation stats:");
         foreach (var kv in stats)
-            GameLog.Debug($"  {kv.Key}: {kv.Value}格");
+            GameLog.Debug($"  {kv.Key}: {kv.Value} cells");
         CreateGround();
 
         // P0-1: 创建A*寻路器（基于地形栅格）
         _pathFinder = new PathFinder(_terrain);
-        GameLog.Debug("[PathFinder] A*寻路器已创建");
+        GameLog.Debug("[PathFinder] A* pathfinder created");
 
         // P0-2修复(headless既有bug): 提前实例化尤里卡计数器。
         // 原代码在 _Ready 末尾(line 570)才实例化 _eureka[i]，但 line 398 的 SpawnBuilding 循环
@@ -560,7 +560,7 @@ public partial class Main : Node2D
                 SpawnUnit(UnitType.HeavyTank, basePos + new Vector2(-100, -20), teamId, autoAI: isActiveAi);
                 SpawnUnit(UnitType.LightTank, basePos + new Vector2(-130, 20), teamId, autoAI: isActiveAi);
                 if (!isActiveAi)
-                    GameLog.Debug($"[Difficulty] Team {teamId} 处于休眠状态（不发展不主动进攻）");
+                    GameLog.Debug($"[Difficulty] Team {teamId} is dormant (no development, no active offense)");
             }
 
             // 每个阵营基地附近自动生成 2 个近矿（位置由种子随机偏移，保证起步经济）
@@ -584,7 +584,7 @@ public partial class Main : Node2D
                 SpawnOre(pos, r.Amount);
             }
             if (_customMap.ResourceNodes.Count > 0)
-                GameLog.Debug($"[Map] 放置了 {_customMap.ResourceNodes.Count} 个自定义矿点");
+                GameLog.Debug($"[Map] placed {_customMap.ResourceNodes.Count} custom ore nodes");
         }
 
         // E5 资源扩展：油田/稀有矿/陆地矿脉
@@ -607,7 +607,7 @@ public partial class Main : Node2D
                 SpawnStrategicPoint(pos);
             }
             if (_customMap.StrategicPoints.Count > 0)
-                GameLog.Debug($"[Map] 放置了 {_customMap.StrategicPoints.Count} 个自定义战略点");
+                GameLog.Debug($"[Map] placed {_customMap.StrategicPoints.Count} custom strategic points");
         }
 
         // Q1：侧边栏建造面板
@@ -626,7 +626,7 @@ public partial class Main : Node2D
         _buildPanel.BuildBuildingRequested += (bt) => TryBuildBuilding(bt);
         _buildPanel.BuildUnitRequested += (ut) => TrySpawnUnit(ut);
         _buildPanel.BuildHarvesterRequested += () => TrySpawnHarvester();
-        GameLog.Debug("[UI] 侧边栏建造面板已加载");
+        GameLog.Debug("[UI] sidebar build panel loaded");
 
         // 阶段12-C：音效系统初始化 + BGM
         _audio = new AudioManager();
@@ -639,7 +639,7 @@ public partial class Main : Node2D
         uiRoot.AddChild(_minimap);
         // 调整提示标签位置，避免与小地图重叠
         _hintLabel.OffsetLeft = 200f;
-        GameLog.Debug("[UI] 小地图已加载");
+        GameLog.Debug("[UI] minimap loaded");
 
         // Q6：开局目标提示（画面内覆盖）
         _startOverlayAge = 0f;
@@ -692,7 +692,7 @@ public partial class Main : Node2D
         _techTreeLabel.Visible = false;
         _techTreeLabel.Text = "";
         GetNode<CanvasLayer>("UI").AddChild(_techTreeLabel);
-        GameLog.Debug("[G1] 科技树系统初始化完成 — 按Tab打开科技面板");
+        GameLog.Debug("[G1] tech tree system init ok — press Tab to open tech panel");
 
         // G2: 初始化时代系统进度 + 时代面板
         for (int i = 0; i < MaxTeamCount; i++) _eraProgress[i] = new EraProgress();
@@ -705,7 +705,7 @@ public partial class Main : Node2D
         _eraLabel.Visible = false;
         _eraLabel.Text = "";
         GetNode<CanvasLayer>("UI").AddChild(_eraLabel);
-        GameLog.Debug("[G2] 时代系统初始化完成 — 按Y打开时代面板");
+        GameLog.Debug("[G2] era system init ok — press Y to open era panel");
 
         // G3: 初始化战术卡面板（带背景Panel + 可点击按钮）
         _cardPanel = new Panel();
@@ -760,7 +760,7 @@ public partial class Main : Node2D
         _cardStatusLabel.AddThemeFontSizeOverride("font_size", 12);
         _cardStatusLabel.Visible = false;
         GetNode<CanvasLayer>("UI").AddChild(_cardStatusLabel);
-        GameLog.Debug("[G3] 战术卡系统初始化完成 — 游戏开始5秒后选择战术卡");
+        GameLog.Debug("[G3] tactical cards system init ok — select tactical card 5s after game start");
 
         // G4: 初始化电网分区面板
         _powerGridLabel = new Label();
@@ -772,7 +772,7 @@ public partial class Main : Node2D
         _powerGridLabel.Visible = false;
         _powerGridLabel.Text = "";
         GetNode<CanvasLayer>("UI").AddChild(_powerGridLabel);
-        GameLog.Debug("[G4] 电网分区系统初始化完成 — 按G查看电网分布");
+        GameLog.Debug("[G4] power grid system init ok — press G to view power grid");
 
         // G5: 初始化尤里卡系统
         for (int i = 0; i < MaxTeamCount; i++) _eureka[i] = new EurekaSystem.TeamEureka();
@@ -784,7 +784,7 @@ public partial class Main : Node2D
         _eurekaLabel.AddThemeFontSizeOverride("font_size", 11);
         _eurekaLabel.Visible = false;
         GetNode<CanvasLayer>("UI").AddChild(_eurekaLabel);
-        GameLog.Debug("[G5] 尤里卡系统初始化完成 — 按H查看尤里卡进度");
+        GameLog.Debug("[G5] eureka system init ok — press H to view eureka progress");
 
         // G6: 初始化邻接加成面板
         _adjacencyLabel = new Label();
@@ -795,7 +795,7 @@ public partial class Main : Node2D
         _adjacencyLabel.AddThemeFontSizeOverride("font_size", 11);
         _adjacencyLabel.Visible = false;
         GetNode<CanvasLayer>("UI").AddChild(_adjacencyLabel);
-        GameLog.Debug("[G6] 邻接加成系统初始化完成 — 按J查看邻接加成");
+        GameLog.Debug("[G6] adjacency bonus system init ok — press J to view adjacency bonus");
 
         // G7: 初始化间谍任务面板
         _spyMissionLabel = new Label();
@@ -806,7 +806,7 @@ public partial class Main : Node2D
         _spyMissionLabel.AddThemeFontSizeOverride("font_size", 11);
         _spyMissionLabel.Visible = false;
         GetNode<CanvasLayer>("UI").AddChild(_spyMissionLabel);
-        GameLog.Debug("[G7] 间谍任务系统初始化完成 — 按N查看间谍任务");
+        GameLog.Debug("[G7] spy mission system init ok — press N to view spy missions");
 
         // G8: 初始化占领强化面板
         _captureLabel = new Label();
@@ -817,15 +817,15 @@ public partial class Main : Node2D
         _captureLabel.AddThemeFontSizeOverride("font_size", 11);
         _captureLabel.Visible = false;
         GetNode<CanvasLayer>("UI").AddChild(_captureLabel);
-        GameLog.Debug("[G8] 占领强化系统初始化完成 — 按K查看占领状态");
+        GameLog.Debug("[G8] capture system init ok — press K to view capture status");
 
         // 开局目标提示（控制台）
         GameLog.Debug("========================================");
-        GameLog.Debug("★ 游戏目标：摧毁敌方所有建筑和单位即获胜！");
-        GameLog.Debug("★ 建造建议：电站→兵营→车厂→科技中心");
-        GameLog.Debug("★ 选中单位右键点敌方建筑/单位攻击");
-        GameLog.Debug("★ 选中建筑右键设集结点 | R维修 | V出售");
-        GameLog.Debug("★ Tab科技树 | Y时代升级 | T战术卡 | G电网分区 | H尤里卡 | J邻接加成 | N间谍 | K占领");
+        GameLog.Debug("★ Game objective: destroy all enemy buildings and units to win!");
+        GameLog.Debug("★ Build advice: Power Plant → Barracks → War Factory → Tech Center");
+        GameLog.Debug("★ Select unit, right-click enemy building/unit to attack");
+        GameLog.Debug("★ Select building, right-click to set rally | R repair | V sell");
+        GameLog.Debug("★ Tab tech tree | Y era | T tactical card | G power grid | H eureka | J adjacency | N spy | K capture");
         GameLog.Debug("========================================");
 
         // P3-1: 启动回放录制
@@ -835,7 +835,7 @@ public partial class Main : Node2D
         _fogOfWar = new FogOfWar();
         _fogOfWar.Initialize(MapConfig.GridSize);
         AddChild(_fogOfWar);
-        GameLog.Debug("[FogOfWar] 战争迷雾系统初始化完成");
+        GameLog.Debug("[FogOfWar] fog of war system init ok");
 
         // 联机同步初始化
         InitNetSync();
@@ -1192,7 +1192,7 @@ public partial class Main : Node2D
                 {
                     lv.DamageTickTimer -= 1f;
                     int hits = DamageLightningAreaOnce(lv.Position, lv.FiringTeamId);
-                    GameLog.Debug($"[闪电] 持续伤害 Tick @ {lv.Position}，命中 {hits}（剩余 {(lv.Lifetime - lv.Age):F1}s）");
+                    GameLog.Debug($"[Lightning] damage tick @ {lv.Position}, hits {hits} (remaining {(lv.Lifetime - lv.Age):F1}s)");
                 }
                 // 每 0.08 秒刷新闪电形状种子（让折线抖动闪烁）
                 if (lv.BoltRefreshTimer >= 0.08f)
@@ -1202,7 +1202,7 @@ public partial class Main : Node2D
                 }
                 if (lv.Age >= lv.Lifetime)
                 {
-                    GameLog.Debug($"[闪电] 特效结束 @ {lv.Position}");
+                    GameLog.Debug($"[Lightning] effect ended @ {lv.Position}");
                     _activeLightnings.RemoveAt(i);
                 }
                 else
@@ -1276,7 +1276,7 @@ public partial class Main : Node2D
                     otherBld += CountBuildingsOfTeam(t);
                 }
             }
-            GameLog.Debug($"[状态] 玩家(T{pt}): ${_money[pt]} | {CountUnitsOfTeam(pt)} 单位 / {CountBuildingsOfTeam(pt)} 建筑 | 其他方合计: 单位={otherUnits} / 建筑={otherBld}");
+            GameLog.Debug($"[Status] Player(T{pt}): ${_money[pt]} | {CountUnitsOfTeam(pt)} units / {CountBuildingsOfTeam(pt)} buildings | Others total: units={otherUnits} / buildings={otherBld}");
         }
 
         CheckWinCondition();

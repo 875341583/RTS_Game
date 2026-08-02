@@ -214,7 +214,7 @@ public partial class Main
         }
         catch (Exception ex)
         {
-            GameLog.Error($"[SaveLoad] 快速存档失败: {ex.Message}");
+            GameLog.Error($"[SaveLoad] Quick save failed: {ex.Message}");
             ShowToast(TrManager.Tr("saveload.save_failed"), new Color(1.0f, 0.3f, 0.3f));
         }
     }
@@ -228,7 +228,7 @@ public partial class Main
             if (files.Length == 0)
             {
                 ShowToast(TrManager.Tr("saveload.no_saves"), new Color(1.0f, 0.8f, 0.3f));
-                GameLog.Debug("[SaveLoad] 无存档可用");
+                GameLog.Debug("[SaveLoad] No saves available");
                 return;
             }
             string path = $"{GetSaveDir()}/{files[0]}";
@@ -243,7 +243,7 @@ public partial class Main
         }
         catch (Exception ex)
         {
-            GameLog.Error($"[SaveLoad] 快速读档失败: {ex.Message}");
+            GameLog.Error($"[SaveLoad] Quick load failed: {ex.Message}");
             ShowToast(TrManager.Tr("saveload.load_failed"), new Color(1.0f, 0.3f, 0.3f));
         }
     }
@@ -256,7 +256,7 @@ public partial class Main
     {
         if (data == null) return;
 
-        GameLog.Debug($"[SaveLoad] 开始应用存档：版本{data.Version} 建筑{data.Buildings.Count} 单位{data.Units.Count}");
+        GameLog.Debug($"[SaveLoad] Applying save: version {data.Version} buildings {data.Buildings.Count} units {data.Units.Count}");
 
         // 1. 清空现有单位/建筑/资源/战略点节点
         ClearAllEntities();
@@ -277,7 +277,7 @@ public partial class Main
                 cell.HasTunnel = tm.HasTunnel;
                 _terrain.SetCell(tm.Gx, tm.Gy, cell);
             }
-            GameLog.Debug($"[SaveLoad] 应用了{data.TerrainMods.Count}个地形修改");
+            GameLog.Debug($"[SaveLoad] Applied {data.TerrainMods.Count} terrain mods");
         }
         // 地形渲染：由于地图刷新，重置IsoTerrainRenderer的缓存，让下次绘制重新出图
         // IsoTerrainRenderer通过TerrainGrid读取数据，此处无需再额外触发
@@ -422,7 +422,7 @@ public partial class Main
         _gameResult = data.GameResult ?? "";
 
         // 15. 重置PathFinder障碍（建筑已在SpawnBuilding时注册）
-        GameLog.Debug($"[SaveLoad] 存档应用完成。单位数={CountUnitsOfTeam(PlayerTeamId) + CountBuildingsOfTeam(PlayerTeamId)}");
+        GameLog.Debug($"[SaveLoad] Save applied. Unit+building count={CountUnitsOfTeam(PlayerTeamId) + CountBuildingsOfTeam(PlayerTeamId)}");
     }
 
     /// <summary>清空场景中所有单位、建筑节点（保留资源点/战略点/地形不重建）。</summary>

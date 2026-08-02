@@ -91,7 +91,7 @@ public static class TacticalCards
         var jsonText = ModLoader.ReadDataFile("tactical_cards.json");
         if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning("[TacticalCards] 无法读取 tactical_cards.json，使用硬编码fallback");
+            GameLog.Warning("[TacticalCards] Cannot read tactical_cards.json, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -99,7 +99,7 @@ public static class TacticalCards
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Array)
         {
-            GameLog.Warning("[TacticalCards] tactical_cards.json 格式错误，使用硬编码fallback");
+            GameLog.Warning("[TacticalCards] tactical_cards.json parse error, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -113,7 +113,7 @@ public static class TacticalCards
             var idStr = dict["id"].AsString();
             if (!System.Enum.TryParse<CardId>(idStr, out var id))
             {
-                GameLog.Warning($"[TacticalCards] 未知卡牌ID: {idStr}");
+                GameLog.Warning($"[TacticalCards] Unknown card ID: {idStr}");
                 continue;
             }
 
@@ -126,7 +126,7 @@ public static class TacticalCards
             };
         }
 
-        GameLog.Info($"[TacticalCards] 从JSON加载 {_cards.Count} 张战术卡");
+        GameLog.Info($"[TacticalCards] Loaded {_cards.Count} tactical cards from JSON");
     }
 
     /// <summary>P2-4: 硬编码fallback（JSON加载失败时使用）</summary>

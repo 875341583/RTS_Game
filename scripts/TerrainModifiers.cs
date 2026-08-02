@@ -91,7 +91,7 @@ public static class TerrainModifiers
         var jsonText = ModLoader.ReadDataFile("terrain_modifiers.json");
         if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning("[TerrainModifiers] 无法读取 terrain_modifiers.json，使用硬编码fallback");
+            GameLog.Warning("[TerrainModifiers] Cannot read terrain_modifiers.json, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -99,7 +99,7 @@ public static class TerrainModifiers
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Warning("[TerrainModifiers] terrain_modifiers.json 格式错误，使用硬编码fallback");
+            GameLog.Warning("[TerrainModifiers] terrain_modifiers.json parse error, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -117,7 +117,7 @@ public static class TerrainModifiers
                 var terrainStr = terrainKey.AsString();
                 if (!System.Enum.TryParse<TerrainType>(terrainStr, out var terrainType))
                 {
-                    GameLog.Warning($"[TerrainModifiers] 未知地形类型: {terrainStr}");
+                    GameLog.Warning($"[TerrainModifiers] Unknown terrain type: {terrainStr}");
                     continue;
                 }
 
@@ -162,7 +162,7 @@ public static class TerrainModifiers
             }
         }
 
-        GameLog.Info($"[TerrainModifiers] 从JSON加载 {_speedMods.Count} 地形修正 + {_slopeMods.Count} 缓坡修正");
+        GameLog.Info($"[TerrainModifiers] Loaded {_speedMods.Count} terrain mods + {_slopeMods.Count} slope mods from JSON");
     }
 
     /// <summary>硬编码fallback — 与原始 TerrainGrid.GetSpeedModifier 完全一致</summary>

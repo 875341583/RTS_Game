@@ -28,7 +28,7 @@ public partial class Main
             int col = i % cols, row = i / cols;
             friendlyUnits[i].CommandMove(pos + new Vector2(col * 40, row * 40));
         }
-        GameLog.Debug($"[Replay] 移动 -> {pos}");
+        GameLog.Debug($"[Replay] Move -> {pos}");
     }
 
     /// <summary>回放：攻击移动。</summary>
@@ -42,7 +42,7 @@ public partial class Main
             int col = i % cols, row = i / cols;
             friendlyUnits[i].CommandAttackMove(pos + new Vector2(col * 40, row * 40));
         }
-        GameLog.Debug($"[Replay] 攻击移动 -> {pos}");
+        GameLog.Debug($"[Replay] AttackMove -> {pos}");
     }
 
     /// <summary>回放：攻击单位。</summary>
@@ -56,7 +56,7 @@ public partial class Main
             foreach (var unit in friendlyUnits)
                 unit.CommandAttack(enemyUnit);
         }
-        GameLog.Debug($"[Replay] 攻击 @ {pos}");
+        GameLog.Debug($"[Replay] Attack @ {pos}");
     }
 
     /// <summary>回放：攻击建筑。</summary>
@@ -70,7 +70,7 @@ public partial class Main
             foreach (var unit in friendlyUnits)
                 unit.CommandAttackBuilding(enemyBuilding);
         }
-        GameLog.Debug($"[Replay] 攻击建筑 @ {pos}");
+        GameLog.Debug($"[Replay] AttackBuilding @ {pos}");
     }
 
     /// <summary>回放：停止。</summary>
@@ -78,14 +78,14 @@ public partial class Main
     {
         var sel = GetSelectedFriendlyUnits();
         foreach (var u in sel) u.CommandStop();
-        GameLog.Debug("[Replay] 停止");
+        GameLog.Debug("[Replay] Stop");
     }
 
     /// <summary>回放：间谍任务。</summary>
     public void ReplayCommandSpyMission(string? parms)
     {
         // 间谍任务需要选中间谍+右键敌方建筑，回放中简化为日志
-        GameLog.Debug($"[Replay] 间谍任务 ({parms})");
+        GameLog.Debug($"[Replay] SpyMission ({parms})");
     }
 
     /// <summary>回放：地形改造。</summary>
@@ -107,7 +107,7 @@ public partial class Main
                 }
             }
         }
-        GameLog.Debug($"[Replay] 地形改造 @ {pos}");
+        GameLog.Debug($"[Replay] TerrainMod @ {pos}");
     }
 
     /// <summary>回放：强制攻击。</summary>
@@ -121,7 +121,7 @@ public partial class Main
             int col = i % cols, row = i / cols;
             friendlyUnits[i].CommandForceAttack(pos + new Vector2(col * 40, row * 40));
         }
-        GameLog.Debug($"[Replay] 强制攻击 @ {pos}");
+        GameLog.Debug($"[Replay] ForceAttack @ {pos}");
     }
 
     /// <summary>回放：散开。</summary>
@@ -129,7 +129,7 @@ public partial class Main
     {
         var friendlyUnits = GetSelectedFriendlyUnits();
         foreach (var u in friendlyUnits) u.CommandScatter();
-        GameLog.Debug($"[Replay] 散开 ({friendlyUnits.Count} 单位)");
+        GameLog.Debug($"[Replay] Scatter ({friendlyUnits.Count} units)");
     }
 
     /// <summary>回放：巡逻。</summary>
@@ -139,7 +139,7 @@ public partial class Main
         var friendlyUnits = GetSelectedFriendlyUnits();
         foreach (var u in friendlyUnits)
             u.CommandPatrol(u.GlobalPosition, pos);
-        GameLog.Debug($"[Replay] 巡逻 -> {pos}");
+        GameLog.Debug($"[Replay] Patrol -> {pos}");
     }
 
     /// <summary>回放：守卫/驻守。</summary>
@@ -147,7 +147,7 @@ public partial class Main
     {
         var friendlyUnits = GetSelectedFriendlyUnits();
         foreach (var u in friendlyUnits) u.CommandHoldPosition();
-        GameLog.Debug("[Replay] 守卫/驻守");
+        GameLog.Debug("[Replay] HoldPosition");
     }
 
     /// <summary>回放：路径点追加。</summary>
@@ -156,7 +156,7 @@ public partial class Main
         var pos = ParseReplayXY(parms);
         var friendlyUnits = GetSelectedFriendlyUnits();
         foreach (var u in friendlyUnits) u.EnqueueWaypoint(pos);
-        GameLog.Debug($"[Replay] 路径点追加 @ {pos}");
+        GameLog.Debug($"[Replay] Waypoint @ {pos}");
     }
 
     /// <summary>回放：阵型移动。</summary>
@@ -173,7 +173,7 @@ public partial class Main
             var offset = friendlyUnits[i].GlobalPosition - center;
             friendlyUnits[i].CommandFormationMove(pos + offset);
         }
-        GameLog.Debug($"[Replay] 阵型移动 -> {pos}");
+        GameLog.Debug($"[Replay] FormationMove -> {pos}");
     }
 
     /// <summary>回放：保存编队。</summary>
@@ -181,7 +181,7 @@ public partial class Main
     {
         int idx = ParseReplayInt(parms, "Index");
         if (idx >= 0) SaveSquad(idx);
-        GameLog.Debug($"[Replay] 保存编队 {idx}");
+        GameLog.Debug($"[Replay] SaveSquad {idx}");
     }
 
     /// <summary>回放：选择编队。</summary>
@@ -189,7 +189,7 @@ public partial class Main
     {
         int idx = ParseReplayInt(parms, "Index");
         if (idx >= 0) SelectSquad(idx);
-        GameLog.Debug($"[Replay] 选择编队 {idx}");
+        GameLog.Debug($"[Replay] SelectSquad {idx}");
     }
 
     /// <summary>回放：放置建筑。</summary>
@@ -200,14 +200,14 @@ public partial class Main
         {
             TryBuildBuilding(bt);
         }
-        GameLog.Debug($"[Replay] 放置建筑 {typeName}");
+        GameLog.Debug($"[Replay] PlaceBuilding {typeName}");
     }
 
     /// <summary>回放：取消放置。</summary>
     public void ReplayCancelPlacement()
     {
         CancelPlacement();
-        GameLog.Debug("[Replay] 取消放置");
+        GameLog.Debug("[Replay] CancelPlacement");
     }
 
     /// <summary>回放：生产单位。</summary>
@@ -218,28 +218,28 @@ public partial class Main
         {
             TrySpawnUnit(ut);
         }
-        GameLog.Debug($"[Replay] 生产单位 {typeName}");
+        GameLog.Debug($"[Replay] SpawnUnit {typeName}");
     }
 
     /// <summary>回放：生产矿车。</summary>
     public void ReplaySpawnHarvester()
     {
         TrySpawnHarvester();
-        GameLog.Debug("[Replay] 生产矿车");
+        GameLog.Debug("[Replay] SpawnHarvester");
     }
 
     /// <summary>回放：取消生产。</summary>
     public void ReplayCancelProduction(string? parms)
     {
         // 简化：回放中无法精确还原取消的是哪个建筑的生产
-        GameLog.Debug($"[Replay] 取消生产 ({parms})");
+        GameLog.Debug($"[Replay] CancelProduction ({parms})");
     }
 
     /// <summary>回放：设置集结点。</summary>
     public void ReplaySetRallyPoint(string? parms)
     {
         var pos = ParseReplayXY(parms);
-        GameLog.Debug($"[Replay] 集结点 -> {pos}");
+        GameLog.Debug($"[Replay] RallyPoint -> {pos}");
     }
 
     /// <summary>回放：核弹。</summary>
@@ -248,7 +248,7 @@ public partial class Main
         var pos = ParseReplayXY(parms);
         ApplyNuke(pos, PlayerTeamId);
         _playerNukeCooldown = GameConst.NukeCooldown;
-        GameLog.Debug($"[Replay] 核弹 @ {pos}");
+        GameLog.Debug($"[Replay] Nuke @ {pos}");
     }
 
     /// <summary>回放：闪电风暴。</summary>
@@ -257,7 +257,7 @@ public partial class Main
         var pos = ParseReplayXY(parms);
         ApplyLightning(pos, PlayerTeamId);
         _playerLightningCooldown = GameConst.LightningCooldown;
-        GameLog.Debug($"[Replay] 闪电风暴 @ {pos}");
+        GameLog.Debug($"[Replay] Lightning @ {pos}");
     }
 
     /// <summary>回放：巡航导弹。</summary>
@@ -266,7 +266,7 @@ public partial class Main
         var pos = ParseReplayXY(parms);
         ApplyCruiseMissile(pos, PlayerTeamId);
         _playerMissileCooldown = GameConst.MissileCooldown;
-        GameLog.Debug($"[Replay] 巡航导弹 @ {pos}");
+        GameLog.Debug($"[Replay] CruiseMissile @ {pos}");
     }
 
     /// <summary>回放：维修建筑。</summary>
@@ -284,7 +284,7 @@ public partial class Main
                 }
             }
         }
-        GameLog.Debug("[Replay] 维修建筑");
+        GameLog.Debug("[Replay] RepairBuilding");
     }
 
     /// <summary>回放：出售建筑。</summary>
@@ -307,7 +307,7 @@ public partial class Main
             b.Destroyed -= OnBuildingDestroyed;
             b.QueueFree();
         }
-        GameLog.Debug($"[Replay] 出售建筑 {typeName}");
+        GameLog.Debug($"[Replay] SellBuilding {typeName}");
     }
 
     /// <summary>回放：研究科技。</summary>
@@ -323,14 +323,14 @@ public partial class Main
                 return;
             }
         }
-        GameLog.Debug($"[Replay] 研究科技 {techIdStr}");
+        GameLog.Debug($"[Replay] ResearchTech {techIdStr}");
     }
 
     /// <summary>回放：时代升级。</summary>
     public void ReplayAdvanceEra(string? parms)
     {
         TryAdvanceEra();
-        GameLog.Debug($"[Replay] 时代升级 ({parms})");
+        GameLog.Debug($"[Replay] AdvanceEra ({parms})");
     }
 
     /// <summary>回放：选择战术卡。</summary>
@@ -341,7 +341,7 @@ public partial class Main
         {
             SelectPlayerCard(cardId);
         }
-        GameLog.Debug($"[Replay] 选择战术卡 {cardStr}");
+        GameLog.Debug($"[Replay] SelectCard {cardStr}");
     }
 
     // ---- 回放参数解析辅助 ----

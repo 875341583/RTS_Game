@@ -105,7 +105,7 @@ public partial class Main
                     }
                     ReplayRecorder.Record(ReplayRecorder.ActionType.ForceAttack, new { X = worldPos.X, Y = worldPos.Y });
                     _forceAttackMode = false;
-                    GameLog.Debug($"[操控] 强制攻击 -> {worldPos} ({sel.Count} 单位)");
+                    GameLog.Debug($"[Control] Force attack -> {worldPos} ({sel.Count} units)");
                     return;
                 }
                 // 巡逻模式：P键+左键点击设置巡逻终点
@@ -116,7 +116,7 @@ public partial class Main
                         u.CommandPatrol(u.GlobalPosition, worldPos);
                     ReplayRecorder.Record(ReplayRecorder.ActionType.Patrol, new { X = worldPos.X, Y = worldPos.Y });
                     _patrolMode = false;
-                    GameLog.Debug($"[操控] 巡逻 -> {worldPos} ({sel.Count} 单位)");
+                    GameLog.Debug($"[Control] Patrol -> {worldPos} ({sel.Count} units)");
                     return;
                 }
                 // G1：攻击移动模式，左键点地发起攻击移动
@@ -217,7 +217,7 @@ public partial class Main
                 {
                     foreach (var u in sel) u.CommandHoldPosition();
                     ReplayRecorder.Record(ReplayRecorder.ActionType.HoldPosition);
-                    GameLog.Debug($"[操控] 守卫/驻守 ({sel.Count} 单位)");
+                    GameLog.Debug($"[Control] Hold position ({sel.Count} units)");
                 }
                 return;
             }
@@ -301,7 +301,7 @@ public partial class Main
             if (GetSelectedFriendlyUnits().Count > 0)
             {
                 _attackMoveMode = !_attackMoveMode;
-                GameLog.Debug($"[操控] 攻击移动模式 {(_attackMoveMode ? "开启 - 左键点地发起" : "关闭")}");
+                GameLog.Debug($"[Control] Attack move mode {(_attackMoveMode ? "ON - left click ground to engage" : "OFF")}");
             }
         }
         else if (kc == Key.X)
@@ -311,7 +311,7 @@ public partial class Main
             {
                 foreach (var u in sel) u.CommandStop();
                 ReplayRecorder.Record(ReplayRecorder.ActionType.CommandStop);
-                GameLog.Debug($"[操控] 停止 ({sel.Count} 单位)");
+                GameLog.Debug($"[Control] Stop ({sel.Count} units)");
             }
         }
         else if (kc == Key.Escape)
@@ -332,7 +332,7 @@ public partial class Main
                     _attackMoveMode = false;
                     _patrolMode = false;
                 }
-                GameLog.Debug($"[操控] 强制攻击模式 {(_forceAttackMode ? "开启 - 左键点击目标" : "关闭")}");
+                GameLog.Debug($"[Control] Force attack mode {(_forceAttackMode ? "ON - left click target" : "OFF")}");
             }
         }
         // D键：散开
@@ -343,7 +343,7 @@ public partial class Main
             {
                 foreach (var u in sel) u.CommandScatter();
                 ReplayRecorder.Record(ReplayRecorder.ActionType.Scatter);
-                GameLog.Debug($"[操控] 散开 ({sel.Count} 单位)");
+                GameLog.Debug($"[Control] Scatter ({sel.Count} units)");
             }
         }
         // P键：巡逻模式
@@ -357,7 +357,7 @@ public partial class Main
                     _attackMoveMode = false;
                     _forceAttackMode = false;
                 }
-                GameLog.Debug($"[操控] 巡逻模式 {(_patrolMode ? "开启 - 左键点击设置巡逻终点" : "关闭")}");
+                GameLog.Debug($"[Control] Patrol mode {(_patrolMode ? "ON - left click to set patrol endpoint" : "OFF")}");
             }
         }
         // F键：阵型移动模式
@@ -366,7 +366,7 @@ public partial class Main
             if (GetSelectedFriendlyUnits().Count > 0)
             {
                 _formationMode = !_formationMode;
-                GameLog.Debug($"[操控] 阵型移动模式 {(_formationMode ? "开启 - 右键移动保持阵型" : "关闭")}");
+                GameLog.Debug($"[Control] Formation move mode {(_formationMode ? "ON - right click move in formation" : "OFF")}");
             }
         }
         else if (kc == Key.R)
@@ -383,11 +383,11 @@ public partial class Main
                         _money[PlayerTeamId] -= cost;
                         b.Repair();
                         repaired++;
-                        GameLog.Debug($"[维修] {b.BuildingName} 已修复满血，扣 ${cost}，剩余 ${_money[PlayerTeamId]}");
+                        GameLog.Debug($"[Repair] {b.BuildingName} fully repaired, cost ${cost}, balance ${_money[PlayerTeamId]}");
                     }
                     else
                     {
-                        GameLog.Debug($"[维修] 资金不足！维修{b.BuildingName}需要 ${cost}，当前 ${_money[PlayerTeamId]}");
+                        GameLog.Debug($"[Repair] Insufficient funds! Repairing {b.BuildingName} requires ${cost}, current ${_money[PlayerTeamId]}");
                     }
                 }
             }
@@ -395,7 +395,7 @@ public partial class Main
                 ReplayRecorder.Record(ReplayRecorder.ActionType.RepairBuilding, new { Count = repaired, Buildings = _selected.OfType<Building>().Where(b => b.TeamId == PlayerTeamId && IsInstanceValid(b) && b.NeedsRepair).Select(b => new { X = b.GlobalPosition.X, Y = b.GlobalPosition.Y }).ToArray() });
             if (repaired == 0)
             {
-                GameLog.Debug("[维修] 没有可维修的建筑（需选中受损的蓝方建筑）");
+                GameLog.Debug("[Repair] No repairable buildings (select damaged friendly building)");
             }
         }
         else if (kc == Key.V)
@@ -414,7 +414,7 @@ public partial class Main
                 b.SetSelected(false);
                 _selected.Remove(b);
                 ReplayRecorder.Record(ReplayRecorder.ActionType.SellBuilding, new { Type = b.Type.ToString(), X = b.GlobalPosition.X, Y = b.GlobalPosition.Y });
-                GameLog.Debug($"[出售] {b.BuildingName} 已出售，回收 ${refund}，资金 ${_money[PlayerTeamId]}");
+                GameLog.Debug($"[Sell] {b.BuildingName} sold, refund ${refund}, balance ${_money[PlayerTeamId]}");
                 // P0-1: 移除PathFinder障碍并取消事件订阅（H4修复）
                 OnBuildingDestroyed(b);
                 b.Destroyed -= OnBuildingDestroyed;
@@ -422,7 +422,7 @@ public partial class Main
             }
             if (toSell.Count == 0)
             {
-                GameLog.Debug("[出售] 没有可出售的建筑（基地不可出售）");
+                GameLog.Debug("[Sell] No sellable buildings (base cannot be sold)");
             }
         }
         else if (kc == Key.Z)
@@ -433,13 +433,13 @@ public partial class Main
             if (!HasBuilding(PlayerTeamId, BuildingType.NukeSilo))
             {
                 ShowToast(TrManager.Tr("input.nuke_unavailable"), new Color(1f, 0.5f, 0.3f));
-                GameLog.Debug("[核弹] 不可用：需核弹发射井");
+                GameLog.Debug("[Nuke] Unavailable: requires Nuke Silo");
             }
             else if (_playerNukeCooldown > 0f)
             {
                 int sec = Mathf.CeilToInt(_playerNukeCooldown);
                 ShowToast(TrManager.Tr("input.nuke_cooldown", sec / 60, sec % 60), new Color(1f, 0.6f, 0.3f));
-                GameLog.Debug($"[核弹] 冷却中：{sec}s");
+                GameLog.Debug($"[Nuke] Cooldown: {sec}s");
             }
             else
             {
@@ -448,7 +448,7 @@ public partial class Main
                 if (_nukeTargetMode) _missileTargetMode = false;   // 与巡航导弹互斥
                 if (_nukeTargetMode)
                     ShowToast(TrManager.Tr("input.nuke_ready"), new Color(1f, 0.3f, 0.2f));
-                GameLog.Debug($"[核弹] 目标选择模式 {(_nukeTargetMode ? "开启" : "关闭")}");
+                GameLog.Debug($"[Nuke] Target select mode {(_nukeTargetMode ? "ON" : "OFF")}");
                 QueueRedraw();
             }
         }
@@ -460,13 +460,13 @@ public partial class Main
             if (!HasBuilding(PlayerTeamId, BuildingType.LightningTower))
             {
                 ShowToast(TrManager.Tr("input.lightning_unavailable"), new Color(0.5f, 0.7f, 1f));
-                GameLog.Debug("[闪电] 不可用：需闪电风暴塔");
+                GameLog.Debug("[Lightning] Unavailable: requires Lightning Tower");
             }
             else if (_playerLightningCooldown > 0f)
             {
                 int sec = Mathf.CeilToInt(_playerLightningCooldown);
                 ShowToast(TrManager.Tr("input.lightning_cooldown", sec / 60, sec % 60), new Color(0.5f, 0.7f, 1f));
-                GameLog.Debug($"[闪电] 冷却中：{sec}s");
+                GameLog.Debug($"[Lightning] Cooldown: {sec}s");
             }
             else
             {
@@ -475,7 +475,7 @@ public partial class Main
                 if (_lightningTargetMode) _missileTargetMode = false; // 与导弹互斥
                 if (_lightningTargetMode)
                     ShowToast(TrManager.Tr("input.lightning_ready"), new Color(0.5f, 0.8f, 1f));
-                GameLog.Debug($"[闪电] 目标选择模式 {(_lightningTargetMode ? "开启" : "关闭")}");
+                GameLog.Debug($"[Lightning] Target select mode {(_lightningTargetMode ? "ON" : "OFF")}");
                 QueueRedraw();
             }
         }
@@ -485,13 +485,13 @@ public partial class Main
             if (!HasBuilding(PlayerTeamId, BuildingType.MissileSilo))
             {
                 ShowToast(TrManager.Tr("input.missile_unavailable"), new Color(1f, 0.8f, 0.3f));
-                GameLog.Debug("[导弹] 不可用：需导弹发射井");
+                GameLog.Debug("[Missile] Unavailable: requires Missile Silo");
             }
             else if (_playerMissileCooldown > 0f)
             {
                 int sec = Mathf.CeilToInt(_playerMissileCooldown);
                 ShowToast(TrManager.Tr("input.missile_cooldown", sec / 60, sec % 60), new Color(1f, 0.8f, 0.5f));
-                GameLog.Debug($"[导弹] 冷却中：{sec}s");
+                GameLog.Debug($"[Missile] Cooldown: {sec}s");
             }
             else
             {
@@ -500,7 +500,7 @@ public partial class Main
                 if (_missileTargetMode) _lightningTargetMode = false;
                 if (_missileTargetMode)
                     ShowToast(TrManager.Tr("input.missile_ready"), new Color(1f, 0.8f, 0.3f));
-                GameLog.Debug($"[导弹] 目标选择模式 {(_missileTargetMode ? "开启" : "关闭")}");
+                GameLog.Debug($"[Missile] Target select mode {(_missileTargetMode ? "ON" : "OFF")}");
                 QueueRedraw();
             }
         }
@@ -516,7 +516,7 @@ public partial class Main
     {
         _squads[idx] = GetSelectedFriendlyUnits();
         ReplayRecorder.Record(ReplayRecorder.ActionType.SaveSquad, new { Index = idx });
-        GameLog.Debug($"[编队] 编队{idx + 1} 已保存 ({_squads[idx].Count} 单位)");
+        GameLog.Debug($"[Squad] Squad {idx + 1} saved ({_squads[idx].Count} units)");
     }
 
     private void SelectSquad(int idx)
@@ -548,7 +548,7 @@ public partial class Main
             center /= _selected.Count;
             _camera.Position = center;
         }
-        GameLog.Debug($"[编队] 选取编队{idx + 1} ({_selected.Count} 单位)");
+        GameLog.Debug($"[Squad] Selected squad {idx + 1} ({_selected.Count} units)");
     }
 
     private void IssueAttackMove(Vector2 worldPos)
@@ -561,7 +561,7 @@ public partial class Main
             int col = i % cols, row = i / cols;
             list[i].CommandAttackMove(worldPos + new Vector2(col * 40, row * 40));
         }
-        GameLog.Debug($"[操控] 攻击移动 -> {worldPos} ({list.Count} 单位)");
+        GameLog.Debug($"[Control] Attack move -> {worldPos} ({list.Count} units)");
     }
 
     // ---------- 截图 ----------
@@ -574,7 +574,7 @@ public partial class Main
             var ts = DateTime.Now.ToString("HHmmss");
             var path = $"user://shot_{tag}_{ts}.png";
             img.SavePng(path);
-            GameLog.Debug($"[截图] 已保存: {ProjectSettings.GlobalizePath(path)} 尺寸={img.GetSize()}");
+            GameLog.Debug($"[Screenshot] Saved: {ProjectSettings.GlobalizePath(path)} size={img.GetSize()}");
         }
         catch (Exception ex) { GameLog.Error(TrManager.Tr("log.screenshot_failed", ex.Message)); }
     }
@@ -598,7 +598,7 @@ public partial class Main
                     if (cancelled.HasValue)
                     {
                         ReplayRecorder.Record(ReplayRecorder.ActionType.CancelProduction, new { Building = producer.BuildingName, X = producer.GlobalPosition.X, Y = producer.GlobalPosition.Y });
-                        GameLog.Debug($"[取消生产] {producer.BuildingName} 取消: {cancelled.Value}");
+                        GameLog.Debug($"[Cancel Production] {producer.BuildingName} cancelled: {cancelled.Value}");
                         // 补强：取消生产时播放BuildCancel音效
                         PlayBuildCancelSfx();
                     }
@@ -607,7 +607,7 @@ public partial class Main
                 // 否则设集结点
                 producer.SetRallyPoint(worldPos);
                 ReplayRecorder.Record(ReplayRecorder.ActionType.SetRallyPoint, new { X = worldPos.X, Y = worldPos.Y });
-                GameLog.Debug($"[集结点] {producer.BuildingName} 集结点 -> {worldPos}");
+                GameLog.Debug($"[Rally Point] {producer.BuildingName} rally point -> {worldPos}");
                 return;
             }
         }
@@ -690,7 +690,7 @@ public partial class Main
                 friendlyUnits[i].EnqueueWaypoint(worldPos + offset);
             }
             ReplayRecorder.Record(ReplayRecorder.ActionType.Waypoint, new { X = worldPos.X, Y = worldPos.Y });
-            GameLog.Debug($"[操控] 追加路径点 -> {worldPos} ({friendlyUnits.Count} 单位)");
+            GameLog.Debug($"[Control] Enqueue waypoint -> {worldPos} ({friendlyUnits.Count} units)");
             _audio?.PlaySfx(AudioManager.Sfx.Move);
             var wpMover = friendlyUnits.FirstOrDefault();
             if (wpMover != null)
@@ -712,7 +712,7 @@ public partial class Main
                 friendlyUnits[i].CommandFormationMove(worldPos + offset);
             }
             ReplayRecorder.Record(ReplayRecorder.ActionType.FormationMove, new { X = worldPos.X, Y = worldPos.Y });
-            GameLog.Debug($"[操控] 阵型移动 -> {worldPos} ({friendlyUnits.Count} 单位)");
+            GameLog.Debug($"[Control] Formation move -> {worldPos} ({friendlyUnits.Count} units)");
             _formationMode = false; // 单次使用后关闭
             _audio?.PlaySfx(AudioManager.Sfx.Move);
             var fmMover = friendlyUnits.FirstOrDefault();

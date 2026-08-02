@@ -38,7 +38,7 @@ namespace RTSGame
             }
             catch (Exception ex)
             {
-                GameLog.Error($"[SaveLoad] 保存异常: {ex.Message}");
+                GameLog.Error($"[SaveLoad] save exception: {ex.Message}");
                 throw;
             }
         }
@@ -215,11 +215,11 @@ namespace RTSGame
             using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Write);
             if (file == null)
             {
-                GameLog.Error($"[SaveLoad] 无法打开存档文件: {filePath}");
+                GameLog.Error($"[SaveLoad] cannot open savefile: {filePath}");
                 return;
             }
             file.StoreString(json);
-            GameLog.Info($"[SaveLoad] 游戏已保存到: {filePath} (建筑{data.Buildings.Count} 单位{data.Units.Count} 资源{data.Resources.Count})");
+            GameLog.Info($"[SaveLoad] game saved to {filePath} (buildings {data.Buildings.Count} units {data.Units.Count} resources {data.Resources.Count})");
         }
 
         // ========== 读档 ==========
@@ -235,7 +235,7 @@ namespace RTSGame
             }
             catch (Exception ex)
             {
-                GameLog.Error($"[SaveLoad] 读档异常: {ex.Message}");
+                GameLog.Error($"[SaveLoad] load exception: {ex.Message}");
                 return null;
             }
         }
@@ -244,14 +244,14 @@ namespace RTSGame
         {
             if (!Godot.FileAccess.FileExists(filePath))
             {
-                GameLog.Error($"[SaveLoad] 存档文件不存在: {filePath}");
+                GameLog.Error($"[SaveLoad] savefile not found: {filePath}");
                 return null;
             }
 
             using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
             if (file == null)
             {
-                GameLog.Error($"[SaveLoad] 无法读取存档文件: {filePath}");
+                GameLog.Error($"[SaveLoad] cannot read savefile: {filePath}");
                 return null;
             }
 
@@ -259,7 +259,7 @@ namespace RTSGame
             var data = Json.ParseString(json);
             if (data.VariantType == Variant.Type.Nil)
             {
-                GameLog.Error($"[SaveLoad] JSON解析失败: {filePath}");
+                GameLog.Error($"[SaveLoad] JSON parse failed: {filePath}");
                 return null;
             }
 
@@ -267,28 +267,28 @@ namespace RTSGame
             var saveData = VariantToSaveData(data);
             if (saveData == null)
             {
-                GameLog.Error("[SaveLoad] 存档数据格式转换失败");
+                GameLog.Error("[SaveLoad] savefile data format conversion failed");
                 return null;
             }
 
             // P0修复: 存档版本迁移 — 支持旧版本存档升级到当前版本
             if (saveData.Version < SaveVersion)
             {
-                GameLog.Info($"[SaveLoad] 存档版本迁移: v{saveData.Version} → v{SaveVersion}");
+                GameLog.Info($"[SaveLoad] savefile version migration: v{saveData.Version} -> v{SaveVersion}");
                 saveData = MigrateSaveData(saveData);
                 if (saveData == null)
                 {
-                    GameLog.Error($"[SaveLoad] 存档迁移失败: v{saveData?.Version} → v{SaveVersion}");
+                    GameLog.Error($"[SaveLoad] savefile migration failed: v{saveData?.Version} -> v{SaveVersion}");
                     return null;
                 }
             }
             else if (saveData.Version > SaveVersion)
             {
-                GameLog.Error($"[SaveLoad] 存档版本过高: 存档v{saveData.Version} 当前v{SaveVersion}，请更新游戏");
+                GameLog.Error($"[SaveLoad] savefile version too high: save v{saveData.Version} current v{SaveVersion}, please update game");
                 return null;
             }
 
-            GameLog.Info($"[SaveLoad] 存档加载成功: {filePath} (版本{saveData.Version} 建筑{saveData.Buildings.Count} 单位{saveData.Units.Count})");
+            GameLog.Info($"[SaveLoad] savefile loaded ok: {filePath} (version {saveData.Version} buildings {saveData.Buildings.Count} units {saveData.Units.Count})");
             return saveData;
         }
 
@@ -303,10 +303,10 @@ namespace RTSGame
                         // v1→v2: 无结构性变化，仅版本号升级（v1存档完全兼容v2）
                         // 未来如有字段新增，在此处补全默认值
                         data.Version = 2;
-                        GameLog.Info("[SaveLoad] 迁移 v1→v2: 版本号升级（无数据变更）");
+                        GameLog.Info("[SaveLoad] migration v1->v2: version upgrade (no data change)");
                         break;
                     default:
-                        GameLog.Error($"[SaveLoad] 未知存档版本: v{data.Version}");
+                        GameLog.Error($"[SaveLoad] unknown savefile version: v{data.Version}");
                         return null;
                 }
             }
@@ -327,7 +327,7 @@ namespace RTSGame
             {
                 if (!d.ContainsKey(k))
                 {
-                    GameLog.Error($"[SaveLoad] 存档缺少 {k} 字段");
+                    GameLog.Error($"[SaveLoad] savefile missing {k} field");
                     return null;
                 }
             }
@@ -344,7 +344,7 @@ namespace RTSGame
             // Money数组（旧版存档可能缺键，容错为空数组）
             if (!d.ContainsKey("money"))
             {
-                GameLog.Error("[SaveLoad] 存档缺少 money 字段");
+                GameLog.Error("[SaveLoad] savefile missing money field");
                 return null;
             }
             var moneyArr = d["money"].AsGodotArray();
@@ -355,7 +355,7 @@ namespace RTSGame
             // 科技进度
             if (!d.ContainsKey("techProgress"))
             {
-                GameLog.Error("[SaveLoad] 存档缺少 techProgress 字段");
+                GameLog.Error("[SaveLoad] savefile missing techProgress field");
                 return null;
             }
             var techArr = d["techProgress"].AsGodotArray();
@@ -378,7 +378,7 @@ namespace RTSGame
             // 时代进度
             if (!d.ContainsKey("eraProgress"))
             {
-                GameLog.Error("[SaveLoad] 存档缺少 eraProgress 字段");
+                GameLog.Error("[SaveLoad] savefile missing eraProgress field");
                 return null;
             }
             var eraArr = d["eraProgress"].AsGodotArray();
@@ -408,7 +408,7 @@ namespace RTSGame
             // 建筑
             if (!d.ContainsKey("buildings"))
             {
-                GameLog.Error("[SaveLoad] 存档缺少 buildings 字段");
+                GameLog.Error("[SaveLoad] savefile missing buildings field");
                 return null;
             }
             var bldgArr = d["buildings"].AsGodotArray();
@@ -444,7 +444,7 @@ namespace RTSGame
             // 单位
             if (!d.ContainsKey("units"))
             {
-                GameLog.Error("[SaveLoad] 存档缺少 units 字段");
+                GameLog.Error("[SaveLoad] savefile missing units field");
                 return null;
             }
             var unitArr = d["units"].AsGodotArray();
@@ -501,7 +501,7 @@ namespace RTSGame
             // 资源点
             if (!d.ContainsKey("resources"))
             {
-                GameLog.Error("[SaveLoad] 存档缺少 resources 字段");
+                GameLog.Error("[SaveLoad] savefile missing resources field");
                 return null;
             }
             var resArr = d["resources"].AsGodotArray();

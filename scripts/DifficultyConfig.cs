@@ -66,7 +66,7 @@ public static class DifficultyConfig
         var jsonText = ModLoader.ReadDataFile("difficulty.json");
         if (string.IsNullOrEmpty(jsonText))
         {
-            GameLog.Warning("[DifficultyConfig] 无法读取 difficulty.json，使用硬编码fallback");
+            GameLog.Warning("[DifficultyConfig] Cannot read difficulty.json, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -74,7 +74,7 @@ public static class DifficultyConfig
         var jsonResult = Json.ParseString(jsonText);
         if (jsonResult.VariantType != Variant.Type.Dictionary)
         {
-            GameLog.Warning("[DifficultyConfig] difficulty.json 格式错误，使用硬编码fallback");
+            GameLog.Warning("[DifficultyConfig] difficulty.json parse error, using hardcoded fallback");
             LoadFallback();
             return;
         }
@@ -103,7 +103,7 @@ public static class DifficultyConfig
             };
         }
 
-        GameLog.Info($"[DifficultyConfig] 从JSON加载 {_configs.Count} 个难度配置");
+        GameLog.Info($"[DifficultyConfig] Loaded {_configs.Count} difficulty configs from JSON");
     }
 
     private static void LoadFallback()

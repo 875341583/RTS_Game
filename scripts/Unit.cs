@@ -418,7 +418,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (anyLoaded)
                 _isoSprites[name] = arr;
         }
-        GameLog.Debug($"[R3] 等距精灵图加载完成: {_isoSprites.Count} 种兵种");
+        GameLog.Debug($"[R3] Isometric sprites loaded: {_isoSprites.Count} unit types");
     }
 
     /// <summary>R3: 根据移动方向更新等距精灵图。</summary>
@@ -581,7 +581,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 case HeroSkill.Shield: UnitName = TrManager.Tr("unit.hero_shield"); MaxHealth = 300f; break;
             }
             Health = MaxHealth;
-            GameLog.Debug($"[E6b] 英雄技能：{_heroSkill}");
+            GameLog.Debug($"[E6b] Hero skill: {_heroSkill}");
         }
     }
 
@@ -629,7 +629,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         passenger.Visible = false;
         passenger.SetSelected(false);
 
-        GameLog.Debug($"[IFV] {passenger.UnitName} 进入 {UnitName} (搭载 {Passengers.Count}/{MaxPassengers})");
+        GameLog.Debug($"[IFV] {passenger.UnitName} embarked into {UnitName} (occupants {Passengers.Count}/{MaxPassengers})");
 
         // 首个乘客决定合体功能（运输直升机/登陆艇/航母不做IFV合体，只搭载）
         if (Passengers.Count == 1 && Type == UnitType.Transport)
@@ -657,7 +657,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             main.GetNode<Node2D>("Units").AddChild(p);
         }
 
-        GameLog.Debug($"[IFV] {Passengers.Count} 名乘客从 {UnitName} 下车");
+        GameLog.Debug($"[IFV] {Passengers.Count} passengers disembarked from {UnitName}");
         Passengers.Clear();
 
         // 恢复运输车基础属性
@@ -681,7 +681,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 AttackRange = 0f;
                 MaxHealth = 200f;
                 Health = 200f;
-                GameLog.Debug("[IFV] 合体：工兵战车（维修+地形改造）");
+                GameLog.Debug("[IFV] Merge: Sapper Vehicle (repair + terrain modification)");
                 break;
             case UnitType.ChiefEngineer:
                 // 高级工程师→高级工程车：高效改造
@@ -690,7 +690,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 AttackRange = 0f;
                 MaxHealth = 250f;
                 Health = 250f;
-                GameLog.Debug("[IFV] 合体：高级工兵战车（高级改造）");
+                GameLog.Debug("[IFV] Merge: Advanced Sapper Vehicle (advanced modification)");
                 break;
             case UnitType.Infantry:
                 // 步兵→武装吉普：轻机枪火力
@@ -702,7 +702,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 160f;
                 AggroRange = 250f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：武装吉普（轻机枪）");
+                GameLog.Debug("[IFV] Merge: Armed Jeep (light machine gun)");
                 break;
             case UnitType.Grenadier:
                 // 掷弹兵→自走炮：AOE火力
@@ -715,7 +715,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 180f;
                 AggroRange = 280f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：自走炮（AOE火力）");
+                GameLog.Debug("[IFV] Merge: Assault Gun (AOE firepower)");
                 break;
             case UnitType.Sniper:
                 // 狙击手→狙击战车：远程精确火力
@@ -728,7 +728,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 150f;
                 AggroRange = 400f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：狙击战车（远程精确）");
+                GameLog.Debug("[IFV] Merge: Sniper Tank (long-range precision)");
                 break;
             case UnitType.FlameInfantry:
                 // 喷火兵→喷火战车：近距高DPS
@@ -741,7 +741,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 200f;
                 AggroRange = 150f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：喷火战车（近距高DPS）");
+                GameLog.Debug("[IFV] Merge: Flame Tank (close-range high DPS)");
                 break;
             // E6b：特殊单位IFV合体
             case UnitType.Hero:
@@ -754,7 +754,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 250f;
                 AggroRange = 300f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：英雄战车（超强火力）");
+                GameLog.Debug("[IFV] Merge: Hero Tank (super firepower)");
                 break;
             case UnitType.Spy:
                 // 间谍→间谍车：渗透战车
@@ -764,7 +764,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 MaxHealth = 180f;
                 Health = 180f;
                 MoveSpeed = 280f;
-                GameLog.Debug("[IFV] 合体：间谍车（高速渗透）");
+                GameLog.Debug("[IFV] Merge: Spy Vehicle (high-speed infiltration)");
                 break;
             case UnitType.Thief:
                 // 窃贼→劫掠车：偷钱战车
@@ -776,7 +776,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 160f;
                 AggroRange = 180f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：劫掠车（偷钱战车）");
+                GameLog.Debug("[IFV] Merge: Raider (money-stealing vehicle)");
                 break;
             default:
                 // 其他步兵→轻型武装车
@@ -788,7 +788,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 Health = 170f;
                 AggroRange = 220f;
                 AutoDefend = true;
-                GameLog.Debug("[IFV] 合体：轻型武装车");
+                GameLog.Debug("[IFV] Merge: Light Armed Vehicle");
                 break;
         }
 
@@ -1129,7 +1129,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             // 检查目标建筑是否还存在
             if (!IsInstanceValid(_spyTargetBuilding) || _spyTargetBuilding.Health <= 0)
             {
-                GameLog.Debug("[G7] 间谍任务取消：目标建筑已不存在");
+                GameLog.Debug("[G7] Spy mission cancelled: target building no longer exists");
                 _spyMission = null;
                 _spyTargetBuilding = null;
                 _spyMissionTimer = 0f;
@@ -1141,7 +1141,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (dist > 80f)
             {
                 // 太远了，取消任务
-                GameLog.Debug($"[G7] 间谍任务取消：距离目标过远 ({(int)dist}px)");
+                GameLog.Debug($"[G7] Spy mission cancelled: too far from target ({(int)dist}px)");
                 _spyMission = null;
                 _spyTargetBuilding = null;
                 _spyMissionTimer = 0f;
@@ -1163,7 +1163,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
 
                 if (success)
                 {
-                    GameLog.Debug($"[G7] 间谍任务成功: {SpyMission.MissionName(missionType)} → {target.BuildingName} (Team {target.TeamId})");
+                    GameLog.Debug($"[G7] Spy mission succeeded: {SpyMission.MissionName(missionType)} → {target.BuildingName} (Team {target.TeamId})");
                     // 通知Main执行任务效果
                     if (GetParent()?.GetParent() is Main mainNode)
                     {
@@ -1172,7 +1172,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 }
                 else
                 {
-                    GameLog.Error($"[G7] 间谍任务失败: {SpyMission.MissionName(missionType)} — 间谍被击毙！");
+                    GameLog.Error($"[G7] Spy mission failed: {SpyMission.MissionName(missionType)} — spy killed!");
                     // 间谍死亡
                     TakeDamage(MaxHealth + 1f); // 确保死亡
                 }
@@ -1217,7 +1217,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                         int stolen = Mathf.Min(200, mainNode.GetMoney(b.TeamId));
                         mainNode.SpendMoney(b.TeamId, stolen);
                         mainNode.AddResourceForTeam(TeamId, stolen);
-                        GameLog.Debug($"[E6b] 间谍偷取 ${stolen} (Team {b.TeamId} → Team {TeamId})");
+                        GameLog.Debug($"[E6b] Spy stole ${stolen} (Team {b.TeamId} → Team {TeamId})");
                     }
                 }
                 break;
@@ -1272,7 +1272,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                         main.SpendMoney(b.TeamId, stolen);
                         main.AddResourceForTeam(TeamId, stolen);
                         _thiefStealCooldown = 8f; // 8秒冷却
-                        GameLog.Debug($"[E6b] 窃贼偷取 ${stolen} (Team {b.TeamId} → Team {TeamId})");
+                        GameLog.Debug($"[E6b] Thief stole ${stolen} (Team {b.TeamId} → Team {TeamId})");
                     }
                     return;
                 }
@@ -1294,7 +1294,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                         main.SpendMoney(u.TeamId, stolen);
                         main.AddResourceForTeam(TeamId, stolen);
                         _thiefStealCooldown = 8f;
-                        GameLog.Debug($"[E6b] 窃贼偷取矿车 ${stolen} (Team {u.TeamId} → Team {TeamId})");
+                        GameLog.Debug($"[E6b] Thief stole from harvester ${stolen} (Team {u.TeamId} → Team {TeamId})");
                     }
                     return;
                 }
@@ -2303,7 +2303,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _attackBuildingTarget = null;
         // P0-1: 清除旧路径
         ClearPath();
-        GameLog.Debug($"[G7] 间谍开始任务: {SpyMission.MissionName(mission)} → {target.BuildingName}");
+        GameLog.Debug($"[G7] Spy starting mission: {SpyMission.MissionName(mission)} → {target.BuildingName}");
     }
 
     public void TakeDamage(float damage)
@@ -2573,7 +2573,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     protected virtual void Die()
     {
         _isDead = true;
-        GameLog.Debug($"{UnitName} (阵营 {TeamId}) 被摧毁");
+        GameLog.Debug($"{UnitName} (Team {TeamId}) destroyed");
 
         // E6：运输车被摧毁时，乘客全部阵亡
         if (IsTransport && Passengers.Count > 0)
@@ -2736,14 +2736,14 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 if (!mainNode.SpendMoney(TeamId, _terrainModCost))
                 {
                     // 资金不足
-                    GameLog.Error($"[TerrainMod] {UnitName} (Team {TeamId}) 资金不足 $_terrainModCost，无法施工");
+                    GameLog.Error($"[TerrainMod] {UnitName} (Team {TeamId}) insufficient funds $_terrainModCost, unable to construct");
                     _terrainModType = TerrainModType.None;
                     _isConstructing = false;
                     return;
                 }
             }
 
-            GameLog.Debug($"[TerrainMod] {UnitName} (Team {TeamId}) 开始{_terrainModType}施工，费用${_terrainModCost}，耗时{_terrainModDuration:F1}s");
+            GameLog.Debug($"[TerrainMod] {UnitName} (Team {TeamId}) started {_terrainModType} construction, cost ${_terrainModCost}, duration {_terrainModDuration:F1}s");
         }
 
         // 施工倒计时
@@ -2865,21 +2865,21 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 cell.Type = TerrainType.Grass;
                 cell.Elevation = 1;
                 terrain.SetCell(gx, gy, cell);
-                GameLog.Debug($"[TerrainMod] 山脉削平完成 ({gx},{gy})");
+                GameLog.Debug($"[TerrainMod] Mountain flattened ({gx},{gy})");
                 break;
 
             case TerrainModType.Tunnel:
                 // 开凿隧道：山脉格子标记HasTunnel
                 cell.HasTunnel = true;
                 terrain.SetCell(gx, gy, cell);
-                GameLog.Debug($"[TerrainMod] 隧道开通完成 ({gx},{gy})");
+                GameLog.Debug($"[TerrainMod] Tunnel opened ({gx},{gy})");
                 break;
 
             case TerrainModType.Bridge:
                 // 架桥：水面格子标记HasBridge
                 cell.HasBridge = true;
                 terrain.SetCell(gx, gy, cell);
-                GameLog.Debug($"[TerrainMod] 桥梁架设完成 ({gx},{gy})");
+                GameLog.Debug($"[TerrainMod] Bridge built ({gx},{gy})");
                 break;
 
             case TerrainModType.UnderseaTunnel:
@@ -2887,7 +2887,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 cell.HasTunnel = true;
                 cell.Elevation = 1; // 隧道内部按平地高度
                 terrain.SetCell(gx, gy, cell);
-                GameLog.Debug($"[TerrainMod] 海底隧道贯通完成 ({gx},{gy})");
+                GameLog.Debug($"[TerrainMod] Undersea tunnel completed ({gx},{gy})");
                 break;
         }
 
@@ -2920,7 +2920,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (ability == UnitAbility.ReconVision)
                 AggroRange *= 1.5f;
             // 掠夺：需要Main配合（在Die中回调）
-            GameLog.Debug($"[E11] {UnitName} 升级到 Lv{_level}！获得能力: {AbilityName(ability)}");
+            GameLog.Debug($"[E11] {UnitName} upgraded to Lv{_level}! Gained ability: {AbilityName(ability)}");
         }
     }
 

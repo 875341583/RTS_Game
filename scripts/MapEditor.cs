@@ -133,7 +133,7 @@ public partial class MapEditor : Control
             {
                 _mapData = loaded;
                 _currentSeed = loaded.Seed;
-                GameLog.Info($"[MapEditor] 从文件加载地图: {loadPath}");
+                GameLog.Info($"[MapEditor] map loaded from file: {loadPath}");
             }
         }
 
@@ -150,7 +150,7 @@ public partial class MapEditor : Control
         RefreshGround();
         RefreshMarkers();
 
-        GameLog.Info($"[MapEditor] 编辑器就绪 (seed={_currentSeed}, mods={_mapData.TerrainMods.Count})");
+        GameLog.Info($"[MapEditor] editor ready (seed={_currentSeed}, mods={_mapData.TerrainMods.Count})");
     }
 
     public override void _Input(InputEvent @event)
@@ -277,7 +277,7 @@ public partial class MapEditor : Control
                 string path = "user://mapeditor_screenshot.png";
                 img.SavePng(path);
                 string abs = ProjectSettings.GlobalizePath(path);
-                GameLog.Info($"[MapEditor] 截图已保存: {abs}");
+                GameLog.Info($"[MapEditor] screenshot saved: {abs}");
                 _statusLabel.Text = TrManager.Tr("editor.screenshot", abs);
             }
         }
@@ -323,7 +323,7 @@ public partial class MapEditor : Control
         var title = MakeLabel(TrManager.Tr("editor.title"), 22, Colors.White);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(title);
-        vbox.AddChild(MakeLabel("P1-3 · v1", 11, new Color(0.45f, 0.5f, 0.45f)));
+        vbox.AddChild(MakeLabel("P1-3 - v1", 11, new Color(0.45f, 0.5f, 0.45f)));
 
         // ── 放置模式
         vbox.AddChild(MakeLabel(TrManager.Tr("editor.section_place_mode"), 13, new Color(0.7f, 0.75f, 0.7f)));
@@ -433,7 +433,7 @@ public partial class MapEditor : Control
                 RefreshGround();
                 RefreshMarkers();
                 UpdateStatus();
-                GameLog.Info($"[MapEditor] 种子已更新: {s}");
+                GameLog.Info($"[MapEditor] seed updated: {s}");
             }
         };
         seedRow.AddChild(seedBtn);
@@ -444,9 +444,9 @@ public partial class MapEditor : Control
         var sizeRow = new HBoxContainer();
         sizeRow.AddThemeConstantOverride("separation", 8);
         var sizeSelect = new OptionButton();
-        sizeSelect.AddItem("32 × 32", 0);
-        sizeSelect.AddItem("64 × 64", 1);
-        sizeSelect.AddItem("96 × 96", 2);
+        sizeSelect.AddItem("32 x 32", 0);
+        sizeSelect.AddItem("64 x 64", 1);
+        sizeSelect.AddItem("96 x 96", 2);
         sizeSelect.Selected = MapConfig.GridSize switch
         {
             32 => 0,
@@ -944,7 +944,7 @@ public partial class MapEditor : Control
         RefreshGround();
         RefreshMarkers();
         UpdateStatus();
-        GameLog.Info("[MapEditor] 新建地图（保留当前种子）");
+        GameLog.Info("[MapEditor] new map (current seed retained)");
     }
 
     private void OnSavePressed()
@@ -958,7 +958,7 @@ public partial class MapEditor : Control
 
         if (MapData.SaveToFile(_mapData, path))
         {
-            GameLog.Info($"[MapEditor] 地图已保存: {path}");
+            GameLog.Info($"[MapEditor] map saved: {path}");
             // 也显示系统绝对路径
             string absPath = ProjectSettings.GlobalizePath(path);
             _statusLabel.Text = TrManager.Tr("editor.saved_to", absPath);
@@ -1005,7 +1005,7 @@ public partial class MapEditor : Control
             RefreshGround();
             RefreshMarkers();
             UpdateStatus();
-            GameLog.Info($"[MapEditor] 已加载: {latest}");
+            GameLog.Info($"[MapEditor] loaded: {latest}");
         }
     }
 
@@ -1055,7 +1055,7 @@ public partial class MapEditor : Control
         RedrawOverlay();
         UpdateStatus();
         _statusLabel.Text = TrManager.Tr("editor.undo_done", _undoStack.Count, _redoStack.Count);
-        GameLog.Info($"[MapEditor] Undo → 撤销栈:{_undoStack.Count}, 重做栈:{_redoStack.Count}");
+        GameLog.Info($"[MapEditor] Undo → undo stack:{_undoStack.Count}, redo stack:{_redoStack.Count}");
     }
 
     /// <summary>重做：恢复最近撤销的操作。</summary>
@@ -1083,7 +1083,7 @@ public partial class MapEditor : Control
         RedrawOverlay();
         UpdateStatus();
         _statusLabel.Text = TrManager.Tr("editor.redo_done", _undoStack.Count, _redoStack.Count);
-        GameLog.Info($"[MapEditor] Redo → 撤销栈:{_undoStack.Count}, 重做栈:{_redoStack.Count}");
+        GameLog.Info($"[MapEditor] Redo → undo stack:{_undoStack.Count}, redo stack:{_redoStack.Count}");
     }
 
     // ====================================================================
@@ -1129,7 +1129,7 @@ public partial class MapEditor : Control
         RedrawOverlay();
         UpdateStatus();
         _statusLabel.Text = TrManager.Tr("editor.map_size_changed", newSize, newSize);
-        GameLog.Info($"[MapEditor] 地图大小 {oldSize}→{newSize}, 保留修改:{_mapData.TerrainMods.Count}项");
+        GameLog.Info($"[MapEditor] map size {oldSize}->{newSize}, retained mods:{_mapData.TerrainMods.Count}");
     }
 
     // ====================================================================

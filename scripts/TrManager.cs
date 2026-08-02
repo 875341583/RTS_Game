@@ -53,7 +53,7 @@ public static class TrManager
         var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GameLog.Warning($"[i18n] 无法打开翻译文件: {path}");
+            GameLog.Warning($"[i18n] Cannot open translation file: {path}");
             return;
         }
 
@@ -72,7 +72,7 @@ public static class TrManager
             }
         }
         file.Close();
-        GameLog.Info($"[i18n] 加载 {count} 条翻译 ({path})");
+        GameLog.Info($"[i18n] Loaded {count} translations ({path})");
     }
 
     /// <summary>切换语言并重新加载翻译</summary>
@@ -82,7 +82,7 @@ public static class TrManager
         _strings.Clear();
         TranslationServer.SetLocale(lang);
         LoadFromCsv($"res://i18n/{lang}.csv");
-        GameLog.Info($"[i18n] 语言切换为: {lang}");
+        GameLog.Info($"[i18n] Language switched to: {lang}");
     }
 
     /// <summary>初始化默认语言</summary>
@@ -93,6 +93,6 @@ public static class TrManager
         _currentLang = "zh-CN";
         TranslationServer.SetLocale("zh-CN");
         LoadFromCsv($"res://i18n/{_currentLang}.csv");
-        GameLog.Info($"[i18n] 初始化完成，语言: {_currentLang}，{_strings.Count} 条翻译");
+        GameLog.Info($"[i18n] Initialized, language: {_currentLang}, {_strings.Count} translations");
     }
 }
