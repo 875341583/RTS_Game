@@ -35,9 +35,12 @@ public static class NetworkManager
     /// <summary>指定TeamId是否由真人玩家控制（非AI）。</summary>
     public static bool IsPlayerTeam(int teamId)
     {
-        foreach (var p in Players.Values)
-            if (p.TeamId == teamId && !p.IsAI) return true;
-        return false;
+        lock (_netLock)
+        {
+            foreach (var p in Players.Values)
+                if (p.TeamId == teamId && !p.IsAI) return true;
+            return false;
+        }
     }
 
     /// <summary>网络角色。</summary>
@@ -114,118 +117,127 @@ public static class NetworkManager
 
     // ====== 初始化（在MainMenu._Ready中调用） ======
 
-    /// <summary>初始化SceneMultiplayer（在主菜单加载时调用）。</summary>
+    /// <summary>初始化SceneMultiplayer（在主菜单加载时调用）。P1-3: 线程安全。</summary>
     public static void Init()
     {
-        if (_mp != null) return;
-        _mp = new SceneMultiplayer();
-        _mp.PeerConnected += OnPeerConnected;
-        _mp.PeerDisconnected += OnPeerDisconnected;
+        lock (_netLock)
+        {
+            if (_mp != null) return;
+            _mp = new SceneMultiplayer();
+            _mp.PeerConnected += OnPeerConnected;
+            _mp.PeerDisconnected += OnPeerDisconnected;
 
-        // 创建NetRelay节点（用普通Node而非Godot Node，需要手动创建C#对象）
-            // NetRelay必须是场景树中的节点才能使用RPC
-            var sceneTree = Engine.GetMainLoop() as SceneTree;
-            if (sceneTree != null && sceneTree.Root.GetNodeOrNull<NetRelay>("NetRelay") == null)
-            {
-                var relay = new NetRelay();
-                relay.Name = "NetRelay";
-                sceneTree.Root.AddChild(relay); // H4: 同步AddChild，消除竞态窗口
-            }
+            // 创建NetRelay节点（用普通Node而非Godot Node，需要手动创建C#对象）
+                // NetRelay必须是场景树中的节点才能使用RPC
+                var sceneTree = Engine.GetMainLoop() as SceneTree;
+                if (sceneTree != null && sceneTree.Root.GetNodeOrNull<NetRelay>("NetRelay") == null)
+                {
+                    var relay = new NetRelay();
+                    relay.Name = "NetRelay";
+                    sceneTree.Root.AddChild(relay); // H4: 同步AddChild，消除竞态窗口
+                }
 
-        GameLog.Info("[Net] NetworkManager 已初始化");
+            GameLog.Info("[Net] NetworkManager 已初始化");
+        }
     }
 
     // ====== Host：创建房间 ======
 
-    /// <summary>作为Host创建房间。</summary>
+    /// <summary>作为Host创建房间。P1-3: 线程安全。</summary>
     public static bool CreateRoom(RoomConfig config)
     {
-        try
+        lock (_netLock)
         {
-            Init();
-            Room = config;
-            _role = NetRole.Host;
-            LocalPeerId = 1;
-            LocalTeamId = 0;
-
-            _peer = new ENetMultiplayerPeer();
-            Error err = _peer.CreateServer(config.Port, config.MaxPlayers - 1); // 减1因为Host自己占一个槽
-            if (err != Error.Ok)
+            try
             {
-                GameLog.Error($"[Net] 创建服务器失败: {err}");
+                Init();
+                Room = config;
+                _role = NetRole.Host;
+                LocalPeerId = 1;
+                LocalTeamId = 0;
+
+                _peer = new ENetMultiplayerPeer();
+                Error err = _peer.CreateServer(config.Port, config.MaxPlayers - 1); // 减1因为Host自己占一个槽
+                if (err != Error.Ok)
+                {
+                    GameLog.Error($"[Net] 创建服务器失败: {err}");
+                    _role = NetRole.Offline;
+                    return false;
+                }
+
+                _mp.MultiplayerPeer = _peer;
+                var st = Engine.GetMainLoop() as SceneTree;
+                st?.SetMultiplayer(_mp);
+
+                // Host自己作为PlayerSlot 0
+                Players.Clear();
+                Players[1] = new PlayerSlot
+                {
+                    PeerId = 1,
+                    TeamId = 0,
+                    Name = config.HostName,
+                    Faction = config.HostFaction,
+                    IsReady = true,
+                    IsHost = true,
+                    IsAI = false
+                };
+
+                // 填充AI槽位
+                FillAISlots();
+
+                GameLog.Info($"[Net] 房间已创建 — 端口{config.Port} 模式{config.MaxPlayers}人");
+                LobbyChanged?.Invoke();
+                return true;
+            }
+            catch (Exception e)
+            {
+                GameLog.Error($"[Net] 创建房间异常: {e.Message}");
                 _role = NetRole.Offline;
                 return false;
             }
-
-            _mp.MultiplayerPeer = _peer;
-            var st = Engine.GetMainLoop() as SceneTree;
-            st?.SetMultiplayer(_mp);
-
-            // Host自己作为PlayerSlot 0
-            Players.Clear();
-            Players[1] = new PlayerSlot
-            {
-                PeerId = 1,
-                TeamId = 0,
-                Name = config.HostName,
-                Faction = config.HostFaction,
-                IsReady = true,
-                IsHost = true,
-                IsAI = false
-            };
-
-            // 填充AI槽位
-            FillAISlots();
-
-            GameLog.Info($"[Net] 房间已创建 — 端口{config.Port} 模式{config.MaxPlayers}人");
-            LobbyChanged?.Invoke();
-            return true;
-        }
-        catch (Exception e)
-        {
-            GameLog.Error($"[Net] 创建房间异常: {e.Message}");
-            _role = NetRole.Offline;
-            return false;
         }
     }
 
     // ====== Client：加入房间 ======
 
-    /// <summary>作为Client加入房间。</summary>
+    /// <summary>作为Client加入房间。P1-3: 线程安全。</summary>
     public static bool JoinRoom(string ip, int port, string playerName, string faction)
     {
-        try
+        lock (_netLock)
         {
-            Init();
-            _role = NetRole.Client;
-
-            _peer = new ENetMultiplayerPeer();
-            Error err = _peer.CreateClient(ip, port);
-            if (err != Error.Ok)
+            try
             {
-                GameLog.Error($"[Net] 连接服务器失败: {err}");
+                Init();
+                _role = NetRole.Client;
+
+                _peer = new ENetMultiplayerPeer();
+                Error err = _peer.CreateClient(ip, port);
+                if (err != Error.Ok)
+                {
+                    GameLog.Error($"[Net] 连接服务器失败: {err}");
+                    _role = NetRole.Offline;
+                    return false;
+                }
+
+                _mp.MultiplayerPeer = _peer;
+                var st2 = Engine.GetMainLoop() as SceneTree;
+                st2?.SetMultiplayer(_mp);
+
+                // 存储待发送的加入请求信息
+                _pendingJoinName = playerName;
+                _pendingJoinFaction = faction;
+                LocalPeerId = _mp.GetUniqueId();
+                _joinStartTime = Time.GetTicksMsec(); // M2: 记录连接开始时间用于超时检测
+
+                GameLog.Info($"[Net] 正在连接 {ip}:{port} ...");
+                return true;
+            }
+            catch (Exception e)
+            {
+                GameLog.Error($"[Net] 加入房间异常: {e.Message}");
                 _role = NetRole.Offline;
                 return false;
             }
-
-            _mp.MultiplayerPeer = _peer;
-            var st2 = Engine.GetMainLoop() as SceneTree;
-            st2?.SetMultiplayer(_mp);
-
-            // 存储待发送的加入请求信息
-            _pendingJoinName = playerName;
-            _pendingJoinFaction = faction;
-            LocalPeerId = _mp.GetUniqueId();
-            _joinStartTime = Time.GetTicksMsec(); // M2: 记录连接开始时间用于超时检测
-
-            GameLog.Info($"[Net] 正在连接 {ip}:{port} ...");
-            return true;
-        }
-        catch (Exception e)
-        {
-            GameLog.Error($"[Net] 加入房间异常: {e.Message}");
-            _role = NetRole.Offline;
-            return false;
         }
     }
 
@@ -235,93 +247,99 @@ public static class NetworkManager
 
     // ====== 断开连接 ======
 
-    /// <summary>断开网络连接，回到离线状态。</summary>
+    /// <summary>断开网络连接，回到离线状态。P1-3: 线程安全。</summary>
     public static void Disconnect()
     {
-        if (_peer != null)
+        lock (_netLock)
         {
-            _peer.Close();
-            _peer = null!;
+            if (_peer != null)
+            {
+                _peer.Close();
+                _peer = null!;
+            }
+            if (_mp != null)
+            {
+                _mp.MultiplayerPeer = null;
+            }
+            _role = NetRole.Offline;
+            InGame = false;
+            Players.Clear();
+            LocalTeamId = 0;
+            LocalPeerId = 1;
+            _lobbyBroadcastTimer = 0f;  // L3: 重置timer
+            _snapshotTimer = 0f;        // L3: 重置timer
+            _pendingJoinName = "";      // L3: 清除待加入状态
+            _disconnectedPeers.Clear(); // L3: 清除断线缓冲
+            GameLog.Info("[Net] 已断开连接");
+            Disconnected?.Invoke("用户主动断开");
         }
-        if (_mp != null)
-        {
-            _mp.MultiplayerPeer = null;
-        }
-        _role = NetRole.Offline;
-        InGame = false;
-        Players.Clear();
-        LocalTeamId = 0;
-        LocalPeerId = 1;
-        _lobbyBroadcastTimer = 0f;  // L3: 重置timer
-        _snapshotTimer = 0f;        // L3: 重置timer
-        _pendingJoinName = "";      // L3: 清除待加入状态
-        _disconnectedPeers.Clear(); // L3: 清除断线缓冲
-        GameLog.Info("[Net] 已断开连接");
-        Disconnected?.Invoke("用户主动断开");
     }
 
     // ====== 每帧处理（由Main._Process调用） ======
 
-    /// <summary>联机模式下的每帧处理（由Main或MainMenu调用）。</summary>
+    /// <summary>联机模式下的每帧处理（由Main或MainMenu调用）。P1-3: 线程安全。</summary>
     public static void Poll(float delta = 0.016f)
     {
-        if (!IsOnline) return;
-
-        // M2: Client连接超时检测（10秒）
-        if (_role == NetRole.Client && !Players.ContainsKey(LocalPeerId))
+        lock (_netLock)
         {
-            if (Time.GetTicksMsec() - _joinStartTime > 10000)
+            if (!IsOnline) return;
+
+            // M2: Client连接超时检测（10秒）
+            if (_role == NetRole.Client && !Players.ContainsKey(LocalPeerId))
             {
-                GameLog.Error("[Net] 连接超时（10秒），断开");
-                Disconnect();
-                Disconnected?.Invoke("连接超时");
-                return;
+                if (Time.GetTicksMsec() - _joinStartTime > 10000)
+                {
+                    GameLog.Error("[Net] 连接超时（10秒），断开");
+                    Disconnect();
+                    Disconnected?.Invoke("连接超时");
+                    return;
+                }
             }
-        }
 
-        // Client: 连接成功后发送JoinRequest
-        if (_role == NetRole.Client && _peer?.GetConnectionStatus() == MultiplayerPeer.ConnectionStatus.Connected
-            && !Players.ContainsKey(LocalPeerId) && !string.IsNullOrEmpty(_pendingJoinName))
-        {
-            SendJoinRequest(_pendingJoinName, _pendingJoinFaction);
-            _pendingJoinName = ""; // 只发一次
-        }
-
-        // Host: 定期广播大厅状态（每0.5秒）
-        _lobbyBroadcastTimer += delta; // M7: 用实际delta替代硬编码0.016f
-        if (_role == NetRole.Host && !InGame && _lobbyBroadcastTimer > 0.5f)
-        {
-            _lobbyBroadcastTimer = 0;
-            BroadcastLobbyInfo();
-        }
-
-        // Host: 游戏中定期广播状态快照（每0.1秒）
-        if (_role == NetRole.Host && InGame)
-        {
-            _snapshotTimer += delta; // M7: 用实际delta
-            if (_snapshotTimer > 0.1f)
+            // Client: 连接成功后发送JoinRequest
+            if (_role == NetRole.Client && _peer?.GetConnectionStatus() == MultiplayerPeer.ConnectionStatus.Connected
+                && !Players.ContainsKey(LocalPeerId) && !string.IsNullOrEmpty(_pendingJoinName))
             {
-                _snapshotTimer = 0;
-                // 状态快照由Main.GameSync.cs提供数据
-                SnapshotData?.Invoke();
+                SendJoinRequest(_pendingJoinName, _pendingJoinFaction);
+                _pendingJoinName = ""; // 只发一次
             }
-        }
 
-        // H6: 检查断线grace period超时，将超时玩家转为AI
-        if (_role == NetRole.Host && InGame && _disconnectedPeers.Count > 0)
-        {
-            var expiredKeys = new List<int>();
-            foreach (var kv in _disconnectedPeers)
+            // Host: 定期广播大厅状态（每0.5秒）
+            _lobbyBroadcastTimer += delta; // M7: 用实际delta替代硬编码0.016f
+            if (_role == NetRole.Host && !InGame && _lobbyBroadcastTimer > 0.5f)
             {
-                if (Time.GetTicksMsec() - kv.Value > 5000) // 5秒grace period
-                    expiredKeys.Add(kv.Key);
+                _lobbyBroadcastTimer = 0;
+                BroadcastLobbyInfo();
             }
-            foreach (var peerId in expiredKeys)
+
+            // Host: 游戏中定期广播状态快照（每0.1秒）
+            if (_role == NetRole.Host && InGame)
             {
-                _disconnectedPeers.Remove(peerId);
-                GameLog.Info($"[Net] Peer {peerId} 断线grace period超时，转为AI");
-                FillAISlots();
-                LobbyChanged?.Invoke();
+                _snapshotTimer += delta; // M7: 用实际delta
+                if (_snapshotTimer > 0.1f)
+                {
+                    _snapshotTimer = 0;
+                    // 状态快照由Main.GameSync.cs提供数据
+                    SnapshotData?.Invoke();
+                }
+            }
+
+            // H6: 检查断线grace period超时，将超时玩家转为AI
+            if (_role == NetRole.Host && InGame && _disconnectedPeers.Count > 0)
+            {
+                var expiredKeys = new List<int>();
+                foreach (var kv in _disconnectedPeers)
+                {
+                    if (Time.GetTicksMsec() - kv.Value > 5000) // 5秒grace period
+                        expiredKeys.Add(kv.Key);
+                }
+                foreach (var peerId in expiredKeys)
+                {
+                    _disconnectedPeers.Remove(peerId);
+                    GameLog.Info($"[Net] Peer {peerId} 断线grace period超时，转为AI");
+                    FillAISlots();
+                    LobbyChanged?.Invoke();
+                }
             }
         }
     }
@@ -339,37 +357,43 @@ public static class NetworkManager
 
     private static void OnPeerConnected(long peerId)
     {
-        GameLog.Info($"[Net] Peer {peerId} 已连接");
-        // Client在连接成功后自己发JoinRequest，Host不需要主动发
+        lock (_netLock)
+        {
+            GameLog.Info($"[Net] Peer {peerId} 已连接");
+            // Client在连接成功后自己发JoinRequest，Host不需要主动发
+        }
     }
 
     private static void OnPeerDisconnected(long peerId)
     {
-        GameLog.Info($"[Net] Peer {peerId} 已断开");
-        if (_role == NetRole.Host)
+        lock (_netLock)
         {
-            // H6: 不立即转AI，先放入grace period缓冲，等待玩家重连
-            if (InGame)
+            GameLog.Info($"[Net] Peer {peerId} 已断开");
+            if (_role == NetRole.Host)
             {
-                _disconnectedPeers[(int)peerId] = Time.GetTicksMsec();
-                GameLog.Info($"[Net] Peer {peerId} 进入断线grace period（5秒内重连可恢复）");
-                // 临时标记该玩家不活跃，但不移除PlayerSlot
-                if (Players.TryGetValue((int)peerId, out var slot))
-                    slot.IsReady = false; // 标记为未准备，表示不活跃
+                // H6: 不立即转AI，先放入grace period缓冲，等待玩家重连
+                if (InGame)
+                {
+                    _disconnectedPeers[(int)peerId] = Time.GetTicksMsec();
+                    GameLog.Info($"[Net] Peer {peerId} 进入断线grace period（5秒内重连可恢复）");
+                    // 临时标记该玩家不活跃，但不移除PlayerSlot
+                    if (Players.TryGetValue((int)peerId, out var slot))
+                        slot.IsReady = false; // 标记为未准备，表示不活跃
+                }
+                else
+                {
+                    // 大厅阶段：直接移除
+                    Players.TryRemove((int)peerId, out _);
+                    FillAISlots();
+                    LobbyChanged?.Invoke();
+                }
             }
-            else
+            else if (_role == NetRole.Client && peerId == 1)
             {
-                // 大厅阶段：直接移除
-                Players.TryRemove((int)peerId, out _);
-                FillAISlots();
-                LobbyChanged?.Invoke();
+                // Host断开了
+                Disconnect();
+                Disconnected?.Invoke("与房主断开连接");
             }
-        }
-        else if (_role == NetRole.Client && peerId == 1)
-        {
-            // Host断开了
-            Disconnect();
-            Disconnected?.Invoke("与房主断开连接");
         }
     }
 
@@ -429,70 +453,82 @@ public static class NetworkManager
     /// <summary>Host切换AI填充模式。</summary>
     public static void ToggleFillAI()
     {
-        if (_role != NetRole.Host) return;
-        _fillWithAI = !_fillWithAI;
-        FillAISlots();
-        LobbyChanged?.Invoke();
+        lock (_netLock)
+        {
+            if (_role != NetRole.Host) return;
+            _fillWithAI = !_fillWithAI;
+            FillAISlots();
+            LobbyChanged?.Invoke();
+        }
     }
 
     /// <summary>获取当前真人玩家数量。</summary>
     public static int GetHumanPlayerCount()
     {
-        int count = 0;
-        foreach (var p in Players.Values)
-            if (!p.IsAI) count++;
-        return count;
+        lock (_netLock)
+        {
+            int count = 0;
+            foreach (var p in Players.Values)
+                if (!p.IsAI) count++;
+            return count;
+        }
     }
 
     /// <summary>Client切换准备状态。</summary>
     public static void ToggleReady()
     {
-        if (_role != NetRole.Client) return;
-        if (Players.TryGetValue(LocalPeerId, out var slot))
+        lock (_netLock)
         {
-            slot.IsReady = !slot.IsReady;
-            var data = new { peerId = LocalPeerId, ready = slot.IsReady };
-            SendToHost(MsgType.ReadyToggle, JsonSerializer.Serialize(data));
+            if (_role != NetRole.Client) return;
+            if (Players.TryGetValue(LocalPeerId, out var slot))
+            {
+                slot.IsReady = !slot.IsReady;
+                var data = new { peerId = LocalPeerId, ready = slot.IsReady };
+                SendToHost(MsgType.ReadyToggle, JsonSerializer.Serialize(data));
+            }
         }
     }
 
     // ====== Host：开始游戏 ======
 
-    /// <summary>Host调用：开始游戏（广播StartGame消息）。</summary>
+    /// <summary>Host调用：开始游戏（广播StartGame消息）。P1-3: 线程安全。</summary>
     public static void HostStartGame(ulong seed, Main.Difficulty difficulty,
         MapConfig.SizePreset mapSize, MapConfig.MapTheme theme)
     {
-        if (_role != NetRole.Host) return;
-
-        var startInfo = new StartGameInfo
+        lock (_netLock)
         {
-            Seed = seed,
-            Difficulty = difficulty,
-            MapSize = mapSize,
-            MapTheme = theme,
-            MaxPlayers = Room.MaxPlayers,
-            Players = new List<PlayerSlotInfo>()
-        };
+            if (_role != NetRole.Host) return;
 
-        foreach (var p in Players.Values)
-        {
-            startInfo.Players.Add(new PlayerSlotInfo
+            var startInfo = new StartGameInfo
             {
-                PeerId = p.PeerId,
-                TeamId = p.TeamId,
-                Name = p.Name,
-                Faction = p.Faction,
-                IsAI = p.IsAI,
-                IsHost = p.IsHost
-            });
+                Seed = seed,
+                Difficulty = difficulty,
+                MapSize = mapSize,
+                MapTheme = theme,
+                MaxPlayers = Room.MaxPlayers,
+                Players = new List<PlayerSlotInfo>()
+            };
+
+            foreach (var p in Players.Values)
+            {
+                startInfo.Players.Add(new PlayerSlotInfo
+                {
+                    PeerId = p.PeerId,
+                    TeamId = p.TeamId,
+                    Name = p.Name,
+                    Faction = p.Faction,
+                    IsAI = p.IsAI,
+                    IsHost = p.IsHost
+                });
+            }
+
+            string json = JsonSerializer.Serialize(startInfo);
+            BroadcastAll(MsgType.StartGame, json);
+
+            InGame = true;
+            // 自己也进入游戏
+            GameStarted?.Invoke();
         }
-
-        string json = JsonSerializer.Serialize(startInfo);
-        BroadcastAll(MsgType.StartGame, json);
-
-        InGame = true;
-        // 自己也进入游戏
-        GameStarted?.Invoke();
     }
 
     // ====== 网络消息发送 ======
@@ -529,45 +565,48 @@ public static class NetworkManager
 
     // ====== 网络消息接收（由Main._Process调用CustomMultiplayer.Processing或由引擎自动分发） ======
 
-    /// <summary>处理收到的网络消息（由_Mp.PeerPacket或手动调用）。</summary>
+    /// <summary>处理收到的网络消息（由_Mp.PeerPacket或手动调用）。P1-3: 线程安全。</summary>
     public static void HandlePacket(int fromPeer, byte[] data)
     {
-        if (data.Length < 1) return;
-        MsgType type = (MsgType)data[0];
-        string json = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1);
-
-        switch (type)
+        lock (_netLock)
         {
-            case MsgType.JoinRequest:
-                HandleJoinRequest(fromPeer, json);
-                break;
-            case MsgType.JoinAck:
-                HandleJoinAck(json);
-                break;
-            case MsgType.LobbyInfo:
-                HandleLobbyInfo(json);
-                break;
-            case MsgType.ReadyToggle:
-                HandleReadyToggle(json);
-                break;
-            case MsgType.StartGame:
-                HandleStartGame(json);
-                break;
-            case MsgType.PlayerCommand:
-                HandlePlayerCommand(fromPeer, json);
-                break;
-            case MsgType.CommandBroadcast:
-                HandleCommandBroadcast(json);
-                break;
-            case MsgType.StateSnapshot:
-                HandleStateSnapshot(json);
-                break;
-            case MsgType.GameOver:
-                HandleGameOver(json);
-                break;
-            case MsgType.ChatMessage:
-                HandleChatMessage(fromPeer, json);
-                break;
+            if (data.Length < 1) return;
+            MsgType type = (MsgType)data[0];
+            string json = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1);
+
+            switch (type)
+            {
+                case MsgType.JoinRequest:
+                    HandleJoinRequest(fromPeer, json);
+                    break;
+                case MsgType.JoinAck:
+                    HandleJoinAck(json);
+                    break;
+                case MsgType.LobbyInfo:
+                    HandleLobbyInfo(json);
+                    break;
+                case MsgType.ReadyToggle:
+                    HandleReadyToggle(json);
+                    break;
+                case MsgType.StartGame:
+                    HandleStartGame(json);
+                    break;
+                case MsgType.PlayerCommand:
+                    HandlePlayerCommand(fromPeer, json);
+                    break;
+                case MsgType.CommandBroadcast:
+                    HandleCommandBroadcast(json);
+                    break;
+                case MsgType.StateSnapshot:
+                    HandleStateSnapshot(json);
+                    break;
+                case MsgType.GameOver:
+                    HandleGameOver(json);
+                    break;
+                case MsgType.ChatMessage:
+                    HandleChatMessage(fromPeer, json);
+                    break;
+            }
         }
     }
 
@@ -796,30 +835,33 @@ public static class NetworkManager
 
     // ====== 游戏内命令同步 ======
 
-    /// <summary>Client→Host：发送玩家操作命令。参数已序列化为JSON。</summary>
+    /// <summary>Client→Host：发送玩家操作命令。参数已序列化为JSON。P1-3: 线程安全。</summary>
     public static void SendCommand(ReplayRecorder.ActionType action, string jsonParams)
     {
-        if (!IsOnline) return;
-        var cmd = new NetCommand
+        lock (_netLock)
         {
-            TeamId = LocalTeamId,
-            Action = action,
-            Params = jsonParams,
-            Frame = Godot.Time.GetTicksMsec()
-        };
-        string json = JsonSerializer.Serialize(cmd, _jsonOpts);
+            if (!IsOnline) return;
+            var cmd = new NetCommand
+            {
+                TeamId = LocalTeamId,
+                Action = action,
+                Params = jsonParams,
+                Frame = Godot.Time.GetTicksMsec()
+            };
+            string json = JsonSerializer.Serialize(cmd, _jsonOpts);
 
-        if (_role == NetRole.Host)
-        {
-            // Host本地执行 + 广播给所有Client
-            // H2: 只在执行成功时广播
-            bool success = CommandReceived?.Invoke(cmd) ?? true;
-            if (success)
-                BroadcastAll(MsgType.CommandBroadcast, json);
-        }
-        else
-        {
-            SendToHost(MsgType.PlayerCommand, json);
+            if (_role == NetRole.Host)
+            {
+                // Host本地执行 + 广播给所有Client
+                // H2: 只在执行成功时广播
+                bool success = CommandReceived?.Invoke(cmd) ?? true;
+                if (success)
+                    BroadcastAll(MsgType.CommandBroadcast, json);
+            }
+            else
+            {
+                SendToHost(MsgType.PlayerCommand, json);
+            }
         }
     }
 
@@ -920,20 +962,26 @@ public static class NetworkManager
     /// <summary>状态快照接收回调（由Main.GameSync.cs设置）。</summary>
     public static event Action<StateSnapshotData>? SnapshotReceived;
 
-    /// <summary>Host广播状态快照。</summary>
+    /// <summary>Host广播状态快照。P1-3: 线程安全。</summary>
     public static void SendSnapshot(StateSnapshotData snapshot)
     {
-        if (_role != NetRole.Host || !InGame) return;
-        string json = JsonSerializer.Serialize(snapshot, _jsonOpts);
-        BroadcastAll(MsgType.StateSnapshot, json);
+        lock (_netLock)
+        {
+            if (_role != NetRole.Host || !InGame) return;
+            string json = JsonSerializer.Serialize(snapshot, _jsonOpts);
+            BroadcastAll(MsgType.StateSnapshot, json);
+        }
     }
 
     // ====== 游戏结束 ======
 
     public static void SendGameOver(string result)
     {
-        if (_role != NetRole.Host) return;
-        BroadcastAll(MsgType.GameOver, JsonSerializer.Serialize(new { result }));
+        lock (_netLock)
+        {
+            if (_role != NetRole.Host) return;
+            BroadcastAll(MsgType.GameOver, JsonSerializer.Serialize(new { result }));
+        }
     }
 
     private static void HandleGameOver(string json)
@@ -958,17 +1006,20 @@ public static class NetworkManager
 
     public static void SendChat(string message)
     {
-        if (!IsOnline) return;
-        var data = new { sender = Players.GetValueOrDefault(LocalPeerId)?.Name ?? "??", message };
-        string json = JsonSerializer.Serialize(data);
-        if (_role == NetRole.Host)
+        lock (_netLock)
         {
-            BroadcastAll(MsgType.ChatMessage, json);
-            ChatReceived?.Invoke(data.sender, data.message);
-        }
-        else
-        {
-            SendToHost(MsgType.ChatMessage, json);
+            if (!IsOnline) return;
+            var data = new { sender = Players.GetValueOrDefault(LocalPeerId)?.Name ?? "??", message };
+            string json = JsonSerializer.Serialize(data);
+            if (_role == NetRole.Host)
+            {
+                BroadcastAll(MsgType.ChatMessage, json);
+                ChatReceived?.Invoke(data.sender, data.message);
+            }
+            else
+            {
+                SendToHost(MsgType.ChatMessage, json);
+            }
         }
     }
 
