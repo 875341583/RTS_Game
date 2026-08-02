@@ -22,8 +22,8 @@ public static class MapConfig
         Large = 96,     // 96×96 — 大规模战役
     }
 
-    private static int _gridSize = 32;
-    private static SizePreset _preset = SizePreset.Small;
+    private static int _gridSize = 64;
+    private static SizePreset _preset = SizePreset.Medium;
 
     /// <summary>当前地图网格边长（格数）。</summary>
     public static int GridSize => _gridSize;

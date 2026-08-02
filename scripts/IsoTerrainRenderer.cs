@@ -132,6 +132,20 @@ public static class IsoTerrainRenderer
         // 将修改后的字节数组写回Image
         img.SetData(imgW, imgH, false, Image.Format.Rgba8, imgData);
 
+        // 导出完整地形预览图（无UI/迷雾遮挡，用于评估地形质量）
+        try
+        {
+            var previewDir = @"C:\Users\Administrator\AppData\Roaming\Godot\app_userdata\RTS_Game";
+            var previewPath = System.IO.Path.Combine(previewDir, "terrain_full_preview.png");
+            var pngData = img.SavePngToBuffer();
+            System.IO.File.WriteAllBytes(previewPath, pngData);
+            GameLog.Info($"[IsoTerrain] Terrain preview saved: {previewPath} ({imgW}x{imgH}, {pngData.Length} bytes)");
+        }
+        catch (Exception ex)
+        {
+            GameLog.Warning($"[IsoTerrain] Failed to save terrain preview: {ex.Message}");
+        }
+
         swTotal.Stop();
         GameLog.Info($"[IsoTerrain] Total render: {swTotal.ElapsedMilliseconds}ms, image: {imgW}x{imgH}");
 
@@ -164,6 +178,43 @@ public static class IsoTerrainRenderer
         var bushBufs = LoadOverlayByteBuffers(_bushTexs);
         if (treeBufs.Length == 0 && rockBufs.Length == 0 && bushBufs.Length == 0) return;
 
+        // Phase 1: 生成森林聚集点（种子驱动，成片树林而非均匀散布）
+        var forestClusters = new System.Collections.Generic.List<(int gx, int gy, int radius, float density)>();
+        int numForests = Math.Max(8, gs / 5); // 64格地图约12片树林
+        for (int f = 0; f < numForests; f++)
+        {
+            int fx = rng.Next(2, gs - 2);
+            int fy = rng.Next(2, gs - 2);
+            int radius = 3 + rng.Next(4); // 3-6格半径（大片树林）
+            // 密度：中心高，边缘低
+            float density = 0.55f + (float)rng.NextDouble() * 0.2f;
+            forestClusters.Add((fx, fy, radius, density));
+        }
+
+        // 判断某格子是否在森林范围内，返回最近的森林信息
+        (bool inForest, float density, float edgeDist) ClassifyForest(int gx, int gy)
+        {
+            float bestDensity = 0;
+            float bestEdgeDist = float.MaxValue;
+            foreach (var (fx, fy, fr, fd) in forestClusters)
+            {
+                float dx = gx - fx, dy = gy - fy;
+                float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+                if (dist <= fr)
+                {
+                    // 距离边缘越近，密度越低（自然渐变）
+                    float edgeFactor = 1.0f - (dist / fr); // 0=边缘 1=中心
+                    float effectiveDensity = fd * (0.3f + 0.7f * edgeFactor);
+                    if (effectiveDensity > bestDensity)
+                    {
+                        bestDensity = effectiveDensity;
+                        bestEdgeDist = fr - dist;
+                    }
+                }
+            }
+            return (bestDensity > 0, bestDensity, bestEdgeDist);
+        }
+
         for (int gx = 0; gx < gs; gx++)
         {
             for (int gy = 0; gy < gs; gy++)
@@ -179,16 +230,27 @@ public static class IsoTerrainRenderer
                 int cellSeed = (gx * 73856093) ^ (gy * 19349663);
                 var cellRng = new Random(cellSeed);
 
-                // 山脉地形放岩石
+                var (inForest, forestDensity, edgeDist) = ClassifyForest(gx, gy);
+
+                // 山脉地形放岩石（密度提高）
                 if (cell.Type == TerrainType.Mountain)
                 {
-                    if (cellRng.NextDouble() < 0.35 && rockBufs.Length > 0)
+                    if (cellRng.NextDouble() < 0.50 && rockBufs.Length > 0)
                     {
-                        var rb = rockBufs[cellRng.Next(rockBufs.Length)];
+                        var rb = rockBufs[4 + cellRng.Next(Math.Min(4, rockBufs.Length - 4))]; // 大岩石
                         var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - rb.w / 2;
-                        int oy = offY + (int)screenPos.Y - rb.h + halfH;
+                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-6, 7);
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-2, 3);
                         BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                    }
+                    // 山顶偶尔放小树
+                    if (cellRng.NextDouble() < 0.10 && treeBufs.Length > 0)
+                    {
+                        var tb = treeBufs[cellRng.Next(4)]; // 松树
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-8, 9);
+                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-4, 5);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
                     }
                     continue;
                 }
@@ -197,30 +259,54 @@ public static class IsoTerrainRenderer
                 if (cell.Type == TerrainType.Grass || cell.Type == TerrainType.Field)
                 {
                     double roll = cellRng.NextDouble();
-                    if (roll < 0.15 && treeBufs.Length > 0)
+                    if (inForest)
                     {
-                        var tb = treeBufs[cellRng.Next(treeBufs.Length)];
-                        var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-8, 9);
-                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-4, 5);
-                        BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                        // 森林范围内：按密度概率放树（中心密、边缘疏）
+                        if (roll < forestDensity && treeBufs.Length > 0)
+                        {
+                            var tb = treeBufs[cellRng.Next(8)]; // pine + oak (0-7)
+                            var screenPos = IsoCoords.GridToScreen(gx, gy);
+                            int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-10, 11);
+                            int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-6, 7);
+                            BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                        }
+                        else if (roll < forestDensity + 0.15 && bushBufs.Length > 0)
+                        {
+                            var bb = bushBufs[cellRng.Next(bushBufs.Length)];
+                            var screenPos = IsoCoords.GridToScreen(gx, gy);
+                            int ox = offX + (int)screenPos.X - bb.w / 2 + cellRng.Next(-8, 9);
+                            int oy = offY + (int)screenPos.Y - bb.h + halfH + cellRng.Next(-3, 4);
+                            BlitOverlayFast(imgData, imgStride, imgW, imgH, bb, ox, oy);
+                        }
                     }
-                    else if (roll < 0.30 && bushBufs.Length > 0)
+                    else
                     {
-                        var bb = bushBufs[cellRng.Next(bushBufs.Length)];
-                        var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - bb.w / 2 + cellRng.Next(-6, 7);
-                        int oy = offY + (int)screenPos.Y - bb.h + halfH + cellRng.Next(-2, 3);
-                        BlitOverlayFast(imgData, imgStride, imgW, imgH, bb, ox, oy);
-                    }
-                    else if (roll < 0.37 && rockBufs.Length > 0)
-                    {
-                        int rockMax = Math.Min(4, rockBufs.Length);
-                        var rb = rockBufs[cellRng.Next(rockMax)];
-                        var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-8, 9);
-                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-4, 5);
-                        BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                        // 非森林区域：散布树木(10%) + 灌木(15%) + 岩石(8%)
+                        if (roll < 0.10 && treeBufs.Length > 0)
+                        {
+                            var tb = treeBufs[cellRng.Next(8)]; // pine + oak
+                            var screenPos = IsoCoords.GridToScreen(gx, gy);
+                            int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-10, 11);
+                            int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-6, 7);
+                            BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                        }
+                        else if (roll < 0.25 && bushBufs.Length > 0)
+                        {
+                            var bb = bushBufs[cellRng.Next(bushBufs.Length)];
+                            var screenPos = IsoCoords.GridToScreen(gx, gy);
+                            int ox = offX + (int)screenPos.X - bb.w / 2 + cellRng.Next(-8, 9);
+                            int oy = offY + (int)screenPos.Y - bb.h + halfH + cellRng.Next(-3, 4);
+                            BlitOverlayFast(imgData, imgStride, imgW, imgH, bb, ox, oy);
+                        }
+                        else if (roll < 0.33 && rockBufs.Length > 0)
+                        {
+                            int rockMax = Math.Min(4, rockBufs.Length);
+                            var rb = rockBufs[cellRng.Next(rockMax)];
+                            var screenPos = IsoCoords.GridToScreen(gx, gy);
+                            int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-10, 11);
+                            int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-6, 7);
+                            BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                        }
                     }
                 }
 
@@ -228,35 +314,45 @@ public static class IsoTerrainRenderer
                 if (cell.Type == TerrainType.Sand)
                 {
                     double roll = cellRng.NextDouble();
-                    if (roll < 0.12 && rockBufs.Length > 0)
+                    if (roll < 0.15 && rockBufs.Length > 0)
                     {
                         var rb = rockBufs[cellRng.Next(rockBufs.Length)];
                         var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-8, 9);
-                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-4, 5);
+                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-10, 11);
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-6, 7);
                         BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
                     }
-                    else if (roll < 0.18 && treeBufs.Length > 8)
+                    else if (roll < 0.22 && treeBufs.Length > 8)
                     {
                         // 枯树（索引8-11为dead树）
                         var tb = treeBufs[8 + cellRng.Next(Math.Min(4, treeBufs.Length - 8))];
                         var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-8, 9);
-                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-4, 5);
+                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-10, 11);
+                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-6, 7);
                         BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
                     }
                 }
 
-                // 雪地放岩石
+                // 雪地放岩石和雪松
                 if (cell.Type == TerrainType.Snow)
                 {
-                    if (cellRng.NextDouble() < 0.15 && rockBufs.Length > 0)
+                    double roll = cellRng.NextDouble();
+                    if (roll < 0.15 && rockBufs.Length > 0)
                     {
                         var rb = rockBufs[cellRng.Next(rockBufs.Length)];
                         var screenPos = IsoCoords.GridToScreen(gx, gy);
-                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-8, 9);
-                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-4, 5);
+                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-10, 11);
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-6, 7);
                         BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                    }
+                    else if (roll < 0.25 && treeBufs.Length > 0)
+                    {
+                        // 雪地松树
+                        var tb = treeBufs[cellRng.Next(4)]; // pine
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-10, 11);
+                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-6, 7);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
                     }
                 }
             }

@@ -243,39 +243,39 @@ public class TerrainGrid
                 };
             }
 
-        // 2. 生成山脉（主题影响数量）
-        int mountainCount = theme switch
-        {
-            MapConfig.MapTheme.Snow => 4 + rng.Next(3),     // 雪地多山
-            MapConfig.MapTheme.Desert => 1 + rng.Next(2),    // 沙漠少山
-            MapConfig.MapTheme.Island => 1,                   // 海岛极少的山
-            MapConfig.MapTheme.City => 0,                     // 城市无山
-            _ => 2 + rng.Next(2),                             // 默认2-3个
-        };
-        GenerateMountains(rng, mountainCount);
-
-        // 3. 生成丘陵/高地（主题影响数量）
-        int hillCount = theme switch
-        {
-            MapConfig.MapTheme.Snow => 4 + rng.Next(2),
-            MapConfig.MapTheme.Desert => 2,
-            MapConfig.MapTheme.Island => 1 + rng.Next(2),
-            MapConfig.MapTheme.City => 0,
-            _ => 3 + rng.Next(2),
-        };
-        GenerateHills(rng, hillCount);
-
-        // 4. 生成水域（主题影响数量）
+        // 2. 先生成水域（在山脉之前，避免水覆盖山）
         int lakeCount = theme switch
         {
             MapConfig.MapTheme.Snow => 0,                    // 雪地无湖（冰冻）
             MapConfig.MapTheme.Desert => 1,                   // 沙漠1个绿洲
             MapConfig.MapTheme.Island => 3 + rng.Next(2),    // 海岛多湖（珊瑚礁）
             MapConfig.MapTheme.City => 1,                     // 城市1个湖
-            _ => 1 + rng.Next(2),
+            _ => 2 + rng.Next(2),                             // 默认2-3个湖泊
         };
         bool hasRiver = theme != MapConfig.MapTheme.Island && theme != MapConfig.MapTheme.Desert;
         GenerateWater(rng, lakeCount, hasRiver);
+
+        // 3. 生成山脉（在水之后，山脉不会被水覆盖）
+        int mountainCount = theme switch
+        {
+            MapConfig.MapTheme.Snow => 10 + rng.Next(5),     // 雪地多山
+            MapConfig.MapTheme.Desert => 5 + rng.Next(4),     // 沙漠少山
+            MapConfig.MapTheme.Island => 3 + rng.Next(3),     // 海岛少量山
+            MapConfig.MapTheme.City => 3 + rng.Next(3),       // 城市少量山
+            _ => 10 + rng.Next(5),                             // 默认10-14个
+        };
+        GenerateMountains(rng, mountainCount);
+
+        // 4. 生成丘陵/高地
+        int hillCount = theme switch
+        {
+            MapConfig.MapTheme.Snow => 10 + rng.Next(5),
+            MapConfig.MapTheme.Desert => 6 + rng.Next(4),
+            MapConfig.MapTheme.Island => 4 + rng.Next(3),
+            MapConfig.MapTheme.City => 4 + rng.Next(3),
+            _ => 10 + rng.Next(5),                             // 默认10-14个
+        };
+        GenerateHills(rng, hillCount);
 
         // 5. 主题特化地形调整
         ApplyThemeTerrain(rng, theme);
@@ -299,34 +299,106 @@ public class TerrainGrid
 
         // 11. 分类深水区域
         ClassifyDeepWater();
+
+        // Debug: 统计各类型地形数量
+        var typeCounts = new System.Collections.Generic.Dictionary<TerrainType, int>();
+        for (int y = 0; y < GridSize; y++)
+            for (int x = 0; x < GridSize; x++)
+            {
+                var t = _cells[x, y].Type;
+                if (!typeCounts.ContainsKey(t)) typeCounts[t] = 0;
+                typeCounts[t]++;
+            }
+        string stats = $"[TerrainGrid] GridSize={GridSize} Theme={theme} | ";
+        foreach (var kv in typeCounts)
+            stats += $"{kv.Key}={kv.Value}({kv.Value * 100 / (GridSize * GridSize)}%) ";
+        GameLog.Debug(stats);
     }
 
     private void GenerateMountains(Random rng, int numMountains)
     {
-        for (int m = 0; m < numMountains; m++)
-        {
-            int cx = rng.Next(4, GridSize - 4);
-            int cy = rng.Next(4, GridSize - 4);
-            // P2-2: 避开地图中央战略点区域
-            int center = MapConfig.Center;
-            int spaRadius = 4;
-            if (Math.Abs(cx - center) < spaRadius && Math.Abs(cy - center) < spaRadius) continue;
-            // 避开边缘基地区域
-            if (IsBaseArea(cx, cy)) continue;
+        // 分区放置山脉：将地图分成4×4区域，每区尝试放置1座山，确保全图覆盖
+        int regionsPerSide = 4;
+        int regionSize = GridSize / regionsPerSide;
+        int placed = 0;
 
-            int size = 1 + rng.Next(2); // 1-2格半径
-            for (int dy = -size; dy <= size; dy++)
+        // 创建打乱过的区域列表
+        var regions = new System.Collections.Generic.List<(int rx, int ry)>();
+        for (int ry = 0; ry < regionsPerSide; ry++)
+            for (int rx = 0; rx < regionsPerSide; rx++)
+                regions.Add((rx, ry));
+        // Fisher-Yates shuffle
+        for (int i = regions.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (regions[i], regions[j]) = (regions[j], regions[i]);
+        }
+
+        foreach (var (rx, ry) in regions)
+        {
+            if (placed >= numMountains) break;
+
+            // 在区域内随机选位置
+            int cx = rx * regionSize + rng.Next(2, regionSize - 2);
+            int cy = ry * regionSize + rng.Next(2, regionSize - 2);
+            cx = Math.Clamp(cx, 4, GridSize - 5);
+            cy = Math.Clamp(cy, 4, GridSize - 5);
+
+            // 避开基地区域
+            if (IsBaseArea(cx, cy))
             {
-                for (int dx = -size; dx <= size; dx++)
+                for (int r = 1; r <= 4; r++)
                 {
-                    if (Math.Abs(dx) + Math.Abs(dy) > size) continue; // 菱形
+                    bool found = false;
+                    for (int dy = -r; dy <= r && !found; dy++)
+                        for (int dx = -r; dx <= r && !found; dx++)
+                        {
+                            int nx = cx + dx, ny = cy + dy;
+                            if (nx >= 4 && nx < GridSize - 4 && ny >= 4 && ny < GridSize - 4 && !IsBaseArea(nx, ny))
+                            {
+                                cx = nx; cy = ny; found = true;
+                            }
+                        }
+                    if (found) break;
+                }
+                if (IsBaseArea(cx, cy)) continue;
+            }
+
+            int peakSize = 3 + rng.Next(3); // 3-5格半径
+            for (int dy = -peakSize; dy <= peakSize; dy++)
+            {
+                for (int dx = -peakSize; dx <= peakSize; dx++)
+                {
+                    float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+                    if (dist > peakSize) continue;
                     int x = cx + dx, y = cy + dy;
                     if (x < 0 || x >= GridSize || y < 0 || y >= GridSize) continue;
                     if (IsBaseArea(x, y)) continue;
-                    _cells[x, y].Type = TerrainType.Mountain;
-                    _cells[x, y].Elevation = 3;
+
+                    if (dist <= peakSize * 0.55f)
+                    {
+                        // 山峰核心：山脉，海拔3（覆盖水域，山在水之后生成）
+                        _cells[x, y].Type = TerrainType.Mountain;
+                        _cells[x, y].Elevation = 3;
+                    }
+                    else if (dist <= peakSize * 0.85f)
+                    {
+                        // 山腰：雪地+海拔2（不覆盖已有道路）
+                        if (_cells[x, y].Type != TerrainType.Road)
+                        {
+                            _cells[x, y].Type = TerrainType.Snow;
+                            _cells[x, y].Elevation = 2;
+                        }
+                    }
+                    else
+                    {
+                        // 山麓：海拔2，保留原地形（形成坡度感）
+                        if (_cells[x, y].Elevation < 2 && !IsBaseArea(x, y))
+                            _cells[x, y].Elevation = 2;
+                    }
                 }
             }
+            placed++;
         }
     }
 
@@ -399,9 +471,11 @@ public class TerrainGrid
 
     private void GenerateRiver(Random rng)
     {
-        // 河流从随机边开始，蜿蜒到另一边
+        // 自然蜿蜒河流：从一边出发，用平滑偏移蜿蜒到另一边
         int startEdge = rng.Next(4);
         int x, y, dx, dy;
+        // 蜿蜒参数
+        double driftAngle = 0; // 当前偏移角度
         switch (startEdge)
         {
             case 0: x = rng.Next(4, GridSize - 4); y = 0; dx = 0; dy = 1; break;   // 从上方
@@ -411,15 +485,17 @@ public class TerrainGrid
         }
 
         int steps = GridSize * 2;
+        int widenCountdown = 5 + rng.Next(10); // 湖泊扩展的间隔
         for (int s = 0; s < steps; s++)
         {
             if (x < 0 || x >= GridSize || y < 0 || y >= GridSize) break;
+
             if (!IsBaseArea(x, y))
             {
                 // 河流中心=深水
                 _cells[x, y].Type = TerrainType.DeepWater;
                 _cells[x, y].Elevation = 0;
-                // 两岸=浅水
+                // 两岸=浅水（1格宽岸滩）
                 foreach (var (nx, ny) in GetNeighbors4(x, y))
                 {
                     if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize && !IsBaseArea(nx, ny))
@@ -431,16 +507,113 @@ public class TerrainGrid
                         }
                     }
                 }
+
+                // 湖泊扩展：每隔一段距离在河道上扩展一个小湖
+                widenCountdown--;
+                if (widenCountdown <= 0)
+                {
+                    int lakeR = 2 + rng.Next(2);
+                    for (int ldy = -lakeR; ldy <= lakeR; ldy++)
+                    {
+                        for (int ldx = -lakeR; ldx <= lakeR; ldx++)
+                        {
+                            float ld = (float)Math.Sqrt(ldx * ldx + ldy * ldy);
+                            if (ld > lakeR) continue;
+                            int lx = x + ldx, ly = y + ldy;
+                            if (lx < 0 || lx >= GridSize || ly < 0 || ly >= GridSize) continue;
+                            if (IsBaseArea(lx, ly)) continue;
+                            if (ld <= lakeR * 0.6f)
+                            {
+                                _cells[lx, ly].Type = TerrainType.DeepWater;
+                                _cells[lx, ly].Elevation = 0;
+                            }
+                            else if (_cells[lx, ly].Type != TerrainType.DeepWater)
+                            {
+                                _cells[lx, ly].Type = TerrainType.ShallowWater;
+                                _cells[lx, ly].Elevation = 1;
+                            }
+                        }
+                    }
+                    widenCountdown = 8 + rng.Next(12);
+                }
             }
-            // 蜿蜒：80%继续直走，20%横向偏移
-            if (rng.NextDouble() < 0.2f)
+
+            // 蜿蜒：渐进式角度偏移（大幅增加弯曲度）
+            driftAngle += (rng.NextDouble() - 0.5) * 1.0; // 角度更快变化
+            driftAngle = Math.Max(-2.5, Math.Min(2.5, driftAngle)); // 放宽限幅
+
+            // 计算实际移动方向（主方向 + 蜿蜒偏移）
+            if (dx != 0)
             {
-                // 横向偏移
-                if (dx == 0) x += rng.Next(2) == 0 ? 1 : -1;
-                else y += rng.Next(2) == 0 ? 1 : -1;
+                // 水平河流：y方向蜿蜒（大幅增加偏移）
+                int sideStep = (int)Math.Round(Math.Sin(driftAngle) * 3.0);
+                y += sideStep;
+            }
+            else
+            {
+                // 垂直河流：x方向蜿蜒
+                int sideStep = (int)Math.Round(Math.Sin(driftAngle) * 3.0);
+                x += sideStep;
             }
             x += dx;
             y += dy;
+        }
+
+        // 生成1-2条支流
+        int tributaries = 1 + rng.Next(2);
+        for (int t = 0; t < tributaries; t++)
+        {
+            GenerateTributary(rng);
+        }
+    }
+
+    /// <summary>生成支流：从地图边缘出发，短距离蜿蜒后汇入主河道区域。</summary>
+    private void GenerateTributary(Random rng)
+    {
+        // 找一个已有的深水格作为汇入点
+        int targetX = -1, targetY = -1;
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            int tx = rng.Next(4, GridSize - 4);
+            int ty = rng.Next(4, GridSize - 4);
+            if (_cells[tx, ty].Type == TerrainType.DeepWater)
+            {
+                targetX = tx;
+                targetY = ty;
+                break;
+            }
+        }
+        if (targetX < 0) return;
+
+        // 从最近的边缘出发
+        int sx, sy;
+        if (targetX < targetY) { sx = 0; sy = targetY; }
+        else { sx = targetX; sy = 0; }
+
+        int dx = targetX > sx ? 1 : (targetX < sx ? -1 : 0);
+        int dy = targetY > sy ? 1 : (targetY < sy ? -1 : 0);
+
+        int maxSteps = Math.Max(Math.Abs(targetX - sx), Math.Abs(targetY - sy)) + 5;
+        double drift = 0;
+        for (int s = 0; s < maxSteps; s++)
+        {
+            if (sx < 0 || sx >= GridSize || sy < 0 || sy >= GridSize) break;
+            if (sx == targetX && sy == targetY) break; // 汇入主干
+            if (!IsBaseArea(sx, sy))
+            {
+                if (_cells[sx, sy].Type != TerrainType.DeepWater)
+                {
+                    _cells[sx, sy].Type = TerrainType.ShallowWater; // 支流较浅
+                    _cells[sx, sy].Elevation = 1;
+                }
+            }
+            // 蜿蜒
+            drift += (rng.NextDouble() - 0.5) * 0.8;
+            drift = Math.Max(-1.0, Math.Min(1.0, drift));
+            int wob = (int)Math.Round(Math.Sin(drift));
+            if (dx != 0) sy += wob; else sx += wob;
+            sx += dx;
+            sy += dy;
         }
     }
 
@@ -633,29 +806,135 @@ public class TerrainGrid
 
     private void GenerateRoads(Random rng)
     {
-        // 道路：从地图中心向四个方向延伸（沿用十字形骨架）
-        int mid = MapConfig.Center;
-        for (int i = 0; i < GridSize; i++)
+        // P2: 连贯路网 — BFS寻路连接所有基地到地图中心
+        var bases = MapConfig.BasePositions;
+        int center = MapConfig.Center;
+
+        foreach (var (bx, by) in bases)
         {
-            // 水平主干道
-            if (_cells[i, mid].Type == TerrainType.Grass || _cells[i, mid].Type == TerrainType.Sand || _cells[i, mid].Type == TerrainType.Field)
-                if (_cells[i, mid].Elevation <= 1)
-                    _cells[i, mid].Type = TerrainType.Road;
-            // 垂直主干道
-            if (_cells[mid, i].Type == TerrainType.Grass || _cells[mid, i].Type == TerrainType.Sand || _cells[mid, i].Type == TerrainType.Field)
-                if (_cells[mid, i].Elevation <= 1)
-                    _cells[mid, i].Type = TerrainType.Road;
+            // 从基地边缘出发，到中心附近
+            int startX = Math.Clamp(bx + (bx < center ? 2 : (bx > center ? -2 : 0)), 0, GridSize - 1);
+            int startY = Math.Clamp(by + (by < center ? 2 : (by > center ? -2 : 0)), 0, GridSize - 1);
+            int targetX = center, targetY = center;
+
+            // BFS寻路：只通过可建路地形
+            var path = FindRoadPath(startX, startY, targetX, targetY);
+            if (path == null) continue;
+
+            // 沿路径铺设道路
+            foreach (var (px, py) in path)
+            {
+                if (IsBaseArea(px, py)) continue;
+                var t = _cells[px, py].Type;
+                if (t == TerrainType.ShallowWater)
+                {
+                    _cells[px, py].Type = TerrainType.Road;
+                    _cells[px, py].HasBridge = true;
+                }
+                else if ((t == TerrainType.Grass || t == TerrainType.Sand ||
+                          t == TerrainType.Field || t == TerrainType.Snow) &&
+                         _cells[px, py].Elevation <= 2)
+                {
+                    _cells[px, py].Type = TerrainType.Road;
+                }
+            }
         }
 
-        // 对角线道路
-        for (int i = 2; i <= mid - 2; i++)
+        // 补充横向联络道（连接相邻基地对）
+        for (int i = 0; i < bases.Length - 1; i += 2)
         {
-            if (_cells[i, i].Type == TerrainType.Grass && _cells[i, i].Elevation <= 1)
-                _cells[i, i].Type = TerrainType.Road;
-            int j = GridSize - 1 - i;
-            if (j >= 0 && j < GridSize)
-                if (_cells[j, i].Type == TerrainType.Grass && _cells[j, i].Elevation <= 1)
-                    _cells[j, i].Type = TerrainType.Road;
+            var (x1, y1) = bases[i];
+            var (x2, y2) = bases[i + 1];
+            int dist = Math.Abs(x1 - x2) + Math.Abs(y1 - y2);
+            if (dist > GridSize) continue;
+            DrawRoadBetween(Math.Clamp(x1 + 1, 0, GridSize - 1), Math.Clamp(y1 + 1, 0, GridSize - 1),
+                            Math.Clamp(x2 - 1, 0, GridSize - 1), Math.Clamp(y2 - 1, 0, GridSize - 1));
+        }
+    }
+
+    /// <summary>BFS寻路：从起点到终点，只通过可建路地形（草地/沙地/雪/田地/浅水），绕过山/深水/悬崖。</summary>
+    private System.Collections.Generic.List<(int x, int y)>? FindRoadPath(int sx, int sy, int tx, int ty)
+    {
+        if (sx == tx && sy == ty) return new System.Collections.Generic.List<(int, int)> { (sx, sy) };
+
+        var visited = new bool[GridSize, GridSize];
+        var parent = new (int px, int py)[GridSize, GridSize];
+        var queue = new Queue<(int x, int y)>();
+        queue.Enqueue((sx, sy));
+        visited[sx, sy] = true;
+        parent[sx, sy] = (-1, -1);
+
+        int[] dxs = { 0, 0, 1, -1 };
+        int[] dys = { 1, -1, 0, 0 };
+
+        while (queue.Count > 0)
+        {
+            var (cx, cy) = queue.Dequeue();
+            // 到达终点附近（3格内）
+            if (Math.Abs(cx - tx) <= 2 && Math.Abs(cy - ty) <= 2)
+            {
+                // 回溯路径
+                var path = new System.Collections.Generic.List<(int, int)>();
+                int bx = cx, by = cy;
+                while (bx != -1)
+                {
+                    path.Add((bx, by));
+                    var (ppx, ppy) = parent[bx, by];
+                    bx = ppx; by = ppy;
+                }
+                path.Reverse();
+                return path;
+            }
+
+            for (int d = 0; d < 4; d++)
+            {
+                int nx = cx + dxs[d], ny = cy + dys[d];
+                if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                if (visited[nx, ny]) continue;
+
+                var nt = _cells[nx, ny].Type;
+                // 不可通过：山脉、深水、悬崖
+                if (nt == TerrainType.Mountain || nt == TerrainType.DeepWater || nt == TerrainType.Cliff)
+                    continue;
+
+                visited[nx, ny] = true;
+                parent[nx, ny] = (cx, cy);
+                queue.Enqueue((nx, ny));
+            }
+        }
+        return null; // 无路径
+    }
+
+    /// <summary>在两点之间画一条简单的道路（直线+L形拐弯），遇水架桥。</summary>
+    private void DrawRoadBetween(int x1, int y1, int x2, int y2)
+    {
+        int cx = x1, cy = y1;
+        // 先水平后垂直
+        while (cx != x2)
+        {
+            if (!IsBaseArea(cx, cy))
+            {
+                var t = _cells[cx, cy].Type;
+                if ((t == TerrainType.Grass || t == TerrainType.Sand ||
+                     t == TerrainType.Field || t == TerrainType.Snow) && _cells[cx, cy].Elevation <= 2)
+                    _cells[cx, cy].Type = TerrainType.Road;
+                if (t == TerrainType.ShallowWater)
+                { _cells[cx, cy].Type = TerrainType.Road; _cells[cx, cy].HasBridge = true; }
+            }
+            cx += cx < x2 ? 1 : -1;
+        }
+        while (cy != y2)
+        {
+            if (!IsBaseArea(cx, cy))
+            {
+                var t = _cells[cx, cy].Type;
+                if ((t == TerrainType.Grass || t == TerrainType.Sand ||
+                     t == TerrainType.Field || t == TerrainType.Snow) && _cells[cx, cy].Elevation <= 2)
+                    _cells[cx, cy].Type = TerrainType.Road;
+                if (t == TerrainType.ShallowWater)
+                { _cells[cx, cy].Type = TerrainType.Road; _cells[cx, cy].HasBridge = true; }
+            }
+            cy += cy < y2 ? 1 : -1;
         }
     }
 
