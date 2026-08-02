@@ -17,11 +17,11 @@ public static class IsoTerrainRenderer
     // 等距菱形瓦片像素尺寸
     public const int TileW = 64;   // 菱形宽
     public const int TileH = 32;   // 菱形高
-    public const int MaxElevPx = 24; // 最高海拔的侧面像素高度
+    public const int MaxElevPx = 32; // 最高海拔的侧面像素高度
 
     // 每级海拔的侧面像素高度
-    // Elevation 0（水面）= 0px, 1（平地）= 0px, 2（丘陵）= 12px, 3（山顶）= 24px
-    private static readonly int[] ElevSidePx = { 0, 0, 12, 24 };
+    // Elevation 0（水面）= 0px, 1（平地）= 0px, 2（丘陵）= 16px, 3（山顶）= 32px
+    private static readonly int[] ElevSidePx = { 0, 0, 16, 32 };
 
     /// <summary>
     /// 渲染整个地形为一张大等距图。
@@ -80,7 +80,8 @@ public static class IsoTerrainRenderer
         int tileW = (int)IsoCoords.TileWidth;
         int tileH = (int)IsoCoords.TileHeight;
 
-        // 按等距渲染顺序：从后往前（gx+gy越小越在后面）
+        // ===== 双Pass渲染：确保崖壁侧面不被前方tile顶面覆盖 =====
+        // Pass 1: 画所有顶面+水面波纹+边缘混合（从后往前）
         for (int sum = 0; sum <= 2 * (gs - 1); sum++)
         {
             for (int gx = Math.Max(0, sum - gs + 1); gx <= Math.Min(gs - 1, sum); gx++)
@@ -99,14 +100,6 @@ public static class IsoTerrainRenderer
                     cityImgs, fieldImgs, coastImgs, sandCoastImgs, waterDepthImgs);
                 var (tileData, tileImgW, tileImgH) = getTileBuf(topImg);
 
-                // 计算侧面高度
-                int sidePx = cell.Elevation >= 0 && cell.Elevation < ElevSidePx.Length
-                    ? ElevSidePx[cell.Elevation] : 0;
-
-                // 先画侧面（在顶面下方）
-                if (sidePx > 0)
-                    DrawDiamondSideFast(imgData, imgStride, imgW, imgH, cx, cy, sidePx, cell, rng);
-
                 // 画顶面（菱形裁剪）—— 快速字节版
                 if (tileData.Length > 0)
                     DrawDiamondTopFast(imgData, imgStride, imgW, imgH, cx, cy,
@@ -116,11 +109,34 @@ public static class IsoTerrainRenderer
                 if (cell.Type == TerrainType.ShallowWater || cell.Type == TerrainType.DeepWater)
                     DrawWaterRipplesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, rng, halfW, halfH);
 
-                // 画悬崖（高差≥2的边缘画深色陡崖）— 字节缓冲区版
-                DrawCliffEdgesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, terrain, gx, gy);
-
                 // 陆-陆边缘混合（消除草↔沙、草↔雪等硬切边界）
                 BlendTerrainEdgesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, terrain, gx, gy, halfW, halfH);
+            }
+        }
+
+        // Pass 2: 画所有崖壁侧面+悬崖线（从前往后，确保高海拔崖壁覆盖低海拔顶面）
+        for (int sum = 2 * (gs - 1); sum >= 0; sum--)
+        {
+            for (int gx = Math.Min(gs - 1, sum); gx >= Math.Max(0, sum - gs + 1); gx--)
+            {
+                int gy = sum - gx;
+                if (gy < 0 || gy >= gs) continue;
+
+                var cell = terrain.GetCell(gx, gy);
+                var screenPos = IsoCoords.GridToScreen(gx, gy);
+                int cx = offX + (int)screenPos.X;
+                int cy = offY + (int)screenPos.Y + MaxElevPx;
+
+                // 计算侧面高度
+                int sidePx = cell.Elevation >= 0 && cell.Elevation < ElevSidePx.Length
+                    ? ElevSidePx[cell.Elevation] : 0;
+
+                // 画崖壁侧面
+                if (sidePx > 0)
+                    DrawDiamondSideFast(imgData, imgStride, imgW, imgH, cx, cy, sidePx, cell, rng);
+
+                // 画悬崖边缘线（高差≥2的边缘画深色陡崖）— 字节缓冲区版
+                DrawCliffEdgesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, terrain, gx, gy);
             }
         }
 
@@ -493,11 +509,11 @@ public static class IsoTerrainRenderer
                 // 水面处理
                 if (isShallow)
                 {
-                    r *= 0.85f; g *= 0.9f; a = 224;
+                    r *= 0.88f; g *= 0.92f; a = 224;
                 }
                 else if (isDeep)
                 {
-                    r *= 0.7f; g *= 0.75f; b *= 0.95f; a = 235;
+                    r *= 0.50f; g *= 0.58f; b *= 0.72f; a = 240;
                 }
 
                 int dstIdx = imgY * imgStride + imgX * 4;
@@ -538,15 +554,15 @@ public static class IsoTerrainRenderer
 
         Color baseColor = cell.Type switch
         {
-            TerrainType.Mountain => new Color(0.42f, 0.35f, 0.26f, 1f),
-            TerrainType.Snow => new Color(0.58f, 0.58f, 0.63f, 1f),
-            TerrainType.Sand => new Color(0.50f, 0.42f, 0.28f, 1f),
-            TerrainType.Grass => new Color(0.36f, 0.30f, 0.20f, 1f),
-            _ => new Color(0.34f, 0.28f, 0.20f, 1f),
+            TerrainType.Mountain => new Color(0.38f, 0.30f, 0.20f, 1f),  // 更暗的崖壁
+            TerrainType.Snow => new Color(0.48f, 0.48f, 0.55f, 1f),      // 偏蓝灰
+            TerrainType.Sand => new Color(0.42f, 0.34f, 0.22f, 1f),      // 更暗
+            TerrainType.Grass => new Color(0.30f, 0.24f, 0.16f, 1f),     // 更暗
+            _ => new Color(0.28f, 0.22f, 0.16f, 1f),
         };
 
-        float leftShade = 0.75f;
-        float rightShade = 1.0f;
+        float leftShade = 0.55f;   // 左面（西南）大幅暗化，强烈3D高差感
+        float rightShade = 0.90f;   // 右面（东南）略暗
         int halfW = (int)IsoCoords.HalfW;
         int halfH = (int)IsoCoords.HalfH;
 
@@ -556,7 +572,10 @@ public static class IsoTerrainRenderer
             if (y < 0 || y >= imgH) continue;
 
             float t = (float)py / sidePx;
-            float dim = 1f - t * 0.3f;
+            float dim = 1f - t * 0.35f;  // 底部更暗，增强深度感
+
+            // 顶部阴影线：崖壁与顶面交界处画一道深色暗线（AO效果）
+            float topShadow = (py < 3) ? 0.65f : 1.0f;
 
             int leftBound, rightBound;
             if (halfH + py < sidePx)
@@ -587,9 +606,9 @@ public static class IsoTerrainRenderer
                     if (tx >= 0 && tx < cliffTexW && ty >= 0 && ty < cliffTexH)
                     {
                         int srcIdx = (ty * cliffTexW + tx) * 4;
-                        float r = cliffTexData[srcIdx] / 255f * faceShade;
-                        float g = cliffTexData[srcIdx + 1] / 255f * faceShade;
-                        float b = cliffTexData[srcIdx + 2] / 255f * faceShade;
+                        float r = cliffTexData[srcIdx] / 255f * faceShade * topShadow;
+                        float g = cliffTexData[srcIdx + 1] / 255f * faceShade * topShadow;
+                        float b = cliffTexData[srcIdx + 2] / 255f * faceShade * topShadow;
                         int dstIdx = rowOffset + imgX * 4;
                         imgData[dstIdx]     = (byte)(r * 255f);
                         imgData[dstIdx + 1] = (byte)(g * 255f);
@@ -601,11 +620,11 @@ public static class IsoTerrainRenderer
 
                 // 回退：纯色+噪声
                 float noise = ((px * 37 + py * 53 + cx * 7) % 23) / 23f * 0.15f - 0.075f;
-                float layerLine = (py % 4 == 0) ? 0.88f : 1.0f;
+                float layerLine = (py % 4 == 0) ? 0.82f : 1.0f;  // 更强的层理线
 
-                float r2 = Math.Clamp(baseColor.R * dim * faceShade * layerLine + noise, 0f, 1f);
-                float g2 = Math.Clamp(baseColor.G * dim * faceShade * layerLine + noise, 0f, 1f);
-                float b2 = Math.Clamp(baseColor.B * dim * faceShade * layerLine + noise, 0f, 1f);
+                float r2 = Math.Clamp(baseColor.R * dim * faceShade * layerLine * topShadow + noise, 0f, 1f);
+                float g2 = Math.Clamp(baseColor.G * dim * faceShade * layerLine * topShadow + noise, 0f, 1f);
+                float b2 = Math.Clamp(baseColor.B * dim * faceShade * layerLine * topShadow + noise, 0f, 1f);
 
                 int dstIdx2 = rowOffset + imgX * 4;
                 imgData[dstIdx2]     = (byte)(r2 * 255f);
@@ -616,37 +635,79 @@ public static class IsoTerrainRenderer
         }
     }
 
-    /// <summary>直接操作字节数组绘制水面波纹。</summary>
+    /// <summary>直接操作字节数组绘制水面波纹（RA2级强度）。</summary>
     private static void DrawWaterRipplesFast(byte[] imgData, int imgStride, int imgW, int imgH,
         int cx, int cy, TerrainCell cell, Random rng, int halfW, int halfH)
     {
-        float rippleR = cell.Type == TerrainType.DeepWater ? 0.5f : 0.6f;
-        float rippleG = cell.Type == TerrainType.DeepWater ? 0.6f : 0.7f;
-        float rippleB = cell.Type == TerrainType.DeepWater ? 0.8f : 0.85f;
+        float rippleR = cell.Type == TerrainType.DeepWater ? 0.35f : 0.75f;
+        float rippleG = cell.Type == TerrainType.DeepWater ? 0.48f : 0.82f;
+        float rippleB = cell.Type == TerrainType.DeepWater ? 0.65f : 0.95f;
 
-        int rippleCount = 2 + rng.Next(2);
+        // 多条波纹（4-7条，RA2密度）
+        int rippleCount = 4 + rng.Next(4);
         for (int i = 0; i < rippleCount; i++)
         {
-            int ry = rng.Next(-halfH + 2, halfH - 1);
-            int rw = (int)(halfW * (1f - Math.Abs(ry) / (float)halfW)) - 2;
+            int ry = rng.Next(-halfH + 1, halfH);
+            int rw = (int)(halfW * (1f - Math.Abs(ry) / (float)halfW)) - 1;
             if (rw <= 0) continue;
-            int startX = rng.Next(-rw, rw - 3);
-            int len = rng.Next(3, Math.Min(8, rw * 2));
+            int startX = rng.Next(-rw, rw - 2);
+            int len = rng.Next(4, Math.Min(12, rw * 2));
+            // 波纹弧度：有些是直线，有些微微弯曲
+            int curve = rng.Next(-1, 2);
 
             for (int dx = 0; dx < len && startX + dx < rw; dx++)
             {
                 int px = startX + dx;
+                int py = ry + (int)(curve * Math.Sin((float)dx / len * Math.PI));
                 int imgX = cx + px;
-                int imgY = cy + ry;
+                int imgY = cy + py;
                 if (imgX >= 0 && imgX < imgW && imgY >= 0 && imgY < imgH)
                 {
                     int dstIdx = imgY * imgStride + imgX * 4;
-                    byte ea = imgData[dstIdx + 3];
-                    if (ea > 128)
+                    if (imgData[dstIdx + 3] > 128)
                     {
-                        imgData[dstIdx]     = (byte)Math.Min(imgData[dstIdx]     + rippleR * 76.5f, 255);
-                        imgData[dstIdx + 1] = (byte)Math.Min(imgData[dstIdx + 1] + rippleG * 76.5f, 255);
-                        imgData[dstIdx + 2] = (byte)Math.Min(imgData[dstIdx + 2] + rippleB * 76.5f, 255);
+                        float fade = 1f - (float)Math.Abs(dx - len / 2f) / (len / 2f) * 0.4f;
+                        imgData[dstIdx]     = (byte)Math.Min(imgData[dstIdx]     + rippleR * 90f * fade, 255);
+                        imgData[dstIdx + 1] = (byte)Math.Min(imgData[dstIdx + 1] + rippleG * 90f * fade, 255);
+                        imgData[dstIdx + 2] = (byte)Math.Min(imgData[dstIdx + 2] + rippleB * 90f * fade, 255);
+                    }
+                }
+            }
+        }
+
+        // 高光闪烁点（2-4个，模拟阳光反射）
+        int sparkCount = 2 + rng.Next(3);
+        for (int i = 0; i < sparkCount; i++)
+        {
+            int sx = rng.Next(-halfW + 4, halfW - 3);
+            int sy = rng.Next(-halfH + 2, halfH - 1);
+            int rw = (int)(halfW * (1f - Math.Abs(sy) / (float)halfW));
+            if (Math.Abs(sx) > rw - 2) continue;
+
+            // 中心高亮点（近白）
+            int imgX = cx + sx, imgY = cy + sy;
+            if (imgX >= 0 && imgX < imgW && imgY >= 0 && imgY < imgH)
+            {
+                int dstIdx = imgY * imgStride + imgX * 4;
+                if (imgData[dstIdx + 3] > 128)
+                {
+                    imgData[dstIdx]     = (byte)Math.Min(imgData[dstIdx]     + 100, 255);
+                    imgData[dstIdx + 1] = (byte)Math.Min(imgData[dstIdx + 1] + 100, 255);
+                    imgData[dstIdx + 2] = (byte)Math.Min(imgData[dstIdx + 2] + 80, 255);
+                }
+            }
+            // 高光扩散（十字形扩散）
+            foreach (var (ox, oy) in new[] { (-1, 0), (1, 0), (0, -1), (0, 1) })
+            {
+                int nx = imgX + ox, ny = imgY + oy;
+                if (nx >= 0 && nx < imgW && ny >= 0 && ny < imgH)
+                {
+                    int idx = ny * imgStride + nx * 4;
+                    if (imgData[idx + 3] > 128)
+                    {
+                        imgData[idx]     = (byte)Math.Min(imgData[idx]     + 50, 255);
+                        imgData[idx + 1] = (byte)Math.Min(imgData[idx + 1] + 50, 255);
+                        imgData[idx + 2] = (byte)Math.Min(imgData[idx + 2] + 40, 255);
                     }
                 }
             }
@@ -980,9 +1041,9 @@ public static class IsoTerrainRenderer
             // 获取当前地形的代表色
             var (mr, mg, mb) = GetTerrainRepColor(myType);
 
-            // 在菱形对应边缘绘制渐变混合带（6像素宽，约tile宽度的10%）
-            int blendWidth = 6;
-            float maxBlend = 0.55f;
+            // 在菱形对应边缘绘制渐变混合带（10像素宽，约tile宽度的15%）
+            int blendWidth = 10;
+            float maxBlend = 0.70f;
 
             for (int i = 0; i <= halfW; i++)
             {
@@ -991,7 +1052,7 @@ public static class IsoTerrainRenderer
                 for (int edge = 0; edge < blendWidth; edge++)
                 {
                     float distFactor = 1f - (float)edge / blendWidth;
-                    float blendStrength = maxBlend * distFactor * distFactor; // 二次衰减
+                    float blendStrength = maxBlend * distFactor * distFactor * distFactor; // 三次衰减，边缘最强
 
                     int pxCur, pyCur;
                     GetEdgePoint(dx, dy, t, halfW, halfH, edge, out pxCur, out pyCur);
@@ -1001,27 +1062,27 @@ public static class IsoTerrainRenderer
                         nr, ng, nb, blendStrength);
 
                     // 沿边缘法线方向多撒几个点形成带状
-                    if (edge < 3)
+                    if (edge < 4)
                     {
                         int nx2 = pxCur + (dx != 0 ? 0 : (dy > 0 ? 1 : -1));
                         int ny2 = pyCur + (dy != 0 ? 0 : (dx > 0 ? 1 : -1));
                         BlendPixel(imgData, imgStride, imgW, imgH, cx + nx2, cy + ny2,
-                            nr, ng, nb, blendStrength * 0.7f);
+                            nr, ng, nb, blendStrength * 0.8f);
                     }
                 }
 
-                // 散落"侵入"像素簇（草侵入沙、沙侵入草等）—— 更密集
-                if ((i * 7 + gx * 13 + gy * 17) % 4 == 0)
+                // 散落"侵入"像素簇（草侵入沙、沙侵入草等）—— 大量密集
+                if ((i * 5 + gx * 11 + gy * 13) % 3 == 0)
                 {
                     int pxCur, pyCur;
                     GetEdgePoint(dx, dy, t, halfW, halfH, 0, out pxCur, out pyCur);
-                    // 散落2-3个邻居颜色小点
-                    for (int s = 0; s < 3; s++)
+                    // 散落4-5个邻居颜色小点，范围更大
+                    for (int s = 0; s < 5; s++)
                     {
-                        int scatterPx = pxCur + ((i * 3 + s * 5) % 5 - 2);
+                        int scatterPx = pxCur + ((i * 3 + s * 7) % 7 - 3);
                         int scatterPy = pyCur + ((i * 5 + s * 3) % 5 - 2);
                         BlendPixel(imgData, imgStride, imgW, imgH, cx + scatterPx, cy + scatterPy,
-                            nr, ng, nb, maxBlend * 0.6f);
+                            nr, ng, nb, maxBlend * 0.5f);
                     }
                 }
             }

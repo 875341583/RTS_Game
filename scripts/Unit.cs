@@ -957,7 +957,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             var terrain = mainNode.GetTerrainGrid();
             terrain.WorldToGrid(GlobalPosition.X, GlobalPosition.Y, out int gx, out int gy);
             var cell = terrain.GetCell(gx, gy);
-            float yOffset = cell.Elevation switch { 2 => -3f, 3 => -6f, _ => 0f };
+            float yOffset = cell.Elevation switch { 2 => -4f, 3 => -8f, _ => 0f };
             // E7：空中单位额外上浮模拟飞行高度
             if (IsAirUnit) yOffset -= 12f;
             _body!.Position = new Vector2(_body!.Position.X, yOffset + (Type == UnitType.Infantry ? 0f : 0f));
