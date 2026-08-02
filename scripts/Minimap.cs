@@ -11,8 +11,8 @@ namespace RTSGame;
 /// </summary>
 public partial class Minimap : Control
 {
-    private Main _main = null!;
-    private RTSCamera _camera = null!;
+    private Main? _main;
+    private RTSCamera? _camera;
 
     // 缓存节点引用
     private Node2D? _obstaclesNode;
@@ -330,9 +330,9 @@ public partial class Minimap : Control
     private void DrawCameraViewportDashed()
     {
         var vpSize = GetViewportRect().Size;
-        var zoom = _camera.Zoom;
+        var zoom = _camera!.Zoom;
         var worldVp = vpSize / zoom;
-        var camTL = _camera.Position - worldVp / 2;
+        var camTL = _camera!.Position - worldVp / 2;
         var mmTL = W2M(camTL);
         var mmSz = worldVp * S;
 
@@ -383,7 +383,7 @@ public partial class Minimap : Control
         // 由于使用了 DrawSetTransformMatrix 偏移，点击坐标需减去 MmMargin 转换到内容区坐标
         var contentPos = mmPos - new Vector2(MmMargin, MmMargin);
         var world = M2W(contentPos);
-        _camera.Position = new Vector2(Mathf.Clamp(world.X, 0, MapSize), Mathf.Clamp(world.Y, 0, MapSize));
+        _camera!.Position = new Vector2(Mathf.Clamp(world.X, 0, MapSize), Mathf.Clamp(world.Y, 0, MapSize));
     }
 
     private Vector2 W2M(Vector2 w) => new(w.X * S, w.Y * S);

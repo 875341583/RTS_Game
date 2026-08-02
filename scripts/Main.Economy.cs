@@ -156,7 +156,7 @@ public partial class Main
         // 全局电力 = 所有发电 - 所有耗电（与红警2一致：全局电力池模型）。
         // 电网分区系统(PowerGrid)独立控制离线建筑的生产速度降为50%。
         // 这里保持全局池模型不变，但在电网面板中展示分区详情。
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
             {
@@ -171,7 +171,7 @@ public partial class Main
 
     private bool HasBuilding(int teamId, BuildingType type)
     {
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && b.Type == type && IsInstanceValid(b))
                 return true;
@@ -361,7 +361,7 @@ public partial class Main
         // Q1：进入放置模式（玩家手动选择位置）
         _placementMode = type;
         ReplayRecorder.Record(ReplayRecorder.ActionType.PlaceBuilding, new { Type = type.ToString() });
-        if (_buildPanel != null) _buildPanel.ActivePlacement = type;
+        if (_buildPanel != null) _buildPanel!.ActivePlacement = type;
         QueueRedraw();
         _audio?.PlaySfx(AudioManager.Sfx.UiBuildStart);
         GameLog.Debug($"[Placement] select {type} placement position, left-click to place / right-click to cancel");
@@ -372,7 +372,7 @@ public partial class Main
     {
         _placementMode = null;
         ReplayRecorder.Record(ReplayRecorder.ActionType.CancelPlacement);
-        if (_buildPanel != null) _buildPanel.ActivePlacement = null;
+        if (_buildPanel != null) _buildPanel!.ActivePlacement = null;
         QueueRedraw();
     }
 
@@ -400,7 +400,7 @@ public partial class Main
         var grid = IsoCoords.ScreenToGridF(pos.X, pos.Y);
         if (grid.X < 0 || grid.X >= TerrainGrid.GridSize || grid.Y < 0 || grid.Y >= TerrainGrid.GridSize)
             return false;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.GlobalPosition.DistanceTo(pos) < 90f)
                 return false;
@@ -412,7 +412,7 @@ public partial class Main
     {
         var type = _placementMode!.Value;
         int cost = GetBuildingCost(type);
-        var pos = _camera.GetGlobalMousePosition();
+        var pos = _camera!.GetGlobalMousePosition();
         // 等距坐标边界检查+钳制
         var grid = IsoCoords.ScreenToGridF(pos.X, pos.Y);
         grid = new Vector2(
@@ -624,7 +624,7 @@ public partial class Main
     private int CountBuildingOfType(int teamId, BuildingType type)
     {
         int count = 0;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && b.Type == type && IsInstanceValid(b))
                 count++;
@@ -866,7 +866,7 @@ public partial class Main
     private void BlueTestAITick()
     {
         // G4：自动维修血量低于50%的蓝方建筑
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == PlayerTeamId && IsInstanceValid(b)
                 && b.NeedsRepair && b.Health < b.MaxHealth * 0.5f)
@@ -909,7 +909,7 @@ public partial class Main
         // M3修复: AI优先占领己方已控制战略点附近的目标，触发G8连锁占领+50%加速
         // 收集己方已占领的战略点位置
         var ownedPositions = new System.Collections.Generic.List<Vector2>();
-        foreach (var child in _strategicPointsNode.GetChildren())
+        foreach (var child in _strategicPointsNode!.GetChildren())
         {
             if (child is StrategicPoint sp0 && IsInstanceValid(sp0) && sp0.OwningTeam == teamId)
                 ownedPositions.Add(sp0.GlobalPosition);
@@ -917,7 +917,7 @@ public partial class Main
 
         // 对所有未占领的战略点排序：靠近己方已占领点的优先（连锁加成）
         var targets = new System.Collections.Generic.List<(StrategicPoint sp, float priority)>();
-        foreach (var child in _strategicPointsNode.GetChildren())
+        foreach (var child in _strategicPointsNode!.GetChildren())
         {
             if (child is not StrategicPoint sp || !IsInstanceValid(sp)) continue;
             if (sp.OwningTeam == teamId) continue;
@@ -942,7 +942,7 @@ public partial class Main
         {
             Unit? nearest = null;
             float nearestDist = float.MaxValue;
-            foreach (var uc in _unitsNode.GetChildren())
+            foreach (var uc in _unitsNode!.GetChildren())
             {
                 if (uc is Unit u && IsInstanceValid(u) && u.TeamId == teamId && u.AttackDamage > 0f)
                 {
@@ -959,7 +959,7 @@ public partial class Main
         }
 
         // E5：AI 也尝试占领油田
-        foreach (var child in _resourcesNode.GetChildren())
+        foreach (var child in _resourcesNode!.GetChildren())
         {
             if (child is not ResourceNode rn || !IsInstanceValid(rn)) continue;
             if (rn.ResourceType != ResourceType.OilField) continue;
@@ -967,7 +967,7 @@ public partial class Main
 
             Unit? nearest = null;
             float nearestDist = float.MaxValue;
-            foreach (var uc in _unitsNode.GetChildren())
+            foreach (var uc in _unitsNode!.GetChildren())
             {
                 if (uc is Unit u && IsInstanceValid(u) && u.TeamId == teamId && u.AttackDamage > 0f)
                 {
@@ -987,37 +987,37 @@ public partial class Main
     // ---------- 场景生成辅助 ----------
     private Unit SpawnUnit(UnitType type, Vector2 pos, int teamId, bool autoAI)
     {
-        var u = _unitScene.Instantiate<Unit>();
+        var u = _unitScene!.Instantiate<Unit>();
         u.InitAsType(type);
         u.GlobalPosition = pos;
         u.TeamId = teamId;
         u.AutoAI = autoAI;
         // P1-2: 应用阵营数值乘数
         u.ApplyFactionMultipliers(teamId);
-        _unitsNode.AddChild(u);
+        _unitsNode!.AddChild(u);
         return u;
     }
 
     private Harvester SpawnHarvester(Vector2 pos, int teamId, Building home)
     {
-        var h = _harvesterScene.Instantiate<Harvester>();
+        var h = _harvesterScene!.Instantiate<Harvester>();
         h.GlobalPosition = pos;
         h.TeamId = teamId;
         h.HomeBase = home;
-        _unitsNode.AddChild(h);
+        _unitsNode!.AddChild(h);
         return h;
     }
 
     private Building SpawnBuilding(BuildingType type, Vector2 pos, int teamId)
     {
-        var b = _buildingScene.Instantiate<Building>();
+        var b = _buildingScene!.Instantiate<Building>();
         b.InitAsType(type);
         b.GlobalPosition = pos;
         b.TeamId = teamId;
         // P1-2: 应用阵营数值乘数
         b.ApplyFactionMultipliers(teamId);
         b.Destroyed += OnBuildingDestroyed;
-        _buildingsNode.AddChild(b);
+        _buildingsNode!.AddChild(b);
         // G5: 建造触发尤里卡
         OnEurekaBuild(teamId);
         // P0-1: 注册建筑障碍到PathFinder
@@ -1029,16 +1029,16 @@ public partial class Main
     private void RegisterBuildingObstacle(Building b)
     {
         if (_pathFinder == null) return;
-        _terrain.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
-        _pathFinder.AddBuilding(gx, gy, 1);
+        _terrain!.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
+        _pathFinder!.AddBuilding(gx, gy, 1);
     }
 
     /// <summary>P0-1: 建筑被摧毁/出售时的回调，移除PathFinder障碍。</summary>
     private void OnBuildingDestroyed(Building b)
     {
         if (_pathFinder == null) return;
-        _terrain.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
-        _pathFinder.RemoveBuilding(gx, gy, 1);
+        _terrain!.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
+        _pathFinder!.RemoveBuilding(gx, gy, 1);
     }
 
     /// <summary>生产完成回调：由 Building._Process 在生产计时归零时调用。</summary>
@@ -1086,7 +1086,7 @@ public partial class Main
 
     private Building? FindHomeBase(int teamId)
     {
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && b.Type == BuildingType.Base && IsInstanceValid(b))
                 return b;
@@ -1141,7 +1141,7 @@ public partial class Main
     {
         Building? best = null;
         int minQueue = int.MaxValue;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && b.Type == buildingType && IsInstanceValid(b))
             {
@@ -1160,7 +1160,7 @@ public partial class Main
     private int CountQueuedUnitsOfTeam(int teamId)
     {
         int n = 0;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
                 n += b.QueueCount;
@@ -1254,10 +1254,10 @@ public partial class Main
 
     private void SpawnOre(Vector2 pos, int amount = 1000)
     {
-        var o = _oreScene.Instantiate<ResourceNode>();
+        var o = _oreScene!.Instantiate<ResourceNode>();
         o.InitialAmount = amount;
         o.GlobalPosition = pos;
-        _resourcesNode.AddChild(o);
+        _resourcesNode!.AddChild(o);
     }
 
     /// <summary>将坐标限制在地图范围内（距边缘至少 margin 像素）。</summary>
@@ -1271,7 +1271,7 @@ public partial class Main
     private int CountUnitsOfTeam(int teamId)
     {
         int n = 0;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
             if (c is Unit u && u.TeamId == teamId && IsInstanceValid(u)) n++;
         return n;
     }
@@ -1279,7 +1279,7 @@ public partial class Main
     private int CountHarvestersOfTeam(int teamId)
     {
         int n = 0;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
             if (c is Harvester h && h.TeamId == teamId && IsInstanceValid(h)) n++;
         return n;
     }
@@ -1287,7 +1287,7 @@ public partial class Main
     private int CountBuildingsOfTeam(int teamId)
     {
         int n = 0;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b)) n++;
         return n;
     }

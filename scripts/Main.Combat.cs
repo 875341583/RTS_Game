@@ -81,7 +81,7 @@ public partial class Main
     {
         // 寻找发射方的核弹井位置（如果有）
         Vector2? launchPos = null;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == firingTeamId && b.Type == BuildingType.NukeSilo
                 && IsInstanceValid(b) && b.Health > 0f)
@@ -232,7 +232,7 @@ public partial class Main
         int unitHits = 0, bldHits = 0;
 
         // 1. 对范围内敌方单位造成伤害
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId
                 && pos.DistanceTo(u.GlobalPosition) <= GameConst.NukeRadius)
@@ -242,7 +242,7 @@ public partial class Main
             }
         }
         // 2. 对范围内敌方建筑造成伤害
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId
                 && pos.DistanceTo(b.GlobalPosition) <= GameConst.NukeRadius)
@@ -346,7 +346,7 @@ public partial class Main
     private void ApplyCruiseMissile(Vector2 pos, int firingTeamId)
     {
         int unitHits = 0, bldHits = 0;
-        foreach (var child in _unitsNode.GetChildren())
+        foreach (var child in _unitsNode!.GetChildren())
         {
             if (child is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId && !u.IsDead)
             {
@@ -359,7 +359,7 @@ public partial class Main
                 }
             }
         }
-        foreach (var child in _buildingsNode.GetChildren())
+        foreach (var child in _buildingsNode!.GetChildren())
         {
             if (child is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId)
             {
@@ -382,7 +382,7 @@ public partial class Main
     private int DamageLightningAreaOnce(Vector2 pos, int firingTeamId)
     {
         int hits = 0;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && IsInstanceValid(u) && u.TeamId != firingTeamId
                 && pos.DistanceTo(u.GlobalPosition) <= GameConst.LightningRadius)
@@ -391,7 +391,7 @@ public partial class Main
                 hits++;
             }
         }
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.TeamId != firingTeamId
                 && pos.DistanceTo(b.GlobalPosition) <= GameConst.LightningRadius)
@@ -439,19 +439,19 @@ public partial class Main
             case UnitType.Sapper:
             case UnitType.ChiefEngineer:
                 // 步兵用高频muzzle
-                _audio.PlaySfx(AudioManager.Sfx.Muzzle, 1.2f);
+                _audio!.PlaySfx(AudioManager.Sfx.Muzzle, 1.2f);
                 break;
             case UnitType.Artillery:
             case UnitType.RocketLauncher:
             case UnitType.MissileTank:
                 // 远程用低沉cannon
-                _audio.PlaySfx(AudioManager.Sfx.Cannon, 0.8f);
-                _audio.PlaySfx(AudioManager.Sfx.Muzzle, 0.6f);
+                _audio!.PlaySfx(AudioManager.Sfx.Cannon, 0.8f);
+                _audio!.PlaySfx(AudioManager.Sfx.Muzzle, 0.6f);
                 break;
             default:
                 // 坦克通用
-                _audio.PlaySfx(AudioManager.Sfx.Cannon);
-                _audio.PlaySfx(AudioManager.Sfx.Muzzle, 0.9f);
+                _audio!.PlaySfx(AudioManager.Sfx.Cannon);
+                _audio!.PlaySfx(AudioManager.Sfx.Muzzle, 0.9f);
                 break;
         }
     }
@@ -466,12 +466,12 @@ public partial class Main
             case UnitType.ApocalypseTank:
             case UnitType.KirovAirship:
             case UnitType.AircraftCarrier:
-                _audio.PlaySfx(AudioManager.Sfx.BigExplosion);
+                _audio!.PlaySfx(AudioManager.Sfx.BigExplosion);
                 break;
             default:
                 // 补强：普通单位播放Explosion音效（非BigExplosion）
-                _audio.PlaySfx(AudioManager.Sfx.Explosion);
-                _audio.PlaySfx(AudioManager.Sfx.UnitDie);
+                _audio!.PlaySfx(AudioManager.Sfx.Explosion);
+                _audio!.PlaySfx(AudioManager.Sfx.UnitDie);
                 break;
         }
     }
@@ -495,10 +495,10 @@ public partial class Main
         switch (buildingType)
         {
             case BuildingType.AntiAirTurret:
-                _audio.PlaySfx(AudioManager.Sfx.AaFire);
+                _audio!.PlaySfx(AudioManager.Sfx.AaFire);
                 break;
             default:
-                _audio.PlaySfx(AudioManager.Sfx.TurretFire);
+                _audio!.PlaySfx(AudioManager.Sfx.TurretFire);
                 break;
         }
     }
@@ -606,7 +606,7 @@ public partial class Main
                 sb.AppendLine(TrManager.Tr("spy.recon_power", target.PowerProvided, target.PowerConsumed));
                 // 统计附近敌方单位
                 int nearbyEnemies = 0;
-                foreach (var c in _unitsNode.GetChildren())
+                foreach (var c in _unitsNode!.GetChildren())
                 {
                     if (c is Unit u && u.TeamId == target.TeamId && IsInstanceValid(u)
                         && u.GlobalPosition.DistanceTo(target.GlobalPosition) < 300f)
@@ -624,7 +624,7 @@ public partial class Main
     {
         // 找到空闲间谍
         Unit? idleSpy = null;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && u.TeamId == teamId && u.Type == UnitType.Spy && IsInstanceValid(u) && !u.IsSpyOnMission)
             {
@@ -638,7 +638,7 @@ public partial class Main
         Building? target = null;
         float bestDist = float.MaxValue;
         BuildingType[] priority = { BuildingType.TechCenter, BuildingType.Base, BuildingType.PowerPlant, BuildingType.Barracks, BuildingType.WarFactory };
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId != teamId && IsInstanceValid(b))
             {
@@ -703,7 +703,7 @@ public partial class Main
         // 通知AI策略系统：建筑被攻击 → 触发Defend策略
         NotifyBuildingAttackedForStrategy(teamId);
 
-        foreach (var child in _unitsNode.GetChildren())
+        foreach (var child in _unitsNode!.GetChildren())
         {
             if (child is Unit u && u.TeamId == teamId && IsInstanceValid(u)
                 && u.AutoDefend && !u.AutoAI && u.AttackDamage > 0f)

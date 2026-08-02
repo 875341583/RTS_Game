@@ -94,7 +94,7 @@ public partial class Main
         var pos = ParseReplayXY(parms, "TargetX", "TargetY");
         var friendlyUnits = GetSelectedFriendlyUnits();
         int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(friendlyUnits.Count)));
-        var terrainCell = _terrain.GetCellAtWorld(pos.X, pos.Y);
+        var terrainCell = _terrain!.GetCellAtWorld(pos.X, pos.Y);
         Unit.TerrainModType modType = DetectTerrainMod(terrainCell);
         if (modType != Unit.TerrainModType.None)
         {

@@ -16,8 +16,8 @@ public partial class StrategicPoint : Area2D
 
     public int OwningTeam { get; private set; } = -1; // -1 = neutral
 
-    private Sprite2D _visual = null!;
-    private Label _label = null!;
+    private Sprite2D? _visual;
+    private Label? _label;
     /// <summary>各阵营当前在场战斗单位计数，索引=teamId。</summary>
     private readonly int[] _teamCounts = new int[MaxTeams];
     /// <summary>当前正在推进占领的阵营（-1=无/对峙中）。</summary>
@@ -47,18 +47,18 @@ public partial class StrategicPoint : Area2D
         // Visual
         EnsureNeutralTexture();
         _visual = new Sprite2D();
-        _visual.Texture = _neutralTex;
-        AddChild(_visual);
+        _visual!.Texture = _neutralTex;
+        AddChild(_visual!);
 
         // Label
         _label = new Label();
-        _label.OffsetLeft = -50;
-        _label.OffsetTop = -55;
-        _label.OffsetRight = 50;
-        _label.OffsetBottom = -35;
-        _label.HorizontalAlignment = HorizontalAlignment.Center;
-        _label.Text = TrManager.Tr("strategic_point.name");
-        AddChild(_label);
+        _label!.OffsetLeft = -50;
+        _label!.OffsetTop = -55;
+        _label!.OffsetRight = 50;
+        _label!.OffsetBottom = -35;
+        _label!.HorizontalAlignment = HorizontalAlignment.Center;
+        _label!.Text = TrManager.Tr("strategic_point.name");
+        AddChild(_label!);
 
         BodyEntered += OnBodyEntered;
         BodyExited += OnBodyExited;
@@ -114,8 +114,8 @@ public partial class StrategicPoint : Area2D
                 OwningTeam = soleTeam;
                 _capturingTeam = -1;
                 _captureProgress = 0f;
-                _visual.Texture = GetTeamTexture(soleTeam);
-                _label.Text = $"{GetTeamDisplayName(soleTeam)}{TrManager.Tr("strategic_point.controlled")}";
+                _visual!.Texture = GetTeamTexture(soleTeam);
+                _label!.Text = $"{GetTeamDisplayName(soleTeam)}{TrManager.Tr("strategic_point.controlled")}";
                 GameLog.Debug($"[StrategicPoint] Team {soleTeam} ({GetTeamDisplayName(soleTeam)}) captured!");
             }
         }
@@ -146,7 +146,7 @@ public partial class StrategicPoint : Area2D
         // Update label with capture progress
         if (_captureProgress > 0f && OwningTeam == -1 && _capturingTeam >= 0)
         {
-            _label.Text = $"{TrManager.Tr("strategic_point.capturing")} {GetTeamDisplayName(_capturingTeam)} {(int)_captureProgress}%";
+            _label!.Text = $"{TrManager.Tr("strategic_point.capturing")} {GetTeamDisplayName(_capturingTeam)} {(int)_captureProgress}%";
         }
     }
 
@@ -240,13 +240,13 @@ public partial class StrategicPoint : Area2D
         EnsureNeutralTexture();
         if (teamId >= 0 && teamId < MaxTeams)
         {
-            _visual.Texture = GetTeamTexture(teamId);
-            _label.Text = $"{GetTeamDisplayName(teamId)}{TrManager.Tr("strategic_point.controlled")}";
+            _visual!.Texture = GetTeamTexture(teamId);
+            _label!.Text = $"{GetTeamDisplayName(teamId)}{TrManager.Tr("strategic_point.controlled")}";
         }
         else
         {
-            _visual.Texture = _neutralTex;
-            _label.Text = TrManager.Tr("strategic_point.name");
+            _visual!.Texture = _neutralTex;
+            _label!.Text = TrManager.Tr("strategic_point.name");
         }
     }
 }

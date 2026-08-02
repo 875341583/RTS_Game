@@ -57,7 +57,7 @@ public partial class Main
             _cachedBuildings.Clear();
             if (_buildingsNode != null)
             {
-                foreach (var c in _buildingsNode.GetChildren())
+                foreach (var c in _buildingsNode!.GetChildren())
                     if (c is Building b && IsInstanceValid(b) && !b.IsDead) _cachedBuildings.Add(b);
             }
             _buildingsCacheDirty = false;
@@ -84,7 +84,7 @@ public partial class Main
             _cachedUnits.Clear();
             if (_unitsNode != null)
             {
-                foreach (var c in _unitsNode.GetChildren())
+                foreach (var c in _unitsNode!.GetChildren())
                     if (c is Unit u && IsInstanceValid(u) && !u.IsDead) _cachedUnits.Add(u);
             }
             _unitsCacheDirty = false;
@@ -97,7 +97,7 @@ public partial class Main
     {
         var list = new List<ResourceNode>();
         if (_resourcesNode == null) return list;
-        foreach (var c in _resourcesNode.GetChildren())
+        foreach (var c in _resourcesNode!.GetChildren())
             if (c is ResourceNode r && IsInstanceValid(r)) list.Add(r);
         return list;
     }
@@ -107,7 +107,7 @@ public partial class Main
     {
         var list = new List<StrategicPoint>();
         if (_strategicPointsNode == null) return list;
-        foreach (var c in _strategicPointsNode.GetChildren())
+        foreach (var c in _strategicPointsNode!.GetChildren())
             if (c is StrategicPoint sp && IsInstanceValid(sp)) list.Add(sp);
         return list;
     }
@@ -126,7 +126,7 @@ public partial class Main
         {
             for (int gx = 0; gx < TerrainGrid.GridSize; gx++)
             {
-                var cur = _terrain.GetCell(gx, gy);
+                var cur = _terrain!.GetCell(gx, gy);
                 var def = seedGrid.GetCell(gx, gy);
                 if (cur.Type != def.Type
                     || cur.Elevation != def.Elevation
@@ -264,18 +264,18 @@ public partial class Main
         // 2. 用种子重建基础地形 + 应用地形修改增量
         _mapSeed = data.MapSeed;
         _mapRng = new Random((int)(_mapSeed & 0x7FFFFFFF));
-        _terrain.GenerateFromSeed(_mapSeed);
+        _terrain!.GenerateFromSeed(_mapSeed);
         if (data.TerrainMods != null)
         {
             foreach (var tm in data.TerrainMods)
             {
                 if (tm.Gx < 0 || tm.Gx >= TerrainGrid.GridSize || tm.Gy < 0 || tm.Gy >= TerrainGrid.GridSize) continue;
-                var cell = _terrain.GetCell(tm.Gx, tm.Gy);
+                var cell = _terrain!.GetCell(tm.Gx, tm.Gy);
                 cell.Type = (TerrainType)tm.TerrainType;
                 cell.Elevation = tm.Elevation;
                 cell.HasBridge = tm.HasBridge;
                 cell.HasTunnel = tm.HasTunnel;
-                _terrain.SetCell(tm.Gx, tm.Gy, cell);
+                _terrain!.SetCell(tm.Gx, tm.Gy, cell);
             }
             GameLog.Debug($"[SaveLoad] Applied {data.TerrainMods.Count} terrain mods");
         }
@@ -437,11 +437,11 @@ public partial class Main
         if (_unitsNode != null)
         {
             var toRemove = new List<Node>();
-            foreach (var c in _unitsNode.GetChildren())
+            foreach (var c in _unitsNode!.GetChildren())
                 if (c is Unit) toRemove.Add(c);
             foreach (var n in toRemove)
             {
-                _unitsNode.RemoveChild(n);
+                _unitsNode!.RemoveChild(n);
                 n.Free();
             }
         }
@@ -449,7 +449,7 @@ public partial class Main
         if (_buildingsNode != null)
         {
             var toRemove = new List<Node>();
-            foreach (var c in _buildingsNode.GetChildren())
+            foreach (var c in _buildingsNode!.GetChildren())
                 if (c is Building) toRemove.Add(c);
             foreach (var n in toRemove)
             {
@@ -458,11 +458,11 @@ public partial class Main
                     b.Destroyed -= OnBuildingDestroyed; // 取消事件订阅避免Free时回调
                     if (_pathFinder != null)
                     {
-                        _terrain.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
-                        _pathFinder.RemoveBuilding(gx, gy, 1);
+                        _terrain!.WorldToGrid(b.GlobalPosition.X, b.GlobalPosition.Y, out int gx, out int gy);
+                        _pathFinder!.RemoveBuilding(gx, gy, 1);
                     }
                 }
-                _buildingsNode.RemoveChild(n);
+                _buildingsNode!.RemoveChild(n);
                 n.Free();
             }
         }
@@ -470,22 +470,22 @@ public partial class Main
         if (_resourcesNode != null)
         {
             var toRemove = new List<Node>();
-            foreach (var c in _resourcesNode.GetChildren())
+            foreach (var c in _resourcesNode!.GetChildren())
                 if (c is ResourceNode) toRemove.Add(c);
             foreach (var n in toRemove)
             {
-                _resourcesNode.RemoveChild(n);
+                _resourcesNode!.RemoveChild(n);
                 n.Free();
             }
         }
         if (_strategicPointsNode != null)
         {
             var toRemove = new List<Node>();
-            foreach (var c in _strategicPointsNode.GetChildren())
+            foreach (var c in _strategicPointsNode!.GetChildren())
                 if (c is StrategicPoint) toRemove.Add(c);
             foreach (var n in toRemove)
             {
-                _strategicPointsNode.RemoveChild(n);
+                _strategicPointsNode!.RemoveChild(n);
                 n.Free();
             }
         }
@@ -503,7 +503,7 @@ public partial class Main
         Building? best = null;
         float bestD = float.MaxValue;
         if (_buildingsNode == null) return null;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && IsInstanceValid(b) && b.TeamId == teamId && b.Type == BuildingType.Base)
             {
@@ -518,7 +518,7 @@ public partial class Main
     private ResourceNode? FindResourceNodeAt(Vector2 pos)
     {
         if (_resourcesNode == null) return null;
-        foreach (var c in _resourcesNode.GetChildren())
+        foreach (var c in _resourcesNode!.GetChildren())
         {
             if (c is ResourceNode rn && IsInstanceValid(rn))
             {
@@ -533,7 +533,7 @@ public partial class Main
     private StrategicPoint? FindStrategicPointAt(Vector2 pos)
     {
         if (_strategicPointsNode == null) return null;
-        foreach (var c in _strategicPointsNode.GetChildren())
+        foreach (var c in _strategicPointsNode!.GetChildren())
         {
             if (c is StrategicPoint sp && IsInstanceValid(sp))
             {

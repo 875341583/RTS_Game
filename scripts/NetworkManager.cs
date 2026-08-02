@@ -83,8 +83,8 @@ public static class NetworkManager
 
     // ====== Godot multiplayer API ======
 
-    private static SceneMultiplayer _mp = null!;
-    private static ENetMultiplayerPeer _peer = null!;
+    private static SceneMultiplayer? _mp;
+    private static ENetMultiplayerPeer? _peer;
 
     // ====== 事件回调 ======
 
@@ -124,8 +124,8 @@ public static class NetworkManager
         {
             if (_mp != null) return;
             _mp = new SceneMultiplayer();
-            _mp.PeerConnected += OnPeerConnected;
-            _mp.PeerDisconnected += OnPeerDisconnected;
+            _mp!.PeerConnected += OnPeerConnected;
+            _mp!.PeerDisconnected += OnPeerDisconnected;
 
             // 创建NetRelay节点（用普通Node而非Godot Node，需要手动创建C#对象）
                 // NetRelay必须是场景树中的节点才能使用RPC
@@ -157,7 +157,7 @@ public static class NetworkManager
                 LocalTeamId = 0;
 
                 _peer = new ENetMultiplayerPeer();
-                Error err = _peer.CreateServer(config.Port, config.MaxPlayers - 1); // 减1因为Host自己占一个槽
+                Error err = _peer!.CreateServer(config.Port, config.MaxPlayers - 1); // 减1因为Host自己占一个槽
                 if (err != Error.Ok)
                 {
                     GameLog.Error($"[Net] create server failed: {err}");
@@ -165,7 +165,7 @@ public static class NetworkManager
                     return false;
                 }
 
-                _mp.MultiplayerPeer = _peer;
+                _mp!.MultiplayerPeer = _peer;
                 var st = Engine.GetMainLoop() as SceneTree;
                 st?.SetMultiplayer(_mp);
 
@@ -211,7 +211,7 @@ public static class NetworkManager
                 _role = NetRole.Client;
 
                 _peer = new ENetMultiplayerPeer();
-                Error err = _peer.CreateClient(ip, port);
+                Error err = _peer!.CreateClient(ip, port);
                 if (err != Error.Ok)
                 {
                     GameLog.Error($"[Net] connect server failed: {err}");
@@ -219,14 +219,14 @@ public static class NetworkManager
                     return false;
                 }
 
-                _mp.MultiplayerPeer = _peer;
+                _mp!.MultiplayerPeer = _peer;
                 var st2 = Engine.GetMainLoop() as SceneTree;
                 st2?.SetMultiplayer(_mp);
 
                 // 存储待发送的加入请求信息
                 _pendingJoinName = playerName;
                 _pendingJoinFaction = faction;
-                LocalPeerId = _mp.GetUniqueId();
+                LocalPeerId = _mp!.GetUniqueId();
                 _joinStartTime = Time.GetTicksMsec(); // M2: 记录连接开始时间用于超时检测
 
                 GameLog.Info($"[Net] connecting to {ip}:{port} ...");
@@ -255,7 +255,7 @@ public static class NetworkManager
             if (_peer != null)
             {
                 _peer.Close();
-                _peer = null!;
+                _peer = null;
             }
             if (_mp != null)
             {

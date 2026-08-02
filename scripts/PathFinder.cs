@@ -22,15 +22,15 @@ namespace RTSGame
     private const int DiagonalCost = 14; // ≈10*√2
 
     // ========== A*工作数组（P2-2: 动态大小，EnsureWorkArrays时按GridSize分配） ==========
-    private int[,] _gCost = null!;
-    private int[,] _hCost = null!;
-    private int[,] _parentX = null!;
-    private int[,] _parentY = null!;
-    private bool[,] _closed = null!;
-    private bool[,] _opened = null!;
+    private int[,]? _gCost;
+    private int[,]? _hCost;
+    private int[,]? _parentX;
+    private int[,]? _parentY;
+    private bool[,]? _closed;
+    private bool[,]? _opened;
     // P0修复：优先队列替代List线性搜索。F值作为优先级，相同F选H更小（更接近终点）。
     // 用 (F << 16) | H 组合键实现tie-breaking（假设F和H各不超过65535）。
-    private PriorityQueue<(int x, int y), int> _openQueue = null!;
+    private PriorityQueue<(int x, int y), int>? _openQueue;
     private int _gs; // 当前GridSize快照
 
     private void EnsureWorkArrays()
@@ -177,36 +177,38 @@ namespace RTSGame
 
         private List<(int x, int y)>? AStarSearch(int sx, int sy, int ex, int ey, TerrainUnitCategory cat)
         {
-            // 重置工作数组
-            System.Array.Clear(_closed, 0, _closed.Length);
-            System.Array.Clear(_opened, 0, _opened.Length);
-            _openQueue.Clear();
+            // 重置工作数组（EnsureWorkArrays 已保证非 null）
+            var gCost = _gCost!; var hCost = _hCost!; var parentX = _parentX!; var parentY = _parentY!;
+            var closed = _closed!; var opened = _opened!; var openQueue = _openQueue!;
+            System.Array.Clear(closed, 0, closed.Length);
+            System.Array.Clear(opened, 0, opened.Length);
+            openQueue.Clear();
 
             // 初始化起点
-            _gCost[sx, sy] = 0;
-            _hCost[sx, sy] = Heuristic(sx, sy, ex, ey);
-            _parentX[sx, sy] = sx;
-            _parentY[sx, sy] = sy;
-            _opened[sx, sy] = true;
+            gCost[sx, sy] = 0;
+            hCost[sx, sy] = Heuristic(sx, sy, ex, ey);
+            parentX[sx, sy] = sx;
+            parentY[sx, sy] = sy;
+            opened[sx, sy] = true;
             EnqueueOpen(sx, sy);
 
             int maxIterations = _gs * _gs * 4; // 安全上限
 
-            while (_openQueue.Count > 0 && maxIterations-- > 0)
+            while (openQueue.Count > 0 && maxIterations-- > 0)
             {
                 // P0修复：O(log n)取最小F值节点（原为O(n)线性扫描）
-                _openQueue.TryDequeue(out var cur, out _);
+                openQueue.TryDequeue(out var cur, out _);
                 int cx = cur.x, cy = cur.y;
 
                 // 延迟删除：跳过已被关闭的过时条目
-                if (_closed[cx, cy]) continue;
-                _opened[cx, cy] = false;
+                if (closed[cx, cy]) continue;
+                opened[cx, cy] = false;
 
                 // 到达终点
                 if (cx == ex && cy == ey)
                     return ReconstructPath(sx, sy, ex, ey);
 
-                _closed[cx, cy] = true;
+                closed[cx, cy] = true;
 
                 // 遍历8个邻居
                 for (int i = 0; i < 8; i++)
@@ -216,7 +218,7 @@ namespace RTSGame
                     bool diagonal = _neighbors[i].diagonal;
 
                     if (!InBounds(nx, ny)) continue;
-                    if (_closed[nx, ny]) continue;
+                    if (closed[nx, ny]) continue;
                     if (!IsPassable(nx, ny, cat)) continue;
 
                     // 对角线穿墙检查：两侧格子必须可通行
@@ -228,7 +230,7 @@ namespace RTSGame
 
                     // 基础移动代价
                     int baseCost = diagonal ? DiagonalCost : StraightCost;
-                    int moveCost = _gCost[cx, cy] + baseCost;
+                    int moveCost = gCost[cx, cy] + baseCost;
 
                     // 地形速度修正作为额外代价（慢地形代价更高，鼓励走快路）
                     float speedMod = _terrain.GetMovementSpeed(cat, cx, cy, nx, ny);
@@ -237,21 +239,21 @@ namespace RTSGame
                     int terrainPenalty = (int)(baseCost / Mathf.Clamp(speedMod, 0.25f, 4f)) - baseCost;
                     moveCost += terrainPenalty;
 
-                    if (!_opened[nx, ny])
+                    if (!opened[nx, ny])
                     {
-                        _gCost[nx, ny] = moveCost;
-                        _hCost[nx, ny] = Heuristic(nx, ny, ex, ey);
-                        _parentX[nx, ny] = cx;
-                        _parentY[nx, ny] = cy;
-                        _opened[nx, ny] = true;
+                        gCost[nx, ny] = moveCost;
+                        hCost[nx, ny] = Heuristic(nx, ny, ex, ey);
+                        parentX[nx, ny] = cx;
+                        parentY[nx, ny] = cy;
+                        opened[nx, ny] = true;
                         EnqueueOpen(nx, ny);
                     }
-                    else if (moveCost < _gCost[nx, ny])
+                    else if (moveCost < gCost[nx, ny])
                     {
                         // 找到更短路径→更新gCost并重新入队（旧条目通过_closed标记延迟删除）
-                        _gCost[nx, ny] = moveCost;
-                        _parentX[nx, ny] = cx;
-                        _parentY[nx, ny] = cy;
+                        gCost[nx, ny] = moveCost;
+                        parentX[nx, ny] = cx;
+                        parentY[nx, ny] = cy;
                         EnqueueOpen(nx, ny);
                     }
                 }
@@ -263,9 +265,9 @@ namespace RTSGame
         /// <summary>P0修复：将节点加入优先队列，优先级 = (F << 16) | H，实现F相同时选H更小。</summary>
         private void EnqueueOpen(int x, int y)
         {
-            int f = _gCost[x, y] + _hCost[x, y];
-            int h = _hCost[x, y];
-            _openQueue.Enqueue((x, y), (f << 16) | h);
+            int f = _gCost![x, y] + _hCost![x, y];
+            int h = _hCost![x, y];
+            _openQueue!.Enqueue((x, y), (f << 16) | h);
         }
 
         private List<(int x, int y)> ReconstructPath(int sx, int sy, int ex, int ey)
@@ -276,8 +278,8 @@ namespace RTSGame
             while ((cx != sx || cy != sy) && safety-- > 0)
             {
                 path.Add((cx, cy));
-                int px = _parentX[cx, cy];
-                int py = _parentY[cx, cy];
+                int px = _parentX![cx, cy];
+                int py = _parentY![cx, cy];
                 cx = px;
                 cy = py;
             }

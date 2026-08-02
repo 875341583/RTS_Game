@@ -38,8 +38,8 @@ public partial class ResourceNode : Area2D
     public int Amount { get; private set; }
     public bool IsDepleted => Amount <= 0;
 
-    private Sprite2D _ore = null!;
-    private Label _amountLabel = null!;
+    private Sprite2D? _ore;
+    private Label? _amountLabel;
 
     // 金色阶梯调色板（参考红警2矿堆：高光饱和金 + 中金 + 深金 + 棕色描边 + 暗影）
     private static readonly Color COreSpec    = new(1.0f, 0.96f, 0.72f, 1f);
@@ -165,12 +165,12 @@ public partial class ResourceNode : Area2D
         if (_captureProgress > 0f && OilOwner == -1)
         {
             if (_amountLabel != null)
-                _amountLabel.Text = $"{TrManager.Tr("resource.oil_field.capturing")} {GetTeamDisplayName(presentTeam)} {(int)_captureProgress}%";
+                _amountLabel!.Text = $"{TrManager.Tr("resource.oil_field.capturing")} {GetTeamDisplayName(presentTeam)} {(int)_captureProgress}%";
         }
         else if (OilOwner >= 0)
         {
             if (_amountLabel != null)
-                _amountLabel.Text = $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}";
+                _amountLabel!.Text = $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}";
         }
     }
 
@@ -228,7 +228,7 @@ public partial class ResourceNode : Area2D
             DrawChunkWithPalette(img, cx, cy, halfSize, COreSpec, COreBright, COreMid, COreDark, COreOutline);
         }
 
-        _ore.Texture = ImageTexture.CreateFromImage(img);
+        _ore!.Texture = ImageTexture.CreateFromImage(img);
     }
 
     /// <summary>稀有矿：紫蓝色晶体，形状更尖锐（六角形轮廓）。</summary>
@@ -265,7 +265,7 @@ public partial class ResourceNode : Area2D
             DrawGlow(img, cx, cy, halfSize + 3, new Color(0.5f, 0.4f, 0.9f, 0.15f));
         }
 
-        _ore.Texture = ImageTexture.CreateFromImage(img);
+        _ore!.Texture = ImageTexture.CreateFromImage(img);
     }
 
     /// <summary>陆地矿脉：淡铜色小矿堆，体量更小。</summary>
@@ -299,7 +299,7 @@ public partial class ResourceNode : Area2D
             DrawChunkWithPalette(img, cx, cy, halfSize, CVeinSpec, CVeinBright, CVeinMid, CVeinDark, CVeinOutline);
         }
 
-        _ore.Texture = ImageTexture.CreateFromImage(img);
+        _ore!.Texture = ImageTexture.CreateFromImage(img);
     }
 
     /// <summary>油田：油井架+地面油池+阵营色标记。</summary>
@@ -362,7 +362,7 @@ public partial class ResourceNode : Area2D
             }
         }
 
-        _ore.Texture = ImageTexture.CreateFromImage(img);
+        _ore!.Texture = ImageTexture.CreateFromImage(img);
     }
 
     /// <summary>通用菱形矿块绘制，按距中心远近分层着色（5层阶梯）。</summary>
@@ -419,8 +419,8 @@ public partial class ResourceNode : Area2D
         {
             GameLog.Debug($"[Resource] {ResourceType} depleted at {GlobalPosition}");
             var tween = CreateTween();
-            tween.TweenProperty(_ore, "modulate:a", 0f, 0.6f);
-            tween.Parallel().TweenProperty(_amountLabel, "modulate:a", 0f, 0.6f);
+            tween.TweenProperty(_ore!, "modulate:a", 0f, 0.6f);
+            tween.Parallel().TweenProperty(_amountLabel!, "modulate:a", 0f, 0.6f);
             tween.TweenCallback(Callable.From(() => QueueFree()));
         }
         else
@@ -437,16 +437,16 @@ public partial class ResourceNode : Area2D
         switch (ResourceType)
         {
             case ResourceType.OilField:
-                _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}" : TrManager.Tr("resource.oil_field.name");
+                _amountLabel!.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}" : TrManager.Tr("resource.oil_field.name");
                 break;
             case ResourceType.RareMineral:
-                _amountLabel.Text = $"★{Amount}";
+                _amountLabel!.Text = $"★{Amount}";
                 break;
             case ResourceType.LandVein:
-                _amountLabel.Text = $"·{Amount}";
+                _amountLabel!.Text = $"·{Amount}";
                 break;
             default:
-                _amountLabel.Text = Amount.ToString();
+                _amountLabel!.Text = Amount.ToString();
                 break;
         }
     }
@@ -467,7 +467,7 @@ public partial class ResourceNode : Area2D
     {
         OilOwner = teamId;
         if (_amountLabel != null && ResourceType == ResourceType.OilField)
-            _amountLabel.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}" : TrManager.Tr("resource.oil_field.neutral");
+            _amountLabel!.Text = OilOwner >= 0 ? $"{GetTeamDisplayName(OilOwner)}{TrManager.Tr("resource.oil_field.name")}" : TrManager.Tr("resource.oil_field.neutral");
     }
 
     // ======== 阵营名称 ========

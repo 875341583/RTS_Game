@@ -10,8 +10,8 @@ namespace RTSGame;
 /// </summary>
 public partial class MainMenu : Control
 {
-    private Control _pageRoot = null!;
-    private LineEdit _seedInput = null!;
+    private Control? _pageRoot;
+    private LineEdit? _seedInput;
 
     private QualitySettings.QualityLevel _settingsQuality = QualitySettings.QualityLevel.High;
     private float _settingsVolume = 1.0f;
@@ -87,8 +87,8 @@ public partial class MainMenu : Control
 
         BuildBackground();
         _pageRoot = new Control();
-        _pageRoot.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        AddChild(_pageRoot);
+        _pageRoot!.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        AddChild(_pageRoot!);
 
         CallDeferred(nameof(ShowMainMenuDeferred));
 
@@ -101,7 +101,7 @@ public partial class MainMenu : Control
 
     private void ShowMainMenuDeferred()
     {
-        if (IsInstanceValid(_pageRoot))
+        if (IsInstanceValid(_pageRoot!))
             ShowMainMenu();
     }
 
@@ -126,7 +126,7 @@ public partial class MainMenu : Control
 
     private void ClearPage()
     {
-        foreach (var child in _pageRoot.GetChildren())
+        foreach (var child in _pageRoot!.GetChildren())
             child.QueueFree();
     }
 
@@ -269,7 +269,7 @@ public partial class MainMenu : Control
 
         // ===== 左侧展示面板 =====
         var leftPanel = MakePanel(0, 0, 1100, 1080);
-        _pageRoot.AddChild(leftPanel);
+        _pageRoot!.AddChild(leftPanel);
         var leftVb = MakePanelContent(leftPanel, 60);
         leftVb.OffsetLeft = 60; leftVb.OffsetTop = 80; leftVb.OffsetRight = -40; leftVb.OffsetBottom = -60;
         leftVb.AddThemeConstantOverride("separation", 6);
@@ -284,7 +284,7 @@ public partial class MainMenu : Control
 
         // ===== 右侧按钮面板 =====
         var rightPanel = MakePanel(1100, 0, 820, 1080);
-        _pageRoot.AddChild(rightPanel);
+        _pageRoot!.AddChild(rightPanel);
         var rightVb = MakePanelContent(rightPanel, 40);
         rightVb.OffsetLeft = 40; rightVb.OffsetTop = 100; rightVb.OffsetRight = -40; rightVb.OffsetBottom = -60;
         rightVb.AddThemeConstantOverride("separation", 8);
@@ -340,7 +340,7 @@ public partial class MainMenu : Control
 
         // 顶部标题栏
         var titlePanel = MakePanel(20, 10, 1880, 50, true);
-        _pageRoot.AddChild(titlePanel);
+        _pageRoot!.AddChild(titlePanel);
         var titleVb = MakePanelContent(titlePanel, 16);
         var title = MakeLabel(TrManager.Tr("menu.skirmish"), 24, ColGold);
         title.HorizontalAlignment = HorizontalAlignment.Center;
@@ -348,7 +348,7 @@ public partial class MainMenu : Control
 
         // 左列面板：地图设置 + 难度
         var leftPanel = MakePanel(20, 80, 900, 940);
-        _pageRoot.AddChild(leftPanel);
+        _pageRoot!.AddChild(leftPanel);
         var leftVb = MakePanelContent(leftPanel, 16);
         leftVb.AddThemeConstantOverride("separation", 8);
 
@@ -391,10 +391,10 @@ public partial class MainMenu : Control
         // 种子
         var seedRow = MakeRow(TrManager.Tr("menu.map_seed"));
         _seedInput = new LineEdit();
-        _seedInput.CustomMinimumSize = new Vector2(180, 28);
-        _seedInput.PlaceholderText = TrManager.Tr("menu.seed_placeholder");
-        _seedInput.AddThemeFontSizeOverride("font_size", 13);
-        seedRow.AddChild(_seedInput);
+        _seedInput!.CustomMinimumSize = new Vector2(180, 28);
+        _seedInput!.PlaceholderText = TrManager.Tr("menu.seed_placeholder");
+        _seedInput!.AddThemeFontSizeOverride("font_size", 13);
+        seedRow.AddChild(_seedInput!);
         leftVb.AddChild(seedRow);
         leftVb.AddChild(MakeLabel(TrManager.Tr("menu.seed_hint"), 10, ColTextDim));
 
@@ -420,7 +420,7 @@ public partial class MainMenu : Control
 
         // 右列面板：阵营 + 游戏规则
         var rightPanel = MakePanel(940, 80, 960, 940);
-        _pageRoot.AddChild(rightPanel);
+        _pageRoot!.AddChild(rightPanel);
         var rightVb = MakePanelContent(rightPanel, 16);
         rightVb.AddThemeConstantOverride("separation", 8);
 
@@ -473,7 +473,7 @@ public partial class MainMenu : Control
 
         // ===== 底部操作栏 =====
         var bottomPanel = MakePanel(20, 1030, 1880, 50);
-        _pageRoot.AddChild(bottomPanel);
+        _pageRoot!.AddChild(bottomPanel);
         var bottomHb = new HBoxContainer();
         bottomHb.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         bottomHb.Alignment = BoxContainer.AlignmentMode.Center;
@@ -488,7 +488,7 @@ public partial class MainMenu : Control
         var fightBtn = MakeRedButton(TrManager.Tr("menu.battle_fight"), 22, 280, 44);
         fightBtn.Pressed += () =>
         {
-            string seedText = _seedInput != null ? _seedInput.Text.Trim() : "";
+            string seedText = _seedInput! != null ? _seedInput!.Text.Trim() : "";
             if (!string.IsNullOrEmpty(seedText) && ulong.TryParse(seedText, out var s))
                 GameSession.MapSeed = s;
             else
@@ -507,7 +507,7 @@ public partial class MainMenu : Control
 
         // 顶部标题栏
         var titlePanel = MakePanel(20, 10, 1880, 50, true);
-        _pageRoot.AddChild(titlePanel);
+        _pageRoot!.AddChild(titlePanel);
         var titleVb = MakePanelContent(titlePanel, 16);
         var title = MakeLabel(TrManager.Tr("ui.settings"), 24, ColGold);
         title.HorizontalAlignment = HorizontalAlignment.Center;
@@ -515,7 +515,7 @@ public partial class MainMenu : Control
 
         // 居中面板组
         var centerPanel = MakePanel(460, 80, 1000, 940);
-        _pageRoot.AddChild(centerPanel);
+        _pageRoot!.AddChild(centerPanel);
         var cv = MakePanelContent(centerPanel, 20);
         cv.AddThemeConstantOverride("separation", 12);
 
@@ -593,13 +593,13 @@ public partial class MainMenu : Control
 
     // ==================== 联机页面 ====================
 
-    private LineEdit _mpNameInput = null!;
-    private LineEdit _mpIpInput = null!;
-    private LineEdit _mpPortInput = null!;
-    private LineEdit _mpChatInput = null!;
-    private Label _mpStatusLabel = null!;
-    private Label _mpPlayerListLabel = null!;
-    private VBoxContainer _mpChatBox = null!;
+    private LineEdit? _mpNameInput;
+    private LineEdit? _mpIpInput;
+    private LineEdit? _mpPortInput;
+    private LineEdit? _mpChatInput;
+    private Label? _mpStatusLabel;
+    private Label? _mpPlayerListLabel;
+    private VBoxContainer? _mpChatBox;
     private int _mpModeChoice = 3; // 3/5/7/9/11
 
     private void ShowMultiplayerPage()
@@ -608,7 +608,7 @@ public partial class MainMenu : Control
 
         // 标题
         var titlePanel = MakePanel(20, 10, 1880, 50, true);
-        _pageRoot.AddChild(titlePanel);
+        _pageRoot!.AddChild(titlePanel);
         var titleVb = MakePanelContent(titlePanel, 16);
         var title = MakeLabel(TrManager.Tr("menu.mp_title"), 24, ColGold);
         title.HorizontalAlignment = HorizontalAlignment.Center;
@@ -616,7 +616,7 @@ public partial class MainMenu : Control
 
         // 左列：创建房间
         var leftPanel = MakePanel(20, 80, 900, 940);
-        _pageRoot.AddChild(leftPanel);
+        _pageRoot!.AddChild(leftPanel);
         var lvb = MakePanelContent(leftPanel, 16);
         lvb.AddThemeConstantOverride("separation", 10);
 
@@ -625,8 +625,8 @@ public partial class MainMenu : Control
         // 玩家名
         lvb.AddChild(MakeLabel(TrManager.Tr("menu.your_name"), 13, ColTextDim));
         _mpNameInput = new LineEdit { Text = TrManager.Tr("menu.mp_player"), CustomMinimumSize = new Vector2(400, 36) };
-        _mpNameInput.AddThemeFontSizeOverride("font_size", 15);
-        lvb.AddChild(_mpNameInput);
+        _mpNameInput!.AddThemeFontSizeOverride("font_size", 15);
+        lvb.AddChild(_mpNameInput!);
 
         // 模式选择
         lvb.AddChild(MakeLabel(TrManager.Tr("menu.mp_mode"), 13, ColTextDim));
@@ -659,8 +659,8 @@ public partial class MainMenu : Control
         // 端口
         lvb.AddChild(MakeLabel(TrManager.Tr("menu.server_port"), 13, ColTextDim));
         _mpPortInput = new LineEdit { Text = "25565", CustomMinimumSize = new Vector2(200, 36) };
-        _mpPortInput.AddThemeFontSizeOverride("font_size", 15);
-        lvb.AddChild(_mpPortInput);
+        _mpPortInput!.AddThemeFontSizeOverride("font_size", 15);
+        lvb.AddChild(_mpPortInput!);
 
         lvb.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
 
@@ -668,12 +668,12 @@ public partial class MainMenu : Control
         createBtn.Pressed += () =>
         {
             int port = 25565;
-            if (int.TryParse(_mpPortInput.Text.Trim(), out var p)) port = p;
+            if (int.TryParse(_mpPortInput!.Text.Trim(), out var p)) port = p;
             var config = new NetworkManager.RoomConfig
             {
                 MaxPlayers = _mpModeChoice,
                 Port = port,
-                HostName = _mpNameInput.Text.Trim(),
+                HostName = _mpNameInput!.Text.Trim(),
                 HostFaction = _selFactionId,
                 ModeName = TrManager.Tr("menu.n_player_mode", _mpModeChoice)
             };
@@ -691,7 +691,7 @@ public partial class MainMenu : Control
 
         // ---- 右列：加入房间 ----
         var rightPanel = MakePanel(960, 80, 920, 940);
-        _pageRoot.AddChild(rightPanel);
+        _pageRoot!.AddChild(rightPanel);
         var rvb = MakePanelContent(rightPanel, 16);
         rvb.AddThemeConstantOverride("separation", 10);
 
@@ -699,8 +699,8 @@ public partial class MainMenu : Control
 
         rvb.AddChild(MakeLabel(TrManager.Tr("menu.server_ip"), 13, ColTextDim));
         _mpIpInput = new LineEdit { Text = "127.0.0.1", CustomMinimumSize = new Vector2(400, 36) };
-        _mpIpInput.AddThemeFontSizeOverride("font_size", 15);
-        rvb.AddChild(_mpIpInput);
+        _mpIpInput!.AddThemeFontSizeOverride("font_size", 15);
+        rvb.AddChild(_mpIpInput!);
 
         rvb.AddChild(MakeLabel(TrManager.Tr("menu.server_port"), 13, ColTextDim));
         var portInput2 = new LineEdit { Text = "25565", CustomMinimumSize = new Vector2(200, 36) };
@@ -730,9 +730,9 @@ public partial class MainMenu : Control
         {
             int port = 25565;
             if (int.TryParse(portInput2.Text.Trim(), out var p)) port = p;
-            string ip = _mpIpInput.Text.Trim();
+            string ip = _mpIpInput!.Text.Trim();
             if (string.IsNullOrEmpty(ip)) { ShowMpStatus(TrManager.Tr("menu.mp_enter_ip")); return; }
-            if (NetworkManager.JoinRoom(ip, port, _mpNameInput.Text.Trim(), _selFactionId))
+            if (NetworkManager.JoinRoom(ip, port, _mpNameInput!.Text.Trim(), _selFactionId))
             {
                 ShowLobbyPage(isHost: false);
             }
@@ -745,7 +745,7 @@ public partial class MainMenu : Control
 
         // 状态
         _mpStatusLabel = MakeLabel("", 13, ColRedBright);
-        rvb.AddChild(_mpStatusLabel);
+        rvb.AddChild(_mpStatusLabel!);
 
         rvb.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
 
@@ -757,7 +757,7 @@ public partial class MainMenu : Control
 
         // 底部提示
         var hintPanel = MakePanel(20, 1030, 1880, 50);
-        _pageRoot.AddChild(hintPanel);
+        _pageRoot!.AddChild(hintPanel);
         var hintHb = new HBoxContainer();
         hintHb.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         hintHb.Alignment = BoxContainer.AlignmentMode.Center;
@@ -768,7 +768,7 @@ public partial class MainMenu : Control
     private void ShowMpStatus(string msg)
     {
         if (_mpStatusLabel != null)
-            _mpStatusLabel.Text = msg;
+            _mpStatusLabel!.Text = msg;
     }
 
     // ==================== 联机大厅页面 ====================
@@ -788,7 +788,7 @@ public partial class MainMenu : Control
 
         // 标题
         var titlePanel = MakePanel(20, 10, 1880, 50, true);
-        _pageRoot.AddChild(titlePanel);
+        _pageRoot!.AddChild(titlePanel);
         var titleVb = MakePanelContent(titlePanel, 16);
         var title = MakeLabel(TrManager.Tr("menu.mp_lobby", NetworkManager.Room.ModeName, NetworkManager.Room.MaxPlayers), 22, ColGold);
         title.HorizontalAlignment = HorizontalAlignment.Center;
@@ -796,14 +796,14 @@ public partial class MainMenu : Control
 
         // 左列：玩家列表
         var leftPanel = MakePanel(20, 80, 900, 820);
-        _pageRoot.AddChild(leftPanel);
+        _pageRoot!.AddChild(leftPanel);
         var lvb = MakePanelContent(leftPanel, 16);
         lvb.AddThemeConstantOverride("separation", 8);
 
         lvb.AddChild(MakeLabel(TrManager.Tr("menu.player_list"), 18, ColGold));
         _mpPlayerListLabel = MakeLabel("", 14, ColTextMain);
-        _mpPlayerListLabel.CustomMinimumSize = new Vector2(0, 400);
-        lvb.AddChild(_mpPlayerListLabel);
+        _mpPlayerListLabel!.CustomMinimumSize = new Vector2(0, 400);
+        lvb.AddChild(_mpPlayerListLabel!);
         RefreshPlayerList();
 
         // AI填充按钮（仅Host可见）
@@ -821,32 +821,32 @@ public partial class MainMenu : Control
 
         // 右列：聊天 + 设置
         var rightPanel = MakePanel(960, 80, 920, 820);
-        _pageRoot.AddChild(rightPanel);
+        _pageRoot!.AddChild(rightPanel);
         var rvb = MakePanelContent(rightPanel, 16);
         rvb.AddThemeConstantOverride("separation", 8);
 
         rvb.AddChild(MakeLabel(TrManager.Tr("menu.chat"), 18, ColGold));
         _mpChatBox = new VBoxContainer();
-        _mpChatBox.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-        _mpChatBox.AddThemeConstantOverride("separation", 2);
-        rvb.AddChild(_mpChatBox);
+        _mpChatBox!.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        _mpChatBox!.AddThemeConstantOverride("separation", 2);
+        rvb.AddChild(_mpChatBox!);
 
         _mpChatInput = new LineEdit { CustomMinimumSize = new Vector2(0, 36) };
-        _mpChatInput.AddThemeFontSizeOverride("font_size", 14);
-        _mpChatInput.PlaceholderText = TrManager.Tr("menu.mp_chat_placeholder");
-        _mpChatInput.TextSubmitted += (text) =>
+        _mpChatInput!.AddThemeFontSizeOverride("font_size", 14);
+        _mpChatInput!.PlaceholderText = TrManager.Tr("menu.mp_chat_placeholder");
+        _mpChatInput!.TextSubmitted += (text) =>
         {
             if (!string.IsNullOrEmpty(text))
             {
                 NetworkManager.SendChat(text);
-                _mpChatInput.Text = "";
+                _mpChatInput!.Text = "";
             }
         };
-        rvb.AddChild(_mpChatInput);
+        rvb.AddChild(_mpChatInput!);
 
         // 底部操作栏
         var bottomPanel = MakePanel(20, 920, 1880, 140);
-        _pageRoot.AddChild(bottomPanel);
+        _pageRoot!.AddChild(bottomPanel);
         var bottomHb = new HBoxContainer();
         bottomHb.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         bottomHb.Alignment = BoxContainer.AlignmentMode.Center;
@@ -929,7 +929,7 @@ public partial class MainMenu : Control
                 sb.AppendLine($"{TrManager.Tr("menu.faction_label")}{i}  [{TrManager.Tr("menu.empty_slot")}]");
             }
         }
-        _mpPlayerListLabel.Text = sb.ToString();
+        _mpPlayerListLabel!.Text = sb.ToString();
     }
 
     private void OnGameStarted()
@@ -951,13 +951,13 @@ public partial class MainMenu : Control
 
     private void OnChatReceived(string sender, string message)
     {
-        if (_mpChatBox != null && IsInstanceValid(_mpChatBox))
+        if (_mpChatBox != null && IsInstanceValid(_mpChatBox!))
         {
             var lbl = MakeLabel($"{sender}: {message}", 12, ColTextMain);
-            _mpChatBox.AddChild(lbl);
+            _mpChatBox!.AddChild(lbl);
             // 保持最多20条
-            while (_mpChatBox.GetChildCount() > 20)
-                _mpChatBox.GetChild(0).QueueFree();
+            while (_mpChatBox!.GetChildCount() > 20)
+                _mpChatBox!.GetChild(0).QueueFree();
         }
     }
 

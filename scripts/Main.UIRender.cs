@@ -17,9 +17,9 @@ public partial class Main
         // 移除旧的地面精灵
         if (_groundSprite != null)
         {
-            RemoveChild(_groundSprite);
-            _groundSprite.QueueFree();
-            _groundSprite = null!;
+            RemoveChild(_groundSprite!);
+            _groundSprite!.QueueFree();
+            _groundSprite = null;
         }
         // 重新生成（使用同一TerrainGrid数据，已包含改造后的内容）
         CreateGround();
@@ -28,7 +28,7 @@ public partial class Main
     private void CreateGround()
     {
         // 等距地形渲染（路线C：菱形顶面 + 高度侧面 + 悬崖）
-        var isoImg = IsoTerrainRenderer.RenderTerrain(_terrain, _mapRng);
+        var isoImg = IsoTerrainRenderer.RenderTerrain(_terrain!, _mapRng);
         var (offX, offY) = IsoTerrainRenderer.GetRenderOffset();
 
         var groundTex = ImageTexture.CreateFromImage(isoImg);
@@ -44,9 +44,9 @@ public partial class Main
         // 网格(0,0)的等距屏幕坐标对应到世界坐标(0,0)
         // 等距地图左上角 = grid(0,0) 的屏幕坐标 = (0*HalfW, 0*HalfH) = (0, 0)
         // 但渲染时偏移了 offX = gs*HalfW，所以Sprite2D需要左移 offX
-        _groundSprite.Position = new Vector2(-offX, offY);
-        AddChild(_groundSprite);
-        MoveChild(_groundSprite, 0); // 最底层
+        _groundSprite!.Position = new Vector2(-offX, offY);
+        AddChild(_groundSprite!);
+        MoveChild(_groundSprite!, 0); // 最底层
 
         GameLog.Debug($"[IsoTerrain] Isometric terrain render complete, image size: {isoImg.GetWidth()}x{isoImg.GetHeight()}, offset: ({offX}, {offY})");
     }
@@ -107,7 +107,7 @@ public partial class Main
         sprite.Scale = new Vector2(size.X / 80f, size.Y / 80f);
         body.AddChild(sprite);
 
-        _obstaclesNode.AddChild(body);
+        _obstaclesNode!.AddChild(body);
     }
 
     private static void EnsureObstacleTextures()
@@ -138,7 +138,7 @@ public partial class Main
     {
         var sp = new StrategicPoint();
         sp.GlobalPosition = pos;
-        _strategicPointsNode.AddChild(sp);
+        _strategicPointsNode!.AddChild(sp);
     }
 
     // ========== 阶段12-B 种子驱动地图生成 ==========
@@ -180,7 +180,7 @@ public partial class Main
     /// <summary>生成油田（占领后持续产钱）。3-4个，分布在道路附近和资源争夺区。</summary>
     private void GenerateOilFields()
     {
-        var oilPositions = _terrain.GetOilFieldPositions();
+        var oilPositions = _terrain!.GetOilFieldPositions();
         if (oilPositions.Count == 0)
         {
             GameLog.Debug("[E5] No suitable oil field positions, skipping");
@@ -218,7 +218,7 @@ public partial class Main
     /// <summary>生成稀有矿（采集收益×2）。2-3个，分布在山脉附近高地。</summary>
     private void GenerateRareMinerals()
     {
-        var rarePositions = _terrain.GetRareMineralPositions();
+        var rarePositions = _terrain!.GetRareMineralPositions();
         if (rarePositions.Count == 0)
         {
             GameLog.Debug("[E5] No suitable rare mineral positions, skipping");
@@ -252,7 +252,7 @@ public partial class Main
     /// <summary>生成陆地矿脉（散布广、储值低、数量多）。8-12个，遍布可通行陆地。</summary>
     private void GenerateLandVeins()
     {
-        var veinPositions = _terrain.GetSuitableResourcePositions(1, 1, false, false);
+        var veinPositions = _terrain!.GetSuitableResourcePositions(1, 1, false, false);
         if (veinPositions.Count == 0)
         {
             GameLog.Debug("[E5] No suitable land vein positions, skipping");
@@ -286,37 +286,37 @@ public partial class Main
     /// <summary>生成油田节点。</summary>
     private void SpawnOilField(Vector2 pos)
     {
-        var o = _oreScene.Instantiate<ResourceNode>();
+        var o = _oreScene!.Instantiate<ResourceNode>();
         o.ResourceType = ResourceType.OilField;
         o.InitialAmount = 0; // 油田不可被采集，无储量
         o.GlobalPosition = pos;
-        _resourcesNode.AddChild(o);
+        _resourcesNode!.AddChild(o);
     }
 
     /// <summary>生成稀有矿节点。</summary>
     private void SpawnRareMineral(Vector2 pos, int amount)
     {
-        var o = _oreScene.Instantiate<ResourceNode>();
+        var o = _oreScene!.Instantiate<ResourceNode>();
         o.ResourceType = ResourceType.RareMineral;
         o.InitialAmount = amount;
         o.GlobalPosition = pos;
-        _resourcesNode.AddChild(o);
+        _resourcesNode!.AddChild(o);
     }
 
     /// <summary>生成陆地矿脉节点。</summary>
     private void SpawnLandVein(Vector2 pos, int amount)
     {
-        var o = _oreScene.Instantiate<ResourceNode>();
+        var o = _oreScene!.Instantiate<ResourceNode>();
         o.ResourceType = ResourceType.LandVein;
         o.InitialAmount = amount;
         o.GlobalPosition = pos;
-        _resourcesNode.AddChild(o);
+        _resourcesNode!.AddChild(o);
     }
 
     /// <summary>检查世界坐标是否距离已有资源点太近。</summary>
     private bool IsTooCloseToExistingResource(Vector2 pos, float minDist)
     {
-        foreach (var child in _resourcesNode.GetChildren())
+        foreach (var child in _resourcesNode!.GetChildren())
         {
             if (child is ResourceNode rn && IsInstanceValid(rn))
             {
@@ -325,7 +325,7 @@ public partial class Main
             }
         }
         // 也检查战略点
-        foreach (var child in _strategicPointsNode.GetChildren())
+        foreach (var child in _strategicPointsNode!.GetChildren())
         {
             if (child is Node2D n && IsInstanceValid(n))
             {
@@ -435,7 +435,7 @@ public partial class Main
         label.AddThemeConstantOverride("shadow_offset_y", 1);
         label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.7f));
         label.Modulate = new Color(1, 1, 1, 0); // 初始透明，淡入
-        _toastContainer.AddChild(label);
+        _toastContainer!.AddChild(label);
         _activeToasts.Add(new ToastEntry { Label = label, Lifetime = 3f, Age = 0f });
     }
 
@@ -444,7 +444,7 @@ public partial class Main
         int playerUnits = CountUnitsOfTeam(PlayerTeamId);
         int playerPower = GetTeamPower(PlayerTeamId);
         int oreCount = 0;
-        foreach (var c in _resourcesNode.GetChildren())
+        foreach (var c in _resourcesNode!.GetChildren())
             if (c is ResourceNode && IsInstanceValid((Node)c)) oreCount++;
 
         string playerBuildings = GetBuildingList(PlayerTeamId);
@@ -518,14 +518,14 @@ public partial class Main
         string eraName = EraSystem.Eras[(int)_eraProgress[pId].CurrentEra].Name;
         string eraUpgradeStr = _eraProgress[pId].IsUpgrading ? TrManager.Tr("ui.era_upgrade", $"{_eraProgress[pId].Progress*100:F0}") : "";
         string cardStr = _playerCard.HasValue ? TrManager.Tr("ui.card_display", TacticalCards.Cards[_playerCard.Value].Name) : "";
-        _uiLabel.Text = $"{TrManager.Tr("ui.difficulty_label", _difficulty)} {TrManager.Tr("ui.era_label", eraName, eraUpgradeStr)}{cardStr} {TrManager.Tr("ui.tech_cap", _playerTechLevel, _unitCap + GetTechUnitCapBonus(pId) + GetCardUnitCapBonus(pId))}    {TrManager.Tr("ui.money_label", _money[pId])}    |    {TrManager.Tr("ui.ai_money_label", aiTotalMoney)}    [{QualitySettings.LevelName}]\n" +
+        _uiLabel!.Text = $"{TrManager.Tr("ui.difficulty_label", _difficulty)} {TrManager.Tr("ui.era_label", eraName, eraUpgradeStr)}{cardStr} {TrManager.Tr("ui.tech_cap", _playerTechLevel, _unitCap + GetTechUnitCapBonus(pId) + GetCardUnitCapBonus(pId))}    {TrManager.Tr("ui.money_label", _money[pId])}    |    {TrManager.Tr("ui.ai_money_label", aiTotalMoney)}    [{QualitySettings.LevelName}]\n" +
                         $"{TrManager.Tr("ui.power_label", playerPower)}{powerWarn}    |    {TrManager.Tr("ui.ai_power_label", aiTotalPower)}\n" +
                         $"{TrManager.Tr("ui.player_units_label", playerUnits, playerBuildings)}  · " +
                         $"{TrManager.Tr("ui.ai_units_label", aiTotalUnits)}\n" +
                         $"{TrManager.Tr("ui.ore_remaining", oreCount)}{nukeLine}{lightLine}{missileLine}\n" +
                         (string.IsNullOrEmpty(status) ? "" : TrManager.Tr("ui.status_star", status));
 
-        _hintLabel.Text = TrManager.Tr("hint.controls_basic") + "\n" +
+        _hintLabel!.Text = TrManager.Tr("hint.controls_basic") + "\n" +
                           TrManager.Tr("hint.controls_cmd") + "\n" +
                           TrManager.Tr("hint.controls_building") + "\n" +
                           TrManager.Tr("hint.units_line", GetUnitCost(UnitType.LightTank), GetUnitCost(UnitType.HeavyTank), GetUnitCost(UnitType.Artillery), GetUnitCost(UnitType.Harvester)) + "\n" +
@@ -542,23 +542,23 @@ public partial class Main
                           TrManager.Tr("hint.spy_keys") + "\n" +
                           TrManager.Tr("hint.capture_keys");
         if (_attackMoveMode)
-            _hintLabel.Text = TrManager.Tr("ui.attack_move_mode");
+            _hintLabel!.Text = TrManager.Tr("ui.attack_move_mode");
         if (_forceAttackMode)
-            _hintLabel.Text = TrManager.Tr("ui.force_attack_mode");
+            _hintLabel!.Text = TrManager.Tr("ui.force_attack_mode");
         if (_patrolMode)
-            _hintLabel.Text = TrManager.Tr("ui.patrol_mode");
+            _hintLabel!.Text = TrManager.Tr("ui.patrol_mode");
         if (_formationMode)
-            _hintLabel.Text = TrManager.Tr("ui.formation_mode");
+            _hintLabel!.Text = TrManager.Tr("ui.formation_mode");
         if (_nukeTargetMode)
-            _hintLabel.Text = TrManager.Tr("ui.nuke_target_mode");
+            _hintLabel!.Text = TrManager.Tr("ui.nuke_target_mode");
         if (_lightningTargetMode)
-            _hintLabel.Text = TrManager.Tr("ui.lightning_target_mode");
+            _hintLabel!.Text = TrManager.Tr("ui.lightning_target_mode");
     }
 
     private string GetBuildingList(int teamId)
     {
         int baseN = 0, power = 0, barrack = 0, war = 0, tech = 0;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
             {

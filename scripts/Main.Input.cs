@@ -24,7 +24,7 @@ public partial class Main
     {
         return _techTreePanelVisible || _eraPanelVisible || _powerGridPanelVisible
             || _adjacencyPanelVisible || _spyMissionPanelVisible || _capturePanelVisible
-            || _eurekaLabel.Visible || _cardPanel.Visible;
+            || _eurekaLabel!.Visible || _cardPanel!.Visible;
     }
 
     public override void _Input(InputEvent @event)
@@ -38,8 +38,8 @@ public partial class Main
             if (k.Keycode == Key.F1)
             {
                 _hintPanelVisible = !_hintPanelVisible;
-                _hintBarBg.Visible = _hintPanelVisible;
-                _hintLabel.Visible = _hintPanelVisible;
+                _hintBarBg!.Visible = _hintPanelVisible;
+                _hintLabel!.Visible = _hintPanelVisible;
                 return;
             }
         }
@@ -48,12 +48,12 @@ public partial class Main
 
         var vpSize = GetViewportRect().Size;
         bool mouseOverPanel = GetViewport().GetMousePosition().X > vpSize.X - 232f;
-        bool mouseOverMinimap = _minimap != null && _minimap.ContainsScreenPos(GetViewport().GetMousePosition());
+        bool mouseOverMinimap = _minimap! != null && _minimap!.ContainsScreenPos(GetViewport().GetMousePosition());
         if (mouseOverMinimap && @event is InputEventMouse) return;
 
         if (@event is InputEventMouseButton mb && mb.Pressed)
         {
-            var worldPos = _camera.GetGlobalMousePosition();
+            var worldPos = _camera!.GetGlobalMousePosition();
             if (mb.ButtonIndex == MouseButton.Left)
             {
                 // 阶段12-A4：闪电风暴目标选择模式（与核弹互斥优先）
@@ -128,7 +128,7 @@ public partial class Main
                 }
                 _isDragging = true;
                 _dragStart = worldPos;
-                _dragBox.Visible = true;
+                _dragBox!.Visible = true;
             }
             if (mb.ButtonIndex == MouseButton.Right)
             {
@@ -145,12 +145,12 @@ public partial class Main
         if (@event is InputEventMouseButton mbr && !mbr.Pressed && mbr.ButtonIndex == MouseButton.Left && _isDragging)
         {
             _isDragging = false;
-            HandleSelection(_dragStart, _camera.GetGlobalMousePosition());
-            _dragBox.Visible = false;
+            HandleSelection(_dragStart, _camera!.GetGlobalMousePosition());
+            _dragBox!.Visible = false;
         }
         if (@event is InputEventMouseMotion && _isDragging)
         {
-            UpdateDragBox(_dragStart, _camera.GetGlobalMousePosition());
+            UpdateDragBox(_dragStart, _camera!.GetGlobalMousePosition());
         }
 
         // G1：键盘命令（编队/攻击移动/停止）
@@ -169,7 +169,7 @@ public partial class Main
         if (kc == Key.Tab)
         {
             _techTreePanelVisible = !_techTreePanelVisible;
-            _techTreeLabel.Visible = _techTreePanelVisible;
+            _techTreeLabel!.Visible = _techTreePanelVisible;
             if (_techTreePanelVisible) UpdateTechTreePanel();
             return;
         }
@@ -178,7 +178,7 @@ public partial class Main
         if (kc == Key.Y)
         {
             _eraPanelVisible = !_eraPanelVisible;
-            _eraLabel.Visible = _eraPanelVisible;
+            _eraLabel!.Visible = _eraPanelVisible;
             if (_eraPanelVisible) UpdateEraPanel();
             return;
         }
@@ -202,7 +202,7 @@ public partial class Main
         if (kc == Key.G)
         {
             _powerGridPanelVisible = !_powerGridPanelVisible;
-            _powerGridLabel.Visible = _powerGridPanelVisible;
+            _powerGridLabel!.Visible = _powerGridPanelVisible;
             if (_powerGridPanelVisible) UpdatePowerGridPanel();
             return;
         }
@@ -221,8 +221,8 @@ public partial class Main
                 }
                 return;
             }
-            _eurekaLabel.Visible = !_eurekaLabel.Visible;
-            if (_eurekaLabel.Visible) UpdateEurekaPanel();
+            _eurekaLabel!.Visible = !_eurekaLabel!.Visible;
+            if (_eurekaLabel!.Visible) UpdateEurekaPanel();
             return;
         }
 
@@ -230,7 +230,7 @@ public partial class Main
         if (kc == Key.J)
         {
             _adjacencyPanelVisible = !_adjacencyPanelVisible;
-            _adjacencyLabel.Visible = _adjacencyPanelVisible;
+            _adjacencyLabel!.Visible = _adjacencyPanelVisible;
             if (_adjacencyPanelVisible) UpdateAdjacencyPanel();
             return;
         }
@@ -239,7 +239,7 @@ public partial class Main
         if (kc == Key.N)
         {
             _spyMissionPanelVisible = !_spyMissionPanelVisible;
-            _spyMissionLabel.Visible = _spyMissionPanelVisible;
+            _spyMissionLabel!.Visible = _spyMissionPanelVisible;
             if (_spyMissionPanelVisible) UpdateSpyMissionPanel();
             return;
         }
@@ -248,13 +248,13 @@ public partial class Main
         if (kc == Key.K)
         {
             _capturePanelVisible = !_capturePanelVisible;
-            _captureLabel.Visible = _capturePanelVisible;
+            _captureLabel!.Visible = _capturePanelVisible;
             if (_capturePanelVisible) UpdateCapturePanel();
             return;
         }
 
         // G3: 战术卡选择面板可见时，1/2/3选择对应卡
-        if (_cardPanel.Visible && _cardChoices.Length > 0)
+        if (_cardPanel!.Visible && _cardChoices.Length > 0)
         {
             int cardIdx = kc switch
             {
@@ -546,7 +546,7 @@ public partial class Main
             var center = Vector2.Zero;
             foreach (var o in _selected) if (o is Node2D n) center += n.GlobalPosition;
             center /= _selected.Count;
-            _camera.Position = center;
+            _camera!.Position = center;
         }
         GameLog.Debug($"[Squad] Selected squad {idx + 1} ({_selected.Count} units)");
     }
@@ -722,7 +722,7 @@ public partial class Main
         }
 
         // E4：工程单位右键不可通行地形 → 触发地形改造
-        var terrainCell = _terrain.GetCellAtWorld(worldPos.X, worldPos.Y);
+        var terrainCell = _terrain!.GetCellAtWorld(worldPos.X, worldPos.Y);
         Unit.TerrainModType modType = DetectTerrainMod(terrainCell);
         if (modType != Unit.TerrainModType.None)
         {
@@ -816,7 +816,7 @@ public partial class Main
         }
 
         // 框选蓝方单位和建筑
-        foreach (var child in _unitsNode.GetChildren())
+        foreach (var child in _unitsNode!.GetChildren())
         {
             if (child is Unit u && u.TeamId == PlayerTeamId && rect.HasPoint(u.GlobalPosition))
             {
@@ -824,7 +824,7 @@ public partial class Main
                 if (!_selected.Contains(u)) _selected.Add(u);
             }
         }
-        foreach (var child in _buildingsNode.GetChildren())
+        foreach (var child in _buildingsNode!.GetChildren())
         {
             if (child is Building b && b.TeamId == PlayerTeamId && rect.HasPoint(b.GlobalPosition))
             {
@@ -848,19 +848,19 @@ public partial class Main
     {
         var min = new Vector2(Mathf.Min(start.X, end.X), Mathf.Min(start.Y, end.Y));
         var max = new Vector2(Mathf.Max(start.X, end.X), Mathf.Max(start.Y, end.Y));
-        _dragBox.ClearPoints();
-        _dragBox.AddPoint(min);
-        _dragBox.AddPoint(new Vector2(max.X, min.Y));
-        _dragBox.AddPoint(max);
-        _dragBox.AddPoint(new Vector2(min.X, max.Y));
-        _dragBox.AddPoint(min);
+        _dragBox!.ClearPoints();
+        _dragBox!.AddPoint(min);
+        _dragBox!.AddPoint(new Vector2(max.X, min.Y));
+        _dragBox!.AddPoint(max);
+        _dragBox!.AddPoint(new Vector2(min.X, max.Y));
+        _dragBox!.AddPoint(min);
     }
 
     // ---------- 拾取/查询 ----------
     private Unit? PickUnitAt(Vector2 worldPos, bool requireEnemy)
     {
         int myTeam = PlayerTeamId;
-        foreach (var child in _unitsNode.GetChildren())
+        foreach (var child in _unitsNode!.GetChildren())
         {
             if (child is Unit u && IsInstanceValid(u))
             {
@@ -877,7 +877,7 @@ public partial class Main
     private Unit? PickTransportAt(Vector2 worldPos, bool requireFriendly)
     {
         int myTeam = PlayerTeamId;
-        foreach (var child in _unitsNode.GetChildren())
+        foreach (var child in _unitsNode!.GetChildren())
         {
             if (child is Unit u && IsInstanceValid(u) && u.IsTransport)
             {
@@ -893,7 +893,7 @@ public partial class Main
     private Building? PickBuildingAt(Vector2 worldPos, bool requireEnemy)
     {
         int myTeam = PlayerTeamId;
-        foreach (var child in _buildingsNode.GetChildren())
+        foreach (var child in _buildingsNode!.GetChildren())
         {
             if (child is Building b && IsInstanceValid(b))
             {

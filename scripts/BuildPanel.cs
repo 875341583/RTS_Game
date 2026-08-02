@@ -16,14 +16,14 @@ public partial class BuildPanel : Control
     public event Action<UnitType>? BuildUnitRequested;
     public event Action? BuildHarvesterRequested;
 
-    private RichTextLabel _infoLabel = null!;
-    private RichTextLabel _hintLabel = null!;
-    private GridContainer _buildingGrid = null!;
-    private GridContainer _infantryGrid = null!;
-    private GridContainer _vehicleGrid = null!;
-    private Button _tabBuildings = null!;
-    private Button _tabInfantry = null!;
-    private Button _tabVehicles = null!;
+    private RichTextLabel? _infoLabel;
+    private RichTextLabel? _hintLabel;
+    private GridContainer? _buildingGrid;
+    private GridContainer? _infantryGrid;
+    private GridContainer? _vehicleGrid;
+    private Button? _tabBuildings;
+    private Button? _tabInfantry;
+    private Button? _tabVehicles;
 
     /// <summary>侧边栏底部三个分类标签：建筑 / 步兵 / 车辆（参考红警2侧边栏）</summary>
     private enum BuildTab { Buildings, Infantry, Vehicles }
@@ -125,11 +125,11 @@ public partial class BuildPanel : Control
     private static Texture2D? _iApocalypseTank, _iPrismTank, _iKirovAirship, _iTeslaTrooper;
 
     // 信息区/提示区底板引用（用于更新时刷新StyleBox）
-    private Panel _infoPanel = null!;
-    private Panel _hintPanel = null!;
-    private Label _titleLabel = null!;
-    private Label _moneyLabel = null!;
-    private ColorRect _powerBar = null!;
+    private Panel? _infoPanel;
+    private Panel? _hintPanel;
+    private Label? _titleLabel;
+    private Label? _moneyLabel;
+    private ColorRect? _powerBar;
 
     // 悬停项
     private BuildItem? _hoverItem;
@@ -172,19 +172,19 @@ public partial class BuildPanel : Control
         root.AddChild(titleBar);
 
         _titleLabel = new Label();
-        _titleLabel.Text = TrManager.Tr("build.panel_title");
-        _titleLabel.AddThemeFontSizeOverride("font_size", 16);
-        _titleLabel.AddThemeColorOverride("font_color", CGoldText);
-        _titleLabel.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f));
-        _titleLabel.AddThemeConstantOverride("outline_size", 1);
-        _titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _titleLabel.AnchorRight = 1; _titleLabel.AnchorBottom = 1;
-        _titleLabel.MouseFilter = MouseFilterEnum.Pass;
-        titleBar.AddChild(_titleLabel);
+        _titleLabel!.Text = TrManager.Tr("build.panel_title");
+        _titleLabel!.AddThemeFontSizeOverride("font_size", 16);
+        _titleLabel!.AddThemeColorOverride("font_color", CGoldText);
+        _titleLabel!.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f));
+        _titleLabel!.AddThemeConstantOverride("outline_size", 1);
+        _titleLabel!.HorizontalAlignment = HorizontalAlignment.Center;
+        _titleLabel!.AnchorRight = 1; _titleLabel!.AnchorBottom = 1;
+        _titleLabel!.MouseFilter = MouseFilterEnum.Pass;
+        titleBar.AddChild(_titleLabel!);
 
         // 资金/电力信息区：金属底板背景
         _infoPanel = new Panel();
-        _infoPanel.CustomMinimumSize = new Vector2(W - 12, 68);
+        _infoPanel!.CustomMinimumSize = new Vector2(W - 12, 68);
         var infoStyle = new StyleBoxFlat
         {
             BgColor = CInfoPlate,
@@ -193,27 +193,27 @@ public partial class BuildPanel : Control
             ContentMarginLeft = 6, ContentMarginRight = 6,
             ContentMarginTop = 4, ContentMarginBottom = 4
         };
-        _infoPanel.AddThemeStyleboxOverride("panel", infoStyle);
-        _infoPanel.MouseFilter = MouseFilterEnum.Pass;
-        root.AddChild(_infoPanel);
+        _infoPanel!.AddThemeStyleboxOverride("panel", infoStyle);
+        _infoPanel!.MouseFilter = MouseFilterEnum.Pass;
+        root.AddChild(_infoPanel!);
 
         _infoLabel = new RichTextLabel();
-        _infoLabel.BbcodeEnabled = true;
-        _infoLabel.AddThemeFontSizeOverride("normal_font_size", 18);
-        _infoLabel.FitContent = true;
-        _infoLabel.AnchorRight = 1; _infoLabel.AnchorBottom = 1;
-        _infoLabel.OffsetLeft = 4; _infoLabel.OffsetTop = 2; _infoLabel.OffsetRight = -4; _infoLabel.OffsetBottom = -2;
-        _infoLabel.MouseFilter = MouseFilterEnum.Pass;
-        _infoPanel.AddChild(_infoLabel);
+        _infoLabel!.BbcodeEnabled = true;
+        _infoLabel!.AddThemeFontSizeOverride("normal_font_size", 18);
+        _infoLabel!.FitContent = true;
+        _infoLabel!.AnchorRight = 1; _infoLabel!.AnchorBottom = 1;
+        _infoLabel!.OffsetLeft = 4; _infoLabel!.OffsetTop = 2; _infoLabel!.OffsetRight = -4; _infoLabel!.OffsetBottom = -2;
+        _infoLabel!.MouseFilter = MouseFilterEnum.Pass;
+        _infoPanel!.AddChild(_infoLabel!);
 
         // 电力指示条（正：蓝 / 负：红）
         _powerBar = new ColorRect();
-        _powerBar.CustomMinimumSize = new Vector2(0, 2);
-        _powerBar.Color = new Color(0.2f, 0.5f, 0.9f, 0.8f);
-        _powerBar.AnchorLeft = 0.04f; _powerBar.AnchorRight = 0.96f;
-        _powerBar.AnchorTop = 0.90f; _powerBar.AnchorBottom = 0.95f;
-        _powerBar.MouseFilter = MouseFilterEnum.Pass;
-        _infoPanel.AddChild(_powerBar);
+        _powerBar!.CustomMinimumSize = new Vector2(0, 2);
+        _powerBar!.Color = new Color(0.2f, 0.5f, 0.9f, 0.8f);
+        _powerBar!.AnchorLeft = 0.04f; _powerBar!.AnchorRight = 0.96f;
+        _powerBar!.AnchorTop = 0.90f; _powerBar!.AnchorBottom = 0.95f;
+        _powerBar!.MouseFilter = MouseFilterEnum.Pass;
+        _infoPanel!.AddChild(_powerBar!);
 
         // 分类标签区：建筑/步兵/车辆
         var tabsPanel = new Panel();
@@ -233,24 +233,24 @@ public partial class BuildPanel : Control
         _tabBuildings = MakeTabButton(TrManager.Tr("build.tab_buildings"), BuildTab.Buildings);
         _tabInfantry  = MakeTabButton(TrManager.Tr("build.tab_infantry"), BuildTab.Infantry);
         _tabVehicles  = MakeTabButton(TrManager.Tr("build.tab_vehicles"), BuildTab.Vehicles);
-        tabs.AddChild(_tabBuildings);
-        tabs.AddChild(_tabInfantry);
-        tabs.AddChild(_tabVehicles);
+        tabs.AddChild(_tabBuildings!);
+        tabs.AddChild(_tabInfantry!);
+        tabs.AddChild(_tabVehicles!);
 
         _buildingGrid = MakeGrid();
-        root.AddChild(_buildingGrid);
+        root.AddChild(_buildingGrid!);
 
         _infantryGrid = MakeGrid();
-        _infantryGrid.Visible = false;
-        root.AddChild(_infantryGrid);
+        _infantryGrid!.Visible = false;
+        root.AddChild(_infantryGrid!);
 
         _vehicleGrid = MakeGrid();
-        _vehicleGrid.Visible = false;
-        root.AddChild(_vehicleGrid);
+        _vehicleGrid!.Visible = false;
+        root.AddChild(_vehicleGrid!);
 
         // 底部提示区：暗色金属底板
         _hintPanel = new Panel();
-        _hintPanel.CustomMinimumSize = new Vector2(W - 12, 90);
+        _hintPanel!.CustomMinimumSize = new Vector2(W - 12, 90);
         var hintStyle = new StyleBoxFlat
         {
             BgColor = CHintPlate,
@@ -259,18 +259,18 @@ public partial class BuildPanel : Control
             ContentMarginLeft = 4, ContentMarginRight = 4,
             ContentMarginTop = 3, ContentMarginBottom = 3
         };
-        _hintPanel.AddThemeStyleboxOverride("panel", hintStyle);
-        _hintPanel.MouseFilter = MouseFilterEnum.Pass;
-        root.AddChild(_hintPanel);
+        _hintPanel!.AddThemeStyleboxOverride("panel", hintStyle);
+        _hintPanel!.MouseFilter = MouseFilterEnum.Pass;
+        root.AddChild(_hintPanel!);
 
         _hintLabel = new RichTextLabel();
-        _hintLabel.BbcodeEnabled = true;
-        _hintLabel.AddThemeFontSizeOverride("normal_font_size", 12);
-        _hintLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _hintLabel.AnchorRight = 1; _hintLabel.AnchorBottom = 1;
-        _hintLabel.OffsetLeft = 2; _hintLabel.OffsetTop = 2; _hintLabel.OffsetRight = -2; _hintLabel.OffsetBottom = -2;
-        _hintLabel.MouseFilter = MouseFilterEnum.Pass;
-        _hintPanel.AddChild(_hintLabel);
+        _hintLabel!.BbcodeEnabled = true;
+        _hintLabel!.AddThemeFontSizeOverride("normal_font_size", 12);
+        _hintLabel!.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _hintLabel!.AnchorRight = 1; _hintLabel!.AnchorBottom = 1;
+        _hintLabel!.OffsetLeft = 2; _hintLabel!.OffsetTop = 2; _hintLabel!.OffsetRight = -2; _hintLabel!.OffsetBottom = -2;
+        _hintLabel!.MouseFilter = MouseFilterEnum.Pass;
+        _hintPanel!.AddChild(_hintLabel!);
 
         CreateItems();
 
@@ -351,9 +351,9 @@ public partial class BuildPanel : Control
     /// <summary>更新三个标签按钮的视觉状态（选中/未选中配色）。</summary>
     private void UpdateTabVisuals()
     {
-        UpdateSingleTabStyle(_tabBuildings, _currentTab == BuildTab.Buildings);
-        UpdateSingleTabStyle(_tabInfantry, _currentTab == BuildTab.Infantry);
-        UpdateSingleTabStyle(_tabVehicles, _currentTab == BuildTab.Vehicles);
+        UpdateSingleTabStyle(_tabBuildings!, _currentTab == BuildTab.Buildings);
+        UpdateSingleTabStyle(_tabInfantry!, _currentTab == BuildTab.Infantry);
+        UpdateSingleTabStyle(_tabVehicles!, _currentTab == BuildTab.Vehicles);
     }
 
     private static void UpdateSingleTabStyle(Button b, bool isActive)
@@ -392,12 +392,12 @@ public partial class BuildPanel : Control
     private void ShowTab(BuildTab tab)
     {
         _currentTab = tab;
-        _tabBuildings.ButtonPressed = tab == BuildTab.Buildings;
-        _tabInfantry.ButtonPressed  = tab == BuildTab.Infantry;
-        _tabVehicles.ButtonPressed  = tab == BuildTab.Vehicles;
-        _buildingGrid.Visible = tab == BuildTab.Buildings;
-        _infantryGrid.Visible = tab == BuildTab.Infantry;
-        _vehicleGrid.Visible  = tab == BuildTab.Vehicles;
+        _tabBuildings!.ButtonPressed = tab == BuildTab.Buildings;
+        _tabInfantry!.ButtonPressed  = tab == BuildTab.Infantry;
+        _tabVehicles!.ButtonPressed  = tab == BuildTab.Vehicles;
+        _buildingGrid!.Visible = tab == BuildTab.Buildings;
+        _infantryGrid!.Visible = tab == BuildTab.Infantry;
+        _vehicleGrid!.Visible  = tab == BuildTab.Vehicles;
         UpdateTabVisuals();
     }
 
@@ -566,9 +566,9 @@ public partial class BuildPanel : Control
         // 点击
         panel.GuiInput += (@event) => OnItemGuiInput(@event, item);
 
-        if (isBuilding) _buildingGrid.AddChild(panel);
-        else if (tab == BuildTab.Infantry) _infantryGrid.AddChild(panel);
-        else _vehicleGrid.AddChild(panel);
+        if (isBuilding) _buildingGrid!.AddChild(panel);
+        else if (tab == BuildTab.Infantry) _infantryGrid!.AddChild(panel);
+        else _vehicleGrid!.AddChild(panel);
 
         _items.Add(item);
     }
@@ -777,13 +777,13 @@ public partial class BuildPanel : Control
         var powerWarn = _power < 0 ? $" [color=#ff5555]{TrManager.Tr("build.lock_power_low")}![/color]" : "";
         // 资金用金色大字体，电力正/负用蓝/红
         string powerColor = _power < 0 ? "#ff5555" : "#88ccff";
-        _infoLabel.Text = $"[color=#ffd54f]{DifficultyName}[/color]  {TrManager.Tr("build.tech")}Lv{_playerTechLevel}\n" +
+        _infoLabel!.Text = $"[color=#ffd54f]{DifficultyName}[/color]  {TrManager.Tr("build.tech")}Lv{_playerTechLevel}\n" +
                           $"[color=#ffd24f][b][font_size=22]${_money}[/font_size][/b][/color]   {_unitCount}/{_unitCap} {TrManager.Tr("build.tab_infantry")}\n" +
                           $"[color={powerColor}]{TrManager.Tr("ui.power_label", _power)}{powerWarn}[/color]";
 
         // 电力指示条颜色：正蓝色 / 负红色
         if (_powerBar != null)
-            _powerBar.Color = _power < 0
+            _powerBar!.Color = _power < 0
                 ? new Color(0.8f, 0.2f, 0.15f, 0.85f)
                 : new Color(0.2f, 0.5f, 0.9f, 0.8f);
 
@@ -886,11 +886,11 @@ public partial class BuildPanel : Control
                 + (h._timeRemaining > 0f ? $"  {TrManager.Tr("build.hint_remaining", $"{h._timeRemaining:F1}")}[/color]"
                 : "[/color]")
                 : "";
-            _hintLabel.Text = $"{h.Name}  ${h.Cost}\n{GetItemDesc(h)}\n{status}{queueInfo}";
+            _hintLabel!.Text = $"{h.Name}  ${h.Cost}\n{GetItemDesc(h)}\n{status}{queueInfo}";
         }
         else
         {
-            _hintLabel.Text = ActivePlacement != null
+            _hintLabel!.Text = ActivePlacement != null
                 ? $"[color=#66ff99]{TrManager.Tr("build.hint_place_mode")}[/color]\n{TrManager.Tr("build.hint_place_click", ActivePlacement)}\n{TrManager.Tr("build.hint_cancel")}"
                 : $"{TrManager.Tr("build.hint_click_build")}\n{TrManager.Tr("build.hint_drag_select")}\n{TrManager.Tr("build.hint_right_move")}";
         }

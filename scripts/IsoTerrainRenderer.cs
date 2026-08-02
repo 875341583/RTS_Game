@@ -49,20 +49,20 @@ public static class IsoTerrainRenderer
         EnsureTerrainTextures();
 
         // 预加载 tile Image
-        var grassImgs = LoadImageArray(_grassTexs);
-        var sandImgs = LoadImageArray(_sandTexs);
-        var shallowImgs = LoadImageArray(_shallowTexs);
-        var deepImgs = LoadImageArray(_deepTexs);
-        var mountainImgs = LoadImageArray(_mountainTexs);
-        var snowImgs = LoadImageArray(_snowTexs);
-        var cityImgs = LoadImageArray(_cityTexs);
-        var fieldImgs = LoadImageArray(_fieldTexs);
+        var grassImgs = LoadImageArray(_grassTexs!);
+        var sandImgs = LoadImageArray(_sandTexs!);
+        var shallowImgs = LoadImageArray(_shallowTexs!);
+        var deepImgs = LoadImageArray(_deepTexs!);
+        var mountainImgs = LoadImageArray(_mountainTexs!);
+        var snowImgs = LoadImageArray(_snowTexs!);
+        var cityImgs = LoadImageArray(_cityTexs!);
+        var fieldImgs = LoadImageArray(_fieldTexs!);
 
         // 预提取tile贴图的字节缓冲区（避免在循环内重复GetPixel）
         var tileBuffers = new Dictionary<Image, (byte[] data, int w, int h)>();
         System.Func<Image, (byte[], int, int)> getTileBuf = (tileImg) =>
         {
-            if (tileImg == null) return (null!, 0, 0);
+            if (tileImg == null) return (Array.Empty<byte>(), 0, 0);
             if (!tileBuffers.TryGetValue(tileImg, out var buf))
             {
                 buf = (tileImg.GetData(), tileImg.GetWidth(), tileImg.GetHeight());
@@ -103,7 +103,7 @@ public static class IsoTerrainRenderer
                     DrawDiamondSideFast(imgData, imgStride, imgW, imgH, cx, cy, sidePx, cell);
 
                 // 画顶面（菱形裁剪）—— 快速字节版
-                if (tileData != null)
+                if (tileData.Length > 0)
                     DrawDiamondTopFast(imgData, imgStride, imgW, imgH, cx, cy,
                         tileData, tileImgW, tileImgH, cell, halfW, halfH, tileW, tileH);
 
@@ -590,14 +590,14 @@ public static class IsoTerrainRenderer
 
     // ======== 贴图加载 ========
 
-    private static Texture2D?[] _grassTexs = null!;
-    private static Texture2D?[] _sandTexs = null!;
-    private static Texture2D?[] _shallowTexs = null!;
-    private static Texture2D?[] _deepTexs = null!;
-    private static Texture2D?[] _mountainTexs = null!;
-    private static Texture2D?[] _snowTexs = null!;
-    private static Texture2D?[] _cityTexs = null!;
-    private static Texture2D?[] _fieldTexs = null!;
+    private static Texture2D?[]? _grassTexs;
+    private static Texture2D?[]? _sandTexs;
+    private static Texture2D?[]? _shallowTexs;
+    private static Texture2D?[]? _deepTexs;
+    private static Texture2D?[]? _mountainTexs;
+    private static Texture2D?[]? _snowTexs;
+    private static Texture2D?[]? _cityTexs;
+    private static Texture2D?[]? _fieldTexs;
     private static Texture2D? _roadETex, _roadNTex, _roadCrossTex;
     private static Texture2D? _bridgeTex, _tunnelTex, _cliffTex;
     private static bool _texturesLoaded = false;

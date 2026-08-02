@@ -13,26 +13,26 @@ namespace RTSGame;
 /// </summary>
 public partial class Main : Node2D
 {
-    private RTSCamera _camera = null!;
-    private Node2D _unitsNode = null!;
-    private Node2D _buildingsNode = null!;
-    private Node2D _resourcesNode = null!;
+    private RTSCamera? _camera;
+    private Node2D? _unitsNode;
+    private Node2D? _buildingsNode;
+    private Node2D? _resourcesNode;
 
-    private Node2D _obstaclesNode = null!;
-    private Node2D _strategicPointsNode = null!;
-    private Sprite2D _groundSprite = null!;
+    private Node2D? _obstaclesNode;
+    private Node2D? _strategicPointsNode;
+    private Sprite2D? _groundSprite;
 
     // Q6：事件通知系统
-    private VBoxContainer _toastContainer = null!;
+    private VBoxContainer? _toastContainer;
     private readonly List<ToastEntry> _activeToasts = new();
-    private class ToastEntry { public Label Label = null!; public float Lifetime; public float Age; }
-    private Label _startOverlay = null!;
+    private class ToastEntry { public Label? Label; public float Lifetime; public float Age; }
+    private Label? _startOverlay;
     private float _startOverlayAge;
 
-    private Line2D _dragBox = null!;
-    private Label _uiLabel = null!;
-    private Label _hintLabel = null!;
-    private Panel _hintBarBg = null!;
+    private Line2D? _dragBox;
+    private Label? _uiLabel;
+    private Label? _hintLabel;
+    private Panel? _hintBarBg;
     private bool _hintPanelVisible = true;
 
     // 选中集合（统一存放 Unit 和 Building）
@@ -61,10 +61,10 @@ public partial class Main : Node2D
     private const int MaxUnitsPerTeam = 20;
 
     // 场景预载
-    private PackedScene _unitScene = null!;
-    private PackedScene _harvesterScene = null!;
-    private PackedScene _buildingScene = null!;
-    private PackedScene _oreScene = null!;
+    private PackedScene? _unitScene;
+    private PackedScene? _harvesterScene;
+    private PackedScene? _buildingScene;
+    private PackedScene? _oreScene;
 
     // 基地引用（8 阵营）
     private readonly Dictionary<int, Building> _bases = new();
@@ -98,8 +98,8 @@ public partial class Main : Node2D
     private string _gameResult = "";
     // 每个阵营的建筑索引（生成环形布局用）
     private readonly Dictionary<int, int> _buildIndices = new();
-    private BuildPanel _buildPanel = null!;
-    private Minimap _minimap = null!;
+    private BuildPanel? _buildPanel;
+    private Minimap? _minimap;
     private BuildingType? _placementMode;
     private bool _f12ShotDown = false; // F12 截图按键状态（用于验收渲染）
     private float _autoshotTimer = 0f; // 自动截图计时器（验收用）
@@ -185,17 +185,17 @@ public partial class Main : Node2D
     private MapData? _customMap = null;
 
     // ---- 阶段12-C 音效系统 ----
-    private AudioManager _audio = null!;
+    private AudioManager? _audio;
 
     // ---- E1 地形系统 ----
-    private TerrainGrid _terrain = null!;
+    private TerrainGrid? _terrain;
     /// <summary>获取地形网格（供Unit等查询速度修正和通行性）。</summary>
-    public TerrainGrid GetTerrainGrid() => _terrain;
+    public TerrainGrid GetTerrainGrid() => _terrain!;
 
     // ---- P0-1: A*寻路系统 ----
     private PathFinder? _pathFinder;
     /// <summary>获取全局PathFinder实例（可能为null，调用方需判空）。</summary>
-    public PathFinder? GetPathFinder() => _pathFinder;
+    public PathFinder? GetPathFinder() => _pathFinder!;
 
     // G1 操控增强
     private readonly Dictionary<int, List<Unit>> _squads = new();
@@ -206,14 +206,14 @@ public partial class Main : Node2D
     // G1: 科技分支树
     private readonly TechProgress[] _techProgress = new TechProgress[MaxTeamCount]; // 每阵营一个
     private bool _techTreePanelVisible = false;
-    private Label _techTreeLabel = null!;
+    private Label? _techTreeLabel;
     private float _aiTechTimer = 0f;
     private float _techAutoRepairTimer = 0f;
 
     // G2: 时代系统
     private readonly EraProgress[] _eraProgress = new EraProgress[MaxTeamCount]; // 每阵营一个
     private bool _eraPanelVisible = false;
-    private Label _eraLabel = null!;
+    private Label? _eraLabel;
     private float _aiEraTimer = 0f;
     /// <summary>P1-6: 警报BGM超时计时器（8秒无攻击切回战斗BGM）</summary>
     private float _alertBgmTimer = 0f;
@@ -224,43 +224,43 @@ public partial class Main : Node2D
     private bool _cardSelectionPending = true;
     private float _cardSelectionTimer = 5f; // 游戏开始5秒后弹出
     private TacticalCards.CardId[] _cardChoices = System.Array.Empty<TacticalCards.CardId>();
-    private Label _cardLabel = null!;           // 战术卡面板内标题
-    private Panel _cardPanel = null!;            // 战术卡选择面板（带军工风背景）
-    private HBoxContainer _cardButtonContainer = null!; // 3张战术卡按钮容器
-    private Label _cardStatusLabel = null!;
+    private Label? _cardLabel;           // 战术卡面板内标题
+    private Panel? _cardPanel;            // 战术卡选择面板（带军工风背景）
+    private HBoxContainer? _cardButtonContainer; // 3张战术卡按钮容器
+    private Label? _cardStatusLabel;
 
     // G4: 电网分区
 
     /// <summary>Phase1: 触发屏幕震动。intensity=像素偏移, duration=秒。</summary>
     public void ScreenShake(float intensity, float duration)
     {
-        if (_camera != null && IsInstanceValid(_camera))
-            _camera.Shake(intensity, duration);
+        if (_camera != null && IsInstanceValid(_camera!))
+            _camera!.Shake(intensity, duration);
     }
 
     // G4: 电网分区 (原)
     private bool _powerGridPanelVisible = false;
-    private Label _powerGridLabel = null!;
+    private Label? _powerGridLabel;
     private float _powerGridRefreshTimer = 0f;
 
     // G5: 尤里卡时刻
     private readonly EurekaSystem.TeamEureka[] _eureka = new EurekaSystem.TeamEureka[MaxTeamCount];
-    private Label _eurekaLabel = null!;
+    private Label? _eurekaLabel;
 
     // G6: 邻接加成
-    private Label _adjacencyLabel = null!;
+    private Label? _adjacencyLabel;
     private bool _adjacencyPanelVisible = false;
 
     // G7: 间谍任务面板
-    private Label _spyMissionLabel = null!;
+    private Label? _spyMissionLabel;
     private bool _spyMissionPanelVisible = false;
 
     // G8: 占领面板
-    private Label _captureLabel = null!;
+    private Label? _captureLabel;
     private bool _capturePanelVisible = false;
 
     // Phase1: 战争迷雾
-    private FogOfWar _fogOfWar = null!;
+    private FogOfWar? _fogOfWar;
 
     public override void _Ready()
     {
@@ -391,17 +391,17 @@ public partial class Main : Node2D
         _hintLabel = GetNode<Label>("UI/HintLabel");
 
         // RA2风格顶部信息栏 — Label样式
-        _uiLabel.AddThemeColorOverride("font_color", new Color(0.95f, 0.92f, 0.8f));
-        _uiLabel.AddThemeFontSizeOverride("font_size", 14);
-        _uiLabel.AddThemeConstantOverride("shadow_offset_x", 1);
-        _uiLabel.AddThemeConstantOverride("shadow_offset_y", 1);
-        _uiLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        _uiLabel!.AddThemeColorOverride("font_color", new Color(0.95f, 0.92f, 0.8f));
+        _uiLabel!.AddThemeFontSizeOverride("font_size", 14);
+        _uiLabel!.AddThemeConstantOverride("shadow_offset_x", 1);
+        _uiLabel!.AddThemeConstantOverride("shadow_offset_y", 1);
+        _uiLabel!.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
 
         // RA2风格底部提示栏 — HintLabel样式
-        _hintLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.72f, 0.68f));
-        _hintLabel.AddThemeConstantOverride("shadow_offset_x", 1);
-        _hintLabel.AddThemeConstantOverride("shadow_offset_y", 1);
-        _hintLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.7f));
+        _hintLabel!.AddThemeColorOverride("font_color", new Color(0.7f, 0.72f, 0.68f));
+        _hintLabel!.AddThemeConstantOverride("shadow_offset_x", 1);
+        _hintLabel!.AddThemeConstantOverride("shadow_offset_y", 1);
+        _hintLabel!.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.7f));
 
         // RA2风格顶部信息栏金属底板（Label之后、BuildPanel之前插入）
         var topBarBg = new Panel();
@@ -420,12 +420,12 @@ public partial class Main : Node2D
         topBarBg.MouseFilter = Control.MouseFilterEnum.Ignore;
         GetNode<CanvasLayer>("UI").AddChild(topBarBg);
         // 将Label移到最前（确保在背景之上）
-        GetNode<CanvasLayer>("UI").MoveChild(_uiLabel, -1);
+        GetNode<CanvasLayer>("UI").MoveChild(_uiLabel!, -1);
 
         // RA2风格底部提示栏金属底板
         _hintBarBg = new Panel();
-        _hintBarBg.OffsetLeft = 200; _hintBarBg.OffsetTop = 555;
-        _hintBarBg.OffsetRight = 1000; _hintBarBg.OffsetBottom = 740;
+        _hintBarBg!.OffsetLeft = 200; _hintBarBg!.OffsetTop = 555;
+        _hintBarBg!.OffsetRight = 1000; _hintBarBg!.OffsetBottom = 740;
         var hintStyle = new StyleBoxFlat();
         hintStyle.BgColor = new Color(0.05f, 0.06f, 0.07f, 0.8f);
         hintStyle.BorderWidthLeft = 1; hintStyle.BorderWidthRight = 1;
@@ -435,29 +435,29 @@ public partial class Main : Node2D
         hintStyle.CornerRadiusBottomLeft = 2; hintStyle.CornerRadiusBottomRight = 2;
         hintStyle.ContentMarginLeft = 8; hintStyle.ContentMarginRight = 8;
         hintStyle.ContentMarginTop = 4; hintStyle.ContentMarginBottom = 4;
-        _hintBarBg.AddThemeStyleboxOverride("panel", hintStyle);
-        _hintBarBg.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _hintBarBg!.AddThemeStyleboxOverride("panel", hintStyle);
+        _hintBarBg!.MouseFilter = Control.MouseFilterEnum.Ignore;
         // 默认半透明，减少对游戏画面的遮挡
-        _hintBarBg.Modulate = new Color(1, 1, 1, 0.45f);
-        _hintLabel.Modulate = new Color(1, 1, 1, 0.45f);
-        GetNode<CanvasLayer>("UI").AddChild(_hintBarBg);
-        GetNode<CanvasLayer>("UI").MoveChild(_hintLabel, -1);
+        _hintBarBg!.Modulate = new Color(1, 1, 1, 0.45f);
+        _hintLabel!.Modulate = new Color(1, 1, 1, 0.45f);
+        GetNode<CanvasLayer>("UI").AddChild(_hintBarBg!);
+        GetNode<CanvasLayer>("UI").MoveChild(_hintLabel!, -1);
 
         _unitScene = GD.Load<PackedScene>("res://scenes/Unit.tscn");
         _harvesterScene = GD.Load<PackedScene>("res://scenes/Harvester.tscn");
         _buildingScene = GD.Load<PackedScene>("res://scenes/Building.tscn");
         _oreScene = GD.Load<PackedScene>("res://scenes/ResourceNode.tscn");
-        _dragBox.Visible = false;
+        _dragBox!.Visible = false;
 
         // 地形容器（程序化创建，不修改场景文件）
         _obstaclesNode = new Node2D { Name = "Obstacles" };
-        AddChild(_obstaclesNode);
+        AddChild(_obstaclesNode!);
         _strategicPointsNode = new Node2D { Name = "StrategicPoints" };
-        AddChild(_strategicPointsNode);
+        AddChild(_strategicPointsNode!);
 
         // Q4：地面纹理（草地+道路+泥地）→ E1：地形系统驱动
         _terrain = new TerrainGrid();
-        _terrain.GenerateFromSeed(_mapSeed);
+        _terrain!.GenerateFromSeed(_mapSeed);
 
         // P1-3: 应用自定义地图的地形修改增量
         if (_customMap != null && _customMap.TerrainMods.Count > 0)
@@ -466,24 +466,24 @@ public partial class Main : Node2D
             {
                 if (mod.Gx < 0 || mod.Gx >= TerrainGrid.GridSize ||
                     mod.Gy < 0 || mod.Gy >= TerrainGrid.GridSize) continue;
-                var cell = _terrain.GetCell(mod.Gx, mod.Gy);
+                var cell = _terrain!.GetCell(mod.Gx, mod.Gy);
                 cell.Type = (TerrainType)mod.TerrainType;
                 cell.Elevation = mod.Elevation;
                 cell.HasBridge = mod.HasBridge;
                 cell.HasTunnel = mod.HasTunnel;
-                _terrain.SetCell(mod.Gx, mod.Gy, cell);
+                _terrain!.SetCell(mod.Gx, mod.Gy, cell);
             }
             GameLog.Debug($"[Map] applied {_customMap.TerrainMods.Count} terrain mods");
         }
 
-        var stats = _terrain.GetStats();
+        var stats = _terrain!.GetStats();
         GameLog.Debug("[Terrain] terrain generation stats:");
         foreach (var kv in stats)
             GameLog.Debug($"  {kv.Key}: {kv.Value} cells");
         CreateGround();
 
         // P0-1: 创建A*寻路器（基于地形栅格）
-        _pathFinder = new PathFinder(_terrain);
+        _pathFinder = new PathFinder(_terrain!);
         GameLog.Debug("[PathFinder] A* pathfinder created");
 
         // P0-2修复(headless既有bug): 提前实例化尤里卡计数器。
@@ -621,24 +621,24 @@ public partial class Main : Node2D
         GetNode<CanvasLayer>("UI").AddChild(uiRoot);
 
         _buildPanel = new BuildPanel();
-        _buildPanel.DifficultyName = _difficulty.ToString();
-        uiRoot.AddChild(_buildPanel);
-        _buildPanel.BuildBuildingRequested += (bt) => TryBuildBuilding(bt);
-        _buildPanel.BuildUnitRequested += (ut) => TrySpawnUnit(ut);
-        _buildPanel.BuildHarvesterRequested += () => TrySpawnHarvester();
+        _buildPanel!.DifficultyName = _difficulty.ToString();
+        uiRoot.AddChild(_buildPanel!);
+        _buildPanel!.BuildBuildingRequested += (bt) => TryBuildBuilding(bt);
+        _buildPanel!.BuildUnitRequested += (ut) => TrySpawnUnit(ut);
+        _buildPanel!.BuildHarvesterRequested += () => TrySpawnHarvester();
         GameLog.Debug("[UI] sidebar build panel loaded");
 
         // 阶段12-C：音效系统初始化 + BGM
         _audio = new AudioManager();
-        AddChild(_audio);
-        _audio.StartBgm();
+        AddChild(_audio!);
+        _audio!.StartBgm();
 
         // Q2：小地图
         _minimap = new Minimap();
-        _minimap.Setup(this, _camera);
-        uiRoot.AddChild(_minimap);
+        _minimap!.Setup(this,_camera!);
+        uiRoot.AddChild(_minimap!);
         // 调整提示标签位置，避免与小地图重叠
-        _hintLabel.OffsetLeft = 200f;
+        _hintLabel!.OffsetLeft = 200f;
         GameLog.Debug("[UI] minimap loaded");
 
         // Q6：开局目标提示（画面内覆盖）
@@ -665,54 +665,54 @@ public partial class Main : Node2D
                    TrManager.Tr("start.lightning_hint") + "\n" +
                    TrManager.Tr("start.seed_hint", _mapSeed),
         };
-        _startOverlay.HorizontalAlignment = HorizontalAlignment.Center;
-        _startOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
-        _startOverlay.AddThemeColorOverride("font_color", new Color(1f, 0.92f, 0.4f));
-        _startOverlay.AddThemeFontSizeOverride("font_size", 22);
-        _startOverlay.AddThemeConstantOverride("shadow_offset_x", 2);
-        _startOverlay.AddThemeConstantOverride("shadow_offset_y", 2);
-        _startOverlay.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
-        GetNode<CanvasLayer>("UI").AddChild(_startOverlay);
+        _startOverlay!.HorizontalAlignment = HorizontalAlignment.Center;
+        _startOverlay!.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _startOverlay!.AddThemeColorOverride("font_color", new Color(1f, 0.92f, 0.4f));
+        _startOverlay!.AddThemeFontSizeOverride("font_size", 22);
+        _startOverlay!.AddThemeConstantOverride("shadow_offset_x", 2);
+        _startOverlay!.AddThemeConstantOverride("shadow_offset_y", 2);
+        _startOverlay!.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        GetNode<CanvasLayer>("UI").AddChild(_startOverlay!);
 
         // Q6：事件通知容器
         _toastContainer = new VBoxContainer();
-        _toastContainer.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
-        _toastContainer.OffsetLeft = -200f;
-        _toastContainer.OffsetRight = 200f;
-        GetNode<CanvasLayer>("UI").AddChild(_toastContainer);
+        _toastContainer!.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+        _toastContainer!.OffsetLeft = -200f;
+        _toastContainer!.OffsetRight = 200f;
+        GetNode<CanvasLayer>("UI").AddChild(_toastContainer!);
 
         // G1: 初始化科技树进度 + 科技树UI面板
         for (int i = 0; i < MaxTeamCount; i++) _techProgress[i] = new TechProgress();
         _techTreeLabel = new Label();
-        _techTreeLabel.Name = "TechTreeLabel";
-        _techTreeLabel.Position = new Vector2(180, 80);
-        _techTreeLabel.Size = new Vector2(580, 380);
-        _techTreeLabel.Modulate = new Color(0.9f, 0.95f, 1f, 0.95f);
-        _techTreeLabel.AddThemeFontSizeOverride("font_size", 13);
-        _techTreeLabel.Visible = false;
-        _techTreeLabel.Text = "";
-        GetNode<CanvasLayer>("UI").AddChild(_techTreeLabel);
+        _techTreeLabel!.Name = "TechTreeLabel";
+        _techTreeLabel!.Position = new Vector2(180, 80);
+        _techTreeLabel!.Size = new Vector2(580, 380);
+        _techTreeLabel!.Modulate = new Color(0.9f, 0.95f, 1f, 0.95f);
+        _techTreeLabel!.AddThemeFontSizeOverride("font_size", 13);
+        _techTreeLabel!.Visible = false;
+        _techTreeLabel!.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_techTreeLabel!);
         GameLog.Debug("[G1] tech tree system init ok — press Tab to open tech panel");
 
         // G2: 初始化时代系统进度 + 时代面板
         for (int i = 0; i < MaxTeamCount; i++) _eraProgress[i] = new EraProgress();
         _eraLabel = new Label();
-        _eraLabel.Name = "EraLabel";
-        _eraLabel.Position = new Vector2(180, 80);
-        _eraLabel.Size = new Vector2(580, 300);
-        _eraLabel.Modulate = new Color(0.95f, 0.9f, 1f, 0.95f);
-        _eraLabel.AddThemeFontSizeOverride("font_size", 14);
-        _eraLabel.Visible = false;
-        _eraLabel.Text = "";
-        GetNode<CanvasLayer>("UI").AddChild(_eraLabel);
+        _eraLabel!.Name = "EraLabel";
+        _eraLabel!.Position = new Vector2(180, 80);
+        _eraLabel!.Size = new Vector2(580, 300);
+        _eraLabel!.Modulate = new Color(0.95f, 0.9f, 1f, 0.95f);
+        _eraLabel!.AddThemeFontSizeOverride("font_size", 14);
+        _eraLabel!.Visible = false;
+        _eraLabel!.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_eraLabel!);
         GameLog.Debug("[G2] era system init ok — press Y to open era panel");
 
         // G3: 初始化战术卡面板（带背景Panel + 可点击按钮）
         _cardPanel = new Panel();
-        _cardPanel.Name = "CardPanel";
-        _cardPanel.Position = new Vector2(140, 80);
-        _cardPanel.CustomMinimumSize = new Vector2(700, 420);
-        _cardPanel.Visible = false;
+        _cardPanel!.Name = "CardPanel";
+        _cardPanel!.Position = new Vector2(140, 80);
+        _cardPanel!.CustomMinimumSize = new Vector2(700, 420);
+        _cardPanel!.Visible = false;
 
         // 面板背景样式（深色半透明军工风）
         var cardStyle = new StyleBoxFlat();
@@ -730,93 +730,93 @@ public partial class Main : Node2D
         cardStyle.ContentMarginRight = 16;
         cardStyle.ContentMarginTop = 16;
         cardStyle.ContentMarginBottom = 16;
-        _cardPanel.AddThemeStyleboxOverride("panel", cardStyle);
-        GetNode<CanvasLayer>("UI").AddChild(_cardPanel);
+        _cardPanel!.AddThemeStyleboxOverride("panel", cardStyle);
+        GetNode<CanvasLayer>("UI").AddChild(_cardPanel!);
 
         // 战术卡标题
         _cardLabel = new Label();
-        _cardLabel.Name = "CardLabel";
-        _cardLabel.Position = new Vector2(16, 12);
-        _cardLabel.Size = new Vector2(668, 40);
-        _cardLabel.Modulate = new Color(1f, 0.95f, 0.8f);
-        _cardLabel.AddThemeFontSizeOverride("font_size", 20);
-        _cardLabel.Visible = true;
-        _cardLabel.Text = TrManager.Tr("card.select_panel_title");
-        _cardLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _cardPanel.AddChild(_cardLabel);
+        _cardLabel!.Name = "CardLabel";
+        _cardLabel!.Position = new Vector2(16, 12);
+        _cardLabel!.Size = new Vector2(668, 40);
+        _cardLabel!.Modulate = new Color(1f, 0.95f, 0.8f);
+        _cardLabel!.AddThemeFontSizeOverride("font_size", 20);
+        _cardLabel!.Visible = true;
+        _cardLabel!.Text = TrManager.Tr("card.select_panel_title");
+        _cardLabel!.HorizontalAlignment = HorizontalAlignment.Center;
+        _cardPanel!.AddChild(_cardLabel!);
 
         // 3张战术卡按钮容器
         _cardButtonContainer = new HBoxContainer();
-        _cardButtonContainer.Position = new Vector2(16, 60);
-        _cardButtonContainer.CustomMinimumSize = new Vector2(668, 340);
-        _cardButtonContainer.AddThemeConstantOverride("separation", 12);
-        _cardPanel.AddChild(_cardButtonContainer);
+        _cardButtonContainer!.Position = new Vector2(16, 60);
+        _cardButtonContainer!.CustomMinimumSize = new Vector2(668, 340);
+        _cardButtonContainer!.AddThemeConstantOverride("separation", 12);
+        _cardPanel!.AddChild(_cardButtonContainer!);
 
         _cardStatusLabel = new Label();
-        _cardStatusLabel.Name = "CardStatusLabel";
-        _cardStatusLabel.Position = new Vector2(770, 70);
-        _cardStatusLabel.Size = new Vector2(200, 60);
-        _cardStatusLabel.Modulate = new Color(1f, 0.9f, 0.5f, 0.9f);
-        _cardStatusLabel.AddThemeFontSizeOverride("font_size", 12);
-        _cardStatusLabel.Visible = false;
-        GetNode<CanvasLayer>("UI").AddChild(_cardStatusLabel);
+        _cardStatusLabel!.Name = "CardStatusLabel";
+        _cardStatusLabel!.Position = new Vector2(770, 70);
+        _cardStatusLabel!.Size = new Vector2(200, 60);
+        _cardStatusLabel!.Modulate = new Color(1f, 0.9f, 0.5f, 0.9f);
+        _cardStatusLabel!.AddThemeFontSizeOverride("font_size", 12);
+        _cardStatusLabel!.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_cardStatusLabel!);
         GameLog.Debug("[G3] tactical cards system init ok — select tactical card 5s after game start");
 
         // G4: 初始化电网分区面板
         _powerGridLabel = new Label();
-        _powerGridLabel.Name = "PowerGridLabel";
-        _powerGridLabel.Position = new Vector2(180, 80);
-        _powerGridLabel.Size = new Vector2(580, 350);
-        _powerGridLabel.Modulate = new Color(0.9f, 1f, 0.9f, 0.95f);
-        _powerGridLabel.AddThemeFontSizeOverride("font_size", 13);
-        _powerGridLabel.Visible = false;
-        _powerGridLabel.Text = "";
-        GetNode<CanvasLayer>("UI").AddChild(_powerGridLabel);
+        _powerGridLabel!.Name = "PowerGridLabel";
+        _powerGridLabel!.Position = new Vector2(180, 80);
+        _powerGridLabel!.Size = new Vector2(580, 350);
+        _powerGridLabel!.Modulate = new Color(0.9f, 1f, 0.9f, 0.95f);
+        _powerGridLabel!.AddThemeFontSizeOverride("font_size", 13);
+        _powerGridLabel!.Visible = false;
+        _powerGridLabel!.Text = "";
+        GetNode<CanvasLayer>("UI").AddChild(_powerGridLabel!);
         GameLog.Debug("[G4] power grid system init ok — press G to view power grid");
 
         // G5: 初始化尤里卡系统
         for (int i = 0; i < MaxTeamCount; i++) _eureka[i] = new EurekaSystem.TeamEureka();
         _eurekaLabel = new Label();
-        _eurekaLabel.Name = "EurekaLabel";
-        _eurekaLabel.Position = new Vector2(770, 130);
-        _eurekaLabel.Size = new Vector2(200, 100);
-        _eurekaLabel.Modulate = new Color(0.7f, 1f, 0.7f, 0.9f);
-        _eurekaLabel.AddThemeFontSizeOverride("font_size", 11);
-        _eurekaLabel.Visible = false;
-        GetNode<CanvasLayer>("UI").AddChild(_eurekaLabel);
+        _eurekaLabel!.Name = "EurekaLabel";
+        _eurekaLabel!.Position = new Vector2(770, 130);
+        _eurekaLabel!.Size = new Vector2(200, 100);
+        _eurekaLabel!.Modulate = new Color(0.7f, 1f, 0.7f, 0.9f);
+        _eurekaLabel!.AddThemeFontSizeOverride("font_size", 11);
+        _eurekaLabel!.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_eurekaLabel!);
         GameLog.Debug("[G5] eureka system init ok — press H to view eureka progress");
 
         // G6: 初始化邻接加成面板
         _adjacencyLabel = new Label();
-        _adjacencyLabel.Name = "AdjacencyLabel";
-        _adjacencyLabel.Position = new Vector2(250, 130);
-        _adjacencyLabel.Size = new Vector2(280, 250);
-        _adjacencyLabel.Modulate = new Color(1f, 0.85f, 0.5f, 0.9f);
-        _adjacencyLabel.AddThemeFontSizeOverride("font_size", 11);
-        _adjacencyLabel.Visible = false;
-        GetNode<CanvasLayer>("UI").AddChild(_adjacencyLabel);
+        _adjacencyLabel!.Name = "AdjacencyLabel";
+        _adjacencyLabel!.Position = new Vector2(250, 130);
+        _adjacencyLabel!.Size = new Vector2(280, 250);
+        _adjacencyLabel!.Modulate = new Color(1f, 0.85f, 0.5f, 0.9f);
+        _adjacencyLabel!.AddThemeFontSizeOverride("font_size", 11);
+        _adjacencyLabel!.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_adjacencyLabel!);
         GameLog.Debug("[G6] adjacency bonus system init ok — press J to view adjacency bonus");
 
         // G7: 初始化间谍任务面板
         _spyMissionLabel = new Label();
-        _spyMissionLabel.Name = "SpyMissionLabel";
-        _spyMissionLabel.Position = new Vector2(770, 130);
-        _spyMissionLabel.Size = new Vector2(200, 180);
-        _spyMissionLabel.Modulate = new Color(0.85f, 0.7f, 1f, 0.9f);
-        _spyMissionLabel.AddThemeFontSizeOverride("font_size", 11);
-        _spyMissionLabel.Visible = false;
-        GetNode<CanvasLayer>("UI").AddChild(_spyMissionLabel);
+        _spyMissionLabel!.Name = "SpyMissionLabel";
+        _spyMissionLabel!.Position = new Vector2(770, 130);
+        _spyMissionLabel!.Size = new Vector2(200, 180);
+        _spyMissionLabel!.Modulate = new Color(0.85f, 0.7f, 1f, 0.9f);
+        _spyMissionLabel!.AddThemeFontSizeOverride("font_size", 11);
+        _spyMissionLabel!.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_spyMissionLabel!);
         GameLog.Debug("[G7] spy mission system init ok — press N to view spy missions");
 
         // G8: 初始化占领强化面板
         _captureLabel = new Label();
-        _captureLabel.Name = "CaptureLabel";
-        _captureLabel.Position = new Vector2(250, 400);
-        _captureLabel.Size = new Vector2(250, 200);
-        _captureLabel.Modulate = new Color(0.5f, 1f, 0.7f, 0.9f);
-        _captureLabel.AddThemeFontSizeOverride("font_size", 11);
-        _captureLabel.Visible = false;
-        GetNode<CanvasLayer>("UI").AddChild(_captureLabel);
+        _captureLabel!.Name = "CaptureLabel";
+        _captureLabel!.Position = new Vector2(250, 400);
+        _captureLabel!.Size = new Vector2(250, 200);
+        _captureLabel!.Modulate = new Color(0.5f, 1f, 0.7f, 0.9f);
+        _captureLabel!.AddThemeFontSizeOverride("font_size", 11);
+        _captureLabel!.Visible = false;
+        GetNode<CanvasLayer>("UI").AddChild(_captureLabel!);
         GameLog.Debug("[G8] capture system init ok — press K to view capture status");
 
         // 开局目标提示（控制台）
@@ -833,8 +833,8 @@ public partial class Main : Node2D
 
         // Phase1: 战争迷雾初始化
         _fogOfWar = new FogOfWar();
-        _fogOfWar.Initialize(MapConfig.GridSize);
-        AddChild(_fogOfWar);
+        _fogOfWar!.Initialize(MapConfig.GridSize);
+        AddChild(_fogOfWar!);
         GameLog.Debug("[FogOfWar] fog of war system init ok");
 
         // 联机同步初始化
@@ -931,8 +931,8 @@ public partial class Main : Node2D
                 {
                     _autoshotPhase = i + 1;
                     // 统一用 zoom=1.0 基地全景，观察游戏进展
-                    _camera.Position = new Vector2(320, 340);
-                    _camera.Zoom = new Vector2(1.0f, 1.0f);
+                    _camera!.Position = new Vector2(320, 340);
+                    _camera!.Zoom = new Vector2(1.0f, 1.0f);
                     _panoramaShotPending = 3;
                     _pendingShotSuffix = shotSuffixes[i];
                     break;
@@ -1215,14 +1215,14 @@ public partial class Main : Node2D
         if (_lightningTargetMode) QueueRedraw();
 
         // Q6：开局提示淡出
-        if (_startOverlay != null && IsInstanceValid(_startOverlay))
+        if (_startOverlay != null && IsInstanceValid(_startOverlay!))
         {
             _startOverlayAge += dt;
             if (_startOverlayAge > 8f) // v5修复：4f→8f，文字增多需更多阅读时间
             {
                 float fade = 1f - (_startOverlayAge - 8f) / 1.5f;
-                _startOverlay.Modulate = new Color(1, 1, 1, Mathf.Max(0, fade));
-                if (fade <= 0f) { _startOverlay.QueueFree(); _startOverlay = null!; }
+                _startOverlay!.Modulate = new Color(1, 1, 1, Mathf.Max(0, fade));
+                if (fade <= 0f) { _startOverlay!.QueueFree(); _startOverlay = null; }
             }
         }
 
@@ -1232,12 +1232,12 @@ public partial class Main : Node2D
             var t = _activeToasts[i];
             t.Age += dt;
             if (t.Age < 0.2f)
-                t.Label.Modulate = new Color(1, 1, 1, t.Age / 0.2f); // 淡入
+                t.Label!.Modulate = new Color(1, 1, 1, t.Age / 0.2f); // 淡入
             else if (t.Age > t.Lifetime - 0.5f)
-                t.Label.Modulate = new Color(1, 1, 1, (t.Lifetime - t.Age) / 0.5f); // 淡出
+                t.Label!.Modulate = new Color(1, 1, 1, (t.Lifetime - t.Age) / 0.5f); // 淡出
             if (t.Age >= t.Lifetime)
             {
-                t.Label.QueueFree();
+                t.Label!.QueueFree();
                 _activeToasts.RemoveAt(i);
             }
         }
@@ -1245,7 +1245,7 @@ public partial class Main : Node2D
         // E5：油田占领+产钱处理 — C2/H1: 客户端跳过经济逻辑（由Host快照同步）
         if (!isClientLogic)
         {
-            foreach (var child in _resourcesNode.GetChildren())
+            foreach (var child in _resourcesNode!.GetChildren())
             {
                 if (child is ResourceNode rn && IsInstanceValid(rn) && rn.ResourceType == ResourceType.OilField)
                     rn.ProcessOilField(dt);
@@ -1324,8 +1324,8 @@ public partial class Main : Node2D
         if (_cardStatusHideTimer > 0f)
         {
             _cardStatusHideTimer -= dt;
-            if (_cardStatusHideTimer <= 0f && _cardStatusLabel.Visible)
-                _cardStatusLabel.Visible = false;
+            if (_cardStatusHideTimer <= 0f && _cardStatusLabel!.Visible)
+                _cardStatusLabel!.Visible = false;
         }
 
         // G1: 建筑自动维修科技效果 — C2/H1: 客户端跳过
@@ -1335,7 +1335,7 @@ public partial class Main : Node2D
             for (int team = 0; team < TotalTeamCount; team++)
             {
                 if (!HasTechAutoRepair(team)) continue;
-                foreach (var c in _buildingsNode.GetChildren())
+                foreach (var c in _buildingsNode!.GetChildren())
                 {
                     if (c is Building b && b.TeamId == team && IsInstanceValid(b) && b.Health < b.MaxHealth && b.Health > 0f)
                         b.RepairByEngineer(b.MaxHealth * 0.02f);
@@ -1359,7 +1359,7 @@ public partial class Main : Node2D
         if (_buildPanel != null)
         {
              int pId = PlayerTeamId;
-             _buildPanel.UpdateState(_money[pId], GetTeamPower(pId), _playerTechLevel,
+             _buildPanel!.UpdateState(_money[pId], GetTeamPower(pId), _playerTechLevel,
                  CountUnitsOfTeam(pId), _unitCap,
                  HasBuilding(pId, BuildingType.Base), HasBuilding(pId, BuildingType.PowerPlant),
                  HasBuilding(pId, BuildingType.Barracks), HasBuilding(pId, BuildingType.WarFactory),
@@ -1368,12 +1368,12 @@ public partial class Main : Node2D
 
              // 生产队列信息
              var queueData = CollectPlayerProductionInfo();
-             _buildPanel.UpdateProductionQueue(queueData);
+             _buildPanel!.UpdateProductionQueue(queueData);
         }
 
         // Phase1: 更新战争迷雾
         if (_fogOfWar != null)
-            _fogOfWar.UpdateVisibility(GetAllUnits(), GetAllBuildings(), delta);
+            _fogOfWar!.UpdateVisibility(GetAllUnits(), GetAllBuildings(), delta);
 
         // Phase1: 推进超武发射动画
         TickPendingSuperWeapons(dt);
@@ -1436,7 +1436,7 @@ public partial class Main : Node2D
         // ---- 阶段12-A4：核弹目标选择准星 ----
         if (_nukeTargetMode)
         {
-            var mousePos = _camera.GetGlobalMousePosition();
+            var mousePos = _camera!.GetGlobalMousePosition();
             // 爆炸范围预览圈
             DrawArc(mousePos, GameConst.NukeRadius, 0f, Mathf.Tau, 64,
                 new Color(1f, 0.25f, 0.15f, 0.55f), 2f);
@@ -1491,7 +1491,7 @@ public partial class Main : Node2D
         // ---- 阶段12-A4：闪电风暴目标选择准星 ----
         if (_lightningTargetMode)
         {
-            var mousePos = _camera.GetGlobalMousePosition();
+            var mousePos = _camera!.GetGlobalMousePosition();
             // 爆炸范围预览圈（蓝色）
             DrawArc(mousePos, GameConst.LightningRadius, 0f, Mathf.Tau, 64,
                 new Color(0.4f, 0.8f, 1f, 0.55f), 2f);
@@ -1508,7 +1508,7 @@ public partial class Main : Node2D
 
         // ---- Q1 建筑放置预览（等距菱形预览） ----
         if (_placementMode == null) return;
-        var pos = _camera.GetGlobalMousePosition();
+        var pos = _camera!.GetGlobalMousePosition();
         // 钳制到地图范围内
         var posGrid = IsoCoords.ScreenToGridF(pos.X, pos.Y);
         posGrid = new Vector2(
@@ -1516,7 +1516,7 @@ public partial class Main : Node2D
             Mathf.Clamp(posGrid.Y, 1f, TerrainGrid.GridSize - 2f)
         );
         pos = IsoCoords.GridToScreenF(posGrid.X, posGrid.Y);
-        bool ok = CanPlaceBuilding(pos) && _money[PlayerTeamId] >= GetBuildingCost(_placementMode.Value);
+        bool ok = CanPlaceBuilding(pos) && _money[PlayerTeamId] >= GetBuildingCost(_placementMode!.Value);
 
         // 等距菱形预览：在鼠标位置画菱形
         var buildingColor = ok ? new Color(0.2f, 0.9f, 0.2f, 0.35f) : new Color(0.9f, 0.2f, 0.2f, 0.35f);
@@ -1554,7 +1554,7 @@ public partial class Main : Node2D
     private Dictionary<UnitType, (int count, float progress, float timeRemaining)> CollectPlayerProductionInfo()
     {
         var result = new Dictionary<UnitType, (int count, float progress, float timeRemaining)>();
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is not Building b || b.TeamId != PlayerTeamId || !IsInstanceValid(b))
                 continue;

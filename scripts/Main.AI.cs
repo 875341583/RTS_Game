@@ -213,7 +213,7 @@ public partial class Main
     private int CountCombatUnitsOfTeam(int teamId)
     {
         int n = 0;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && u.TeamId == teamId && IsInstanceValid(u) && u.AttackDamage > 0f)
                 n++;
@@ -335,7 +335,7 @@ public partial class Main
     private int CountUnitsNearRally(int teamId, Vector2 rallyPoint)
     {
         int n = 0;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && u.TeamId == teamId && IsInstanceValid(u) && u.AttackDamage > 0f
                 && u.GlobalPosition.DistanceTo(rallyPoint) < 150f)
@@ -348,7 +348,7 @@ public partial class Main
     private List<Unit> GetTeamCombatUnits(int teamId)
     {
         var list = new List<Unit>();
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && u.TeamId == teamId && IsInstanceValid(u) && u.AttackDamage > 0f)
                 list.Add(u);

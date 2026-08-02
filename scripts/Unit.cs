@@ -170,9 +170,9 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     public Vector2 AiRallyPoint = Vector2.Zero;
 
     // 节点引用
-    protected Sprite2D _body = null!;
-    private Sprite2D _selectionRing = null!;
-    private ProgressBar _healthBar = null!;
+    protected Sprite2D? _body;
+    private Sprite2D? _selectionRing;
+    private ProgressBar? _healthBar;
     private static StyleBoxFlat? _healthBarBgStyle;
     private static StyleBoxFlat? _healthBarFgStyle;
     private static StyleBoxFlat? _healthBarFgStyleYellow;
@@ -214,7 +214,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         if (_healthBar == null) return;
         float pct = MaxHealth > 0 ? Health / MaxHealth : 0f;
         var fg = pct > 0.6f ? _healthBarFgStyle : pct > 0.3f ? _healthBarFgStyleYellow : _healthBarFgStyleRed;
-        _healthBar.AddThemeStyleboxOverride("fill", fg);
+        _healthBar!.AddThemeStyleboxOverride("fill", fg);
     }
     // 椭圆阴影点（32边形，缓存复用）
     private static readonly Vector2[] _shadowPtsLarge = GenEllipsePoints(26f, 13f);
@@ -436,10 +436,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         var tex = arr[dirIdx];
         if (tex != null)
         {
-            _body.Texture = tex;
-            _body.Rotation = 0f; // 等距精灵不需要旋转
-            _body.Modulate = Colors.White; // 等距精灵已含队伍色
-            _body.Scale = Vector2.One;
+            _body!.Texture = tex;
+            _body!.Rotation = 0f; // 等距精灵不需要旋转
+            _body!.Modulate = Colors.White; // 等距精灵已含队伍色
+            _body!.Scale = Vector2.One;
             if (_turret != null) _turret.Visible = false; // 等距精灵已含炮塔
         }
     }
@@ -447,10 +447,10 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     /// <summary>P1-4: 由动画播放器调用，设置当前帧纹理。</summary>
     public void SetAnimationFrame(Texture2D tex)
     {
-        _body.Texture = tex;
-        _body.Rotation = 0f;
-        _body.Modulate = Colors.White; // 动画帧已含队伍色
-        _body.Scale = Vector2.One;
+        _body!.Texture = tex;
+        _body!.Rotation = 0f;
+        _body!.Modulate = Colors.White; // 动画帧已含队伍色
+        _body!.Scale = Vector2.One;
         if (_turret != null) _turret.Visible = false; // 动画帧已含炮塔
     }
 
@@ -515,7 +515,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     };
 
     /// <summary>根据兵种获取灰底炮塔纹理。</summary>
-    private Texture2D GetTurretTexture(UnitType type, int teamId) => type switch
+    private Texture2D? GetTurretTexture(UnitType type, int teamId) => type switch
     {
         UnitType.LightTank => _turretLight!,
         UnitType.HeavyTank => _turretHeavy!,
@@ -524,26 +524,26 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         UnitType.MissileTank => _turretMissile!,
         UnitType.AntiAir => _turretAntiAir!,
         // 工程车无炮塔（底盘已含维修吊臂）
-        UnitType.Engineer => null!,
+        UnitType.Engineer => null,
         // 步兵无炮塔（身体朝向代替炮塔朝向）
-        UnitType.Infantry => null!,
+        UnitType.Infantry => null,
         // E7/E8：空军单位无独立炮塔
-        UnitType.Fighter => null!,
-        UnitType.Helicopter => null!,
-        UnitType.RocketInfantry => null!,
-        UnitType.Bomber => null!,
-        UnitType.Scout => null!,
-        UnitType.TransportHeli => null!,
+        UnitType.Fighter => null,
+        UnitType.Helicopter => null,
+        UnitType.RocketInfantry => null,
+        UnitType.Bomber => null,
+        UnitType.Scout => null,
+        UnitType.TransportHeli => null,
         // E9：海军单位无独立炮塔
-        UnitType.Destroyer => null!,
-        UnitType.Submarine => null!,
-        UnitType.AircraftCarrier => null!,
-        UnitType.LandingCraft => null!,
+        UnitType.Destroyer => null,
+        UnitType.Submarine => null,
+        UnitType.AircraftCarrier => null,
+        UnitType.LandingCraft => null,
         UnitType.ApocalypseTank => _turretHeavy!,
         UnitType.PrismTank => _turretRocket!,
-        UnitType.KirovAirship => null!,
-        UnitType.TeslaTrooper => null!,
-        _ => null!
+        UnitType.KirovAirship => null,
+        UnitType.TeslaTrooper => null,
+        _ => null
     };
 
     /// <summary>按兵种类型初始化属性。必须在 _Ready 之前调用。
@@ -889,19 +889,19 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         var teamColor = GetTeamColor(TeamId);
 
         // 按兵种加载灰底底盘纹理，运行时按 TeamId 染色
-        _body.Texture = GetHullTexture(Type, TeamId);
-        _body.Modulate = teamColor;
+        _body!.Texture = GetHullTexture(Type, TeamId);
+        _body!.Modulate = teamColor;
         _bodyTint = teamColor;
         // 步兵32×32素材按 0.85 缩放，更贴近红警2步兵体里坦克的视觉比例
-        _body.Scale = IsInfantryType(Type) ? new Vector2(0.9f, 0.9f) : Vector2.One;
+        _body!.Scale = IsInfantryType(Type) ? new Vector2(0.9f, 0.9f) : Vector2.One;
         // 像素艺术必须用 Nearest 过滤，Linear 会把 14-17 色的底盘细节插值平滑成单色块
-        _body.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-        _selectionRing.Texture = _ringTex;
-        _selectionRing.Visible = false;
-        _healthBar.MaxValue = MaxHealth;
-        _healthBar.Value = Health;
+        _body!.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+        _selectionRing!.Texture = _ringTex;
+        _selectionRing!.Visible = false;
+        _healthBar!.MaxValue = MaxHealth;
+        _healthBar!.Value = Health;
         InitHealthBarStyles();
-        _healthBar.AddThemeStyleboxOverride("background", _healthBarBgStyle);
+        _healthBar!.AddThemeStyleboxOverride("background", _healthBarBgStyle);
         UpdateHealthBarStyle();
         UpdateHealthBarVisibility();
 
@@ -936,12 +936,12 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         if (_hitFlashTimer > 0)
         {
             _hitFlashTimer -= dt;
-            _body.Modulate = new Color(3f, 3f, 3f); // 过亮闪白
+            _body!.Modulate = new Color(3f, 3f, 3f); // 过亮闪白
             if (_turret != null) _turret.Modulate = Colors.White;
         }
         else
         {
-            _body.Modulate = _bodyTint;
+            _body!.Modulate = _bodyTint;
             if (_turret != null) _turret.Modulate = _turretTint;
         }
 
@@ -960,7 +960,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             float yOffset = cell.Elevation switch { 2 => -3f, 3 => -6f, _ => 0f };
             // E7：空中单位额外上浮模拟飞行高度
             if (IsAirUnit) yOffset -= 12f;
-            _body.Position = new Vector2(_body.Position.X, yOffset + (Type == UnitType.Infantry ? 0f : 0f));
+            _body!.Position = new Vector2(_body!.Position.X, yOffset + (Type == UnitType.Infantry ? 0f : 0f));
             if (_turret != null) _turret.Position = new Vector2(_turret.Position.X, yOffset);
         }
 
@@ -1187,7 +1187,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
             if (_spyDisguiseTeam == -1)
             {
                 _spyDisguiseTeam = _spyTargetBuilding.TeamId;
-                _body.Modulate = GetTeamColor(_spyDisguiseTeam);
+                _body!.Modulate = GetTeamColor(_spyDisguiseTeam);
             }
             return; // 正在执行任务，不执行旧逻辑
         }
@@ -1228,12 +1228,12 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         if (nearEnemy && _spyDisguiseTeam == -1)
         {
             _spyDisguiseTeam = 1; // 伪装为敌方颜色
-            _body.Modulate = GetTeamColor(_spyDisguiseTeam);
+            _body!.Modulate = GetTeamColor(_spyDisguiseTeam);
         }
         else if (!nearEnemy && _spyDisguiseTeam != -1)
         {
             _spyDisguiseTeam = -1;
-            _body.Modulate = _bodyTint; // 恢复原色
+            _body!.Modulate = _bodyTint; // 恢复原色
         }
     }
 
@@ -1307,7 +1307,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     {
         if (_turret == null) return;
 
-        float targetAngle = _body.Rotation; // 默认跟随车体（已含 SpriteRotationOffset）
+        float targetAngle = _body!.Rotation; // 默认跟随车体（已含 SpriteRotationOffset）
         bool hasTarget = false;
 
         if (_attackUnitTarget != null && IsInstanceValid(_attackUnitTarget))
@@ -1834,7 +1834,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                     UpdateIsoSprite(direction);
                     // 如果没有等距精灵，回退到旋转
                     if (_lastDirIndex < 0)
-                        _body.Rotation = direction.Angle() + SpriteRotationOffset;
+                        _body!.Rotation = direction.Angle() + SpriteRotationOffset;
                 }
             }
             else
@@ -2127,7 +2127,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     {
         IsSelected = selected;
         if (_selectionRing != null)
-            _selectionRing.Visible = selected;
+            _selectionRing!.Visible = selected;
         UpdateHealthBarVisibility();
     }
 
@@ -2324,7 +2324,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         if (GetParent()?.GetParent() is Main mainNode)
             mainNode.PlayHitSfx();
         if (_healthBar != null)
-            _healthBar.Value = Mathf.Max(0, Health);
+            _healthBar!.Value = Mathf.Max(0, Health);
         UpdateHealthBarStyle();
         UpdateHealthBarVisibility();
         if (Health <= 0 && !_isDead) Die();
@@ -2337,7 +2337,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         Health = Mathf.Min(MaxHealth, Health + amount);
         if (_healthBar != null)
         {
-            _healthBar.Value = Health;
+            _healthBar!.Value = Health;
             UpdateHealthBarStyle();
             UpdateHealthBarVisibility();
         }
@@ -2459,7 +2459,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         _lastAttackerTeam = lastAttackerTeam;
         // 伪装颜色修正
         if (_spyDisguiseTeam >= 0 && _body != null)
-            _body.Modulate = GetTeamColor(_spyDisguiseTeam);
+            _body!.Modulate = GetTeamColor(_spyDisguiseTeam);
     }
 
     /// <summary>P0-2 读档：恢复移动目标（触发ClearPath以确保下一帧重算路径）。</summary>
@@ -2567,7 +2567,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     private void UpdateHealthBarVisibility()
     {
         if (_healthBar != null)
-            _healthBar.Visible = IsSelected || Health < MaxHealth;
+            _healthBar!.Visible = IsSelected || Health < MaxHealth;
     }
 
     protected virtual void Die()

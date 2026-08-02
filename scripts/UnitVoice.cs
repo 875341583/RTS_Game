@@ -225,7 +225,7 @@ public static class UnitVoice
     };
 
     /// <summary>缓存已加载的AudioStream。</summary>
-    private static readonly Dictionary<string, AudioStream> _cache = new();
+    private static readonly Dictionary<string, AudioStream?> _cache = new();
     private static readonly object _cacheLock = new();
 
     /// <summary>
@@ -244,11 +244,11 @@ public static class UnitVoice
                 // 先检查资源是否存在且可加载，避免未导入文件产生ERROR日志
                 if (!ResourceLoader.Exists(path, "AudioStream"))
                 {
-                    _cache[path] = null!;
+                    _cache[path] = null;
                     return;
                 }
                 stream = GD.Load<AudioStream>(path);
-                _cache[path] = stream!; // null也缓存，避免重复尝试加载
+                _cache[path] = stream; // null也缓存，避免重复尝试加载
             }
 
             if (stream == null) return; // 文件不存在，静默跳过

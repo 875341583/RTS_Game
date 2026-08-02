@@ -81,7 +81,7 @@ public partial class Main
             sb.AppendLine();
         }
         sb.AppendLine(TrManager.Tr("tech.hint_hotkey"));
-        _techTreeLabel.Text = sb.ToString();
+        _techTreeLabel!.Text = sb.ToString();
     }
 
     /// <summary>G1: 更新所有阵营的科技研究进度（每帧调用）。</summary>
@@ -161,13 +161,13 @@ public partial class Main
     {
         var tp = _techProgress[teamId];
         // 应用效果到现有单位
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is not Unit u || u.TeamId != teamId || !IsInstanceValid(u)) continue;
             ApplyTechToUnit(u, tp.Completed);
         }
         // 应用效果到现有建筑
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is not Building b || b.TeamId != teamId || !IsInstanceValid(b)) continue;
             ApplyTechToBuilding(b, tp.Completed);
@@ -424,7 +424,7 @@ public partial class Main
 
         sb.AppendLine(TrManager.Tr("era.bonus_summary"));
         sb.AppendLine(TrManager.Tr("era.hint_hotkey"));
-        _eraLabel.Text = sb.ToString();
+        _eraLabel!.Text = sb.ToString();
     }
 
     /// <summary>G2: 更新所有阵营的时代升级进度（每帧调用）。</summary>
@@ -490,7 +490,7 @@ public partial class Main
         var ep = _eraProgress[teamId];
         float healthMul = EraSystem.GetHealthMultiplier(ep.CurrentEra);
         float damageMul = EraSystem.GetDamageMultiplier(ep.CurrentEra);
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is not Unit u || u.TeamId != teamId || !IsInstanceValid(u)) continue;
             u.ApplyTechHealthMultiplier(healthMul);
@@ -546,7 +546,7 @@ public partial class Main
         _cardChoices = TacticalCards.DrawRandom(3, rng);
 
         // 清除旧按钮
-        foreach (var child in _cardButtonContainer.GetChildren())
+        foreach (var child in _cardButtonContainer!.GetChildren())
             child.QueueFree();
 
         // 为每张卡创建结构化卡片面板（图标区 + 名称 + 描述 + 编号）
@@ -645,10 +645,10 @@ public partial class Main
             cardVBox.AddChild(numLabel);
 
             cardButton.Pressed += () => SelectPlayerCard(_cardChoices[cardIndex]);
-            _cardButtonContainer.AddChild(cardButton);
+            _cardButtonContainer!.AddChild(cardButton);
         }
 
-        _cardPanel.Visible = true;
+        _cardPanel!.Visible = true;
         GameLog.Debug("[G3] Tactical card selection panel shown — click a card or press 1/2/3");
     }
 
@@ -656,7 +656,7 @@ public partial class Main
     private void SelectPlayerCard(TacticalCards.CardId card)
     {
         _playerCard = card;
-        _cardPanel.Visible = false;
+        _cardPanel!.Visible = false;
         ReplayRecorder.Record(ReplayRecorder.ActionType.SelectCard, new { Card = card.ToString() });
         var info = TacticalCards.Cards[card];
         GameLog.Debug($"[G3] Player selected tactical card: {info.Name} — {info.Description}");
@@ -715,7 +715,7 @@ public partial class Main
         float tankDamageMul = TacticalCards.GetTankDamageMul(card);
         float infHealthMul = TacticalCards.GetInfantryHealthMul(card);
 
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is not Unit u || u.TeamId != teamId || !IsInstanceValid(u)) continue;
             float healthMul = allHealthMul;
@@ -751,7 +751,7 @@ public partial class Main
         float bldHealthMul = TacticalCards.GetBuildingHealthMul(card);
         if (bldHealthMul != 1f)
         {
-            foreach (var c in _buildingsNode.GetChildren())
+            foreach (var c in _buildingsNode!.GetChildren())
             {
                 if (c is not Building b || b.TeamId != teamId || !IsInstanceValid(b)) continue;
                 float ratio = b.Health / b.MaxHealth;
@@ -794,7 +794,7 @@ public partial class Main
         {
             sb.AppendLine(TrManager.Tr("card.selection_pending"));
         }
-        else if (_cardPanel.Visible)
+        else if (_cardPanel!.Visible)
         {
             sb.AppendLine(TrManager.Tr("card.please_select"));
         }
@@ -810,11 +810,11 @@ public partial class Main
             if (aiCard.HasValue)
                 sb.AppendLine(TrManager.Tr("card.ai_card_line", i, TacticalCards.Cards[aiCard.Value].Name));
         }
-        _cardStatusLabel.Text = sb.ToString();
-        _cardStatusLabel.Visible = true;
+        _cardStatusLabel!.Text = sb.ToString();
+        _cardStatusLabel!.Visible = true;
 
         // 3秒后自动隐藏
-        if (!_cardPanel.Visible) // 选择面板不显示时才自动隐藏
+        if (!_cardPanel!.Visible) // 选择面板不显示时才自动隐藏
         {
             _cardStatusHideTimer = 3f;
         }
@@ -865,7 +865,7 @@ public partial class Main
     public List<Building> GetTeamBuildings(int teamId)
     {
         var result = new List<Building>();
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b.TeamId == teamId && IsInstanceValid(b))
                 result.Add(b);
@@ -927,7 +927,7 @@ public partial class Main
 
         if (offline > 0)
             sb.AppendLine(TrManager.Tr("power.warn_offline", offline));
-        _powerGridLabel.Text = sb.ToString();
+        _powerGridLabel!.Text = sb.ToString();
     }
 
     /// <summary>获取建筑的生产速度乘数（G4电网 + G6邻接）。</summary>
@@ -1043,7 +1043,7 @@ public partial class Main
         if (resMul > 1f)
             sb.AppendLine(TrManager.Tr("adj.research_bonus", "\n", $"{(resMul - 1f) * 100:F0}"));
 
-        _adjacencyLabel.Text = sb.ToString();
+        _adjacencyLabel!.Text = sb.ToString();
     }
 
     /// <summary>G7: 更新间谍任务面板（N键）。</summary>
@@ -1066,7 +1066,7 @@ public partial class Main
         // 显示玩家方间谍状态
         sb.AppendLine(TrManager.Tr("spy.section_player"));
         bool anySpy = false;
-        foreach (var c in _unitsNode.GetChildren())
+        foreach (var c in _unitsNode!.GetChildren())
         {
             if (c is Unit u && u.TeamId == PlayerTeamId && u.Type == UnitType.Spy && IsInstanceValid(u))
             {
@@ -1086,7 +1086,7 @@ public partial class Main
         }
         if (!anySpy) sb.AppendLine(TrManager.Tr("spy.no_spy"));
 
-        _spyMissionLabel.Text = sb.ToString();
+        _spyMissionLabel!.Text = sb.ToString();
     }
 
     /// <summary>G8: 更新占领面板（K键）。</summary>
@@ -1103,7 +1103,7 @@ public partial class Main
         // 显示被占领建筑状态
         sb.AppendLine(TrManager.Tr("capture.section_captured"));
         bool any = false;
-        foreach (var c in _buildingsNode.GetChildren())
+        foreach (var c in _buildingsNode!.GetChildren())
         {
             if (c is Building b && b._originalTeamId >= 0 && IsInstanceValid(b))
             {
@@ -1116,7 +1116,7 @@ public partial class Main
         }
         if (!any) sb.AppendLine(TrManager.Tr("capture.none"));
 
-        _captureLabel.Text = sb.ToString();
+        _captureLabel!.Text = sb.ToString();
     }
 
     // ======== G5: 尤里卡时刻方法 ========
@@ -1192,7 +1192,7 @@ public partial class Main
         GameLog.Debug($"[G5] Team {teamId} {reason} — free {branch} tech: {node.Name}");
 
         // 刷新UI
-        if (_eurekaLabel.Visible) UpdateEurekaPanel();
+        if (_eurekaLabel!.Visible) UpdateEurekaPanel();
         if (_techTreePanelVisible) UpdateTechTreePanel();
     }
 
@@ -1219,7 +1219,7 @@ public partial class Main
             sb.AppendLine(TrManager.Tr("eureka.ai_line", t, a.KillCounter, EurekaSystem.KillThreshold, a.MoneyAccumulated, EurekaSystem.MoneyThreshold, a.BuildCounter, EurekaSystem.BuildThreshold, a.DestroyCounter, EurekaSystem.DestroyThreshold));
         }
 
-        _eurekaLabel.Text = sb.ToString();
+        _eurekaLabel!.Text = sb.ToString();
     }
 
 }

@@ -246,7 +246,7 @@ public partial class Main
                     // M4: 空引用防护
                     if (_terrain == null) break;
                     var target = GetXY(p);
-                    var terrainCell = _terrain.GetCellAtWorld(target.X, target.Y);
+                    var terrainCell = _terrain!.GetCellAtWorld(target.X, target.Y);
                     var modType = DetectTerrainMod(terrainCell);
                     if (modType != Unit.TerrainModType.None)
                     {
@@ -593,7 +593,7 @@ public partial class Main
         snap.StrategicPoints = new List<NetworkManager.StrategicPointState>();
         if (_strategicPointsNode != null)
         {
-            foreach (var c in _strategicPointsNode.GetChildren())
+            foreach (var c in _strategicPointsNode!.GetChildren())
             {
                 if (c is not StrategicPoint sp || !IsInstanceValid(sp)) continue;
                 snap.StrategicPoints.Add(new NetworkManager.StrategicPointState
@@ -792,7 +792,7 @@ public partial class Main
             foreach (var sps in snap.StrategicPoints)
             {
                 StrategicPoint? match = null;
-                foreach (var c in _strategicPointsNode.GetChildren())
+                foreach (var c in _strategicPointsNode!.GetChildren())
                 {
                     if (c is StrategicPoint sp && IsInstanceValid(sp)
                         && sp.GlobalPosition.DistanceTo(new Vector2(sps.X, sps.Y)) < 50f)

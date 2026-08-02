@@ -16,15 +16,15 @@ public partial class BattleEffect : Node2D
     private float _age;
     private Vector2 _startPos;
     private Vector2 _endPos;
-    private Sprite2D _sprite = null!;
+    private Sprite2D? _sprite;
 
     // 程序化纹理
     private static Texture2D? _flashTex;
     private static Texture2D? _shellTex;
 
     // 爆炸：程序化生成5帧动画（128×128）
-    private static Texture2D?[] _explosionFrames = null!;
-    private static Texture2D?[] _bigExplosionFrames = null!;
+    private static Texture2D?[]? _explosionFrames;
+    private static Texture2D?[]? _bigExplosionFrames;
 
     public override void _Ready()
     {
@@ -36,22 +36,22 @@ public partial class BattleEffect : Node2D
             case FxType.MuzzleFlash:
                 _lifetime = 0.1f;
                 _sprite = new Sprite2D { Texture = _flashTex! };
-                AddChild(_sprite);
+                AddChild(_sprite!);
                 break;
             case FxType.Shell:
                 _lifetime = 0.22f;
                 _sprite = new Sprite2D { Texture = _shellTex! };
-                AddChild(_sprite);
+                AddChild(_sprite!);
                 break;
             case FxType.Explosion:
                 _lifetime = 0.5f;
-                _sprite = new Sprite2D { Texture = _explosionFrames[0]! };
-                AddChild(_sprite);
+                _sprite = new Sprite2D { Texture = _explosionFrames![0]! };
+                AddChild(_sprite!);
                 break;
             case FxType.BigExplosion:
                 _lifetime = 0.7f;
-                _sprite = new Sprite2D { Texture = _bigExplosionFrames[0]! };
-                AddChild(_sprite);
+                _sprite = new Sprite2D { Texture = _bigExplosionFrames![0]! };
+                AddChild(_sprite!);
                 break;
         }
     }
@@ -66,33 +66,33 @@ public partial class BattleEffect : Node2D
         switch (_type)
         {
             case FxType.MuzzleFlash:
-                _sprite.Scale = Vector2.One * (0.7f + t * 0.6f);
-                _sprite.Modulate = new Color(1f, 0.9f, 0.4f, 1f - t * t);
+                _sprite!.Scale = Vector2.One * (0.7f + t * 0.6f);
+                _sprite!.Modulate = new Color(1f, 0.9f, 0.4f, 1f - t * t);
                 break;
             case FxType.Shell:
                 GlobalPosition = _startPos.Lerp(_endPos, t);
-                _sprite.Modulate = new Color(1f, 0.85f, 0.4f, 1f - t * 0.4f);
+                _sprite!.Modulate = new Color(1f, 0.85f, 0.4f, 1f - t * 0.4f);
                 break;
             case FxType.Explosion:
             {
                 // 5帧爆炸动画顺序播放
                 int frame = Mathf.Min((int)(t * 5f), 4);
-                _sprite.Texture = _explosionFrames[frame]!;
+                _sprite!.Texture = _explosionFrames![frame]!;
                 // 缩放从小到大再缩小
                 float s = t < 0.6f ? 0.8f + t * 1.2f : 1.5f - (t - 0.6f) * 0.8f;
-                _sprite.Scale = Vector2.One * s;
+                _sprite!.Scale = Vector2.One * s;
                 float a = t < 0.2f ? 1f : 1f - (t - 0.2f) / 0.8f;
-                _sprite.Modulate = new Color(1f, 1f, 1f, a);
+                _sprite!.Modulate = new Color(1f, 1f, 1f, a);
                 break;
             }
             case FxType.BigExplosion:
             {
                 int frame = Mathf.Min((int)(t * 5f), 4);
-                _sprite.Texture = _bigExplosionFrames[frame]!;
+                _sprite!.Texture = _bigExplosionFrames![frame]!;
                 float bs = t < 0.5f ? 0.6f + t * 2.0f : 1.6f - (t - 0.5f) * 0.6f;
-                _sprite.Scale = Vector2.One * bs;
+                _sprite!.Scale = Vector2.One * bs;
                 float ba = t < 0.15f ? 1f : 1f - (t - 0.15f) / 0.85f;
-                _sprite.Modulate = new Color(1f, 1f, 1f, ba);
+                _sprite!.Modulate = new Color(1f, 1f, 1f, ba);
                 break;
             }
         }

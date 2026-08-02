@@ -86,9 +86,9 @@ public partial class Building : Area2D, IBuildingEntity
     /// <summary>当前生产总时间（秒）。</summary>
     public float ProductionTimeTotal => _productionDuration;
 
-    private Sprite2D _body = null!;
-    private Sprite2D _selectionRing = null!;
-    private ProgressBar _healthBar = null!;
+    private Sprite2D? _body;
+    private Sprite2D? _selectionRing;
+    private ProgressBar? _healthBar;
     private static StyleBoxFlat? _bldgHpBgStyle;
     private static StyleBoxFlat? _bldgHpFgGreen;
     private static StyleBoxFlat? _bldgHpFgYellow;
@@ -111,7 +111,7 @@ public partial class Building : Area2D, IBuildingEntity
         if (_healthBar == null) return;
         float pct = MaxHealth > 0 ? Health / MaxHealth : 0f;
         var fg = pct > 0.6f ? _bldgHpFgGreen : pct > 0.3f ? _bldgHpFgYellow : _bldgHpFgRed;
-        _healthBar.AddThemeStyleboxOverride("fill", fg);
+        _healthBar!.AddThemeStyleboxOverride("fill", fg);
     }
     private float _hitFlashTimer;
 
@@ -207,13 +207,13 @@ public partial class Building : Area2D, IBuildingEntity
         // R4: 优先使用等距建筑精灵图，无则回退到旧PNG
         if (_isoBuildingSprites.TryGetValue(Type, out var isoTex) && isoTex != null)
         {
-            _body.Texture = isoTex;
-            _body.Scale = new Vector2(0.5f, 0.5f); // 等距精灵图256x256需缩放到128显示尺寸
-            _body.Modulate = _teamTint; // 仍用队伍色染色
+            _body!.Texture = isoTex;
+            _body!.Scale = new Vector2(0.5f, 0.5f); // 等距精灵图256x256需缩放到128显示尺寸
+            _body!.Modulate = _teamTint; // 仍用队伍色染色
         }
         else
         {
-            _body.Texture = Type switch
+            _body!.Texture = Type switch
             {
                 BuildingType.PowerPlant => _powerTex!,
                 BuildingType.Barracks => _barracksTex!,
@@ -229,39 +229,39 @@ public partial class Building : Area2D, IBuildingEntity
                 BuildingType.MissileSilo => _missileSiloTex!,     // E10
                 _ => _baseTex!
             };
-            _body.Scale = new Vector2(1.4f, 1.4f);
-            _body.Modulate = _teamTint;
+            _body!.Scale = new Vector2(1.4f, 1.4f);
+            _body!.Modulate = _teamTint;
         }
-        _selectionRing.Texture = _buildingRingTex;
-        _selectionRing.Visible = false;
-        _healthBar.MaxValue = MaxHealth;
-        _healthBar.Value = Health;
-        _healthBar.Visible = false;
+        _selectionRing!.Texture = _buildingRingTex;
+        _selectionRing!.Visible = false;
+        _healthBar!.MaxValue = MaxHealth;
+        _healthBar!.Value = Health;
+        _healthBar!.Visible = false;
         InitBldgHealthBarStyles();
-        _healthBar.AddThemeStyleboxOverride("background", _bldgHpBgStyle);
+        _healthBar!.AddThemeStyleboxOverride("background", _bldgHpBgStyle);
         UpdateBldgHealthBarStyle();
 
         // Phase1: 建造入场动画 — 从0缩放到目标大小，淡入
-        var targetScale = _body.Scale;
-        _body.Scale = Vector2.Zero;
-        _body.Modulate = new Color(_teamTint.R, _teamTint.G, _teamTint.B, 0f);
+        var targetScale = _body!.Scale;
+        _body!.Scale = Vector2.Zero;
+        _body!.Modulate = new Color(_teamTint.R, _teamTint.G, _teamTint.B, 0f);
         var tween = CreateTween();
         tween.SetParallel(true);
-        tween.TweenProperty(_body, "scale", targetScale, 0.4f)
+        tween.TweenProperty(_body!, "scale", targetScale, 0.4f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(_body, "modulate:a", 1f, 0.3f);
+        tween.TweenProperty(_body!, "modulate:a", 1f, 0.3f);
         tween.Chain();
         // 动画结束后恢复modulate为teamTint（避免alpha值残留）
-        tween.TweenCallback(Callable.From(() => _body.Modulate = _teamTint));
+        tween.TweenCallback(Callable.From(() => _body!.Modulate = _teamTint));
 
         // 8阵营色染色：向白色混合30%，让阵营色占主体（75%），8色强烈区分同时保留建筑手绘明暗细节
         _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
 
         // 像素艺术必须用 Nearest 过滤，Linear 会让 50+ 色的 PNG 被插值平滑成单色块
-        _body.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+        _body!.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         // 选取圈同步放大
-        _selectionRing.Scale = new Vector2(1.4f, 1.4f);
+        _selectionRing!.Scale = new Vector2(1.4f, 1.4f);
     }
 
     /// <summary>加载建筑 PNG 纹理（Kenney Sci-fi RTS, CC0）。</summary>
@@ -381,9 +381,9 @@ public partial class Building : Area2D, IBuildingEntity
     {
         IsSelected = selected;
         if (_selectionRing != null)
-            _selectionRing.Visible = selected;
+            _selectionRing!.Visible = selected;
         if (_healthBar != null)
-            _healthBar.Visible = selected || Health < MaxHealth;
+            _healthBar!.Visible = selected || Health < MaxHealth;
     }
 
     // ---- P1-5: IRenderable / IBuildingEntity 薄适配方法 ----
@@ -404,8 +404,8 @@ public partial class Building : Area2D, IBuildingEntity
         _hitFlashTimer = 0.1f; // Q5：受击闪白
         if (_healthBar != null)
         {
-            _healthBar.Value = Mathf.Max(0, Health);
-            _healthBar.Visible = true;
+            _healthBar!.Value = Mathf.Max(0, Health);
+            _healthBar!.Visible = true;
             UpdateBldgHealthBarStyle();
         }
         // 补强：建筑被攻击时播放金属撞击声
@@ -597,8 +597,8 @@ public partial class Building : Area2D, IBuildingEntity
         Health = MaxHealth;
         if (_healthBar != null)
         {
-            _healthBar.Value = Health;
-            _healthBar.Visible = IsSelected;
+            _healthBar!.Value = Health;
+            _healthBar!.Visible = IsSelected;
             UpdateBldgHealthBarStyle();
         }
         QueueRedraw();
@@ -611,8 +611,8 @@ public partial class Building : Area2D, IBuildingEntity
         Health = Mathf.Min(MaxHealth, Health + amount);
         if (_healthBar != null)
         {
-            _healthBar.Value = Health;
-            _healthBar.Visible = true;
+            _healthBar!.Value = Health;
+            _healthBar!.Visible = true;
             UpdateBldgHealthBarStyle();
         }
     }
@@ -671,7 +671,7 @@ public partial class Building : Area2D, IBuildingEntity
             CaptureProgress = 0f;
             _capturingTeamId = -1;
             _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
-            _body.Modulate = _teamTint;
+            _body!.Modulate = _teamTint;
             GameLog.Debug($"{BuildingName} captured by Team {capturingTeamId}!");
 
             // G8: 占领即获资源
@@ -708,11 +708,11 @@ public partial class Building : Area2D, IBuildingEntity
         if (_hitFlashTimer > 0)
         {
             _hitFlashTimer -= dt;
-            _body.Modulate = new Color(3f, 3f, 3f); // 过亮闪白
+            _body!.Modulate = new Color(3f, 3f, 3f); // 过亮闪白
         }
         else
         {
-            _body.Modulate = _teamTint; // 恢复队伍色调
+            _body!.Modulate = _teamTint; // 恢复队伍色调
         }
 
         // Phase1: 受损冒烟 — 血量低于60%开始冒烟，低于30%浓烟
@@ -795,7 +795,7 @@ public partial class Building : Area2D, IBuildingEntity
                         TeamId = _originalTeamId;
                         _originalTeamId = -1;
                         _teamTint = Unit.GetTeamColor(TeamId).Lerp(Colors.White, 0.30f);
-                        _body.Modulate = _teamTint;
+                        _body!.Modulate = _teamTint;
                         _capturedProduceTimer = 0f;
                         _defectionTimer = 0f;
                     }

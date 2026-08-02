@@ -33,10 +33,10 @@ public partial class AudioManager : Node
     public bool Muted { get; set; } = false;
 
     // ---- 内部资源 ----
-    private AudioStreamPlayer _bgmPlayer = null!;
-    private AudioStreamPlayer _sfxPlayer = null!;
-    private AudioStreamPlayer _sfxPlayer2 = null!;  // 第二个播放器用于重叠音效
-    private AudioStreamPlayer _voicePlayer = null!; // P2-3: 单位语音专用播放器
+    private AudioStreamPlayer? _bgmPlayer;
+    private AudioStreamPlayer? _sfxPlayer;
+    private AudioStreamPlayer? _sfxPlayer2;  // 第二个播放器用于重叠音效
+    private AudioStreamPlayer? _voicePlayer; // P2-3: 单位语音专用播放器
     private readonly Dictionary<Sfx, AudioStream?> _streams = new();
 
     // ---- 节流：同种音效最小间隔（秒），防止刷屏 ----
@@ -54,22 +54,22 @@ public partial class AudioManager : Node
 
         // BGM 播放器
         _bgmPlayer = new AudioStreamPlayer { Name = "BGMPlayer" };
-        AddChild(_bgmPlayer);
+        AddChild(_bgmPlayer!);
 
         // SFX 播放器（双通道，用于重叠音效）
         _sfxPlayer = new AudioStreamPlayer { Name = "SFXPlayer" };
-        AddChild(_sfxPlayer);
+        AddChild(_sfxPlayer!);
         _sfxPlayer2 = new AudioStreamPlayer { Name = "SFXPlayer2" };
-        AddChild(_sfxPlayer2);
+        AddChild(_sfxPlayer2!);
 
         // P2-3: 语音播放器
         _voicePlayer = new AudioStreamPlayer { Name = "VoicePlayer" };
-        AddChild(_voicePlayer);
+        AddChild(_voicePlayer!);
 
         LoadAllSounds();
 
         // P2-3: 初始化BGM管理器
-        BgmManager.Initialize(_bgmPlayer);
+        BgmManager.Initialize(_bgmPlayer!);
 
         GameLog.Debug("[Audio] AudioManager initialized");
     }
@@ -131,11 +131,11 @@ public partial class AudioManager : Node
         _lastPlayTime[sfx] = now;
 
         // 选择空闲的播放器
-        var player = !_sfxPlayer.Playing ? _sfxPlayer : _sfxPlayer2;
-        player.Stream = stream;
-        player.VolumeDb = Mathf.LinearToDb(SfxVolume);
-        player.PitchScale = pitch;
-        player.Play();
+        var player = !_sfxPlayer!.Playing ? _sfxPlayer! : _sfxPlayer2!;
+        player!.Stream = stream;
+        player!.VolumeDb = Mathf.LinearToDb(SfxVolume);
+        player!.PitchScale = pitch;
+        player!.Play();
     }
 
     /// <summary>播放音效（无节流，用于重要事件如超武/通知）。</summary>
@@ -144,11 +144,11 @@ public partial class AudioManager : Node
         if (Muted) return;
         if (!_streams.TryGetValue(sfx, out var stream) || stream == null) return;
 
-        var player = !_sfxPlayer.Playing ? _sfxPlayer : _sfxPlayer2;
-        player.Stream = stream;
-        player.VolumeDb = Mathf.LinearToDb(SfxVolume);
-        player.PitchScale = pitch;
-        player.Play();
+        var player = !_sfxPlayer!.Playing ? _sfxPlayer! : _sfxPlayer2!;
+        player!.Stream = stream;
+        player!.VolumeDb = Mathf.LinearToDb(SfxVolume);
+        player!.PitchScale = pitch;
+        player!.Play();
     }
 
     /// <summary>开始播放 BGM（循环）— P2-3: 委托给BgmManager。</summary>
@@ -160,14 +160,14 @@ public partial class AudioManager : Node
     /// <summary>停止 BGM。</summary>
     public void StopBgm()
     {
-        _bgmPlayer.Stop();
+        _bgmPlayer!.Stop();
     }
 
     /// <summary>切换静音。</summary>
     public void ToggleMute()
     {
         Muted = !Muted;
-        _bgmPlayer.VolumeDb = Muted ? -80f : Mathf.LinearToDb(BgmVolume);
+        _bgmPlayer!.VolumeDb = Muted ? -80f : Mathf.LinearToDb(BgmVolume);
         GameLog.Debug($"[Audio] Muted: {Muted}");
     }
 
@@ -177,6 +177,6 @@ public partial class AudioManager : Node
         if (Muted) return;
         string key = UnitVoice.GetUnitTypeKey(unitType);
         if (string.IsNullOrEmpty(key)) return;
-        UnitVoice.Play(_voicePlayer, key, voiceType);
+        UnitVoice.Play(_voicePlayer!, key, voiceType);
     }
 }
