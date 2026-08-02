@@ -321,6 +321,7 @@ public class TerrainGrid
         int regionsPerSide = 4;
         int regionSize = GridSize / regionsPerSide;
         int placed = 0;
+        var peakPositions = new System.Collections.Generic.List<(int x, int y, int size)>();
 
         // 创建打乱过的区域列表
         var regions = new System.Collections.Generic.List<(int rx, int ry)>();
@@ -398,7 +399,75 @@ public class TerrainGrid
                     }
                 }
             }
+            peakPositions.Add((cx, cy, peakSize));
             placed++;
+        }
+
+        // 山脊连接：在距离适中的相邻山峰之间画山脊，形成连绵山脉
+        for (int i = 0; i < peakPositions.Count; i++)
+        {
+            // 找最近的1-2个其他山峰
+            var (x1, y1, s1) = peakPositions[i];
+            var nearby = new System.Collections.Generic.List<(int x, int y, double dist)>();
+            for (int j = 0; j < peakPositions.Count; j++)
+            {
+                if (i == j) continue;
+                var (x2, y2, _) = peakPositions[j];
+                double d = Math.Sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+                if (d < regionSize * 2.5) // 只连接较近的山峰
+                    nearby.Add((x2, y2, d));
+            }
+            nearby.Sort((a, b) => a.dist.CompareTo(b.dist));
+            // 连最近1-2座
+            int connections = Math.Min(2, nearby.Count);
+            for (int k = 0; k < connections; k++)
+            {
+                DrawMountainRidge(x1, y1, nearby[k].x, nearby[k].y, rng);
+            }
+        }
+    }
+
+    /// <summary>在两座山峰之间画一条山脊（海拔2的雪地+少量山脉核心），形成连绵效果。</summary>
+    private void DrawMountainRidge(int x1, int y1, int x2, int y2, Random rng)
+    {
+        int dx = x2 - x1, dy = y2 - y1;
+        int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+        if (steps == 0) return;
+
+        // 沿连线插值，加少量随机偏移使山脊不平直
+        for (int s = 0; s <= steps; s++)
+        {
+            float t = (float)s / steps;
+            int cx = (int)(x1 + dx * t + (rng.NextDouble() - 0.5) * 2);
+            int cy = (int)(y1 + dy * t + (rng.NextDouble() - 0.5) * 2);
+            cx = Math.Clamp(cx, 1, GridSize - 2);
+            cy = Math.Clamp(cy, 1, GridSize - 2);
+            if (IsBaseArea(cx, cy)) continue;
+
+            // 山脊中心：海拔2雪地，偶尔海拔3山脉
+            if (_cells[cx, cy].Elevation < 2)
+            {
+                if (rng.NextDouble() < 0.3 && _cells[cx, cy].Type != TerrainType.Road)
+                {
+                    _cells[cx, cy].Type = TerrainType.Mountain;
+                    _cells[cx, cy].Elevation = 3;
+                }
+                else if (_cells[cx, cy].Type != TerrainType.Road &&
+                         _cells[cx, cy].Type != TerrainType.DeepWater)
+                {
+                    _cells[cx, cy].Type = TerrainType.Snow;
+                    _cells[cx, cy].Elevation = 2;
+                }
+            }
+
+            // 山脊两侧：海拔2
+            foreach (var (nx, ny) in GetNeighbors4(cx, cy))
+            {
+                if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                if (IsBaseArea(nx, ny)) continue;
+                if (_cells[nx, ny].Elevation < 2 && _cells[nx, ny].Type != TerrainType.DeepWater)
+                    _cells[nx, ny].Elevation = 2;
+            }
         }
     }
 
