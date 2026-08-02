@@ -291,6 +291,13 @@ public class TerrainGrid
         // 8. 生成道路
         GenerateRoads(rng);
 
+        // 8.5 海岸线柔化：水体边缘的陆地变为沙地（沙滩过渡）
+        SoftenCoastlines();
+
+        // 8.6 生成沙地斑块（增加地形多样性）
+        if (theme != MapConfig.MapTheme.Island)
+            GenerateSand(rng);
+
         // 9. Island主题：生成陆地岛屿
         // (在ApplyThemeTerrain中已处理)
 
@@ -299,20 +306,6 @@ public class TerrainGrid
 
         // 11. 分类深水区域
         ClassifyDeepWater();
-
-        // Debug: 统计各类型地形数量
-        var typeCounts = new System.Collections.Generic.Dictionary<TerrainType, int>();
-        for (int y = 0; y < GridSize; y++)
-            for (int x = 0; x < GridSize; x++)
-            {
-                var t = _cells[x, y].Type;
-                if (!typeCounts.ContainsKey(t)) typeCounts[t] = 0;
-                typeCounts[t]++;
-            }
-        string stats = $"[TerrainGrid] GridSize={GridSize} Theme={theme} | ";
-        foreach (var kv in typeCounts)
-            stats += $"{kv.Key}={kv.Value}({kv.Value * 100 / (GridSize * GridSize)}%) ";
-        GameLog.Debug(stats);
     }
 
     private void GenerateMountains(Random rng, int numMountains)
@@ -712,6 +705,40 @@ public class TerrainGrid
         }
     }
 
+    /// <summary>海岸线柔化：水体边缘的草地/田地变为沙地（沙滩过渡效果）。</summary>
+    private void SoftenCoastlines()
+    {
+        var changes = new System.Collections.Generic.List<(int x, int y)>();
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                var t = _cells[x, y].Type;
+                if (t != TerrainType.Grass && t != TerrainType.Field) continue;
+                if (_cells[x, y].Elevation > 1) continue; // 只柔化低地海岸
+
+                // 检查4邻居是否有水
+                bool nearWater = false;
+                foreach (var (nx, ny) in GetNeighbors4(x, y))
+                {
+                    if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize)
+                    {
+                        var nt = _cells[nx, ny].Type;
+                        if (nt == TerrainType.ShallowWater || nt == TerrainType.DeepWater)
+                        {
+                            nearWater = true;
+                            break;
+                        }
+                    }
+                }
+                if (nearWater)
+                    changes.Add((x, y));
+            }
+        }
+        foreach (var (x, y) in changes)
+            _cells[x, y].Type = TerrainType.Sand;
+    }
+
     /// <summary>P2-2: 主题特化地形调整。</summary>
     private void ApplyThemeTerrain(Random rng, MapConfig.MapTheme theme)
     {
@@ -809,26 +836,31 @@ public class TerrainGrid
 
     private void GenerateSand(Random rng)
     {
-        // 默认主题：在远离水域的低地随机生成沙地斑块
+        // 默认主题：仅在山脉附近（山脚碎石/沙砾）和河流附近（河岸沙地）生成小片沙地
         if (MapConfig.Theme != MapConfig.MapTheme.Default) return;
-        int sandPatches = 4 + rng.Next(3); // 4-6个
-        for (int p = 0; p < sandPatches; p++)
-        {
-            int cx = rng.Next(2, GridSize - 2);
-            int cy = rng.Next(2, GridSize - 2);
-            if (IsBaseArea(cx, cy)) continue;
-            if (_cells[cx, cy].Type != TerrainType.Grass) continue;
 
-            int w = 1 + rng.Next(3);
-            int h = 1 + rng.Next(3);
-            for (int dy = -h / 2; dy <= h / 2; dy++)
-                for (int dx = -w / 2; dx <= w / 2; dx++)
-                {
-                    int nx = cx + dx, ny = cy + dy;
-                    if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize)
-                        if (_cells[nx, ny].Type == TerrainType.Grass && !IsBaseArea(nx, ny))
-                            _cells[nx, ny].Type = TerrainType.Sand;
-                }
+        // 山脚沙地：山脉1-2格范围内的草地变沙地（模拟碎石坡）
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (_cells[x, y].Type != TerrainType.Grass) continue;
+                if (_cells[x, y].Elevation != 1) continue; // 只在低地
+
+                // 检查2格内是否有山脉
+                bool nearMountain = false;
+                for (int dy = -2; dy <= 2 && !nearMountain; dy++)
+                    for (int dx = -2; dx <= 2 && !nearMountain; dx++)
+                    {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < GridSize && ny >= 0 && ny < GridSize)
+                            if (_cells[nx, ny].Type == TerrainType.Mountain)
+                                nearMountain = true;
+                    }
+                // 30%概率变沙地（不是所有山脚都变）
+                if (nearMountain && rng.NextDouble() < 0.3 && !IsBaseArea(x, y))
+                    _cells[x, y].Type = TerrainType.Sand;
+            }
         }
     }
 

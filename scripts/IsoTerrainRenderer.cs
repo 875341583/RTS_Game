@@ -59,6 +59,7 @@ public static class IsoTerrainRenderer
         var cityImgs = LoadImageArray(_cityTexs!);
         var fieldImgs = LoadImageArray(_fieldTexs!);
         var coastImgs = LoadImageArray(_coastTexs!);
+        var sandCoastImgs = LoadImageArray(_sandCoastTexs!);
         var waterDepthImgs = LoadImageArray(_waterDepthTexs!);
 
         // 预提取tile贴图的字节缓冲区（避免在循环内重复GetPixel）
@@ -95,7 +96,7 @@ public static class IsoTerrainRenderer
                 // 获取顶面贴图（邻接感知选择）
                 var (topImg, isTransition) = GetTileWithAdjacency(cell, terrain, gx, gy, rng,
                     grassImgs, sandImgs, shallowImgs, deepImgs, mountainImgs, snowImgs,
-                    cityImgs, fieldImgs, coastImgs, waterDepthImgs);
+                    cityImgs, fieldImgs, coastImgs, sandCoastImgs, waterDepthImgs);
                 var (tileData, tileImgW, tileImgH) = getTileBuf(topImg);
 
                 // 计算侧面高度
@@ -984,7 +985,7 @@ public static class IsoTerrainRenderer
         TerrainCell cell, TerrainGrid terrain, int gx, int gy, Random rng,
         Image[][] grass, Image[][] sand, Image[][] shallow, Image[][] deep,
         Image[][] mountain, Image[][] snow, Image[][] city, Image[][] field,
-        Image[][] coast, Image[][] waterDepth)
+        Image[][] coast, Image[][] sandCoast, Image[][] waterDepth)
     {
         var effType = terrain.GetEffectiveType(gx, gy);
 
@@ -1019,7 +1020,7 @@ public static class IsoTerrainRenderer
                       effType == TerrainType.Field || effType == TerrainType.Mountain;
         if (isLand)
         {
-            var coastTile = GetCoastTile(terrain, gx, gy, effType, coast, grass, sand, snow, field);
+            var coastTile = GetCoastTile(terrain, gx, gy, effType, coast, sandCoast, grass, sand, snow, field);
             if (coastTile != null)
                 return (coastTile, true);
 
@@ -1047,8 +1048,8 @@ public static class IsoTerrainRenderer
     ///   4=NE(水在西南), 5=NW(水在东南), 6=SE(水在西北), 7=SW(水在东北)
     /// </summary>
     private static Image? GetCoastTile(TerrainGrid terrain, int gx, int gy,
-        TerrainType landType, Image[][] coast, Image[][] grass, Image[][] sand,
-        Image[][] snow, Image[][] field)
+        TerrainType landType, Image[][] coast, Image[][] sandCoast,
+        Image[][] grass, Image[][] sand, Image[][] snow, Image[][] field)
     {
         // 检查4个网格邻居是否为水域
         bool wUR = IsWaterType(terrain.GetEffectiveType(gx, gy - 1)); // 右上
@@ -1058,7 +1059,10 @@ public static class IsoTerrainRenderer
 
         int count = (wUR ? 1 : 0) + (wDL ? 1 : 0) + (wDR ? 1 : 0) + (wUL ? 1 : 0);
         if (count == 0) return null;
-        if (coast[0].Length == 0 || coast[0][0] == null) return null;
+        // 沙地类型使用沙滩过渡tile，其他类型使用普通海岸线tile
+        var coastSet = (landType == TerrainType.Sand && sandCoast[0].Length > 0 && sandCoast[0][0] != null)
+            ? sandCoast : coast;
+        if (coastSet[0].Length == 0 || coastSet[0][0] == null) return null;
 
         int idx;
         if (count == 1)
@@ -1088,7 +1092,7 @@ public static class IsoTerrainRenderer
             else idx = 6; // (wUL && wDR) 对角线
         }
 
-        return coast[0][idx];
+        return coastSet[0][idx];
     }
 
     /// <summary>
@@ -1192,6 +1196,7 @@ public static class IsoTerrainRenderer
     private static Texture2D?[]? _fieldTexs;
     // 海岸线过渡tile: N,S,E,W,NE,NW,SE,SW (8方向)
     private static Texture2D?[]? _coastTexs;
+    private static Texture2D?[]? _sandCoastTexs;
     // 浅水→深水过渡tile: 同上8方向
     private static Texture2D?[]? _waterDepthTexs;
     // 道路tile字典（邻接感知）
@@ -1274,6 +1279,16 @@ public static class IsoTerrainRenderer
             "res://assets/sprites/terrain/tileCoast_NW.png",
             "res://assets/sprites/terrain/tileCoast_SE.png",
             "res://assets/sprites/terrain/tileCoast_SW.png" });
+        // 沙滩海岸线过渡tile (8方向) — 水体边缘沙地过渡
+        _sandCoastTexs = LoadTexArray(new[] {
+            "res://assets/sprites/terrain/tileCoastSand_0.png",
+            "res://assets/sprites/terrain/tileCoastSand_1.png",
+            "res://assets/sprites/terrain/tileCoastSand_2.png",
+            "res://assets/sprites/terrain/tileCoastSand_3.png",
+            "res://assets/sprites/terrain/tileCoastSand_4.png",
+            "res://assets/sprites/terrain/tileCoastSand_5.png",
+            "res://assets/sprites/terrain/tileCoastSand_6.png",
+            "res://assets/sprites/terrain/tileCoastSand_7.png" });
         // 浅水→深水过渡tile (8方向)
         _waterDepthTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileWaterDepth_N.png",
