@@ -918,13 +918,13 @@ public partial class Main : Node2D
 
         // ===== 截图功能（Godot 内部 API，用于验收渲染效果）=====
         // 在 ANGLE 软件渲染环境下 CopyFromScreen 抓不到 UI，必须用引擎内部截图
-        // 1. 自动截图：多时间点截图（22s/45s/75s/110s），观察游戏不同阶段
+        // 1. 自动截图：多时间点截图（3s/22s/45s/75s/110s），观察游戏不同阶段
         if (_autoshotTimer >= 0f)
         {
             _autoshotTimer += dt;
             // 多阶段截图时间点
-            float[] shotTimes = { 22f, 45f, 75f, 110f };
-            string[] shotSuffixes = { "t1_22s", "t2_45s", "t3_75s", "t4_110s" };
+            float[] shotTimes = { 3f, 22f, 45f, 75f, 110f };
+            string[] shotSuffixes = { "t0_3s", "t1_22s", "t2_45s", "t3_75s", "t4_110s" };
             for (int i = 0; i < shotTimes.Length; i++)
             {
                 if (_autoshotTimer >= shotTimes[i] && _autoshotPhase == i)
@@ -933,7 +933,7 @@ public partial class Main : Node2D
                     // 统一用 zoom=1.0 基地全景，观察游戏进展
                     _camera!.Position = new Vector2(320, 340);
                     _camera!.Zoom = new Vector2(1.0f, 1.0f);
-                    _panoramaShotPending = 3;
+                    _panoramaShotPending = 60; // 等待~1秒让渲染稳定
                     _pendingShotSuffix = shotSuffixes[i];
                     break;
                 }

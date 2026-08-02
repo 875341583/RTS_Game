@@ -57,6 +57,8 @@ public static class IsoTerrainRenderer
         var snowImgs = LoadImageArray(_snowTexs!);
         var cityImgs = LoadImageArray(_cityTexs!);
         var fieldImgs = LoadImageArray(_fieldTexs!);
+        var coastImgs = LoadImageArray(_coastTexs!);
+        var waterDepthImgs = LoadImageArray(_waterDepthTexs!);
 
         // 预提取tile贴图的字节缓冲区（避免在循环内重复GetPixel）
         var tileBuffers = new Dictionary<Image, (byte[] data, int w, int h)>();
@@ -89,9 +91,10 @@ public static class IsoTerrainRenderer
                 int cx = offX + (int)screenPos.X;
                 int cy = offY + (int)screenPos.Y + MaxElevPx;
 
-                // 获取顶面贴图
-                Image topImg = GetTileImage(cell, terrain, gx, gy, rng, grassImgs, sandImgs,
-                    shallowImgs, deepImgs, mountainImgs, snowImgs, cityImgs, fieldImgs);
+                // 获取顶面贴图（邻接感知选择）
+                var (topImg, isTransition) = GetTileWithAdjacency(cell, terrain, gx, gy, rng,
+                    grassImgs, sandImgs, shallowImgs, deepImgs, mountainImgs, snowImgs,
+                    cityImgs, fieldImgs, coastImgs, waterDepthImgs);
                 var (tileData, tileImgW, tileImgH) = getTileBuf(topImg);
 
                 // 计算侧面高度
@@ -105,7 +108,7 @@ public static class IsoTerrainRenderer
                 // 画顶面（菱形裁剪）—— 快速字节版
                 if (tileData.Length > 0)
                     DrawDiamondTopFast(imgData, imgStride, imgW, imgH, cx, cy,
-                        tileData, tileImgW, tileImgH, cell, halfW, halfH, tileW, tileH);
+                        tileData, tileImgW, tileImgH, cell, halfW, halfH, tileW, tileH, isTransition);
 
                 // 画水面波纹（仅水面类型）
                 if (cell.Type == TerrainType.ShallowWater || cell.Type == TerrainType.DeepWater)
@@ -133,16 +136,16 @@ public static class IsoTerrainRenderer
     /// <summary>直接操作字节数组绘制菱形顶面，避免逐像素GetPixel/SetPixel开销。</summary>
     private static void DrawDiamondTopFast(byte[] imgData, int imgStride, int imgW, int imgH,
         int cx, int cy, byte[] tileData, int tileW, int tileH,
-        TerrainCell cell, int halfW, int halfH, int tileSW, int tileSH)
+        TerrainCell cell, int halfW, int halfH, int tileSW, int tileSH, bool skipColorAdjust = false)
     {
-        float brightness = cell.Elevation switch
+        float brightness = skipColorAdjust ? 1.0f : cell.Elevation switch
         {
             2 => 1.08f,
             3 => 1.15f,
             _ => 1.0f,
         };
-        bool isShallow = cell.Type == TerrainType.ShallowWater;
-        bool isDeep = cell.Type == TerrainType.DeepWater;
+        bool isShallow = !skipColorAdjust && cell.Type == TerrainType.ShallowWater;
+        bool isDeep = !skipColorAdjust && cell.Type == TerrainType.DeepWater;
 
         for (int py = -halfH; py <= halfH; py++)
         {
@@ -547,45 +550,216 @@ public static class IsoTerrainRenderer
         }
     }
 
-    // ======== 贴图获取 ========
+    // ======== 邻接感知贴图选择 ========
 
-    private static Image GetTileImage(TerrainCell cell, TerrainGrid terrain, int gx, int gy,
-        Random rng, Image[][] grass, Image[][] sand, Image[][] shallow, Image[][] deep,
-        Image[][] mountain, Image[][] snow, Image[][] city, Image[][] field)
+    /// <summary>
+    /// 判断地形类型是否为水域。
+    /// </summary>
+    private static bool IsWaterType(TerrainType t)
+        => t == TerrainType.ShallowWater || t == TerrainType.DeepWater;
+
+    /// <summary>
+    /// 邻接感知tile选择：根据周围邻居类型选择最合适的tile变体。
+    /// 实现海岸线过渡、水深过渡和道路连接。
+    /// </summary>
+    private static (Image img, bool isTransition) GetTileWithAdjacency(
+        TerrainCell cell, TerrainGrid terrain, int gx, int gy, Random rng,
+        Image[][] grass, Image[][] sand, Image[][] shallow, Image[][] deep,
+        Image[][] mountain, Image[][] snow, Image[][] city, Image[][] field,
+        Image[][] coast, Image[][] waterDepth)
     {
         var effType = terrain.GetEffectiveType(gx, gy);
-        return effType switch
+
+        // 道路 - 邻接感知连接
+        if (effType == TerrainType.Road)
+            return (GetRoadTileWithConnections(terrain, gx, gy), false);
+
+        // 桥梁/隧道/悬崖 - 保持原有逻辑
+        if (effType == TerrainType.Bridge)
+            return (_bridgeTex?.GetImage() ?? grass[0][0], false);
+        if (effType == TerrainType.Tunnel)
+            return (_tunnelTex?.GetImage() ?? grass[0][0], false);
+        if (effType == TerrainType.Cliff)
+            return (_cliffTex?.GetImage() ?? grass[0][0], false);
+
+        // 浅水 - 检查深水邻居，选择水深过渡tile
+        if (effType == TerrainType.ShallowWater)
         {
-            TerrainType.Grass => grass[0][rng.Next(grass[0].Length)],
-            TerrainType.Sand => sand[0][rng.Next(sand[0].Length)],
-            TerrainType.ShallowWater => shallow[0][rng.Next(shallow[0].Length)],
-            TerrainType.DeepWater => deep[0][rng.Next(deep[0].Length)],
-            TerrainType.Mountain => mountain[0][rng.Next(mountain[0].Length)],
-            TerrainType.Snow => snow[0][rng.Next(snow[0].Length)],
-            TerrainType.City => city[0][rng.Next(city[0].Length)],
-            TerrainType.Field => field[0][rng.Next(field[0].Length)],
-            TerrainType.Road => GetRoadTile(terrain, gx, gy, rng),
-            TerrainType.Bridge => _bridgeTex?.GetImage() ?? grass[0][0],
-            TerrainType.Tunnel => _tunnelTex?.GetImage() ?? grass[0][0],
-            TerrainType.Cliff => _cliffTex?.GetImage() ?? grass[0][0],
-            _ => grass[0][0],
-        };
+            var depthTile = GetDepthTransitionTile(terrain, gx, gy, waterDepth);
+            if (depthTile != null)
+                return (depthTile, true);
+            return (shallow[0][rng.Next(shallow[0].Length)], false);
+        }
+
+        // 深水 - 内部变体
+        if (effType == TerrainType.DeepWater)
+            return (deep[0][rng.Next(deep[0].Length)], false);
+
+        // 陆地 - 检查水域邻居，选择海岸线过渡tile
+        bool isLand = effType == TerrainType.Grass || effType == TerrainType.Sand ||
+                      effType == TerrainType.Snow || effType == TerrainType.City ||
+                      effType == TerrainType.Field || effType == TerrainType.Mountain;
+        if (isLand)
+        {
+            var coastTile = GetCoastTile(terrain, gx, gy, effType, coast, grass, sand, snow, field);
+            if (coastTile != null)
+                return (coastTile, true);
+
+            // 内部陆地tile - 使用多变体
+            return effType switch
+            {
+                TerrainType.Grass => (grass[0][rng.Next(grass[0].Length)], false),
+                TerrainType.Sand => (sand[0][rng.Next(sand[0].Length)], false),
+                TerrainType.Snow => (snow[0][rng.Next(snow[0].Length)], false),
+                TerrainType.City => (city[0][rng.Next(city[0].Length)], false),
+                TerrainType.Field => (field[0][rng.Next(field[0].Length)], false),
+                TerrainType.Mountain => (mountain[0][rng.Next(mountain[0].Length)], false),
+                _ => (grass[0][0], false),
+            };
+        }
+
+        return (grass[0][0], false);
     }
 
-    private static Image GetRoadTile(TerrainGrid terrain, int gx, int gy, Random rng)
+    /// <summary>
+    /// 海岸线过渡tile选择。
+    /// 等距视角中4个网格邻居的视觉方向：
+    ///   (gx,gy-1)=右上, (gx,gy+1)=左下, (gx+1,gy)=右下, (gx-1,gy)=左上
+    /// coast tile索引：0=N(水在南), 1=S(水在北), 2=E(水在西), 3=W(水在东),
+    ///   4=NE(水在西南), 5=NW(水在东南), 6=SE(水在西北), 7=SW(水在东北)
+    /// </summary>
+    private static Image? GetCoastTile(TerrainGrid terrain, int gx, int gy,
+        TerrainType landType, Image[][] coast, Image[][] grass, Image[][] sand,
+        Image[][] snow, Image[][] field)
     {
-        // 简单返回道路贴图（后续可根据邻接关系选择方向）
-        bool north = gy > 0 && terrain.GetEffectiveType(gx, gy - 1) == TerrainType.Road;
-        bool south = gy < TerrainGrid.GridSize - 1 && terrain.GetEffectiveType(gx, gy + 1) == TerrainType.Road;
-        bool east = gx < TerrainGrid.GridSize - 1 && terrain.GetEffectiveType(gx + 1, gy) == TerrainType.Road;
-        bool west = gx > 0 && terrain.GetEffectiveType(gx - 1, gy) == TerrainType.Road;
+        // 检查4个网格邻居是否为水域
+        bool wUR = IsWaterType(terrain.GetEffectiveType(gx, gy - 1)); // 右上
+        bool wDL = IsWaterType(terrain.GetEffectiveType(gx, gy + 1)); // 左下
+        bool wDR = IsWaterType(terrain.GetEffectiveType(gx + 1, gy)); // 右下
+        bool wUL = IsWaterType(terrain.GetEffectiveType(gx - 1, gy)); // 左上
 
-        var fallback = GetFallbackTile(new Color(0.3f, 0.3f, 0.3f)); // 灰色道路占位
-        if ((north || south) && (east || west))
-            return _roadCrossTex?.GetImage() ?? _roadETex?.GetImage() ?? fallback;
-        if (north || south)
-            return _roadNTex?.GetImage() ?? _roadETex?.GetImage() ?? fallback;
-        return _roadETex?.GetImage() ?? fallback;
+        int count = (wUR ? 1 : 0) + (wDL ? 1 : 0) + (wDR ? 1 : 0) + (wUL ? 1 : 0);
+        if (count == 0) return null;
+        if (coast[0].Length == 0 || coast[0][0] == null) return null;
+
+        int idx;
+        if (count == 1)
+        {
+            // 单方向水域
+            if (wUR) idx = 7; // 水在东北 → SW tile
+            else if (wDL) idx = 4; // 水在西南 → NE tile
+            else if (wDR) idx = 5; // 水在东南 → NW tile
+            else idx = 6; // 水在西北 → SE tile
+        }
+        else if (count >= 3)
+        {
+            // 三面环水 - 选择最强的两个方向
+            if (wUR && wUL) idx = 1; // 上方两面水 → S tile (水在北)
+            else if (wDR && wDL) idx = 0; // 下方两面水 → N tile (水在南)
+            else if (wUR && wDR) idx = 3; // 右方两面水 → W tile (水在东)
+            else idx = 2; // 左方两面水 → E tile (水在西)
+        }
+        else
+        {
+            // count == 2
+            if (wUR && wUL) idx = 1; // 上方 → S
+            else if (wDR && wDL) idx = 0; // 下方 → N
+            else if (wUR && wDR) idx = 3; // 右方 → W
+            else if (wUL && wDL) idx = 2; // 左方 → E
+            else if (wUR && wDL) idx = 7; // 对角线 → 选一个方向
+            else idx = 6; // (wUL && wDR) 对角线
+        }
+
+        return coast[0][idx];
+    }
+
+    /// <summary>
+    /// 浅水→深水过渡tile选择。逻辑同海岸线。
+    /// </summary>
+    private static Image? GetDepthTransitionTile(TerrainGrid terrain, int gx, int gy, Image[][] waterDepth)
+    {
+        bool dUR = terrain.GetEffectiveType(gx, gy - 1) == TerrainType.DeepWater;
+        bool dDL = terrain.GetEffectiveType(gx, gy + 1) == TerrainType.DeepWater;
+        bool dDR = terrain.GetEffectiveType(gx + 1, gy) == TerrainType.DeepWater;
+        bool dUL = terrain.GetEffectiveType(gx - 1, gy) == TerrainType.DeepWater;
+
+        int count = (dUR ? 1 : 0) + (dDL ? 1 : 0) + (dDR ? 1 : 0) + (dUL ? 1 : 0);
+        if (count == 0) return null;
+        if (waterDepth[0].Length == 0 || waterDepth[0][0] == null) return null;
+
+        int idx;
+        if (count == 1)
+        {
+            if (dUR) idx = 7;
+            else if (dDL) idx = 4;
+            else if (dDR) idx = 5;
+            else idx = 6;
+        }
+        else if (count >= 3)
+        {
+            if (dUR && dUL) idx = 1;
+            else if (dDR && dDL) idx = 0;
+            else if (dUR && dDR) idx = 3;
+            else idx = 2;
+        }
+        else
+        {
+            if (dUR && dUL) idx = 1;
+            else if (dDR && dDL) idx = 0;
+            else if (dUR && dDR) idx = 3;
+            else if (dUL && dDL) idx = 2;
+            else if (dUR && dDL) idx = 7;
+            else idx = 6;
+        }
+
+        return waterDepth[0][idx];
+    }
+
+    /// <summary>
+    /// 道路tile选择：根据4方向道路连接选择正确的道路变体。
+    /// 等距视角中：N(gy-1)=右上, S(gy+1)=左下, E(gx+1)=右下, W(gx-1)=左上
+    /// </summary>
+    private static Image GetRoadTileWithConnections(TerrainGrid terrain, int gx, int gy)
+    {
+        bool n = terrain.GetEffectiveType(gx, gy - 1) == TerrainType.Road;
+        bool s = terrain.GetEffectiveType(gx, gy + 1) == TerrainType.Road;
+        bool e = terrain.GetEffectiveType(gx + 1, gy) == TerrainType.Road;
+        bool w = terrain.GetEffectiveType(gx - 1, gy) == TerrainType.Road;
+
+        int count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
+
+        string key;
+        if (count == 0) key = "E";
+        else if (count == 4) key = "Cross";
+        else if (count == 3)
+        {
+            if (!n) key = "T_S";
+            else if (!s) key = "T_N";
+            else if (!e) key = "T_W";
+            else key = "T_E";
+        }
+        else if (count == 2)
+        {
+            if (n && s) key = "N";
+            else if (e && w) key = "E";
+            else if (n && e) key = "NE";
+            else if (n && w) key = "NW";
+            else if (s && e) key = "SE";
+            else key = "SW";
+        }
+        else
+        {
+            // count == 1: 端点，用直道
+            if (n || s) key = "N";
+            else key = "E";
+        }
+
+        if (_roadTexs != null && _roadTexs.TryGetValue(key, out var tex) && tex != null)
+            return tex.GetImage();
+
+        // 回退：尝试旧的3个道路纹理
+        var fallback = _roadETex?.GetImage() ?? GetFallbackTile(new Color(0.3f, 0.3f, 0.3f));
+        return fallback;
     }
 
     // ======== 贴图加载 ========
@@ -598,6 +772,13 @@ public static class IsoTerrainRenderer
     private static Texture2D?[]? _snowTexs;
     private static Texture2D?[]? _cityTexs;
     private static Texture2D?[]? _fieldTexs;
+    // 海岸线过渡tile: N,S,E,W,NE,NW,SE,SW (8方向)
+    private static Texture2D?[]? _coastTexs;
+    // 浅水→深水过渡tile: 同上8方向
+    private static Texture2D?[]? _waterDepthTexs;
+    // 道路tile字典（邻接感知）
+    private static Dictionary<string, Texture2D?>? _roadTexs;
+    // 旧版道路纹理（回退用）
     private static Texture2D? _roadETex, _roadNTex, _roadCrossTex;
     private static Texture2D? _bridgeTex, _tunnelTex, _cliffTex;
     private static bool _texturesLoaded = false;
@@ -609,33 +790,84 @@ public static class IsoTerrainRenderer
             "res://assets/sprites/terrain/tileGrass1.png",
             "res://assets/sprites/terrain/tileGrass2.png",
             "res://assets/sprites/terrain/tileGrass3.png",
-            "res://assets/sprites/terrain/tileGrass4.png" });
+            "res://assets/sprites/terrain/tileGrass4.png",
+            "res://assets/sprites/terrain/tileGrass5.png",
+            "res://assets/sprites/terrain/tileGrass6.png",
+            "res://assets/sprites/terrain/tileGrass7.png",
+            "res://assets/sprites/terrain/tileGrass8.png" });
         _sandTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileSand1.png",
             "res://assets/sprites/terrain/tileSand2.png",
-            "res://assets/sprites/terrain/tileSand3.png" });
+            "res://assets/sprites/terrain/tileSand3.png",
+            "res://assets/sprites/terrain/tileSand4.png",
+            "res://assets/sprites/terrain/tileSand5.png",
+            "res://assets/sprites/terrain/tileSand6.png" });
         _shallowTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileShallow1.png",
             "res://assets/sprites/terrain/tileShallow2.png",
-            "res://assets/sprites/terrain/tileShallow3.png" });
+            "res://assets/sprites/terrain/tileShallow3.png",
+            "res://assets/sprites/terrain/tileShallow4.png",
+            "res://assets/sprites/terrain/tileShallow5.png",
+            "res://assets/sprites/terrain/tileShallow6.png" });
         _deepTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileDeep1.png",
             "res://assets/sprites/terrain/tileDeep2.png",
-            "res://assets/sprites/terrain/tileDeep3.png" });
+            "res://assets/sprites/terrain/tileDeep3.png",
+            "res://assets/sprites/terrain/tileDeep4.png",
+            "res://assets/sprites/terrain/tileDeep5.png",
+            "res://assets/sprites/terrain/tileDeep6.png" });
         _mountainTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileMountain1.png",
             "res://assets/sprites/terrain/tileMountain2.png",
-            "res://assets/sprites/terrain/tileMountain3.png" });
+            "res://assets/sprites/terrain/tileMountain3.png",
+            "res://assets/sprites/terrain/tileMountain4.png",
+            "res://assets/sprites/terrain/tileMountain5.png",
+            "res://assets/sprites/terrain/tileMountain6.png" });
         _snowTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileSnow1.png",
             "res://assets/sprites/terrain/tileSnow2.png",
-            "res://assets/sprites/terrain/tileSnow3.png" });
+            "res://assets/sprites/terrain/tileSnow3.png",
+            "res://assets/sprites/terrain/tileSnow4.png",
+            "res://assets/sprites/terrain/tileSnow5.png",
+            "res://assets/sprites/terrain/tileSnow6.png" });
         _cityTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileCity1.png",
-            "res://assets/sprites/terrain/tileCity2.png" });
+            "res://assets/sprites/terrain/tileCity2.png",
+            "res://assets/sprites/terrain/tileCity3.png",
+            "res://assets/sprites/terrain/tileCity4.png" });
         _fieldTexs = LoadTexArray(new[] {
             "res://assets/sprites/terrain/tileField1.png",
-            "res://assets/sprites/terrain/tileField2.png" });
+            "res://assets/sprites/terrain/tileField2.png",
+            "res://assets/sprites/terrain/tileField3.png",
+            "res://assets/sprites/terrain/tileField4.png" });
+        // 海岸线过渡tile (8方向)
+        _coastTexs = LoadTexArray(new[] {
+            "res://assets/sprites/terrain/tileCoast_N.png",
+            "res://assets/sprites/terrain/tileCoast_S.png",
+            "res://assets/sprites/terrain/tileCoast_E.png",
+            "res://assets/sprites/terrain/tileCoast_W.png",
+            "res://assets/sprites/terrain/tileCoast_NE.png",
+            "res://assets/sprites/terrain/tileCoast_NW.png",
+            "res://assets/sprites/terrain/tileCoast_SE.png",
+            "res://assets/sprites/terrain/tileCoast_SW.png" });
+        // 浅水→深水过渡tile (8方向)
+        _waterDepthTexs = LoadTexArray(new[] {
+            "res://assets/sprites/terrain/tileWaterDepth_N.png",
+            "res://assets/sprites/terrain/tileWaterDepth_S.png",
+            "res://assets/sprites/terrain/tileWaterDepth_E.png",
+            "res://assets/sprites/terrain/tileWaterDepth_W.png",
+            "res://assets/sprites/terrain/tileWaterDepth_NE.png",
+            "res://assets/sprites/terrain/tileWaterDepth_NW.png",
+            "res://assets/sprites/terrain/tileWaterDepth_SE.png",
+            "res://assets/sprites/terrain/tileWaterDepth_SW.png" });
+        // 邻接感知道路tile
+        _roadTexs = new Dictionary<string, Texture2D?>();
+        string[] roadKeys = { "E", "N", "NE", "NW", "SE", "SW", "Cross", "T_N", "T_S", "T_E", "T_W" };
+        foreach (var rk in roadKeys)
+        {
+            _roadTexs[rk] = LoadTexSafe($"res://assets/sprites/terrain/tileRoad_{rk}.png");
+        }
+        // 旧版道路纹理（回退用）
         _roadETex = LoadTexSafe("res://assets/sprites/terrain/tileGrass_roadEast.png");
         _roadNTex = LoadTexSafe("res://assets/sprites/terrain/tileGrass_roadNorth.png");
         _roadCrossTex = LoadTexSafe("res://assets/sprites/terrain/tileGrass_roadCrossing.png");

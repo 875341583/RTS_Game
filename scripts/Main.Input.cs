@@ -570,13 +570,32 @@ public partial class Main
     {
         try
         {
+            var ssDir = @"C:\Users\Administrator\AppData\Roaming\Godot\app_userdata\RTS_Game";
             var img = GetViewport().GetTexture().GetImage();
-            var ts = DateTime.Now.ToString("HHmmss");
-            var path = $"user://shot_{tag}_{ts}.png";
-            img.SavePng(path);
-            GameLog.Debug($"[Screenshot] Saved: {ProjectSettings.GlobalizePath(path)} size={img.GetSize()}");
+            var ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var absPath = System.IO.Path.Combine(ssDir, $"shot_{tag}_{ts}.png");
+            // 用 SavePngToBuffer + System.IO 确保文件写入磁盘
+            var pngBytes = img.SavePngToBuffer();
+            System.IO.File.WriteAllBytes(absPath, pngBytes);
+            // Write to a debug log file directly
+            try
+            {
+                System.IO.File.AppendAllText(
+                    System.IO.Path.Combine(ssDir, "screenshot_debug.log"),
+                    $"[{DateTime.Now:HH:mm:ss}] tag={tag} path={absPath} size={img.GetSize()} fileSize={pngBytes.Length}\n");
+            }
+            catch { }
         }
-        catch (Exception ex) { GameLog.Error(TrManager.Tr("log.screenshot_failed", ex.Message)); }
+        catch (Exception ex)
+        {
+            try
+            {
+                System.IO.File.AppendAllText(
+                    @"C:\Users\Administrator\AppData\Roaming\Godot\app_userdata\RTS_Game\screenshot_debug.log",
+                    $"[{DateTime.Now:HH:mm:ss}] FAILED: {ex.Message}\n{ex.StackTrace}\n");
+            }
+            catch { }
+        }
     }
 
     // ---------- 右键命令 ----------
