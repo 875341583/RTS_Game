@@ -180,15 +180,16 @@ public static class IsoTerrainRenderer
         if (treeBufs.Length == 0 && rockBufs.Length == 0 && bushBufs.Length == 0) return;
 
         // Phase 1: 生成森林聚集点（种子驱动，成片树林而非均匀散布）
+        // 增大半径和密度，确保形成大面积成片森林
         var forestClusters = new System.Collections.Generic.List<(int gx, int gy, int radius, float density)>();
-        int numForests = Math.Max(8, gs / 5); // 64格地图约12片树林
+        int numForests = Math.Max(10, gs / 4); // 64格地图约16片树林
         for (int f = 0; f < numForests; f++)
         {
             int fx = rng.Next(2, gs - 2);
             int fy = rng.Next(2, gs - 2);
-            int radius = 3 + rng.Next(4); // 3-6格半径（大片树林）
-            // 密度：中心高，边缘低
-            float density = 0.55f + (float)rng.NextDouble() * 0.2f;
+            int radius = 4 + rng.Next(5); // 4-8格半径（大片树林）
+            // 密度提高：中心更高
+            float density = 0.65f + (float)rng.NextDouble() * 0.25f; // 0.65-0.90
             forestClusters.Add((fx, fy, radius, density));
         }
 
@@ -263,13 +264,19 @@ public static class IsoTerrainRenderer
                     if (inForest)
                     {
                         // 森林范围内：按密度概率放树（中心密、边缘疏）
+                        // 每格可放1-3棵树（森林中心密度高时）
                         if (roll < forestDensity && treeBufs.Length > 0)
                         {
-                            var tb = treeBufs[cellRng.Next(8)]; // pine + oak (0-7)
-                            var screenPos = IsoCoords.GridToScreen(gx, gy);
-                            int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-10, 11);
-                            int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-6, 7);
-                            BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                            // 森林中心放2-3棵树，边缘放1棵
+                            int treeCount = forestDensity > 0.5f ? (1 + cellRng.Next(3)) : 1;
+                            for (int ti = 0; ti < treeCount; ti++)
+                            {
+                                var tb = treeBufs[cellRng.Next(8)]; // pine + oak (0-7)
+                                var screenPos = IsoCoords.GridToScreen(gx, gy);
+                                int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-14, 15);
+                                int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-8, 9);
+                                BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                            }
                         }
                         else if (roll < forestDensity + 0.15 && bushBufs.Length > 0)
                         {
