@@ -923,8 +923,8 @@ public partial class Main : Node2D
         {
             _autoshotTimer += dt;
             // 多阶段截图时间点
-            float[] shotTimes = { 3f, 22f, 45f, 75f, 110f };
-            string[] shotSuffixes = { "t0_3s", "t1_22s", "t2_45s", "t3_75s", "t4_110s" };
+            float[] shotTimes = { 3f, 8f, 15f, 25f, 45f, 75f, 110f };
+            string[] shotSuffixes = { "t0_3s", "t1_8s", "t2_15s", "t3_25s", "t4_45s", "t5_75s", "t6_110s" };
             for (int i = 0; i < shotTimes.Length; i++)
             {
                 if (_autoshotTimer >= shotTimes[i] && _autoshotPhase == i)

@@ -29,6 +29,7 @@ public static class IsoTerrainRenderer
     /// </summary>
     public static Image RenderTerrain(TerrainGrid terrain, Random rng)
     {
+        var swTotal = System.Diagnostics.Stopwatch.StartNew();
         int gs = TerrainGrid.GridSize;
         // 等距地图边界框
         int imgW = (gs * 2 + 1) * (int)IsoCoords.HalfW;
@@ -103,7 +104,7 @@ public static class IsoTerrainRenderer
 
                 // 先画侧面（在顶面下方）
                 if (sidePx > 0)
-                    DrawDiamondSideFast(imgData, imgStride, imgW, imgH, cx, cy, sidePx, cell);
+                    DrawDiamondSideFast(imgData, imgStride, imgW, imgH, cx, cy, sidePx, cell, rng);
 
                 // 画顶面（菱形裁剪）—— 快速字节版
                 if (tileData.Length > 0)
@@ -114,13 +115,26 @@ public static class IsoTerrainRenderer
                 if (cell.Type == TerrainType.ShallowWater || cell.Type == TerrainType.DeepWater)
                     DrawWaterRipplesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, rng, halfW, halfH);
 
-                // 画悬崖（高差≥2的边缘画深色陡崖）
-                DrawCliffEdges(img, cx, cy, cell, terrain, gx, gy);
+                // 画悬崖（高差≥2的边缘画深色陡崖）— 字节缓冲区版
+                DrawCliffEdgesFast(imgData, imgStride, imgW, imgH, cx, cy, cell, terrain, gx, gy);
             }
         }
 
+        long tilesMs = swTotal.ElapsedMilliseconds;
+        GameLog.Info($"[IsoTerrain] Tiles render: {tilesMs}ms");
+
+        // P1: 渲染Overlay装饰物到字节缓冲区（在SetData之前，避免二次GetPixel/SetPixel开销）
+        var swOverlay = System.Diagnostics.Stopwatch.StartNew();
+        RenderOverlays(imgData, imgStride, imgW, imgH, terrain, rng, offX, offY);
+        swOverlay.Stop();
+        GameLog.Info($"[IsoTerrain] Overlay render: {swOverlay.ElapsedMilliseconds}ms");
+
         // 将修改后的字节数组写回Image
         img.SetData(imgW, imgH, false, Image.Format.Rgba8, imgData);
+
+        swTotal.Stop();
+        GameLog.Info($"[IsoTerrain] Total render: {swTotal.ElapsedMilliseconds}ms, image: {imgW}x{imgH}");
+
         return img;
     }
 
@@ -132,6 +146,195 @@ public static class IsoTerrainRenderer
     }
 
     // ======== P2-11优化：快速字节缓冲区绘制方法 ========
+
+    // ======== P1: Overlay装饰物渲染 ========
+
+    /// <summary>在地形图上渲染装饰物（树木、岩石、灌木）。种子驱动确保确定性。字节缓冲区版。</summary>
+    private static void RenderOverlays(byte[] imgData, int imgStride, int imgW, int imgH,
+        TerrainGrid terrain, Random rng, int offX, int offY)
+    {
+        if (_treeTexs == null || _rockTexs == null || _bushTexs == null) return;
+
+        int gs = TerrainGrid.GridSize;
+        int halfH = (int)IsoCoords.HalfH;
+
+        // 预加载overlay Image并提取字节缓冲区
+        var treeBufs = LoadOverlayByteBuffers(_treeTexs);
+        var rockBufs = LoadOverlayByteBuffers(_rockTexs);
+        var bushBufs = LoadOverlayByteBuffers(_bushTexs);
+        if (treeBufs.Length == 0 && rockBufs.Length == 0 && bushBufs.Length == 0) return;
+
+        for (int gx = 0; gx < gs; gx++)
+        {
+            for (int gy = 0; gy < gs; gy++)
+            {
+                var cell = terrain.GetCell(gx, gy);
+                // 不在水面、悬崖、桥梁、隧道上放置装饰物
+                if (cell.Type == TerrainType.ShallowWater || cell.Type == TerrainType.DeepWater ||
+                    cell.Type == TerrainType.Cliff || cell.Type == TerrainType.Bridge ||
+                    cell.Type == TerrainType.Tunnel || cell.Type == TerrainType.Road)
+                    continue;
+
+                // 基于网格坐标的确定性随机
+                int cellSeed = (gx * 73856093) ^ (gy * 19349663);
+                var cellRng = new Random(cellSeed);
+
+                // 山脉地形放岩石
+                if (cell.Type == TerrainType.Mountain)
+                {
+                    if (cellRng.NextDouble() < 0.35 && rockBufs.Length > 0)
+                    {
+                        var rb = rockBufs[cellRng.Next(rockBufs.Length)];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - rb.w / 2;
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH;
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                    }
+                    continue;
+                }
+
+                // 草地/田地放树木和灌木
+                if (cell.Type == TerrainType.Grass || cell.Type == TerrainType.Field)
+                {
+                    double roll = cellRng.NextDouble();
+                    if (roll < 0.15 && treeBufs.Length > 0)
+                    {
+                        var tb = treeBufs[cellRng.Next(treeBufs.Length)];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-8, 9);
+                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-4, 5);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                    }
+                    else if (roll < 0.30 && bushBufs.Length > 0)
+                    {
+                        var bb = bushBufs[cellRng.Next(bushBufs.Length)];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - bb.w / 2 + cellRng.Next(-6, 7);
+                        int oy = offY + (int)screenPos.Y - bb.h + halfH + cellRng.Next(-2, 3);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, bb, ox, oy);
+                    }
+                    else if (roll < 0.37 && rockBufs.Length > 0)
+                    {
+                        int rockMax = Math.Min(4, rockBufs.Length);
+                        var rb = rockBufs[cellRng.Next(rockMax)];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-8, 9);
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-4, 5);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                    }
+                }
+
+                // 沙地放岩石和枯树
+                if (cell.Type == TerrainType.Sand)
+                {
+                    double roll = cellRng.NextDouble();
+                    if (roll < 0.12 && rockBufs.Length > 0)
+                    {
+                        var rb = rockBufs[cellRng.Next(rockBufs.Length)];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-8, 9);
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-4, 5);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                    }
+                    else if (roll < 0.18 && treeBufs.Length > 8)
+                    {
+                        // 枯树（索引8-11为dead树）
+                        var tb = treeBufs[8 + cellRng.Next(Math.Min(4, treeBufs.Length - 8))];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - tb.w / 2 + cellRng.Next(-8, 9);
+                        int oy = offY + (int)screenPos.Y - tb.h + halfH + cellRng.Next(-4, 5);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, tb, ox, oy);
+                    }
+                }
+
+                // 雪地放岩石
+                if (cell.Type == TerrainType.Snow)
+                {
+                    if (cellRng.NextDouble() < 0.15 && rockBufs.Length > 0)
+                    {
+                        var rb = rockBufs[cellRng.Next(rockBufs.Length)];
+                        var screenPos = IsoCoords.GridToScreen(gx, gy);
+                        int ox = offX + (int)screenPos.X - rb.w / 2 + cellRng.Next(-8, 9);
+                        int oy = offY + (int)screenPos.Y - rb.h + halfH + cellRng.Next(-4, 5);
+                        BlitOverlayFast(imgData, imgStride, imgW, imgH, rb, ox, oy);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>加载overlay纹理为字节缓冲区数组（性能优化：避免逐像素GetPixel）。</summary>
+    private static (byte[] data, int w, int h)[] LoadOverlayByteBuffers(Texture2D?[] texs)
+    {
+        var list = new System.Collections.Generic.List<(byte[], int, int)>();
+        foreach (var tex in texs)
+        {
+            if (tex != null)
+            {
+                var img = tex.GetImage();
+                if (img != null)
+                {
+                    list.Add((img.GetData(), img.GetWidth(), img.GetHeight()));
+                }
+            }
+        }
+        return list.ToArray();
+    }
+
+    /// <summary>将overlay精灵alpha混合到目标字节缓冲区上（快速版，避免GetPixel/SetPixel）。</summary>
+    private static void BlitOverlayFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        (byte[] data, int w, int h) src, int ox, int oy)
+    {
+        for (int sy = 0; sy < src.h; sy++)
+        {
+            int dy = oy + sy;
+            if (dy < 0 || dy >= imgH) continue;
+            int dstRow = dy * imgStride;
+            int srcRow = sy * src.w * 4;
+            for (int sx = 0; sx < src.w; sx++)
+            {
+                int dx = ox + sx;
+                if (dx < 0 || dx >= imgW) continue;
+
+                int srcIdx = srcRow + sx * 4;
+                byte srcA = src.data[srcIdx + 3];
+                if (srcA < 3) continue; // 近乎透明，跳过
+
+                int dstIdx = dstRow + dx * 4;
+
+                if (srcA >= 252)
+                {
+                    // 完全不透明，直接拷贝
+                    imgData[dstIdx]     = src.data[srcIdx];
+                    imgData[dstIdx + 1] = src.data[srcIdx + 1];
+                    imgData[dstIdx + 2] = src.data[srcIdx + 2];
+                    imgData[dstIdx + 3] = 255;
+                }
+                else
+                {
+                    // Alpha混合
+                    float alpha = srcA / 255f;
+                    float invA = 1f - alpha;
+                    imgData[dstIdx]     = (byte)(imgData[dstIdx]     * invA + src.data[srcIdx]     * alpha);
+                    imgData[dstIdx + 1] = (byte)(imgData[dstIdx + 1] * invA + src.data[srcIdx + 1] * alpha);
+                    imgData[dstIdx + 2] = (byte)(imgData[dstIdx + 2] * invA + src.data[srcIdx + 2] * alpha);
+                    imgData[dstIdx + 3] = 255;
+                }
+            }
+        }
+    }
+
+    // 保留旧版Image方法供MapEditor等引用
+    private static void RenderOverlays(Image img, TerrainGrid terrain, Random rng, int offX, int offY)
+    {
+        // 委托到字节缓冲区版：提取Image数据后调用
+        var imgData = img.GetData();
+        int imgStride = img.GetWidth() * 4;
+        RenderOverlays(imgData, imgStride, img.GetWidth(), img.GetHeight(), terrain, rng, offX, offY);
+        img.SetData(img.GetWidth(), img.GetHeight(), false, Image.Format.Rgba8, imgData);
+    }
+
+    // ======== P2-11优化：快速字节缓冲区绘制方法原 ========
 
     /// <summary>直接操作字节数组绘制菱形顶面，避免逐像素GetPixel/SetPixel开销。</summary>
     private static void DrawDiamondTopFast(byte[] imgData, int imgStride, int imgW, int imgH,
@@ -201,8 +404,31 @@ public static class IsoTerrainRenderer
 
     /// <summary>直接操作字节数组绘制菱形侧面。</summary>
     private static void DrawDiamondSideFast(byte[] imgData, int imgStride, int imgW, int imgH,
-        int cx, int cy, int sidePx, TerrainCell cell)
+        int cx, int cy, int sidePx, TerrainCell cell, Random rng)
     {
+        // P1: 尝试使用崖壁纹理贴图
+        string cliffType = cell.Type switch
+        {
+            TerrainType.Mountain => "mountain",
+            TerrainType.Snow => "snow",
+            TerrainType.Sand => "sand",
+            TerrainType.Grass or TerrainType.Field => "grass",
+            _ => "rock",
+        };
+        byte[]? cliffTexData = null;
+        int cliffTexW = 0, cliffTexH = 0;
+        if (_cliffSideTexs != null && _cliffSideTexs.TryGetValue(cliffType, out var cliffArr))
+        {
+            var tex = cliffArr[rng.Next(cliffArr.Length)];
+            if (tex != null)
+            {
+                var cImg = tex.GetImage();
+                cliffTexData = cImg.GetData();
+                cliffTexW = cImg.GetWidth();
+                cliffTexH = cImg.GetHeight();
+            }
+        }
+
         Color baseColor = cell.Type switch
         {
             TerrainType.Mountain => new Color(0.42f, 0.35f, 0.26f, 1f),
@@ -245,18 +471,40 @@ public static class IsoTerrainRenderer
                 if (imgX < 0 || imgX >= imgW) continue;
 
                 float faceShade = px < 0 ? leftShade : rightShade;
+
+                if (cliffTexData != null && cliffTexW > 0 && cliffTexH > 0)
+                {
+                    // P1: 从崖壁纹理采样
+                    int tx = ((px + halfW) * cliffTexW) / (halfW * 2);
+                    int ty = (py * cliffTexH) / sidePx;
+                    if (tx >= 0 && tx < cliffTexW && ty >= 0 && ty < cliffTexH)
+                    {
+                        int srcIdx = (ty * cliffTexW + tx) * 4;
+                        float r = cliffTexData[srcIdx] / 255f * faceShade;
+                        float g = cliffTexData[srcIdx + 1] / 255f * faceShade;
+                        float b = cliffTexData[srcIdx + 2] / 255f * faceShade;
+                        int dstIdx = rowOffset + imgX * 4;
+                        imgData[dstIdx]     = (byte)(r * 255f);
+                        imgData[dstIdx + 1] = (byte)(g * 255f);
+                        imgData[dstIdx + 2] = (byte)(b * 255f);
+                        imgData[dstIdx + 3] = 255;
+                        continue;
+                    }
+                }
+
+                // 回退：纯色+噪声
                 float noise = ((px * 37 + py * 53 + cx * 7) % 23) / 23f * 0.15f - 0.075f;
                 float layerLine = (py % 4 == 0) ? 0.88f : 1.0f;
 
-                float r = Math.Clamp(baseColor.R * dim * faceShade * layerLine + noise, 0f, 1f);
-                float g = Math.Clamp(baseColor.G * dim * faceShade * layerLine + noise, 0f, 1f);
-                float b = Math.Clamp(baseColor.B * dim * faceShade * layerLine + noise, 0f, 1f);
+                float r2 = Math.Clamp(baseColor.R * dim * faceShade * layerLine + noise, 0f, 1f);
+                float g2 = Math.Clamp(baseColor.G * dim * faceShade * layerLine + noise, 0f, 1f);
+                float b2 = Math.Clamp(baseColor.B * dim * faceShade * layerLine + noise, 0f, 1f);
 
-                int dstIdx = rowOffset + imgX * 4;
-                imgData[dstIdx]     = (byte)(r * 255f);
-                imgData[dstIdx + 1] = (byte)(g * 255f);
-                imgData[dstIdx + 2] = (byte)(b * 255f);
-                imgData[dstIdx + 3] = 255;
+                int dstIdx2 = rowOffset + imgX * 4;
+                imgData[dstIdx2]     = (byte)(r2 * 255f);
+                imgData[dstIdx2 + 1] = (byte)(g2 * 255f);
+                imgData[dstIdx2 + 2] = (byte)(b2 * 255f);
+                imgData[dstIdx2 + 3] = 255;
             }
         }
     }
@@ -505,6 +753,80 @@ public static class IsoTerrainRenderer
                 if (sy >= img.GetHeight()) break;
                 float fade = 1f - (float)s / sidePx * 0.3f;
                 img.SetPixel(imgX, sy, new Color(cliffColor.R * fade, cliffColor.G * fade, cliffColor.B * fade, 0.8f));
+            }
+        }
+    }
+
+    // ===== DrawCliffEdges 字节缓冲区版（修复被SetData覆盖的bug） =====
+
+    private static void DrawCliffEdgesFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        int cx, int cy, TerrainCell cell, TerrainGrid terrain, int gx, int gy)
+    {
+        if (cell.Elevation < 2) return;
+
+        var neighbors = new[] { (1, 0), (-1, 0), (0, 1), (0, -1) };
+        foreach (var (dx, dy) in neighbors)
+        {
+            int nx = gx + dx, ny = gy + dy;
+            if (nx < 0 || nx >= TerrainGrid.GridSize || ny < 0 || ny >= TerrainGrid.GridSize)
+                continue;
+            var neighbor = terrain.GetCell(nx, ny);
+            int elevDiff = cell.Elevation - neighbor.Elevation;
+            if (elevDiff < 2) continue;
+
+            DrawCliffLineFast(imgData, imgStride, imgW, imgH, cx, cy, dx, dy);
+        }
+    }
+
+    private static void DrawCliffLineFast(byte[] imgData, int imgStride, int imgW, int imgH,
+        int cx, int cy, int dx, int dy)
+    {
+        byte cr = 38, cg = 30, cb = 20; // 0.15f, 0.12f, 0.08f * 255
+        int sidePx = ElevSidePx[3];
+
+        for (int i = 0; i <= (int)IsoCoords.HalfW; i++)
+        {
+            float t = (float)i / IsoCoords.HalfW;
+            int px, py;
+            if (dx == 0 && dy == -1) // 北→左上边
+            {
+                px = -(int)(IsoCoords.HalfW * t);
+                py = -(int)(IsoCoords.HalfH * (1f - t));
+            }
+            else if (dx == 1 && dy == 0) // 东→右上边
+            {
+                px = (int)(IsoCoords.HalfW * t);
+                py = -(int)(IsoCoords.HalfH * (1f - t));
+            }
+            else if (dx == 0 && dy == 1) // 南→右下边
+            {
+                px = (int)(IsoCoords.HalfW * (1f - t));
+                py = (int)(IsoCoords.HalfH * t);
+            }
+            else // dx==-1, dy==0 → 西→左下边
+            {
+                px = -(int)(IsoCoords.HalfW * (1f - t));
+                py = (int)(IsoCoords.HalfH * t);
+            }
+
+            int imgX = cx + px;
+            int imgY = cy + py;
+            if (imgX < 0 || imgX >= imgW || imgY < 0 || imgY >= imgH)
+                continue;
+
+            int dstIdx = imgY * imgStride + imgX * 4;
+            imgData[dstIdx] = cr; imgData[dstIdx + 1] = cg; imgData[dstIdx + 2] = cb; imgData[dstIdx + 3] = 255;
+
+            for (int s = 1; s <= sidePx; s++)
+            {
+                int sy = imgY + s;
+                if (sy >= imgH) break;
+                float fade = 1f - (float)s / sidePx * 0.3f;
+                int sIdx = sy * imgStride + imgX * 4;
+                imgData[sIdx]     = (byte)(cr * fade);
+                imgData[sIdx + 1] = (byte)(cg * fade);
+                imgData[sIdx + 2] = (byte)(cb * fade);
+                imgData[sIdx + 3] = 255;
             }
         }
     }
@@ -781,6 +1103,12 @@ public static class IsoTerrainRenderer
     // 旧版道路纹理（回退用）
     private static Texture2D? _roadETex, _roadNTex, _roadCrossTex;
     private static Texture2D? _bridgeTex, _tunnelTex, _cliffTex;
+    // P1: 悬崖侧面纹理（按地形类型分组的多变体纹理）
+    private static Dictionary<string, Texture2D?[]>? _cliffSideTexs;
+    // P1: Overlay装饰物纹理（树木/岩石/灌木）
+    private static Texture2D?[]? _treeTexs;
+    private static Texture2D?[]? _rockTexs;
+    private static Texture2D?[]? _bushTexs;
     private static bool _texturesLoaded = false;
 
     private static void EnsureTerrainTextures()
@@ -874,6 +1202,34 @@ public static class IsoTerrainRenderer
         _bridgeTex = LoadTexSafe("res://assets/sprites/terrain/tileBridge.png");
         _tunnelTex = LoadTexSafe("res://assets/sprites/terrain/tileTunnel.png");
         _cliffTex = LoadTexSafe("res://assets/sprites/terrain/tileCliff.png");
+        // P1: 加载悬崖侧面纹理（5种地形类型×3变体）
+        _cliffSideTexs = new Dictionary<string, Texture2D?[]>();
+        foreach (var type in new[] { "grass", "mountain", "snow", "sand", "rock" })
+        {
+            var arr = new Texture2D?[3];
+            for (int i = 0; i < 3; i++)
+                arr[i] = LoadTexSafe($"res://assets/sprites/terrain/tileCliffSide_{type}{i+1}.png");
+            _cliffSideTexs[type] = arr;
+        }
+        // P1: 加载Overlay装饰物纹理
+        _treeTexs = LoadTexArray(new[] {
+            "res://assets/sprites/overlay/tree_pine1.png", "res://assets/sprites/overlay/tree_pine2.png",
+            "res://assets/sprites/overlay/tree_pine3.png", "res://assets/sprites/overlay/tree_pine4.png",
+            "res://assets/sprites/overlay/tree_oak1.png", "res://assets/sprites/overlay/tree_oak2.png",
+            "res://assets/sprites/overlay/tree_oak3.png", "res://assets/sprites/overlay/tree_oak4.png",
+            "res://assets/sprites/overlay/tree_dead1.png", "res://assets/sprites/overlay/tree_dead2.png",
+            "res://assets/sprites/overlay/tree_dead3.png", "res://assets/sprites/overlay/tree_dead4.png" });
+        _rockTexs = LoadTexArray(new[] {
+            "res://assets/sprites/overlay/rock_small1.png", "res://assets/sprites/overlay/rock_small2.png",
+            "res://assets/sprites/overlay/rock_small3.png", "res://assets/sprites/overlay/rock_small4.png",
+            "res://assets/sprites/overlay/rock_large1.png", "res://assets/sprites/overlay/rock_large2.png",
+            "res://assets/sprites/overlay/rock_large3.png", "res://assets/sprites/overlay/rock_large4.png" });
+        _bushTexs = LoadTexArray(new[] {
+            "res://assets/sprites/overlay/bush_green1.png", "res://assets/sprites/overlay/bush_green2.png",
+            "res://assets/sprites/overlay/bush_green3.png", "res://assets/sprites/overlay/bush_dry1.png",
+            "res://assets/sprites/overlay/bush_dry2.png", "res://assets/sprites/overlay/bush_dry3.png",
+            "res://assets/sprites/overlay/bush_mixed1.png", "res://assets/sprites/overlay/bush_mixed2.png",
+            "res://assets/sprites/overlay/bush_mixed3.png" });
         _texturesLoaded = true;
     }
 
