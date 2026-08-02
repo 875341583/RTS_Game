@@ -853,3 +853,5 @@ menu.scenario_options,Scenario Options
 menu.game_options,Game Options
 menu.briefing,Briefing
 menu.deploy,Deploy
+combat.nuke_warning,WARNING: Nuclear Missile Launch Detected!
+combat.lightning_warning,WARNING: Lightning Storm Creating!

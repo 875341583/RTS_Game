@@ -172,9 +172,9 @@
     },
     "ApocalypseTank": {
       "name": "天启坦克",
-      "cost": 1500,
-      "stats2d": { "maxHealth": 400, "moveSpeed": 120, "attackDamage": 80, "attackRange": 180, "attackCooldown": 1.8, "aggroRange": 300, "canAttackAir": true },
-      "stats3d": { "maxHealth": 400, "moveSpeed": 7, "attackDamage": 60, "attackRange": 14, "attackCooldown": 1.5, "canAttackAir": true }
+      "cost": 1750,
+      "stats2d": { "maxHealth": 800, "moveSpeed": 120, "attackDamage": 100, "attackRange": 180, "attackCooldown": 1.8, "aggroRange": 300, "canAttackAir": true },
+      "stats3d": { "maxHealth": 800, "moveSpeed": 7, "attackDamage": 75, "attackRange": 14, "attackCooldown": 1.5, "canAttackAir": true }
     },
     "PrismTank": {
       "name": "光棱坦克",
@@ -184,15 +184,15 @@
     },
     "KirovAirship": {
       "name": "基洛夫空艇",
-      "cost": 1500,
-      "stats2d": { "maxHealth": 300, "moveSpeed": 80, "attackDamage": 120, "attackRange": 60, "attackCooldown": 3.0, "splashRadius": 120, "aggroRange": 250, "autoDefend": true, "isAirUnit": true },
-      "stats3d": { "maxHealth": 300, "moveSpeed": 6, "attackDamage": 100, "attackRange": 5, "attackCooldown": 3.0, "isAirUnit": true, "splashRadius": 8 }
+      "cost": 2000,
+      "stats2d": { "maxHealth": 2000, "moveSpeed": 80, "attackDamage": 250, "attackRange": 60, "attackCooldown": 3.0, "splashRadius": 120, "aggroRange": 250, "autoDefend": true, "isAirUnit": true },
+      "stats3d": { "maxHealth": 2000, "moveSpeed": 6, "attackDamage": 200, "attackRange": 5, "attackCooldown": 3.0, "isAirUnit": true, "splashRadius": 8 }
     },
     "TeslaTrooper": {
       "name": "磁暴步兵",
       "cost": 500,
-      "stats2d": { "maxHealth": 80, "moveSpeed": 85, "attackDamage": 25, "attackRange": 120, "attackCooldown": 1.2, "aggroRange": 180, "splashRadius": 30 },
-      "stats3d": { "maxHealth": 100, "moveSpeed": 7, "attackDamage": 20, "attackRange": 8, "attackCooldown": 1.0, "splashRadius": 2 }
+      "stats2d": { "maxHealth": 130, "moveSpeed": 85, "attackDamage": 50, "attackRange": 120, "attackCooldown": 1.2, "aggroRange": 180, "splashRadius": 30 },
+      "stats3d": { "maxHealth": 130, "moveSpeed": 7, "attackDamage": 40, "attackRange": 8, "attackCooldown": 1.0, "splashRadius": 2 }
     }
   }
 }

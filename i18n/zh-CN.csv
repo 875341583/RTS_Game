@@ -855,3 +855,5 @@ menu.scenario_options,剧本选项
 menu.game_options,游戏选项
 menu.briefing,简报
 menu.deploy,部署
+combat.nuke_warning,⚠ 警告：侦测到核弹发射！
+combat.lightning_warning,⚠ 警告：闪电风暴正在蓄能！

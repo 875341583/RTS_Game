@@ -114,8 +114,8 @@ public partial class RTSCamera : Camera2D
             float falloff = Mathf.Max(0f, _shakeDuration / _shakeTotalDuration);
             float currentIntensity = _shakeIntensity * falloff;
             Offset = new Vector2(
-                (float)(GD.RandRange(-1.0, 1.0) * currentIntensity),
-                (float)(GD.RandRange(-1.0, 1.0) * currentIntensity)
+                DeterministicRng.RandRangeFloat(-1.0f, 1.0f) * currentIntensity,
+                DeterministicRng.RandRangeFloat(-1.0f, 1.0f) * currentIntensity
             );
             if (_shakeDuration <= 0f)
             {

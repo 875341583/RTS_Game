@@ -107,6 +107,14 @@ public partial class Main
 
         string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
         ShowToast(TrManager.Tr("combat.nuke_launched", who), new Color(1f, 0.5f, 0.2f));
+
+        // P0-4: 超武预警 — 敌方发射核弹时显示红色警告
+        if (firingTeamId != PlayerTeamId)
+        {
+            ShowToast(TrManager.Tr("combat.nuke_warning"), new Color(1f, 0.15f, 0.1f));
+            _audio?.PlaySfxForce(AudioManager.Sfx.NotifyAttack);
+        }
+
         GameLog.Debug($"[核弹] Team {firingTeamId} 从 {launchPos} 发射核弹 → {targetPos}，1.5秒后命中");
     }
 
@@ -123,6 +131,13 @@ public partial class Main
         string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
         ShowToast(TrManager.Tr("combat.lightning_charging", who), new Color(0.5f, 0.8f, 1f));
         GameLog.Debug($"[闪电] Team {firingTeamId} 闪电风暴蓄能 → {targetPos}，0.8秒后劈下");
+
+        // P0-4: 闪电预警
+        if (firingTeamId != PlayerTeamId)
+        {
+            ShowToast(TrManager.Tr("combat.lightning_warning"), new Color(0.3f, 0.5f, 1f));
+            _audio?.PlaySfxForce(AudioManager.Sfx.NotifyAttack);
+        }
     }
 
     /// <summary>Phase1: 在_Process中推进超武发射动画计时器。</summary>
@@ -250,8 +265,8 @@ public partial class Main
         // 5. 多重次级爆炸叠加，增强蘑菇云观感
         for (int i = 0; i < 6; i++)
         {
-            float ang = i * Mathf.Tau / 6f + (float)GD.RandRange(-0.3, 0.3);
-            float r = (float)GD.RandRange(30, 90);
+            float ang = i * Mathf.Tau / 6f + DeterministicRng.RandRangeFloat(-0.3f, 0.3f);
+            float r = DeterministicRng.RandRangeFloat(30, 90);
             var offset = new Vector2(Mathf.Cos(ang) * r, Mathf.Sin(ang) * r);
             AddChild(BattleEffect.Explosion(pos + offset));
         }
@@ -268,6 +283,9 @@ public partial class Main
 
         // Phase1: 核弹屏幕震动（强震）
         ScreenShake(16f, 0.8f);
+
+        // P0-4: 核弹屏幕白闪
+        _screenFlashIntensity = 1f;
 
         QueueRedraw();
     }
@@ -297,14 +315,14 @@ public partial class Main
         // 4. 范围内多个次级火花
         for (int i = 0; i < 4; i++)
         {
-            float ang = i * Mathf.Tau / 4f + (float)GD.RandRange(0, 1.5);
-            float r = (float)GD.RandRange(30, 70);
+            float ang = i * Mathf.Tau / 4f + DeterministicRng.RandRangeFloat(0, 1.5f);
+            float r = DeterministicRng.RandRangeFloat(30, 70);
             var offset = new Vector2(Mathf.Cos(ang) * r, Mathf.Sin(ang) * r);
             AddChild(BattleEffect.Explosion(pos + offset));
         }
 
         // 5. 重置闪电形状种子，让 _Draw 生成新的折线形状
-        _lightningBoltSeed = (float)GD.RandRange(0, 1000);
+        _lightningBoltSeed = DeterministicRng.RandRangeFloat(0, 1000);
 
         // 6. 通知提示
         string who = firingTeamId == PlayerTeamId ? TrManager.Tr("combat.our_side") : TrManager.Tr("combat.enemy_team", firingTeamId);
@@ -317,6 +335,9 @@ public partial class Main
 
         // Phase1: 闪电风暴屏幕震动（中震）
         ScreenShake(8f, 0.4f);
+
+        // P0-4: 闪电风暴屏幕白闪
+        _screenFlashIntensity = 0.6f;
 
         QueueRedraw();
     }
@@ -394,7 +415,7 @@ public partial class Main
         if (candidates.Count == 0) return null;
 
         // 50% 概率优先打击玩家基地（若有）
-        if (GD.Randf() < 0.5f
+        if (DeterministicRng.Randf() < 0.5f
             && _bases.TryGetValue(PlayerTeamId, out var pb)
             && IsInstanceValid(pb)
             && firingTeamId != PlayerTeamId)
@@ -403,7 +424,7 @@ public partial class Main
         }
 
         // 否则随机任选一个非己方基地
-        int idx = (int)GD.RandRange(0, candidates.Count - 1);
+        int idx = DeterministicRng.RandRange(0, candidates.Count - 1);
         return candidates[idx].GlobalPosition;
     }
 

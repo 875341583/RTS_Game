@@ -128,6 +128,8 @@ public partial class Main : Node2D
         private readonly Dictionary<int, float> _aiNukeCooldowns = new();
         /// <summary>核弹特效播放列表（持续若干秒的冲击波+辐射雾）。</summary>
         private readonly List<NukeVisual> _activeNukeVisuals = new();
+        /// <summary>屏幕闪光强度（超武爆炸时白屏闪烁，逐帧淡出）。</summary>
+        private float _screenFlashIntensity = 0f;
         /// <summary>核弹视觉特效临时数据。</summary>
         private struct NukeVisual
         {
@@ -1128,6 +1130,13 @@ public partial class Main : Node2D
             }
             QueueRedraw();
         }
+        // 屏幕闪光淡出
+        if (_screenFlashIntensity > 0f)
+        {
+            _screenFlashIntensity -= dt * 3f; // 0.33秒淡出
+            if (_screenFlashIntensity < 0f) _screenFlashIntensity = 0f;
+            QueueRedraw();
+        }
         // 目标选择模式下持续重绘（保持准星跟随鼠标）
         if (_nukeTargetMode) QueueRedraw();
 
@@ -1189,7 +1198,7 @@ public partial class Main : Node2D
                 if (lv.BoltRefreshTimer >= 0.08f)
                 {
                     lv.BoltRefreshTimer -= 0.08f;
-                    _lightningBoltSeed = (float)GD.RandRange(0, 1000);
+                    _lightningBoltSeed = DeterministicRng.RandRangeFloat(0, 1000);
                 }
                 if (lv.Age >= lv.Lifetime)
                 {
@@ -1398,6 +1407,30 @@ public partial class Main : Node2D
                 DrawCircle(nuke.Position, fillR,
                     new Color(0.7f, 1f, 0.3f, (1f - progress) * 0.18f));
             }
+            // P0-4: 蘑菇云效果 — 早期阶段上升膨胀的蘑菇头
+            if (progress < 0.4f)
+            {
+                float mcProgress = progress / 0.4f; // 0→1
+                float mcRadius = GameConst.NukeRadius * 0.7f * mcProgress;
+                float mcRiseY = -120f * mcProgress; // 向上升起
+                // 蘑菇头外层（橙红→暗）
+                DrawCircle(nuke.Position + new Vector2(0, mcRiseY), mcRadius,
+                    new Color(1f, 0.4f, 0.15f, (1f - mcProgress) * 0.6f));
+                // 蘑菇头内层（亮白→黄）
+                DrawCircle(nuke.Position + new Vector2(0, mcRiseY), mcRadius * 0.6f,
+                    new Color(1f, 0.9f, 0.5f, (1f - mcProgress) * 0.4f));
+                // 蘑菇柱（连接地面到蘑菇头的竖直烟柱）
+                float stemH = -mcRiseY;
+                DrawRect(new Rect2(nuke.Position.X - 8f, nuke.Position.Y + mcRiseY, 16f, stemH),
+                    new Color(0.5f, 0.4f, 0.3f, (1f - mcProgress) * 0.5f), true);
+            }
+        }
+
+        // P0-4: 屏幕白闪（超武爆炸瞬间）
+        if (_screenFlashIntensity > 0f)
+        {
+            var rect = GetViewportRect();
+            DrawRect(rect, new Color(1f, 1f, 1f, _screenFlashIntensity * 0.7f), true);
         }
 
         // ---- 阶段12-A4：核弹目标选择准星 ----

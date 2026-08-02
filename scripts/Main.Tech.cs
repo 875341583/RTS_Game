@@ -1157,7 +1157,7 @@ public partial class Main
         if (!_eureka[teamId].OnDestroy()) return;
         // 击毁建筑触发随机分支尤里卡
         string[] branches = { TrManager.Tr("tech.branch_military"), TrManager.Tr("tech.branch_economy"), TrManager.Tr("tech.branch_defense") };
-        TriggerEureka(teamId, branches[GD.RandRange(0, 2)], TrManager.Tr("eureka.reason_destroy"));
+        TriggerEureka(teamId, branches[DeterministicRng.RandRange(0, 2)], TrManager.Tr("eureka.reason_destroy"));
     }
 
     /// <summary>执行尤里卡：找到该分支未研究的科技并直接完成。</summary>

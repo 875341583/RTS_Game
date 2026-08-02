@@ -650,10 +650,9 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         {
             if (!IsInstanceValid(p)) continue;
             // 在运输车附近下车
-            var exitPos = GlobalPosition + new Vector2(
-                (float)(GD.RandRange(-40, 40)),
-                (float)(GD.RandRange(-40, 40)));
-            p.Visible = true;
+                var exitPos = GlobalPosition + new Vector2(
+                DeterministicRng.RandRangeFloat(-40, 40),
+                DeterministicRng.RandRangeFloat(-40, 40));
             p.GlobalPosition = exitPos;
             main.GetNode<Node2D>("Units").AddChild(p);
         }
@@ -1157,7 +1156,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                 float successRate = SpyMission.SuccessRate;
                 if (GetParent()?.GetParent() is Main mainNode0)
                     successRate *= mainNode0.GetTechSpyEfficiencyMul(TeamId);
-                bool success = GD.Randf() < successRate;
+                bool success = DeterministicRng.Randf() < successRate;
                 var missionType = _spyMission.Value;
                 var target = _spyTargetBuilding;
                 int teamId = TeamId;
@@ -1663,7 +1662,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                     {
                         float dmg = AttackDamage;
                         // E6b：英雄暴击30%概率双倍伤害
-                        if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && GD.Randf() < 0.3f)
+                        if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && DeterministicRng.Randf() < 0.3f)
                             dmg *= 2f;
                         // E11：穿甲弹 +25%对重甲单位
                         if (_abilities.Contains(UnitAbility.ArmorPiercing) && IsHeavyUnit(_attackUnitTarget.Type))
@@ -1745,7 +1744,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                     {
                         float dmgB = AttackDamage;
                         // E6b：英雄暴击30%概率双倍伤害
-                        if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && GD.Randf() < 0.3f)
+                        if (Type == UnitType.Hero && _heroSkill == HeroSkill.CriticalStrike && DeterministicRng.Randf() < 0.3f)
                             dmgB *= 2f;
                         if (_abilities.Contains(UnitAbility.ArmorPiercing))
                             dmgB *= 1.25f;
@@ -2208,8 +2207,8 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     /// <summary>散开：向四周随机方向散开100~200px。</summary>
     public void CommandScatter()
     {
-        float angle = (float)(GD.RandRange(0, 360) * Mathf.Pi / 180.0);
-        float dist = (float)GD.RandRange(100, 200);
+        float angle = DeterministicRng.RandRangeFloat(0, 360) * Mathf.Pi / 180.0f;
+        float dist = DeterministicRng.RandRangeFloat(100, 200);
         var offset = new Vector2(Mathf.Cos(angle) * dist, Mathf.Sin(angle) * dist);
         var target = GlobalPosition + offset;
         _moveTarget = target;
@@ -2310,7 +2309,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
     public void TakeDamage(float damage)
     {
         // E11：烟幕闪避 20%概率
-        if (_abilities.Contains(UnitAbility.SmokeScreen) && GD.Randf() < 0.2f)
+        if (_abilities.Contains(UnitAbility.SmokeScreen) && DeterministicRng.Randf() < 0.2f)
             return;
         // E11：反应装甲 -20%伤害
         float actualDmg = damage;
@@ -2620,7 +2619,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
                     if (dist < 1f)
                     {
                         // 中心暗黑，边缘暗灰，带随机烧焦纹理
-                        float darkness = 0.05f + (float)GD.RandRange(0, 0.1);
+                        float darkness = 0.05f + DeterministicRng.RandRangeFloat(0, 0.1f);
                         float alpha = (1f - dist) * 0.7f;
                         wreckImg.SetPixel(wx, wy, new Color(darkness, darkness, darkness, alpha));
                     }
@@ -2938,7 +2937,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         // 移除已拥有的
         pool.RemoveAll(a => _abilities.Contains(a));
         if (pool.Count == 0) return UnitAbility.None;
-        return pool[GD.RandRange(0, pool.Count - 1)];
+        return DeterministicRng.Choice(pool);
     }
 
     /// <summary>判断是否为重甲单位（穿甲弹加成目标）。</summary>

@@ -815,13 +815,13 @@ public partial class Main
             }
         }
         // 步兵作为廉价填线兵
-        if (types.Contains(UnitType.Infantry) && GD.Randf() < infantryChance)
+        if (types.Contains(UnitType.Infantry) && DeterministicRng.Randf() < infantryChance)
         {
             types.Remove(UnitType.Infantry);
             types.Insert(0, UnitType.Infantry);
         }
         // 工程车
-        if (types.Contains(UnitType.Engineer) && GD.Randf() < engineerChance)
+        if (types.Contains(UnitType.Engineer) && DeterministicRng.Randf() < engineerChance)
         {
             types.Remove(UnitType.Engineer);
             types.Insert(0, UnitType.Engineer);

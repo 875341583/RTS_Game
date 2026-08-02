@@ -9,6 +9,12 @@ namespace RTSGame;
 /// 每帧从友方单位/建筑收集视野圆，刷新 Visible 格子；
 /// 已探索格子不退回未探索，只从 Visible 退回 Explored。
 /// 渲染：Node2D + DrawPolygon 覆盖等距菱形瓦片。
+///
+/// 联机模式说明（P1-4）：
+///   迷雾是纯表现层，不影响游戏逻辑。客户端基于本地同步的单位位置独立计算视野，
+///   由于Host每0.1秒广播状态快照（单位位置/血量），各客户端看到的迷雾基本一致。
+///   短暂的位置差异（插值延迟）导致的迷雾差异是可接受的视觉表现，不影响权威性。
+///   ViewerTeamId在游戏开始时设为NetworkManager.LocalTeamId。
 /// </summary>
 public partial class FogOfWar : Node2D
 {

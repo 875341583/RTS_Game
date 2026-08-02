@@ -568,7 +568,7 @@ public partial class Main
                 Health = b.Health,
                 NetId = b.NetId,  // C3: 使用NetId
                 QueueCount = b.QueueCount,
-                ProductionType = -1  // TODO: 从建筑获取当前生产类型
+                ProductionType = b.CurrentProductionType.HasValue ? (int)b.CurrentProductionType.Value : -1
             });
         }
 

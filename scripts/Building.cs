@@ -783,7 +783,7 @@ public partial class Building : Area2D, IBuildingEntity
             else
             {
                 // G8: 叛变检查 — 每秒15%概率
-                if (GD.Randf() < CaptureBonus.DefectionChance * dt)
+                if (DeterministicRng.Randf() < CaptureBonus.DefectionChance * dt)
                 {
                     if (_originalTeamId >= 0 && _originalTeamId != TeamId)
                     {
