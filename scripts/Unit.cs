@@ -571,7 +571,7 @@ public partial class Unit : CharacterBody2D, IUnitEntity
         // Hero技能随机化（保留原逻辑，JSON只提供基础数值）
         if (s.IsHero)
         {
-            _heroSkill = (HeroSkill)(GD.Randi() % 5 + 1);
+            _heroSkill = (HeroSkill)DeterministicRng.RandRangeInt(1, 5);
             switch (_heroSkill)
             {
                 case HeroSkill.DoubleShot: UnitName = TrManager.Tr("unit.hero_double_shot"); AttackCooldown = 0.35f; break;
