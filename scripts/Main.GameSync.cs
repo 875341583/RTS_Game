@@ -645,21 +645,29 @@ public partial class Main
             var seenIds = new HashSet<int>();
             foreach (var us in snap.Units)
             {
-                seenIds.Add(us.NetId);
-                if (_netUnitMap.TryGetValue(us.NetId, out var u) && IsInstanceValid(u))
-                {
-                    // 插值移动：逐步逼近目标位置
-                    var targetPos = new Vector2(us.X, us.Y);
-                    var diffVec = targetPos - u.GlobalPosition;
-                    if (diffVec.Length() > 200f)
-                        u.GlobalPosition = targetPos; // 跳跃修正（单位刚生成或严重延迟）
-                    else
-                        u.GlobalPosition += diffVec * 0.3f; // 插值平滑
-                    // 同步血量
-                    if (System.Math.Abs(u.Health - us.Health) > 1f)
-                        u.SetHealth(us.Health);
-                }
-                //else: 新单位 — 由命令同步处理生成，快照不创建新单位
+            seenIds.Add(us.NetId);
+            if (_netUnitMap.TryGetValue(us.NetId, out var u) && IsInstanceValid(u))
+            {
+                // 插值移动：逐步逼近目标位置
+                var targetPos = new Vector2(us.X, us.Y);
+                var diffVec = targetPos - u.GlobalPosition;
+                if (diffVec.Length() > 200f)
+                    u.GlobalPosition = targetPos; // 跳跃修正（单位刚生成或严重延迟）
+                else
+                    u.GlobalPosition += diffVec * 0.3f; // 插值平滑
+                // 同步血量
+                if (System.Math.Abs(u.Health - us.Health) > 1f)
+                    u.SetHealth(us.Health);
+            }
+            else if (!_netUnitMap.ContainsKey(us.NetId))
+            {
+                // P1: 快照中有未知NetId的单位 → 客户端Spawn新单位
+                var newUnit = SpawnUnit((UnitType)us.UnitType, new Vector2(us.X, us.Y), us.TeamId, autoAI: false);
+                newUnit.NetId = us.NetId;
+                newUnit.SetHealth(us.Health);
+                _netUnitMap[us.NetId] = newUnit;
+                GameLog.Debug($"[NetSync] 客户端Spawn新单位: NetId={us.NetId} Type={(UnitType)us.UnitType} Team={us.TeamId}");
+            }
             }
 
             // 检测消失的单位（在映射中但不在快照中）
@@ -685,14 +693,28 @@ public partial class Main
             var seenBldIds = new HashSet<int>();
             foreach (var bs in snap.Buildings)
             {
-                seenBldIds.Add(bs.NetId);
-                if (_netBuildingMap.TryGetValue(bs.NetId, out var b) && IsInstanceValid(b))
+            seenBldIds.Add(bs.NetId);
+            if (_netBuildingMap.TryGetValue(bs.NetId, out var b) && IsInstanceValid(b))
+            {
+                b.GlobalPosition = new Vector2(bs.X, bs.Y); // 建筑不移动，直接设置
+                // 同步血量
+                if (System.Math.Abs(b.Health - bs.Health) > 1f)
+                    b.SetHealth(bs.Health);
+                // P2: 同步生产队列UI（仅更新非本地阵营建筑）
+                if (bs.TeamId != NetworkManager.LocalTeamId)
                 {
-                    b.GlobalPosition = new Vector2(bs.X, bs.Y); // 建筑不移动，直接设置
-                    // 同步血量
-                    if (System.Math.Abs(b.Health - bs.Health) > 1f)
-                        b.SetHealth(bs.Health);
+                    b.SyncProductionState(bs.QueueCount, bs.ProductionType);
                 }
+            }
+            else if (!_netBuildingMap.ContainsKey(bs.NetId))
+            {
+                // P1: 快照中有未知NetId的建筑 → 客户端Spawn新建筑
+                var newBld = SpawnBuilding((BuildingType)bs.BuildingType, new Vector2(bs.X, bs.Y), bs.TeamId);
+                newBld.NetId = bs.NetId;
+                newBld.SetHealth(bs.Health);
+                _netBuildingMap[bs.NetId] = newBld;
+                GameLog.Debug($"[NetSync] 客户端Spawn新建筑: NetId={bs.NetId} Type={(BuildingType)bs.BuildingType} Team={bs.TeamId}");
+            }
             }
 
             var missingBldKeys = new List<int>();
@@ -779,10 +801,17 @@ public partial class Main
                         break;
                     }
                 }
-                // StrategicPoint.OwningTeam is private set, but we can use Restore or a method
-                // For now, just log — the actual capture state will be synced through unit positions
+                // P2: 使用已有的SetOwningTeam方法同步占领状态
                 if (match != null && sps.TeamId >= 0)
-                    GameLog.Debug($"[NetSync] 战略点同步: TeamId={sps.TeamId}");
+                {
+                    if (match.OwningTeam != sps.TeamId)
+                        match.SetOwningTeam(sps.TeamId);
+                }
+                else if (match != null && sps.TeamId < 0 && match.OwningTeam >= 0)
+                {
+                    // 战略点变为中立
+                    match.SetOwningTeam(-1);
+                }
             }
         }
     }

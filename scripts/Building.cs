@@ -538,6 +538,25 @@ public partial class Building : Area2D, IBuildingEntity
         _productionDuration = duration;
     }
 
+    /// <summary>联机客户端同步：根据快照中的生产队列信息更新本地显示状态。
+    /// 仅用于非本地阵营建筑，不影响实际生产逻辑（由Host权威控制）。</summary>
+    public void SyncProductionState(int queueCount, int productionType)
+    {
+        // 如果本地队列长度与快照不匹配，通过RestoreProductionState重建显示状态
+        int currentCount = _productionQueue.Count + (_currentProduction.HasValue ? 1 : 0);
+        if (currentCount != queueCount)
+        {
+            // 队列长度不匹配 → 重建为快照中的状态
+            _productionQueue.Clear();
+            _currentProduction = productionType >= 0 ? (ProductionType?)productionType : null;
+            // 填充虚拟队列项使 QueueCount 匹配快照
+            int virtualQueueLen = queueCount - (_currentProduction.HasValue ? 1 : 0);
+            for (int i = 0; i < virtualQueueLen; i++)
+                _productionQueue.Enqueue(_currentProduction ?? ProductionType.LightTank);
+            QueueRedraw();
+        }
+    }
+
     /// <summary>P0-2 读档：恢复占领状态（用于叛变/缴获逻辑保持）。</summary>
     public void RestoreCaptureState(int originalTeamId, int capturingTeamId, float captureProgress)
     {
