@@ -1041,9 +1041,9 @@ public static class IsoTerrainRenderer
             // 获取当前地形的代表色
             var (mr, mg, mb) = GetTerrainRepColor(myType);
 
-            // 在菱形对应边缘绘制渐变混合带（10像素宽，约tile宽度的15%）
-            int blendWidth = 10;
-            float maxBlend = 0.70f;
+            // 在菱形对应边缘绘制渐变混合带（14像素宽，约tile宽度的22%）
+            int blendWidth = 14;
+            float maxBlend = 0.78f;
 
             for (int i = 0; i <= halfW; i++)
             {
@@ -1061,28 +1061,36 @@ public static class IsoTerrainRenderer
                     BlendPixel(imgData, imgStride, imgW, imgH, cx + pxCur, cy + pyCur,
                         nr, ng, nb, blendStrength);
 
-                    // 沿边缘法线方向多撒几个点形成带状
-                    if (edge < 4)
+                    // 沿边缘法线方向多撒几个点形成带状（前6像素都撒，增加密度）
+                    if (edge < 6)
                     {
                         int nx2 = pxCur + (dx != 0 ? 0 : (dy > 0 ? 1 : -1));
                         int ny2 = pyCur + (dy != 0 ? 0 : (dx > 0 ? 1 : -1));
                         BlendPixel(imgData, imgStride, imgW, imgH, cx + nx2, cy + ny2,
-                            nr, ng, nb, blendStrength * 0.8f);
+                            nr, ng, nb, blendStrength * 0.85f);
+                        // 第二偏移点，增加混合带宽
+                        if (edge < 3)
+                        {
+                            int nx3 = pxCur + (dx != 0 ? 0 : (dy > 0 ? 2 : -2));
+                            int ny3 = pyCur + (dy != 0 ? 0 : (dx > 0 ? 2 : -2));
+                            BlendPixel(imgData, imgStride, imgW, imgH, cx + nx3, cy + ny3,
+                                nr, ng, nb, blendStrength * 0.6f);
+                        }
                     }
                 }
 
-                // 散落"侵入"像素簇（草侵入沙、沙侵入草等）—— 大量密集
-                if ((i * 5 + gx * 11 + gy * 13) % 3 == 0)
+                // 散落"侵入"像素簇（草侵入沙、沙侵入草等）—— 更密集
+                if ((i * 4 + gx * 11 + gy * 13) % 2 == 0)  // 每2格一组（原3格）
                 {
                     int pxCur, pyCur;
                     GetEdgePoint(dx, dy, t, halfW, halfH, 0, out pxCur, out pyCur);
-                    // 散落4-5个邻居颜色小点，范围更大
-                    for (int s = 0; s < 5; s++)
+                    // 散落6个邻居颜色小点，范围更大
+                    for (int s = 0; s < 6; s++)
                     {
-                        int scatterPx = pxCur + ((i * 3 + s * 7) % 7 - 3);
-                        int scatterPy = pyCur + ((i * 5 + s * 3) % 5 - 2);
+                        int scatterPx = pxCur + ((i * 3 + s * 7) % 9 - 4);
+                        int scatterPy = pyCur + ((i * 5 + s * 3) % 7 - 3);
                         BlendPixel(imgData, imgStride, imgW, imgH, cx + scatterPx, cy + scatterPy,
-                            nr, ng, nb, maxBlend * 0.5f);
+                            nr, ng, nb, maxBlend * 0.55f);
                     }
                 }
             }
